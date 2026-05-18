@@ -28,8 +28,8 @@ export default function ServicosPage() {
         eyebrow="Programas HUMANEXUS"
         title="Uma estrutura contínua para organizações que precisam tratar performance humana com rigor estratégico."
         description="Programas compactos, objetivos e sofisticados para fortalecer fatores humanos, leitura operacional, CRM, estabilidade adaptativa e desenvolvimento de equipes sob pressão."
-        primary={{ href: "/contato", label: "Implementar o Programa HUMANEXUS" }}
-        secondary={{ href: "/contato", label: "Solicitar Avaliação Estratégica" }}
+        primary={{ href: "/contato", label: "Agendar Reunião Institucional" }}
+        secondary={{ href: "https://wa.me/5592981187777", label: "Falar com o Instituto" }}
       />
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
@@ -148,9 +148,8 @@ export default function ServicosPage() {
               </p>
             </div>
             <div className="flex flex-col gap-3">
-              <PrimaryButton href="/contato">Implementar o Programa HUMANEXUS</PrimaryButton>
-              <SecondaryButton href="/contato">Solicitar Avaliação Estratégica</SecondaryButton>
-              <SecondaryButton href="https://wa.me/5592981187777">Agendar Reunião Institucional</SecondaryButton>
+              <PrimaryButton href="/contato">Agendar Reunião Institucional</PrimaryButton>
+              <SecondaryButton href="https://wa.me/5592981187777">Falar com o Instituto</SecondaryButton>
             </div>
           </div>
         </div>

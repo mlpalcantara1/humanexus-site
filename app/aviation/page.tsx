@@ -32,7 +32,7 @@ export default function AviationPage() {
         </div>
         <div className="relative mt-12 min-h-[360px] overflow-hidden rounded-[32px] border border-white/10 bg-[#090909]">
           <Image
-            src={brandAssets.media.aviationTalk}
+            src={brandAssets.media.founderCongressDownload}
             alt="Aplicação do HUMANEXUS em contexto aeronáutico"
             fill
             className="object-cover"

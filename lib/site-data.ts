@@ -26,93 +26,69 @@ export const navigation: NavItem[] = [
 
 export const coreMessages: SimpleCard[] = [
   {
-    title: "Autoridade operacional",
-    description: "Fatores humanos, neurociência aplicada e leitura regulatória humana para organizações de alta exigência."
+    title: "Inteligência operacional humana",
+    description: "Fatores humanos, segurança operacional e leitura estratégica para ambientes onde a decisão custa caro."
   },
   {
-    title: "Exclusividade metodológica",
-    description: "Arquitetura conceitual proprietária orientada a estabilidade funcional, adaptação sob pressão e performance sustentável."
+    title: "Método proprietário",
+    description: "Protocolos HUMANEXUS desenhados para desenvolvimento contínuo, confidencialidade metodológica e valor institucional."
   },
   {
-    title: "Entrega institucional",
-    description: "Posicionamento premium para programas contínuos, liderança institucional e evolução humana em ambientes críticos."
+    title: "Programa contínuo",
+    description: "Acompanhamento longitudinal, relatórios executivos e evolução operacional humana para contratos recorrentes."
   }
 ];
 
 export const serviceHighlights: SimpleCard[] = [
   {
-    title: "Fatores Humanos",
-    description: "Leitura aplicada de vulnerabilidades humanas, segurança operacional e estabilidade funcional."
+    title: "Programa de Desenvolvimento Humano Operacional",
+    description: "Estrutura longitudinal para estabilidade humana, liderança, cultura operacional e performance sob pressão."
   },
   {
-    title: "CRM",
-    description: "Programas voltados à coordenação, comunicação e tomada de decisão sob pressão."
+    title: "Riscos Psicossociais e Estabilidade Operacional",
+    description: "Programa contínuo para vulnerabilidades humanas, carga operacional e ações preventivas documentadas."
   },
   {
-    title: "EEG Operacional",
-    description: "Neurotecnologia aplicada à observação de foco, mobilização interna e recuperação."
+    title: "Formação em Fatores Humanos e CRM",
+    description: "Capacitação institucional para equipes críticas, coordenação, decisão e cultura de segurança."
   },
   {
-    title: "Performance Cognitiva",
-    description: "Estruturas de desenvolvimento para ambientes de elevada exigência e alta responsabilidade."
-  },
-  {
-    title: "Neuroergonomia",
-    description: "Integração entre carga cognitiva, contexto operacional e estabilidade adaptativa."
-  },
-  {
-    title: "Estrutura Estratégica",
-    description: "Arquitetura aplicada para lideranças, organizações e decisões de alto impacto com acompanhamento contínuo."
-  },
-  {
-    title: "Avaliação Operacional",
-    description: "Leitura regulatória humana aplicada ao início de ciclos de desenvolvimento operacional."
-  },
-  {
-    title: "Desenvolvimento Operacional",
-    description: "Programas HUMANEXUS para aviação, CRM, segurança e performance sob pressão com progressão longitudinal."
+    title: "Pesquisa Aplicada e Inteligência Regulatória Humana",
+    description: "Base conceitual, leitura estratégica e indicadores executivos para organizações de elevada exigência."
   }
 ];
 
 export const formationHighlights: SimpleCard[] = [
   {
     title: "Formação HUMANEXUS",
-    description: "Programas para profissionais e organizações que desejam incorporar leitura regulatória humana a rotinas de desenvolvimento contínuo."
+    description: "Capacitação premium para organizações que desejam incorporar fatores humanos, liderança e inteligência operacional ao desenvolvimento contínuo."
   },
   {
     title: "CRM aplicado",
-    description: "Treinamentos com linguagem compatível com aviação, coordenação crítica e ambientes de risco."
+    description: "Estrutura de formação para coordenação, tomada de decisão, consciência situacional e performance em equipe."
   },
   {
-    title: "Capacitação premium",
-    description: "Estrutura institucional para elevar padrão técnico, cultura de segurança e diferenciação profissional."
+    title: "Presença institucional",
+    description: "Programas sob demanda para cultura de segurança, liderança sob pressão e maturidade operacional."
   }
 ];
 
 export const researchHighlights: SimpleCard[] = [
   {
     title: "Inteligência Regulatória Humana",
-    description: "Arquitetura conceitual voltada à estabilidade funcional, adaptação operacional e decisão sob pressão."
+    description: "Arquitetura conceitual orientada a estabilidade funcional, decisão sob pressão e desenvolvimento institucional."
   },
   {
-    title: "EEG Operacional",
-    description: "Uso estratégico de neurotecnologia para ampliar leitura aplicada sem expor engenharia proprietária."
-  },
-  {
-    title: "Variabilidade humana",
-    description: "Observação de mudanças funcionais, custo adaptativo e desempenho sustentável em ambientes críticos."
+    title: "Pesquisa aplicada",
+    description: "Ciência comportamental, fatores humanos e ambientes críticos apresentados com discrição tecnológica e rigor institucional."
   },
   {
     title: "Estabilidade funcional",
-    description: "Capacidade de sustentar consistência comportamental e operacional em cenários de alta exigência."
-  },
-  {
-    title: "Adaptação operacional",
-    description: "Reorganização sob pressão com foco em consciência situacional, coordenação e segurança."
+    description: "Leitura estratégica de variabilidade humana, carga operacional e performance sustentável."
   },
   {
     title: "Ambientes críticos",
-    description: "Aplicação institucional em aviação, operações especiais, medicina, liderança e alta performance."
+    description: "Aplicação em aviação, saúde, segurança, educação corporativa e operações de alta responsabilidade."
   }
 ];
 
@@ -233,50 +209,74 @@ export const regulatoryCards: SimpleCard[] = [
 
 export const programCards: ProgramCard[] = [
   {
-    name: "HUMANEXUS Aviation Essential",
+    name: "Programa HUMANEXUS de Desenvolvimento Humano Operacional",
     description:
-      "Programa inicial para avaliação e desenvolvimento de performance operacional humana.",
+      "Estrutura contínua para desenvolver estabilidade humana, cultura operacional, liderança e capacidade decisória em ambientes críticos.",
     items: [
-      "Análise inicial de fatores humanos",
-      "Avaliação regulatória operacional",
-      "Baseline cognitivo e fisiológico",
-      "Janela de simulação aplicada",
-      "Rastreio de fadiga e carga cognitiva",
-      "Relatório executivo",
-      "Reunião técnica de devolutiva"
+      "Leitura inicial de maturidade operacional",
+      "Mapeamento de vulnerabilidades humanas",
+      "Acompanhamento longitudinal",
+      "Reuniões executivas de devolutiva",
+      "Relatórios institucionais",
+      "Plano de evolução operacional"
     ],
-    cta: "Solicitar Avaliação Estratégica"
-  },
-  {
-    name: "HUMANEXUS Operational Shield",
-    description:
-      "Programa ampliado para organizações que desejam fortalecer segurança operacional, CRM, risco psicossocial e desenvolvimento humano sob pressão.",
-    items: [
-      "Tudo do Essential",
-      "CRM HUMANEXUS",
-      "Vistoria de risco psicossocial operacional",
-      "Análise ergonômica cognitiva",
-      "Matriz de vulnerabilidade humana",
-      "Workshop com liderança",
-      "Relatório estratégico para gestão",
-      "Plano de ação executivo"
-    ],
-    cta: "Implementar o Programa"
+    cta: "Agendar Reunião Institucional"
   },
   {
     name: "Programa HUMANEXUS de Riscos Psicossociais e Estabilidade Operacional",
     description:
-      "Programa contínuo voltado à leitura regulatória humana, identificação de vulnerabilidades psicossociais, análise de carga operacional, desenvolvimento de lideranças e fortalecimento de práticas preventivas em ambientes de elevada exigência.",
+      "Programa contínuo voltado à leitura regulatória humana, vulnerabilidades psicossociais, carga operacional e fortalecimento de práticas preventivas.",
     items: [
       "NR-1 / GRO / PGR",
       "NR-17 / ergonomia organizacional e cognitiva",
-      "CLT / prevenção de adoecimento ocupacional",
-      "ANAC / SGSO / fatores humanos / segurança operacional",
       "Cultura de segurança e gestão de fadiga",
-      "Liderança sob pressão e equipes críticas",
-      "Operadores expostos a alta carga decisória"
+      "Liderança sob pressão",
+      "Evidências de ações preventivas",
+      "Plano de mitigação operacional"
     ],
-    cta: "Implementar o Programa HUMANEXUS"
+    cta: "Implementar o Programa"
+  },
+  {
+    name: "Formação em Fatores Humanos, CRM e Liderança Operacional",
+    description:
+      "Formação executiva e institucional para equipes críticas que precisam elevar coordenação, cultura operacional e maturidade decisória.",
+    items: [
+      "CRM e tomada de decisão",
+      "Fatores humanos aplicados",
+      "Cultura de reporte e coordenação",
+      "Liderança operacional",
+      "Treinamentos sob demanda",
+      "Workshops institucionais"
+    ],
+    cta: "Agendar Reunião Institucional"
+  },
+  {
+    name: "Pesquisa Aplicada e Inteligência Regulatória Humana",
+    description:
+      "Frente institucional para organizações que desejam sustentar programas com base conceitual, evidências executivas e linguagem compatível com contextos de alta exigência.",
+    items: [
+      "Arquitetura conceitual HUMANEXUS",
+      "Leitura estratégica de indicadores humanos",
+      "Roteiros de desenvolvimento institucional",
+      "Produção de evidências executivas",
+      "Apoio à comunicação com liderança",
+      "Direção científica aplicada"
+    ],
+    cta: "Conhecer os Programas HUMANEXUS"
+  },
+  {
+    name: "Núcleo Aviation HUMANEXUS",
+    description:
+      "Núcleo dedicado a operadores aéreos, táxi aéreo, DSO, CRM, segurança operacional e desenvolvimento longitudinal de equipes de voo e solo.",
+    items: [
+      "Fatores humanos para operação aérea",
+      "CRM e coordenação crítica",
+      "Gestão de fadiga e decisão",
+      "Cultura operacional",
+      "Leitura executiva para DSO",
+      "Acompanhamento contínuo"
+    ],
+    cta: "Falar com o Instituto"
   }
 ];
 
@@ -333,18 +333,18 @@ export const psychosocialAudiences: SimpleCard[] = [
 ];
 
 export const authorityPoints: SimpleCard[] = [
-  { title: "Psicólogo" },
+  { title: "Psicólogo e Psicólogo de Aviação" },
   { title: "Mestre e Doutor em Educação — UFAM" },
   { title: "Especialista em Psicologia da Aviação — IPA/FAB" },
-  { title: "Formação em Fatores Humanos" },
+  { title: "Fatores Humanos e Segurança Operacional" },
   { title: "Investigação e Prevenção de Acidentes Aeronáuticos — CENIPA" },
-  { title: "Experiência operacional na FAB" },
-  { title: "Atuação no SERIPA VII" },
-  { title: "CRM e Gestão de Equipes" },
-  { title: "Ergonomia e Fatores Humanos" },
-  { title: "Professor universitário" },
+  { title: "Atuação operacional em ambientes militares e críticos" },
+  { title: "SERIPA VII e cultura de segurança" },
+  { title: "CRM, liderança e gestão de equipes" },
+  { title: "Formação, ensino e presença institucional" },
   { title: "Desenvolvimento de metodologia própria" },
-  { title: "Inteligência Regulatória Humana" }
+  { title: "Teoria da Inteligência Regulatória Humana" },
+  { title: "Direção científica HUMANEXUS" }
 ];
 
 export const galleryItems: SimpleCard[] = [
@@ -462,27 +462,27 @@ export const irhSections: SimpleCard[] = [
 export const companySections: SimpleCard[] = [
   {
     title: "Por que implementar o HUMANEXUS",
-    description: "Para transformar fatores humanos em desenvolvimento contínuo, evidência e governança operacional."
+    description: "Para transformar vulnerabilidade humana em governança, evidência, liderança e desenvolvimento contínuo."
   },
   {
     title: "Problemas que resolvemos",
-    description: "Fadiga, carga cognitiva, decisão sob pressão, risco psicossocial operacional e degradação silenciosa."
+    description: "Fadiga, carga cognitiva, risco psicossocial, instabilidade decisória e fragilidade de cultura operacional."
   },
   {
     title: "Entregáveis",
-    description: "Relatórios executivos, leituras regulatórias, protocolos, workshops e planos orientados a evolução operacional humana."
+    description: "Relatórios executivos, leituras institucionais, trilhas de desenvolvimento e protocolos HUMANEXUS."
   },
   {
-    title: "Estruturas de desenvolvimento",
-    description: "Programas por ciclo, jornadas regulatórias, leitura operacional inicial e acompanhamento contínuo."
+    title: "Assinatura institucional",
+    description: "Programas recorrentes, ciclos de acompanhamento e evolução progressiva para equipes críticas."
   },
   {
     title: "Reunião estratégica inicial",
-    description: "Conversa inicial para leitura do cenário operacional, risco humano e aderência do programa."
+    description: "Conversa executiva para leitura do cenário, escopo, aderência e prioridade institucional."
   },
   {
     title: "Plano de implementação",
-    description: "Estrutura comercial e técnica orientada a cronograma, fases e implantação institucional do programa."
+    description: "Estrutura comercial e técnica orientada a cronograma, fases, recorrência e implantação do programa."
   }
 ];
 
@@ -512,10 +512,10 @@ export const contactSegments = [
 ];
 
 export const contactInterests = [
-  "Apresentação institucional",
-  "Avaliação estratégica",
-  "Formação HUMANEXUS",
-  "CRM e fatores humanos",
-  "Reunião estratégica inicial",
-  "Implementação do Programa HUMANEXUS"
+  "Programa institucional",
+  "Formação / CRM",
+  "Riscos psicossociais",
+  "Aviation",
+  "Pesquisa aplicada",
+  "Reunião estratégica"
 ];

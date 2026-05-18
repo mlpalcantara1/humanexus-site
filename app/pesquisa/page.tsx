@@ -10,7 +10,7 @@ export default function PesquisaPage() {
         eyebrow="Pesquisa"
         title="Ciência aplicada apresentada com sofisticação, discrição e autoridade."
         description="O HUMANEXUS comunica Inteligência Regulatória Humana, EEG operacional e adaptação sob pressão em um tom institucional e científico premium, sem expor estruturas sensíveis."
-        primary={{ href: "/contato", label: "Solicitar Avaliação Estratégica" }}
+        primary={{ href: "/contato", label: "Agendar Reunião Institucional" }}
         secondary={{ href: "/sobre", label: "Conhecer o Instituto" }}
       />
 

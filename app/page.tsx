@@ -36,6 +36,9 @@ export default function HomePage() {
                     Programa contínuo de desenvolvimento humano operacional
                   </div>
                 </div>
+                <div className="relative h-16 w-[300px] max-w-full sm:h-20 sm:w-[380px]">
+                  <Image src={brandAssets.logoPremium} alt="Assinatura premium HUMANEXUS" fill className="object-contain object-left" priority />
+                </div>
                 <div className="space-y-5">
                   <h1 className="max-w-5xl text-4xl font-semibold leading-[1.02] text-[#F5F5F5] md:text-6xl lg:text-[4.8rem]">
                     O HUMANEXUS operacionaliza a Inteligência Regulatória Humana em ambientes de elevada exigência.
@@ -60,8 +63,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:flex-wrap">
                   <PrimaryButton href="/sobre">Conhecer o Instituto</PrimaryButton>
-                  <SecondaryButton href="/contato">Solicitar Avaliação Estratégica</SecondaryButton>
-                  <SecondaryButton href="/formacao">Formação HUMANEXUS</SecondaryButton>
+                  <SecondaryButton href="https://wa.me/5592981187777">Falar com o Instituto</SecondaryButton>
                 </div>
               </div>
             </Reveal>
@@ -70,9 +72,9 @@ export default function HomePage() {
               <div className="relative overflow-hidden rounded-[36px] border border-[#C9A34E]/24 bg-[linear-gradient(180deg,rgba(10,10,14,0.96),rgba(6,8,12,0.96))] p-6 shadow-[0_0_80px_rgba(201,163,78,0.12)] backdrop-blur-2xl sm:p-8">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_22%,rgba(201,163,78,0.18),transparent_18%),radial-gradient(circle_at_30%_82%,rgba(36,92,164,0.18),transparent_24%)]" />
                 <div className="absolute right-[-6%] top-[-8%] opacity-[0.09]">
-                  <div className="relative h-[360px] w-[360px] sm:h-[420px] sm:w-[420px]">
-                    <Image src={brandAssets.logo} alt="" fill className="object-contain" aria-hidden />
-                  </div>
+                    <div className="relative h-[360px] w-[360px] sm:h-[420px] sm:w-[420px]">
+                    <Image src={brandAssets.logoPremium} alt="" fill className="object-contain" aria-hidden />
+                    </div>
                 </div>
                 <div className="relative space-y-8">
                   <div className="flex items-center justify-between gap-4">
@@ -83,7 +85,7 @@ export default function HomePage() {
                       </p>
                     </div>
                     <div className="relative h-24 w-40 overflow-hidden rounded-[28px] border border-[#C9A34E]/30 bg-black/45 shadow-gold sm:h-28 sm:w-48">
-                      <Image src={brandAssets.logo} alt="Assinatura HUMANEXUS" fill className="object-contain p-2.5" />
+                      <Image src={brandAssets.logoPremium} alt="Assinatura HUMANEXUS" fill className="object-contain p-2.5" />
                     </div>
                   </div>
                   <div className="rounded-[28px] border border-white/10 bg-[#050505]/54 p-5 backdrop-blur-xl">
@@ -186,7 +188,6 @@ export default function HomePage() {
         <Reveal delay={0.14} className="mt-12">
           <div className="flex flex-col gap-4 sm:flex-row">
             <PrimaryButton href="/servicos">Conhecer os Protocolos HUMANEXUS</PrimaryButton>
-            <SecondaryButton href="/contato">Solicitar Avaliação Estratégica</SecondaryButton>
           </div>
         </Reveal>
       </section>
@@ -217,8 +218,7 @@ export default function HomePage() {
                   ))}
                 </div>
                 <div className="flex flex-col gap-4 sm:flex-row">
-                  <PrimaryButton href="/contato">Implementar o Programa HUMANEXUS</PrimaryButton>
-                  <SecondaryButton href="/contato">Agendar Reunião Institucional</SecondaryButton>
+                  <PrimaryButton href="/servicos">Conhecer os Programas HUMANEXUS</PrimaryButton>
                 </div>
               </div>
             </Reveal>
@@ -277,8 +277,8 @@ export default function HomePage() {
             <Reveal>
               <div className="relative min-h-[520px] overflow-hidden rounded-[34px] border border-[#C9A34E]/20 bg-[#090909] shadow-gold">
                 <Image
-                  src={brandAssets.media.founderCenipa}
-                  alt="Dr. Marcos em contexto institucional"
+                  src={brandAssets.media.founderHangarAircraft}
+                  alt="Dr. Marcos em ambiente aeronáutico operacional"
                   fill
                   className="object-cover"
                 />
@@ -286,7 +286,7 @@ export default function HomePage() {
                 <div className="absolute inset-x-6 bottom-6 rounded-[26px] border border-white/10 bg-[#050505]/70 p-5">
                   <p className="text-xs uppercase tracking-[0.3em] text-[#C9A34E]">Direção científica</p>
                   <p className="mt-3 text-lg text-[#F5F5F5]">
-                    Liderança, experiência operacional e autoridade científica em uma presença visual contida e credível.
+                    Liderança, experiência operacional e autoridade científica apresentadas com presença institucional forte e leitura imediata.
                   </p>
                 </div>
               </div>
@@ -305,7 +305,6 @@ export default function HomePage() {
                 </div>
                 <div className="flex flex-col gap-4 sm:flex-row">
                   <PrimaryButton href="/sobre">Conhecer o Instituto</PrimaryButton>
-                  <SecondaryButton href="/contato">Agendar Reunião Institucional</SecondaryButton>
                 </div>
               </div>
             </Reveal>
@@ -323,13 +322,12 @@ export default function HomePage() {
                   Para organizações que não podem tratar desempenho humano como detalhe.
                 </h2>
                 <p className="max-w-2xl text-base leading-8 text-[#B8B8B8]">
-                  Solicite uma avaliação estratégica, receba uma apresentação institucional e entenda como o HUMANEXUS pode apoiar segurança operacional, performance humana, riscos psicossociais e diferenciação executiva.
+                  Agende uma reunião institucional e entenda como o HUMANEXUS pode apoiar segurança operacional, performance humana, riscos psicossociais e diferenciação executiva.
                 </p>
               </div>
               <div className="space-y-4">
-                <PrimaryButton href="/contato">Implementar o Programa HUMANEXUS</PrimaryButton>
+                <PrimaryButton href="https://wa.me/5592981187777">Falar com o Instituto</PrimaryButton>
                 <SecondaryButton href="mailto:contato@institutohumanexus.com">contato@institutohumanexus.com</SecondaryButton>
-                <SecondaryButton href="https://wa.me/5592981187777">Agendar Reunião Institucional</SecondaryButton>
               </div>
             </div>
           </div>

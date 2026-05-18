@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { PremiumVideo } from "@/components/premium-video";
 import { CardGrid, GlassCard, PageHero, PrimaryButton, SecondaryButton, SectionIntro } from "@/components/ui";
 import { brandAssets } from "@/lib/brand-assets";
@@ -33,7 +34,7 @@ export default function FormacaoPage() {
         <div className="grid gap-10 lg:grid-cols-[1.04fr_0.96fr] lg:items-center">
           <PremiumVideo
             src={brandAssets.videos.formationCrm}
-            poster={brandAssets.media.aviationTalk}
+            poster={brandAssets.media.founderCongressDownload}
             eyebrow="Vídeo institucional"
             title="Formação, CRM e desenvolvimento com presença institucional forte."
             description="Um posicionamento visual alinhado a disciplina, profissionalismo e cultura operacional."
@@ -50,6 +51,63 @@ export default function FormacaoPage() {
               {formationHighlights.map((item) => (
                 <GlassCard key={item.title} accent="gold" title={item.title} description={item.description} />
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-white/10 bg-[#06080d]">
+        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+          <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
+            <div className="space-y-8">
+              <SectionIntro
+                eyebrow="Atuação em campo"
+                title="Formação com presença real em auditórios, ambientes institucionais e programas de alta exigência."
+                description="As imagens de campo reforçam que a Formação HUMANEXUS nasce de experiência aplicada, liderança em sala e leitura operacional em ambientes onde atenção, comunicação e estabilidade importam."
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <GlassCard
+                  accent="gold"
+                  title="Ambiente institucional"
+                  description="Conteúdo aplicado com postura compatível com programas executivos, formação aeronáutica e cultura operacional."
+                />
+                <GlassCard
+                  title="Leitura sob pressão"
+                  description="A formação trabalha liderança, fatores humanos e tomada de decisão com linguagem acessível para equipes críticas e gestores."
+                />
+              </div>
+            </div>
+            <div className="grid gap-5 lg:grid-cols-[1.04fr_0.96fr]">
+              <div className="relative min-h-[420px] overflow-hidden rounded-[32px] border border-[#C9A34E]/20 bg-[#090909] shadow-gold">
+                <Image
+                  src={brandAssets.media.founderSeripaAuditorium}
+                  alt="Dr. Marcos em apresentação institucional sobre fatores humanos"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.04),rgba(5,5,5,0.78))]" />
+                <div className="absolute inset-x-5 bottom-5 rounded-[24px] border border-white/10 bg-[#050505]/68 p-4 backdrop-blur-xl">
+                  <p className="text-xs uppercase tracking-[0.28em] text-[#C9A34E]">Fatores humanos</p>
+                  <p className="mt-2 text-sm leading-6 text-[#E5E5E5]">
+                    Conteúdo aplicado em contexto aeronáutico real, com foco em cultura operacional e decisão sob pressão.
+                  </p>
+                </div>
+              </div>
+              <div className="relative min-h-[420px] overflow-hidden rounded-[32px] border border-white/10 bg-[#090909] shadow-panel">
+                <Image
+                  src={brandAssets.media.founderAeteKeynote}
+                  alt="Dr. Marcos conduzindo keynote institucional"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.02),rgba(5,5,5,0.78))]" />
+                <div className="absolute inset-x-5 bottom-5 rounded-[24px] border border-white/10 bg-[#050505]/68 p-4 backdrop-blur-xl">
+                  <p className="text-xs uppercase tracking-[0.28em] text-[#C9A34E]">Estabilidade humana</p>
+                  <p className="mt-2 text-sm leading-6 text-[#E5E5E5]">
+                    Narrativa institucional orientada a percepção, estabilidade e desenvolvimento longitudinal em ambientes críticos.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

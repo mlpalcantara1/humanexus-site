@@ -1,5 +1,7 @@
 export const brandAssets = {
   logo: "/brand/logo-official.png",
+  logoPremium: "/brand/logo-download-gold.png",
+  monogramLight: "/brand/monogram-download-black.png",
   brandBoard: "/brand/brand-board.jpg",
   socialPreview: "/brand/brand-board.jpg",
   media: {
@@ -11,12 +13,21 @@ export const brandAssets = {
     hangarOperations: "/media/hangar-operations.jpg",
     eegOperatorHero: "/media/eeg-operator-hero.jpg",
     eegSetup: "/media/eeg-setup.jpg",
-    founderCenipa: "/media/founder-cenipa.jpg"
+    founderCenipa: "/media/founder-cenipa.jpg",
+    founderExecutive: "/media/founder-executive.jpg",
+    founderStageBlue: "/media/founder-stage-blue.jpg",
+    founderStageRoom: "/media/founder-stage-room.jpg",
+    founderAviationKeynote: "/media/founder-aviation-keynote.jpg",
+    founderAviationCeremony: "/media/founder-aviation-ceremony.jpg",
+    founderCongressDownload: "/media/founder-congress-download.jpg",
+    founderHangarAircraft: "/media/founder-hangar-aircraft.jpg",
+    founderSeripaAuditorium: "/media/founder-seripa-auditorium.jpg",
+    founderAeteKeynote: "/media/founder-aete-keynote.png"
   },
   videos: {
-    heroInstitutional: "/media/hero-institutional.mov",
-    formationCrm: "/media/formacao-crm.mov",
-    instituteSignature: "/media/instituto-signature.mov"
+    heroInstitutional: "/media/hero-institutional.mp4",
+    formationCrm: "/media/formacao-crm.mp4",
+    instituteSignature: "/media/instituto-signature.mp4"
   }
 } as const;
 
