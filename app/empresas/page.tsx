@@ -4,24 +4,24 @@ import { companySections } from "@/lib/site-data";
 export default function EmpresasPage() {
   const contractSignals = [
     "Reunião estratégica inicial com foco em risco humano, maturidade e aderência institucional",
-    "Proposta comercial com entregáveis executivos e linguagem adequada para decisores",
-    "Programas com potencial de recorrência para segurança, liderança e performance"
+    "Plano de implementação com fases executivas e linguagem adequada para decisores",
+    "Programas contínuos para segurança, liderança, acompanhamento de operadores e performance"
   ];
 
   return (
     <>
       <PageHero
         eyebrow="Empresas e organizações"
-        title="Uma proposta institucional para líderes que precisam transformar vulnerabilidade humana em decisão, governança e performance."
-        description="Página comercial orientada a fechamento de reuniões, construção de proposta institucional e avanço para contratos em organizações de alta exigência."
-        primary={{ href: "/contato", label: "Agendar apresentação" }}
+        title="Uma estrutura institucional para líderes que precisam transformar vulnerabilidade humana em decisão, governança e performance."
+        description="Página comercial orientada a fechamento de reuniões, desenho de programas contínuos e avanço para implementação institucional em organizações de alta exigência, riscos psicossociais e segurança operacional."
+        primary={{ href: "/contato", label: "Agendar Reunião Institucional" }}
         secondary={{ href: "https://wa.me/5592981187777", label: "Falar pelo WhatsApp" }}
       />
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
         <SectionIntro
-          eyebrow="Contratos"
-          title="Estrutura de venda B2B orientada a decisão executiva e contratação institucional."
-          description="A proposta comercial foi desenhada para empresários, líderes operacionais, gestores de segurança e organizações que não podem tratar o fator humano de forma superficial."
+          eyebrow="Programas contínuos"
+          title="Estrutura B2B orientada a decisão executiva e implementação institucional."
+          description="A proposta comercial foi desenhada para empresários, líderes operacionais, gestores de segurança e organizações que não podem tratar o fator humano, os riscos psicossociais e a estabilidade operacional de forma superficial ou avulsa."
         />
         <div className="mt-10 grid gap-4 lg:grid-cols-3">
           {contractSignals.map((item) => (
@@ -35,14 +35,14 @@ export default function EmpresasPage() {
           <div className="space-y-3">
             <p className="text-xs uppercase tracking-[0.3em] text-[#C9A34E]">Fechamento comercial</p>
             <h3 className="text-2xl font-semibold text-[#F5F5F5]">
-              O próximo passo não é navegar mais no site. É abrir uma conversa de escopo, risco e contrato.
+              O próximo passo não é navegar mais no site. É abrir uma conversa de escopo, risco e implementação institucional.
             </h3>
             <p className="max-w-3xl text-base text-[#B8B8B8]">
-              Se a sua organização opera sob pressão, com alta responsabilidade e exposição a erro humano, a reunião estratégica inicial é o ponto de partida correto.
+              Se a sua organização opera sob pressão, com alta responsabilidade e exposição a erro humano, a reunião estratégica inicial é o ponto de partida correto para um programa contínuo.
             </p>
           </div>
           <div className="flex flex-col gap-3">
-            <PrimaryButton href="/contato">Solicitar proposta institucional</PrimaryButton>
+            <PrimaryButton href="/contato">Implementar o Programa</PrimaryButton>
             <SecondaryButton href="https://wa.me/5592981187777">
               Abrir conversa no WhatsApp
             </SecondaryButton>

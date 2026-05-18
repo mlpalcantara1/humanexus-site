@@ -7,7 +7,7 @@ export default function AviationPage() {
   const aviationCommercialSignals = [
     "Táxi aéreo e operadores com pressão real por segurança, escala, fadiga e decisão",
     "Material para DSO, gestão operacional, liderança e programas internos de fatores humanos",
-    "Entrega orientada a proposta institucional, reunião técnica e ciclo de desenvolvimento"
+    "Entrega orientada a reunião institucional, implementação do programa e ciclo de desenvolvimento"
   ];
 
   return (

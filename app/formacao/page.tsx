@@ -13,8 +13,8 @@ const trainingTracks = [
     description: "Conteúdo e prática direcionados a coordenação, segurança operacional e tomada de decisão em ambientes de alta responsabilidade."
   },
   {
-    title: "Treinamentos institucionais",
-    description: "Programas customizados para organizações que desejam elevar cultura operacional e maturidade humana."
+    title: "Desenvolvimento institucional",
+    description: "Programas customizados para organizações que desejam elevar cultura operacional, progressão humana e maturidade decisória."
   }
 ];
 
@@ -24,7 +24,7 @@ export default function FormacaoPage() {
       <PageHero
         eyebrow="Formação"
         title="Formação HUMANEXUS para profissionais, equipes e organizações que operam sob pressão."
-        description="Treinamentos premium em fatores humanos, CRM, leitura operacional e performance cognitiva para ambientes críticos."
+        description="Programas premium em fatores humanos, CRM, leitura operacional e performance cognitiva para ambientes críticos."
         primary={{ href: "/contato", label: "Solicitar agenda de formação" }}
         secondary={{ href: "https://wa.me/5592981187777", label: "Falar com especialista" }}
       />
@@ -81,8 +81,8 @@ export default function FormacaoPage() {
               </p>
             </div>
             <div className="flex flex-col gap-3">
-              <PrimaryButton href="/contato">Agendar Avaliação</PrimaryButton>
-              <SecondaryButton href="/servicos">Ver serviços</SecondaryButton>
+              <PrimaryButton href="/contato">Agendar Reunião Institucional</PrimaryButton>
+              <SecondaryButton href="/servicos">Conhecer os Programas HUMANEXUS</SecondaryButton>
             </div>
           </div>
         </div>

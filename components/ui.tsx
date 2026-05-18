@@ -225,10 +225,10 @@ export function DashboardMock() {
           </div>
         </div>
         <div className="space-y-4">
-          <GlassCard accent="gold" title="Cockpit premium" description="Mockup visual do ambiente de sessão, indicadores fisiológicos e decisão operacional.">
+          <GlassCard accent="gold" title="Cockpit premium" description="Mockup visual do ambiente operacional, indicadores fisiológicos e decisão operacional.">
             <div className="h-44 rounded-[24px] bg-[linear-gradient(135deg,rgba(201,163,78,0.22),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent)]" />
           </GlassCard>
-          <GlassCard title="Stack institucional" description="Dashboard, biometria, cockpit, relatórios executivos e protocolos proprietários em uma narrativa visual orientada a contratos B2B." />
+          <GlassCard title="Stack institucional" description="Dashboard, biometria, cockpit, relatórios executivos e protocolos proprietários em uma narrativa visual orientada a implementação institucional B2B." />
         </div>
       </div>
     </div>

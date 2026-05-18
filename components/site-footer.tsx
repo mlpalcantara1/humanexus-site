@@ -38,7 +38,7 @@ export function SiteFooter() {
             href="/contato"
             className="inline-flex rounded-full border border-white/10 px-4 py-2 text-sm text-[#F5F5F5] transition hover:border-[#C9A34E]/40 hover:bg-white/5"
           >
-            Agendar reunião
+            Implementar o Programa
           </Link>
         </div>
       </div>

@@ -55,7 +55,7 @@ export default function FundadorPage() {
           <SectionIntro
             eyebrow="Autoridade científica"
             title="Formação, experiência e credenciais que sustentam a TIRH e a operacionalização HUMANEXUS."
-            description="Uma camada de legitimidade para contratos institucionais, aviação, segurança operacional e ambientes de elevada exigência."
+            description="Uma camada de legitimidade para programas institucionais, aviação, segurança operacional e ambientes de elevada exigência."
           />
           <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             {authorityPoints.map((item) => (

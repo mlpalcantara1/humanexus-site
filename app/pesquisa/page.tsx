@@ -10,7 +10,7 @@ export default function PesquisaPage() {
         eyebrow="Pesquisa"
         title="Ciência aplicada apresentada com sofisticação, discrição e autoridade."
         description="O HUMANEXUS comunica Inteligência Regulatória Humana, EEG operacional e adaptação sob pressão em um tom institucional e científico premium, sem expor estruturas sensíveis."
-        primary={{ href: "/contato", label: "Solicitar apresentação institucional" }}
+        primary={{ href: "/contato", label: "Solicitar Avaliação Estratégica" }}
         secondary={{ href: "/sobre", label: "Conhecer o Instituto" }}
       />
 
@@ -73,7 +73,7 @@ export default function PesquisaPage() {
           ))}
         </div>
         <div className="mt-12 flex flex-col gap-4 sm:flex-row">
-          <PrimaryButton href="/contato">Agendar Avaliação</PrimaryButton>
+          <PrimaryButton href="/contato">Agendar Reunião Institucional</PrimaryButton>
           <SecondaryButton href="/formacao">Conhecer Formação HUMANEXUS</SecondaryButton>
         </div>
       </section>

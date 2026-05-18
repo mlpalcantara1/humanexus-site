@@ -9,8 +9,8 @@ export default function ContatoPage() {
       <PageHero
         eyebrow="Contato"
         title="Agende uma conversa estratégica com o Instituto HUMANEXUS."
-        description="Para organizações que precisam tratar fatores humanos, segurança operacional, performance cognitiva e decisão sob pressão com padrão institucional elevado."
-        primary={{ href: "https://wa.me/5592981187777", label: "Agendar Avaliação" }}
+        description="Para organizações que precisam tratar fatores humanos, riscos psicossociais, segurança operacional, performance cognitiva e decisão sob pressão com padrão institucional elevado."
+        primary={{ href: "https://wa.me/5592981187777", label: "Solicitar Avaliação Estratégica" }}
         secondary={{ href: "mailto:contato@institutohumanexus.com", label: "Enviar e-mail institucional" }}
       />
 
@@ -20,7 +20,7 @@ export default function ContatoPage() {
             <SectionIntro
               eyebrow="Canal prioritário"
               title="Contato rápido, elegante e orientado à conversão."
-              description="O WhatsApp e o e-mail institucional concentram a entrada para apresentações, avaliações, propostas e reuniões executivas."
+              description="O WhatsApp e o e-mail institucional concentram a entrada para apresentações, avaliações estratégicas, implementação de programa e reuniões executivas."
             />
 
             <GlassCard accent="gold">
@@ -28,11 +28,11 @@ export default function ContatoPage() {
                 <p className="text-xs uppercase tracking-[0.32em] text-[#C9A34E]">Contato institucional</p>
                 <h3 className="text-2xl font-semibold text-[#F5F5F5]">contato@institutohumanexus.com</h3>
                 <p className="text-sm leading-7 text-[#B8B8B8]">
-                  E-mail oficial para apresentação institucional, proposta comercial, agenda de formação e contatos estratégicos.
+                  E-mail oficial para apresentação institucional, agenda de formação, implementação do programa e contatos estratégicos.
                 </p>
                 <div className="flex flex-col gap-3">
                   <PrimaryButton href="mailto:contato@institutohumanexus.com">
-                    Enviar e-mail institucional
+                    Iniciar Desenvolvimento Operacional
                   </PrimaryButton>
                   <SecondaryButton href="https://wa.me/5592981187777">
                     Falar no WhatsApp
@@ -54,7 +54,7 @@ export default function ContatoPage() {
           <form className="rounded-[34px] border border-[#C9A34E]/18 bg-[#0A0C11]/94 p-7 shadow-gold backdrop-blur-xl sm:p-8">
             <div className="mb-6 space-y-2">
               <p className="text-xs uppercase tracking-[0.32em] text-[#C9A34E]">Formulário institucional</p>
-              <h3 className="text-2xl font-semibold text-[#F5F5F5]">Solicite uma apresentação do HUMANEXUS.</h3>
+              <h3 className="text-2xl font-semibold text-[#F5F5F5]">Solicite uma apresentação do Programa HUMANEXUS.</h3>
               <p className="text-sm leading-7 text-[#B8B8B8]">
                 Preencha os dados e avance para uma conversa executiva sobre contexto, escopo e oportunidade institucional.
               </p>
@@ -97,7 +97,7 @@ export default function ContatoPage() {
             </div>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <PrimaryButton href="mailto:contato@institutohumanexus.com">
-                Solicitar apresentação institucional
+                Agendar Reunião Institucional
               </PrimaryButton>
               <SecondaryButton href="https://wa.me/5592981187777">
                 Conversar pelo WhatsApp

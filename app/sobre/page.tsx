@@ -10,8 +10,8 @@ export default function SobrePage() {
       <PageHero
         eyebrow="Sobre o Instituto"
         title="Autoridade institucional, experiência operacional e ciência aplicada em uma mesma assinatura."
-        description="O Instituto HUMANEXUS foi estruturado para posicionar fatores humanos, performance operacional e Inteligência Regulatória Humana em um padrão premium, estratégico e institucional."
-        primary={{ href: "/contato", label: "Solicitar apresentação institucional" }}
+        description="O Instituto HUMANEXUS foi estruturado para posicionar fatores humanos, performance operacional e Inteligência Regulatória Humana em um padrão premium, estratégico, institucional e contínuo."
+        primary={{ href: "/contato", label: "Agendar Reunião Institucional" }}
         secondary={{ href: "/pesquisa", label: "Conhecer a área de pesquisa" }}
         media={{
           src: brandAssets.media.founderCenipa,
@@ -33,7 +33,7 @@ export default function SobrePage() {
           />
           <GlassCard
             title="Posicionamento"
-            description="Instituto premium para líderes, operadores e organizações que tratam o fator humano como ativo estratégico."
+            description="Instituto premium para líderes, operadores e organizações que tratam o fator humano como ativo estratégico e desenvolvimento contínuo."
           />
         </div>
       </section>
@@ -54,7 +54,7 @@ export default function SobrePage() {
               </div>
               <div className="flex flex-col gap-4 sm:flex-row">
                 <PrimaryButton href="/fundador">Ver perfil completo</PrimaryButton>
-                <SecondaryButton href="/contato">Agendar conversa estratégica</SecondaryButton>
+                <SecondaryButton href="/contato">Iniciar Desenvolvimento Operacional</SecondaryButton>
               </div>
             </div>
             <div className="relative min-h-[560px] overflow-hidden rounded-[34px] border border-white/10 bg-[#090909] shadow-panel">

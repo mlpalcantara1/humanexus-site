@@ -9,6 +9,7 @@ import {
   authorityPoints,
   coreMessages,
   formationHighlights,
+  psychosocialSolutionCards,
   researchHighlights,
   serviceHighlights
 } from "@/lib/site-data";
@@ -75,12 +76,12 @@ export default function HomePage() {
                     O HUMANEXUS operacionaliza a Inteligência Regulatória Humana em ambientes de elevada exigência.
                   </h1>
                   <p className="max-w-3xl text-lg leading-8 text-[#D4D4D4] md:text-xl">
-                    Ciência aplicada, fatores humanos e tecnologia operacional em uma experiência premium para organizações onde estabilidade, decisão e confiança são inegociáveis.
+                    Ciência aplicada, fatores humanos e tecnologia operacional em uma estrutura premium de desenvolvimento contínuo para organizações onde estabilidade, decisão e confiança são inegociáveis.
                   </p>
                 </div>
                 <div className="flex flex-col gap-4 sm:flex-row">
                   <PrimaryButton href="/sobre">Conhecer o Instituto</PrimaryButton>
-                  <SecondaryButton href="/contato">Agendar Avaliação</SecondaryButton>
+                  <SecondaryButton href="/contato">Solicitar Avaliação Estratégica</SecondaryButton>
                   <SecondaryButton href="/formacao">Formação HUMANEXUS</SecondaryButton>
                 </div>
               </div>
@@ -112,7 +113,7 @@ export default function HomePage() {
                 "Autoridade institucional para líderes, empresários, DSO e organizações críticas.",
                 "Estética premium e discurso estratégico para gerar confiança imediata.",
                 "Tecnologia aplicada com discrição: suficiente para impressionar, sem expor a engenharia proprietária.",
-                "Narrativa comercial pensada para avançar de interesse para reunião e proposta institucional."
+                "Narrativa comercial pensada para avançar de interesse para reunião institucional e implementação de programa."
               ].map((item) => (
                 <GlassCard key={item} description={item} />
               ))}
@@ -127,7 +128,7 @@ export default function HomePage() {
             <SectionIntro
               eyebrow="Da teoria à operação"
               title="A força do HUMANEXUS está em transformar uma arquitetura conceitual proprietária em leitura operacional aplicada."
-              description="Sem abrir metodologias sensíveis, o site deixa claro que existe uma base científica proprietária convertida em serviços, formação e soluções para ambientes críticos."
+              description="Sem abrir metodologias sensíveis, o site deixa claro que existe uma base científica proprietária convertida em programas, formação e estruturas contínuas para ambientes críticos."
             />
           </Reveal>
           <div className="mt-12 grid gap-5 lg:grid-cols-4">
@@ -144,12 +145,33 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="border-y border-white/10 bg-[#05070c]">
+        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+          <div className="grid gap-10 lg:grid-cols-[0.96fr_1.04fr] lg:items-start">
+            <Reveal>
+              <SectionIntro
+                eyebrow="Conexão regulatória"
+                title="Riscos psicossociais, fatores humanos e estabilidade operacional."
+                description="Empresas expostas a ambientes de alta exigência precisam demonstrar ações contínuas de prevenção, desenvolvimento humano, gestão de riscos psicossociais, fatores humanos e segurança operacional. O HUMANEXUS apoia organizações na estruturação de programas aplicados à estabilidade humana, tomada de decisão e performance sustentável."
+              />
+            </Reveal>
+            <Reveal delay={0.08}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {psychosocialSolutionCards.slice(0, 4).map((item) => (
+                  <GlassCard key={item.title} accent="gold" title={item.title} />
+                ))}
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
         <Reveal>
           <SectionIntro
-            eyebrow="Serviços estratégicos"
-            title="Fatores humanos, neuroergonomia, CRM e leitura operacional em uma oferta institucional compacta e sofisticada."
-            description="A proposta é clara em poucos segundos: o HUMANEXUS ajuda organizações a compreender, desenvolver e proteger a performance humana em contextos de alta responsabilidade."
+            eyebrow="Programas HUMANEXUS"
+            title="Fatores humanos, neuroergonomia, CRM e leitura operacional em uma estrutura contínua, institucional e sofisticada."
+            description="A proposta é clara em poucos segundos: o HUMANEXUS ajuda organizações a compreender, desenvolver e proteger a performance humana em contextos de alta responsabilidade com acompanhamento progressivo."
           />
         </Reveal>
         <Reveal delay={0.08} className="mt-12">
@@ -157,8 +179,8 @@ export default function HomePage() {
         </Reveal>
         <Reveal delay={0.14} className="mt-12">
           <div className="flex flex-col gap-4 sm:flex-row">
-            <PrimaryButton href="/servicos">Explorar serviços</PrimaryButton>
-            <SecondaryButton href="/contato">Solicitar proposta institucional</SecondaryButton>
+            <PrimaryButton href="/servicos">Conhecer os Protocolos HUMANEXUS</PrimaryButton>
+            <SecondaryButton href="/contato">Solicitar Avaliação Estratégica</SecondaryButton>
           </div>
         </Reveal>
       </section>
@@ -180,8 +202,8 @@ export default function HomePage() {
               <div className="space-y-8">
                 <SectionIntro
                   eyebrow="Formação"
-                  title="Capacitação premium para organizações que precisam elevar padrão técnico e presença institucional."
-                  description="Formação HUMANEXUS, CRM aplicado, leitura regulatória humana e desenvolvimento de performance sob pressão em uma experiência de alto valor."
+                  title="Capacitação premium para organizações que precisam elevar padrão técnico, progressão operacional e presença institucional."
+                  description="Formação HUMANEXUS, CRM aplicado, leitura regulatória humana e desenvolvimento de performance sob pressão em uma jornada de alto valor."
                 />
                 <div className="grid gap-4">
                   {formationHighlights.map((item) => (
@@ -189,8 +211,8 @@ export default function HomePage() {
                   ))}
                 </div>
                 <div className="flex flex-col gap-4 sm:flex-row">
-                  <PrimaryButton href="/formacao">Ver formação</PrimaryButton>
-                  <SecondaryButton href="/contato">Agendar conversa</SecondaryButton>
+                  <PrimaryButton href="/formacao">Iniciar Desenvolvimento Operacional</PrimaryButton>
+                  <SecondaryButton href="/contato">Agendar Reunião Institucional</SecondaryButton>
                 </div>
               </div>
             </Reveal>
@@ -223,7 +245,7 @@ export default function HomePage() {
               src={brandAssets.videos.instituteSignature}
               poster={brandAssets.media.founderCenipa}
               eyebrow="Assinatura institucional"
-              title="Presença premium para contratos, reuniões executivas e percepção internacional."
+              title="Presença premium para implementação institucional, reuniões executivas e percepção internacional."
               description="Vídeo institucional para reforçar autoridade, exclusividade e posicionamento de alto valor."
               className="min-h-[480px]"
             />
@@ -265,7 +287,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex flex-col gap-4 sm:flex-row">
                   <PrimaryButton href="/sobre">Conhecer o Instituto</PrimaryButton>
-                  <SecondaryButton href="/contato">Solicitar apresentação institucional</SecondaryButton>
+                  <SecondaryButton href="/contato">Agendar Reunião Institucional</SecondaryButton>
                 </div>
               </div>
             </Reveal>
@@ -283,13 +305,13 @@ export default function HomePage() {
                   Para organizações que não podem tratar desempenho humano como detalhe.
                 </h2>
                 <p className="max-w-2xl text-base leading-8 text-[#B8B8B8]">
-                  Agende uma avaliação institucional, receba uma apresentação estratégica e entenda como o HUMANEXUS pode apoiar segurança operacional, performance humana e diferenciação executiva.
+                  Solicite uma avaliação estratégica, receba uma apresentação institucional e entenda como o HUMANEXUS pode apoiar segurança operacional, performance humana, riscos psicossociais e diferenciação executiva.
                 </p>
               </div>
               <div className="space-y-4">
-                <PrimaryButton href="/contato">Agendar Avaliação</PrimaryButton>
+                <PrimaryButton href="/contato">Implementar o Programa HUMANEXUS</PrimaryButton>
                 <SecondaryButton href="mailto:contato@institutohumanexus.com">contato@institutohumanexus.com</SecondaryButton>
-                <SecondaryButton href="https://wa.me/5592981187777">Falar pelo WhatsApp</SecondaryButton>
+                <SecondaryButton href="https://wa.me/5592981187777">Agendar Reunião Institucional</SecondaryButton>
               </div>
             </div>
           </div>

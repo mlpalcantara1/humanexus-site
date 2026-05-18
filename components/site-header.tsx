@@ -22,9 +22,9 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/85 backdrop-blur-xl">
       <div className="border-b border-[#C9A34E]/18 bg-[#0A0A0A]">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-2 text-[11px] uppercase tracking-[0.22em] text-[#C9A34E] sm:flex-row sm:items-center sm:justify-between lg:px-8">
-          <span>Instituto premium para performance humana, fatores humanos e segurança operacional</span>
+          <span>Programa contínuo de desenvolvimento humano operacional para ambientes críticos</span>
           <Link href="/contato" className="text-[#F5F5F5] transition hover:text-[#C9A34E]">
-            Solicitar reunião estratégica
+            Agendar reunião institucional
           </Link>
         </div>
       </div>
@@ -64,7 +64,7 @@ export function SiteHeader() {
             href="/contato"
             className="hidden rounded-full border border-[#C9A34E]/24 bg-white/[0.03] px-4 py-2 text-sm text-[#F5F5F5] transition hover:border-[#C9A34E]/50 hover:bg-white/5 lg:inline-flex"
           >
-            Agendar avaliação
+            Solicitar Avaliação Estratégica
           </Link>
           <Link
             href="https://wa.me/5592981187777"
@@ -111,7 +111,7 @@ export function SiteHeader() {
               onClick={() => setOpen(false)}
               className="mt-3 rounded-full bg-[#C9A34E] px-5 py-3 text-center text-sm font-semibold text-[#050505]"
             >
-              Agendar avaliação
+              Solicitar Avaliação Estratégica
             </Link>
           </nav>
         </div>

@@ -18,7 +18,7 @@ export type ProgramCard = {
 export const navigation: NavItem[] = [
   { href: "/", label: "Início" },
   { href: "/sobre", label: "Sobre" },
-  { href: "/servicos", label: "Serviços" },
+  { href: "/servicos", label: "Programas" },
   { href: "/formacao", label: "Formação" },
   { href: "/pesquisa", label: "Pesquisa" },
   { href: "/contato", label: "Contato" }
@@ -35,7 +35,7 @@ export const coreMessages: SimpleCard[] = [
   },
   {
     title: "Entrega institucional",
-    description: "Posicionamento premium para reuniões, contratos, liderança e programas estratégicos de desenvolvimento humano."
+    description: "Posicionamento premium para programas contínuos, liderança institucional e evolução humana em ambientes críticos."
   }
 ];
 
@@ -61,23 +61,23 @@ export const serviceHighlights: SimpleCard[] = [
     description: "Integração entre carga cognitiva, contexto operacional e estabilidade adaptativa."
   },
   {
-    title: "Consultoria Estratégica",
-    description: "Apoio institucional para lideranças, organizações e decisões de alto impacto."
+    title: "Estrutura Estratégica",
+    description: "Arquitetura aplicada para lideranças, organizações e decisões de alto impacto com acompanhamento contínuo."
   },
   {
     title: "Avaliação Operacional",
-    description: "Leitura regulatória humana aplicada a contextos reais de treinamento e desenvolvimento."
+    description: "Leitura regulatória humana aplicada ao início de ciclos de desenvolvimento operacional."
   },
   {
-    title: "Treinamentos",
-    description: "Experiências formativas premium para aviação, CRM, segurança e performance sob pressão."
+    title: "Desenvolvimento Operacional",
+    description: "Programas HUMANEXUS para aviação, CRM, segurança e performance sob pressão com progressão longitudinal."
   }
 ];
 
 export const formationHighlights: SimpleCard[] = [
   {
     title: "Formação HUMANEXUS",
-    description: "Programas para profissionais e organizações que desejam incorporar leitura regulatória humana à prática operacional."
+    description: "Programas para profissionais e organizações que desejam incorporar leitura regulatória humana a rotinas de desenvolvimento contínuo."
   },
   {
     title: "CRM aplicado",
@@ -240,12 +240,12 @@ export const programCards: ProgramCard[] = [
       "Análise inicial de fatores humanos",
       "Avaliação regulatória operacional",
       "Baseline cognitivo e fisiológico",
-      "Sessão de simulação",
+      "Janela de simulação aplicada",
       "Rastreio de fadiga e carga cognitiva",
       "Relatório executivo",
       "Reunião técnica de devolutiva"
     ],
-    cta: "Solicitar proposta"
+    cta: "Solicitar Avaliação Estratégica"
   },
   {
     name: "HUMANEXUS Operational Shield",
@@ -261,8 +261,75 @@ export const programCards: ProgramCard[] = [
       "Relatório estratégico para gestão",
       "Plano de ação executivo"
     ],
-    cta: "Agendar apresentação"
+    cta: "Implementar o Programa"
+  },
+  {
+    name: "Programa HUMANEXUS de Riscos Psicossociais e Estabilidade Operacional",
+    description:
+      "Programa contínuo voltado à leitura regulatória humana, identificação de vulnerabilidades psicossociais, análise de carga operacional, desenvolvimento de lideranças e fortalecimento de práticas preventivas em ambientes de elevada exigência.",
+    items: [
+      "NR-1 / GRO / PGR",
+      "NR-17 / ergonomia organizacional e cognitiva",
+      "CLT / prevenção de adoecimento ocupacional",
+      "ANAC / SGSO / fatores humanos / segurança operacional",
+      "Cultura de segurança e gestão de fadiga",
+      "Liderança sob pressão e equipes críticas",
+      "Operadores expostos a alta carga decisória"
+    ],
+    cta: "Implementar o Programa HUMANEXUS"
   }
+];
+
+export const psychosocialPainCards: SimpleCard[] = [
+  { title: "Fadiga operacional" },
+  { title: "Sobrecarga cognitiva" },
+  { title: "Pressão por produtividade" },
+  { title: "Riscos psicossociais" },
+  { title: "Falhas de comunicação" },
+  { title: "Baixa cultura de reporte" },
+  { title: "Instabilidade decisória" },
+  { title: "Liderança despreparada" },
+  { title: "Vulnerabilidades humanas invisíveis" },
+  { title: "Dificuldade de comprovar ações preventivas" }
+];
+
+export const psychosocialSolutionCards: SimpleCard[] = [
+  { title: "Leitura regulatória humana" },
+  { title: "Acompanhamento contínuo" },
+  { title: "Protocolos HUMANEXUS" },
+  { title: "Relatórios executivos" },
+  { title: "Desenvolvimento de lideranças" },
+  { title: "Fortalecimento de cultura operacional" },
+  { title: "Análise de carga cognitiva" },
+  { title: "Inteligência aplicada à estabilidade humana" },
+  { title: "Ações preventivas documentadas" },
+  { title: "Plano de desenvolvimento operacional" }
+];
+
+export const psychosocialDeliverables: SimpleCard[] = [
+  { title: "Mapeamento inicial de vulnerabilidades humanas e psicossociais" },
+  { title: "Leitura operacional de fatores humanos" },
+  { title: "Acompanhamento longitudinal" },
+  { title: "Reuniões executivas de devolutiva" },
+  { title: "Relatórios institucionais" },
+  { title: "Trilha de desenvolvimento humano operacional" },
+  { title: "Programas de treinamento e formação" },
+  { title: "Apoio à cultura de segurança" },
+  { title: "Indicadores para tomada de decisão" },
+  { title: "Recomendações estratégicas de mitigação" }
+];
+
+export const psychosocialAudiences: SimpleCard[] = [
+  { title: "Operadores aéreos" },
+  { title: "Táxi aéreo" },
+  { title: "Empresas com equipes sob pressão" },
+  { title: "Segurança pública" },
+  { title: "Saúde" },
+  { title: "Liderança operacional" },
+  { title: "Ambientes industriais" },
+  { title: "Operações críticas" },
+  { title: "Organizações com exigência de prevenção psicossocial" },
+  { title: "Empresas que precisam estruturar ações contínuas de fatores humanos" }
 ];
 
 export const authorityPoints: SimpleCard[] = [
@@ -349,7 +416,7 @@ export const technologyBlocks: SimpleCard[] = [
   },
   {
     title: "Dashboard HUMANEXUS",
-    description: "Visualização premium de sessão, vetores humanos, risco e síntese regulatória."
+    description: "Visualização premium de ciclos operacionais, vetores humanos, risco e síntese regulatória."
   },
   {
     title: "Protocolos de simulação",
@@ -372,7 +439,7 @@ export const irhSections: SimpleCard[] = [
   },
   {
     title: "Aplicações",
-    description: "Treinamento, gestão de risco, fatores humanos, performance sustentável e leitura de vulnerabilidade."
+    description: "Programas operacionais, gestão de risco, fatores humanos, performance sustentável e leitura de vulnerabilidade."
   },
   {
     title: "Relação com segurança operacional",
@@ -394,8 +461,8 @@ export const irhSections: SimpleCard[] = [
 
 export const companySections: SimpleCard[] = [
   {
-    title: "Por que contratar o HUMANEXUS",
-    description: "Para transformar fatores humanos em ação prática, evidência e governança operacional."
+    title: "Por que implementar o HUMANEXUS",
+    description: "Para transformar fatores humanos em desenvolvimento contínuo, evidência e governança operacional."
   },
   {
     title: "Problemas que resolvemos",
@@ -403,19 +470,19 @@ export const companySections: SimpleCard[] = [
   },
   {
     title: "Entregáveis",
-    description: "Relatórios executivos, leituras regulatórias, protocolos, workshops e planos orientados a risco humano."
+    description: "Relatórios executivos, leituras regulatórias, protocolos, workshops e planos orientados a evolução operacional humana."
   },
   {
-    title: "Formatos de contratação",
-    description: "Projetos institucionais, programas por ciclo, workshops, leitura operacional inicial e desenvolvimento continuado."
+    title: "Estruturas de desenvolvimento",
+    description: "Programas por ciclo, jornadas regulatórias, leitura operacional inicial e acompanhamento contínuo."
   },
   {
     title: "Reunião estratégica inicial",
-    description: "Conversa inicial para leitura do cenário operacional, risco humano e aderência de escopo."
+    description: "Conversa inicial para leitura do cenário operacional, risco humano e aderência do programa."
   },
   {
-    title: "Proposta institucional",
-    description: "Documento comercial e técnico orientado a contrato, entregáveis e cronograma."
+    title: "Plano de implementação",
+    description: "Estrutura comercial e técnica orientada a cronograma, fases e implantação institucional do programa."
   }
 ];
 
@@ -446,9 +513,9 @@ export const contactSegments = [
 
 export const contactInterests = [
   "Apresentação institucional",
-  "Avaliação institucional",
+  "Avaliação estratégica",
   "Formação HUMANEXUS",
   "CRM e fatores humanos",
   "Reunião estratégica inicial",
-  "Parceria institucional"
+  "Implementação do Programa HUMANEXUS"
 ];
