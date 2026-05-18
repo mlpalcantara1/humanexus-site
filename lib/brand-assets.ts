@@ -12,6 +12,11 @@ export const brandAssets = {
     eegOperatorHero: "/media/eeg-operator-hero.jpg",
     eegSetup: "/media/eeg-setup.jpg",
     founderCenipa: "/media/founder-cenipa.jpg"
+  },
+  videos: {
+    heroInstitutional: "/media/hero-institutional.mov",
+    formationCrm: "/media/formacao-crm.mov",
+    instituteSignature: "/media/instituto-signature.mov"
   }
 } as const;
 

@@ -95,7 +95,7 @@ export default function OpenGraphImage() {
                     letterSpacing: "0.24em"
                   }}
                 >
-                  TIRH OPERACIONALIZADA
+                  INSTITUTO HUMANEXUS
                 </div>
               </div>
               <div
@@ -107,11 +107,11 @@ export default function OpenGraphImage() {
                 }}
               >
                 <div style={{ fontSize: 56, lineHeight: 1.04, fontWeight: 700 }}>
-                  O HUMANEXUS operacionaliza a Teoria da Inteligência Regulatória Humana.
+                  O HUMANEXUS operacionaliza a Inteligência Regulatória Humana em ambientes de elevada exigência.
                 </div>
                 <div style={{ fontSize: 22, lineHeight: 1.42, color: "#D5D5D5" }}>
-                  Leitura regulatória humana, EEG, HRV, cockpit, modelagem vetorial e performance
-                  operacional para aviação, táxi aéreo e ambientes críticos.
+                  Neurociência aplicada, fatores humanos e performance operacional integrados em uma
+                  experiência premium para organizações críticas.
                 </div>
               </div>
             </div>

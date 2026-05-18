@@ -1,4 +1,6 @@
+import { PremiumVideo } from "@/components/premium-video";
 import { GlassCard, PageHero, PrimaryButton, SecondaryButton, SectionIntro } from "@/components/ui";
+import { brandAssets } from "@/lib/brand-assets";
 import { contactInterests, contactSegments } from "@/lib/site-data";
 
 export default function ContatoPage() {
@@ -6,62 +8,59 @@ export default function ContatoPage() {
     <>
       <PageHero
         eyebrow="Contato"
-        title="Agende uma conversa estratégica com o HUMANEXUS."
-        description="Se a sua organização precisa tratar segurança operacional, risco humano, fadiga, pressão e performance com mais rigor, esta é a página para avançar a conversa."
-        primary={{ href: "https://wa.me/5592981187777", label: "Falar com especialista agora" }}
-        secondary={{ href: "mailto:institutohumanexus@gmail.com", label: "Enviar e-mail institucional" }}
+        title="Agende uma conversa estratégica com o Instituto HUMANEXUS."
+        description="Para organizações que precisam tratar fatores humanos, segurança operacional, performance cognitiva e decisão sob pressão com padrão institucional elevado."
+        primary={{ href: "https://wa.me/5592981187777", label: "Agendar Avaliação" }}
+        secondary={{ href: "mailto:contato@institutohumanexus.com", label: "Enviar e-mail institucional" }}
       />
+
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="grid gap-10 lg:grid-cols-[0.86fr_1.14fr]">
           <div className="space-y-6">
             <SectionIntro
-              eyebrow="Contato direto"
-              title="Fale com o Instituto Humanexus sem fricção."
-              description="O WhatsApp é o canal mais rápido para iniciar uma conversa comercial, alinhar cenário e avançar para reunião."
+              eyebrow="Canal prioritário"
+              title="Contato rápido, elegante e orientado à conversão."
+              description="O WhatsApp e o e-mail institucional concentram a entrada para apresentações, avaliações, propostas e reuniões executivas."
             />
+
             <GlassCard accent="gold">
               <div className="space-y-4">
-                <p className="text-xs uppercase tracking-[0.32em] text-[#C9A34E]">Canal prioritário</p>
-                <h3 className="text-2xl font-semibold text-[#F5F5F5]">WhatsApp institucional</h3>
-                <p className="text-3xl font-semibold text-[#F5F5F5]">(92) 98118-7777</p>
+                <p className="text-xs uppercase tracking-[0.32em] text-[#C9A34E]">Contato institucional</p>
+                <h3 className="text-2xl font-semibold text-[#F5F5F5]">contato@institutohumanexus.com</h3>
                 <p className="text-sm leading-7 text-[#B8B8B8]">
-                  Para empresários, operadores aéreos, DSO, gestores de segurança e organizações que desejam acelerar a conversa.
+                  E-mail oficial para apresentação institucional, proposta comercial, agenda de formação e contatos estratégicos.
                 </p>
                 <div className="flex flex-col gap-3">
-                  <PrimaryButton href="https://wa.me/5592981187777">
-                    Falar com especialista agora
+                  <PrimaryButton href="mailto:contato@institutohumanexus.com">
+                    Enviar e-mail institucional
                   </PrimaryButton>
-                  <SecondaryButton href="mailto:institutohumanexus@gmail.com">
-                    institutohumanexus@gmail.com
+                  <SecondaryButton href="https://wa.me/5592981187777">
+                    Falar no WhatsApp
                   </SecondaryButton>
                 </div>
               </div>
             </GlassCard>
-            <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-6 shadow-panel">
-              <div className="space-y-3 text-sm text-[#B8B8B8]">
-                <p>Contato institucional: institutohumanexus@gmail.com</p>
-                <p>Cidade-base: Manaus - AM</p>
-                <p>Atendimento: apresentação institucional, reunião estratégica inicial e propostas comerciais.</p>
-              </div>
-            </div>
+
+            <PremiumVideo
+              src={brandAssets.videos.instituteSignature}
+              poster={brandAssets.media.founderCenipa}
+              eyebrow="Presença institucional"
+              title="Autoridade visual, sofisticação e credibilidade para conversas de alto valor."
+              description="O Instituto HUMANEXUS foi posicionado para parecer avançado, exclusivo e estrategicamente relevante desde o primeiro contato."
+              className="min-h-[320px]"
+            />
           </div>
 
-          <form className="rounded-[32px] border border-[#C9A34E]/18 bg-[#0B0B0B]/94 p-7 shadow-gold backdrop-blur-xl">
+          <form className="rounded-[34px] border border-[#C9A34E]/18 bg-[#0A0C11]/94 p-7 shadow-gold backdrop-blur-xl sm:p-8">
             <div className="mb-6 space-y-2">
-              <p className="text-xs uppercase tracking-[0.3em] text-[#C9A34E]">Formulário comercial</p>
-              <h3 className="text-2xl font-semibold text-[#F5F5F5]">Solicite uma apresentação institucional.</h3>
-              <p className="text-sm text-[#B8B8B8]">
-                Preencha em menos de dois minutos para avançar para uma conversa comercial.
+              <p className="text-xs uppercase tracking-[0.32em] text-[#C9A34E]">Formulário institucional</p>
+              <h3 className="text-2xl font-semibold text-[#F5F5F5]">Solicite uma apresentação do HUMANEXUS.</h3>
+              <p className="text-sm leading-7 text-[#B8B8B8]">
+                Preencha os dados e avance para uma conversa executiva sobre contexto, escopo e oportunidade institucional.
               </p>
             </div>
             <div className="grid gap-5 md:grid-cols-2">
-              {[
-                "Nome",
-                "Empresa",
-                "Cargo",
-                "WhatsApp",
-                "E-mail"
-              ].map((label) => (
+              {["Nome", "Empresa", "Cargo", "WhatsApp", "E-mail"].map((label) => (
                 <label key={label} className="space-y-2 text-sm text-[#F5F5F5]">
                   <span>{label}</span>
                   <input
@@ -91,17 +90,17 @@ export default function ContatoPage() {
                 <span>Mensagem</span>
                 <textarea
                   rows={6}
-                  placeholder="Conte rapidamente o contexto da sua organização e o objetivo da conversa."
+                  placeholder="Descreva o contexto da sua organização e o objetivo da conversa."
                   className="w-full rounded-3xl border border-white/10 bg-[#111111] px-4 py-4 text-sm text-[#F5F5F5] outline-none transition focus:border-[#C9A34E]/50"
                 />
               </label>
             </div>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <PrimaryButton href="mailto:institutohumanexus@gmail.com">
+              <PrimaryButton href="mailto:contato@institutohumanexus.com">
                 Solicitar apresentação institucional
               </PrimaryButton>
               <SecondaryButton href="https://wa.me/5592981187777">
-                Preferir WhatsApp
+                Conversar pelo WhatsApp
               </SecondaryButton>
             </div>
           </form>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AnalyticsScripts } from "@/components/analytics-scripts";
 import { brandAssets } from "@/lib/brand-assets";
 import { FloatingWhatsApp } from "@/components/floating-whatsapp";
 import { SiteFooter } from "@/components/site-footer";
@@ -7,13 +8,23 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://humanexus.com"),
-  title: "HUMANEXUS | Teoria da Inteligência Regulatória Humana e Performance Operacional",
+  title: "Instituto HUMANEXUS | Inteligência Regulatória Humana e Performance Operacional",
   description:
-    "O HUMANEXUS operacionaliza a Teoria da Inteligência Regulatória Humana com leitura regulatória, EEG, HRV, simulação e performance operacional para aviação, táxi aéreo e ambientes críticos.",
+    "Instituto HUMANEXUS: fatores humanos, neuroergonomia, CRM aviação, EEG operacional e performance humana para segurança operacional e ambientes críticos.",
+  keywords: [
+    "fatores humanos",
+    "neuroergonomia",
+    "CRM aviação",
+    "psicologia aeronáutica",
+    "EEG operacional",
+    "performance humana",
+    "segurança operacional",
+    "inteligência regulatória"
+  ],
   openGraph: {
-    title: "HUMANEXUS | Teoria da Inteligência Regulatória Humana e Performance Operacional",
+    title: "Instituto HUMANEXUS | Inteligência Regulatória Humana e Performance Operacional",
     description:
-      "O HUMANEXUS operacionaliza a Teoria da Inteligência Regulatória Humana com leitura regulatória, EEG, HRV, simulação e performance operacional para aviação, táxi aéreo e ambientes críticos.",
+      "Instituto HUMANEXUS: fatores humanos, neuroergonomia, CRM aviação, EEG operacional e performance humana para segurança operacional e ambientes críticos.",
     url: "https://humanexus.com",
     siteName: "HUMANEXUS",
     locale: "pt_BR",
@@ -29,9 +40,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "HUMANEXUS | Teoria da Inteligência Regulatória Humana e Performance Operacional",
+    title: "Instituto HUMANEXUS | Inteligência Regulatória Humana e Performance Operacional",
     description:
-      "HUMANEXUS: Teoria da Inteligência Regulatória Humana operacionalizada para aviação, segurança operacional e performance sob pressão.",
+      "Instituto HUMANEXUS: fatores humanos, CRM, EEG operacional e performance humana para ambientes críticos.",
     images: [brandAssets.socialPreview]
   }
 };
@@ -48,6 +59,7 @@ export default function RootLayout({
         <main>{children}</main>
         <SiteFooter />
         <FloatingWhatsApp />
+        <AnalyticsScripts />
       </body>
     </html>
   );

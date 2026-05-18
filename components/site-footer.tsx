@@ -12,7 +12,7 @@ export function SiteFooter() {
           </div>
           <div className="space-y-2 text-sm text-[#B8B8B8]">
             <p>Instituto Humanexus de Performance Operacional LTDA</p>
-            <p>O HUMANEXUS operacionaliza a Teoria da Inteligência Regulatória Humana.</p>
+            <p>O HUMANEXUS operacionaliza a Inteligência Regulatória Humana em ambientes de elevada exigência.</p>
             <p>Manaus - Amazonas</p>
             <p>humanexus.com</p>
             <p>Todos os direitos reservados.</p>
@@ -22,23 +22,23 @@ export function SiteFooter() {
           <p className="text-sm uppercase tracking-[0.22em] text-[#F5F5F5]">Contato</p>
           <div className="space-y-2 text-sm text-[#B8B8B8]">
             <p>WhatsApp: (92) 98118-7777</p>
-            <p>E-mail: institutohumanexus@gmail.com</p>
+            <p>E-mail: contato@institutohumanexus.com</p>
             <p>Manaus - AM</p>
           </div>
         </div>
         <div className="space-y-4">
-          <p className="text-sm uppercase tracking-[0.22em] text-[#F5F5F5]">Canais futuros</p>
+          <p className="text-sm uppercase tracking-[0.22em] text-[#F5F5F5]">Conversão institucional</p>
           <div className="space-y-2 text-sm text-[#B8B8B8]">
-            <p>contato@humanexus.com</p>
+            <p>contato@institutohumanexus.com</p>
             <p>aviation@humanexus.com</p>
             <p>comercial@humanexus.com</p>
             <p>suporte@humanexus.com</p>
           </div>
           <Link
-            href="/login"
+            href="/contato"
             className="inline-flex rounded-full border border-white/10 px-4 py-2 text-sm text-[#F5F5F5] transition hover:border-[#C9A34E]/40 hover:bg-white/5"
           >
-            Área HUMANEXUS
+            Agendar reunião
           </Link>
         </div>
       </div>

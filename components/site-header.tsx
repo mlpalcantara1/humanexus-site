@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { brandAssets } from "@/lib/brand-assets";
 import { navigation } from "@/lib/site-data";
 
@@ -15,28 +16,29 @@ function isActive(pathname: string, href: string) {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/85 backdrop-blur-xl">
       <div className="border-b border-[#C9A34E]/18 bg-[#0A0A0A]">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-2 text-[11px] uppercase tracking-[0.22em] text-[#C9A34E] sm:flex-row sm:items-center sm:justify-between lg:px-8">
-          <span>Agenda institucional para aviação, táxi aéreo e operações críticas</span>
+          <span>Instituto premium para performance humana, fatores humanos e segurança operacional</span>
           <Link href="/contato" className="text-[#F5F5F5] transition hover:text-[#C9A34E]">
             Solicitar reunião estratégica
           </Link>
         </div>
       </div>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4 lg:px-8">
-        <Link href="/" className="flex items-center gap-4">
-          <div className="relative h-14 w-28 overflow-hidden rounded-2xl border border-[#C9A34E]/24 bg-black/55 shadow-gold">
+        <Link href="/" className="group flex items-center gap-4">
+          <div className="relative h-16 w-32 overflow-hidden rounded-[24px] border border-[#C9A34E]/28 bg-black/60 shadow-gold transition duration-300 group-hover:border-[#C9A34E]/50 group-hover:shadow-[0_0_40px_rgba(201,163,78,0.18)] sm:h-[72px] sm:w-36">
             <Image src={brandAssets.logo} alt="HUMANEXUS" fill className="object-contain p-1.5" />
           </div>
           <div>
-            <p className="font-semibold uppercase tracking-[0.28em] text-[#F5F5F5]">
+            <p className="font-semibold uppercase tracking-[0.32em] text-[#F5F5F5] transition group-hover:text-white">
               HUMANEXUS
             </p>
-            <p className="text-xs text-[#B8B8B8]">
-              Teoria da Inteligência Regulatória Humana
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[#B8B8B8] sm:text-xs">
+              Instituto de Inteligência Operacional Humana
             </p>
           </div>
         </Link>
@@ -62,7 +64,7 @@ export function SiteHeader() {
             href="/contato"
             className="hidden rounded-full border border-[#C9A34E]/24 bg-white/[0.03] px-4 py-2 text-sm text-[#F5F5F5] transition hover:border-[#C9A34E]/50 hover:bg-white/5 lg:inline-flex"
           >
-            Solicitar apresentação institucional
+            Agendar avaliação
           </Link>
           <Link
             href="https://wa.me/5592981187777"
@@ -70,10 +72,50 @@ export function SiteHeader() {
             rel="noreferrer"
             className="rounded-full bg-[#C9A34E] px-4 py-2 text-sm font-semibold text-[#050505] shadow-gold transition hover:bg-[#d6b56a]"
           >
-            WhatsApp imediato
+            WhatsApp
           </Link>
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-[#F5F5F5] transition hover:border-[#C9A34E]/40 hover:bg-white/5 lg:hidden"
+            aria-label="Abrir navegação"
+            aria-expanded={open}
+          >
+            <span className="space-y-1.5">
+              <span className="block h-0.5 w-5 bg-current" />
+              <span className="block h-0.5 w-5 bg-current" />
+              <span className="block h-0.5 w-5 bg-current" />
+            </span>
+          </button>
         </div>
       </div>
+      {open ? (
+        <div className="border-t border-white/10 bg-[#080808]/98 px-6 py-5 lg:hidden">
+          <nav className="mx-auto flex max-w-7xl flex-col gap-2">
+            {navigation.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpen(false)}
+                className={`rounded-2xl px-4 py-3 text-sm transition ${
+                  isActive(pathname, item.href)
+                    ? "border border-[#C9A34E]/28 bg-[#C9A34E]/10 text-[#F5F5F5]"
+                    : "border border-white/10 text-[#B8B8B8] hover:bg-white/5 hover:text-[#F5F5F5]"
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
+            <Link
+              href="/contato"
+              onClick={() => setOpen(false)}
+              className="mt-3 rounded-full bg-[#C9A34E] px-5 py-3 text-center text-sm font-semibold text-[#050505]"
+            >
+              Agendar avaliação
+            </Link>
+          </nav>
+        </div>
+      ) : null}
     </header>
   );
 }

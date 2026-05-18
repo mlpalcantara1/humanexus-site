@@ -10,7 +10,7 @@ export default function FundadorPage() {
         eyebrow="Fundador e Diretor Científico"
         title="Dr. Marcos Lázaro Pereira de Alcântara"
         description="Psicólogo, pesquisador, especialista em Psicologia da Aviação e criador da Teoria da Inteligência Regulatória Humana."
-        primary={{ href: "/inteligencia-regulatoria-humana", label: "Conhecer a base científica do HUMANEXUS" }}
+        primary={{ href: "/pesquisa", label: "Conhecer a base científica do HUMANEXUS" }}
         secondary={{ href: "/contato", label: "Solicitar apresentação institucional" }}
         media={{
           src: brandAssets.media.institutionalPortrait,

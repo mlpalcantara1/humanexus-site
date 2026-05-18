@@ -17,13 +17,103 @@ export type ProgramCard = {
 
 export const navigation: NavItem[] = [
   { href: "/", label: "Início" },
-  { href: "/instituto", label: "Instituto" },
-  { href: "/solucoes", label: "Soluções" },
-  { href: "/aviation", label: "Aviation" },
-  { href: "/tecnologia", label: "Tecnologia" },
-  { href: "/empresas", label: "Empresas" },
-  { href: "/area-humanexus", label: "Área HUMANEXUS" },
+  { href: "/sobre", label: "Sobre" },
+  { href: "/servicos", label: "Serviços" },
+  { href: "/formacao", label: "Formação" },
+  { href: "/pesquisa", label: "Pesquisa" },
   { href: "/contato", label: "Contato" }
+];
+
+export const coreMessages: SimpleCard[] = [
+  {
+    title: "Autoridade operacional",
+    description: "Fatores humanos, neurociência aplicada e leitura regulatória humana para organizações de alta exigência."
+  },
+  {
+    title: "Exclusividade metodológica",
+    description: "Arquitetura conceitual proprietária orientada a estabilidade funcional, adaptação sob pressão e performance sustentável."
+  },
+  {
+    title: "Entrega institucional",
+    description: "Posicionamento premium para reuniões, contratos, liderança e programas estratégicos de desenvolvimento humano."
+  }
+];
+
+export const serviceHighlights: SimpleCard[] = [
+  {
+    title: "Fatores Humanos",
+    description: "Leitura aplicada de vulnerabilidades humanas, segurança operacional e estabilidade funcional."
+  },
+  {
+    title: "CRM",
+    description: "Programas voltados à coordenação, comunicação e tomada de decisão sob pressão."
+  },
+  {
+    title: "EEG Operacional",
+    description: "Neurotecnologia aplicada à observação de foco, mobilização interna e recuperação."
+  },
+  {
+    title: "Performance Cognitiva",
+    description: "Estruturas de desenvolvimento para ambientes de elevada exigência e alta responsabilidade."
+  },
+  {
+    title: "Neuroergonomia",
+    description: "Integração entre carga cognitiva, contexto operacional e estabilidade adaptativa."
+  },
+  {
+    title: "Consultoria Estratégica",
+    description: "Apoio institucional para lideranças, organizações e decisões de alto impacto."
+  },
+  {
+    title: "Avaliação Operacional",
+    description: "Leitura regulatória humana aplicada a contextos reais de treinamento e desenvolvimento."
+  },
+  {
+    title: "Treinamentos",
+    description: "Experiências formativas premium para aviação, CRM, segurança e performance sob pressão."
+  }
+];
+
+export const formationHighlights: SimpleCard[] = [
+  {
+    title: "Formação HUMANEXUS",
+    description: "Programas para profissionais e organizações que desejam incorporar leitura regulatória humana à prática operacional."
+  },
+  {
+    title: "CRM aplicado",
+    description: "Treinamentos com linguagem compatível com aviação, coordenação crítica e ambientes de risco."
+  },
+  {
+    title: "Capacitação premium",
+    description: "Estrutura institucional para elevar padrão técnico, cultura de segurança e diferenciação profissional."
+  }
+];
+
+export const researchHighlights: SimpleCard[] = [
+  {
+    title: "Inteligência Regulatória Humana",
+    description: "Arquitetura conceitual voltada à estabilidade funcional, adaptação operacional e decisão sob pressão."
+  },
+  {
+    title: "EEG Operacional",
+    description: "Uso estratégico de neurotecnologia para ampliar leitura aplicada sem expor engenharia proprietária."
+  },
+  {
+    title: "Variabilidade humana",
+    description: "Observação de mudanças funcionais, custo adaptativo e desempenho sustentável em ambientes críticos."
+  },
+  {
+    title: "Estabilidade funcional",
+    description: "Capacidade de sustentar consistência comportamental e operacional em cenários de alta exigência."
+  },
+  {
+    title: "Adaptação operacional",
+    description: "Reorganização sob pressão com foco em consciência situacional, coordenação e segurança."
+  },
+  {
+    title: "Ambientes críticos",
+    description: "Aplicação institucional em aviação, operações especiais, medicina, liderança e alta performance."
+  }
 ];
 
 export const problemCards: SimpleCard[] = [
@@ -356,8 +446,9 @@ export const contactSegments = [
 
 export const contactInterests = [
   "Apresentação institucional",
-  "Programa Aviation Essential",
-  "Programa Operational Shield",
+  "Avaliação institucional",
+  "Formação HUMANEXUS",
+  "CRM e fatores humanos",
   "Reunião estratégica inicial",
   "Parceria institucional"
 ];
