@@ -30,14 +30,15 @@ export function SiteHeader() {
       </div>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4 lg:px-8">
         <Link href="/" className="group flex items-center gap-4">
-          <div className="relative h-16 w-32 overflow-hidden rounded-[24px] border border-[#C9A34E]/28 bg-black/60 shadow-gold transition duration-300 group-hover:border-[#C9A34E]/50 group-hover:shadow-[0_0_40px_rgba(201,163,78,0.18)] sm:h-[72px] sm:w-36">
-            <Image src={brandAssets.logo} alt="HUMANEXUS" fill className="object-contain p-1.5" />
+          <div className="relative h-[74px] w-[152px] overflow-hidden rounded-[26px] border border-[#C9A34E]/30 bg-[linear-gradient(180deg,rgba(8,8,12,0.92),rgba(5,5,5,0.92))] shadow-[0_0_44px_rgba(201,163,78,0.14)] transition duration-300 group-hover:border-[#C9A34E]/56 group-hover:shadow-[0_0_62px_rgba(201,163,78,0.22)] sm:h-[84px] sm:w-[176px]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(201,163,78,0.18),transparent_36%)]" />
+            <Image src={brandAssets.logo} alt="HUMANEXUS" fill className="object-contain p-2" />
           </div>
-          <div>
-            <p className="font-semibold uppercase tracking-[0.32em] text-[#F5F5F5] transition group-hover:text-white">
+          <div className="space-y-1">
+            <p className="font-semibold uppercase tracking-[0.36em] text-[#F5F5F5] transition group-hover:text-white">
               HUMANEXUS
             </p>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-[#B8B8B8] sm:text-xs">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[#D0D4DC] sm:text-xs">
               Instituto de Inteligência Operacional Humana
             </p>
           </div>

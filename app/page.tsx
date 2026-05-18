@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import Image from "next/image";
 import { Reveal } from "@/components/reveal";
 import { PremiumVideo } from "@/components/premium-video";
@@ -16,70 +14,51 @@ import {
 
 const authorityPreview = authorityPoints.slice(0, 6);
 
-function buildVideoSources(src: string) {
-  const root = join(process.cwd(), "public");
-  const normalized = src.startsWith("/") ? src : `/${src}`;
-  const base = normalized.replace(/\.(mov|mp4|m4v)$/i, "");
-  const candidates = [
-    { src: `${base}.mp4`, type: "video/mp4" },
-    { src: `${base}.m4v`, type: "video/mp4" },
-    { src: `${base}.mov`, type: "video/quicktime" }
-  ];
-
-  return candidates.filter((item) => existsSync(join(root, item.src.replace(/^\//, ""))));
-}
-
 export default function HomePage() {
-  const heroSources = buildVideoSources(brandAssets.videos.heroInstitutional);
-
   return (
     <>
-      <section className="relative isolate overflow-hidden border-b border-white/10">
+      <section className="hero-premium relative isolate overflow-hidden border-b border-white/10">
         <div className="absolute inset-0">
-          <video
-            className="h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            poster={brandAssets.media.eegOperatorHero}
-            disablePictureInPicture
-          >
-            {heroSources.map((item) => (
-              <source key={item.src} src={item.src} type={item.type} />
-            ))}
-          </video>
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,3,3,0.55),rgba(3,3,3,0.82)_38%,rgba(3,3,3,0.95))]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(201,163,78,0.18),transparent_18%),radial-gradient(circle_at_82%_20%,rgba(34,84,145,0.22),transparent_22%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,4,6,0.68),rgba(4,4,6,0.88)_42%,rgba(4,4,6,0.98))]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(201,163,78,0.18),transparent_20%),radial-gradient(circle_at_84%_22%,rgba(23,78,143,0.18),transparent_22%),radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.06),transparent_30%)]" />
+          <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] [background-size:140px_140px] [mask-image:radial-gradient(circle_at_center,black,transparent_82%)]" />
         </div>
 
-        <div className="relative mx-auto flex min-h-[88vh] max-w-7xl items-end px-6 py-16 lg:px-8 lg:py-20">
-          <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
+        <div className="relative mx-auto flex min-h-[90vh] max-w-7xl items-center px-6 py-14 lg:px-8 lg:py-20">
+          <div className="grid gap-10 lg:grid-cols-[0.98fr_1.02fr] lg:items-center">
             <Reveal>
               <div className="relative max-w-4xl space-y-8">
-                <div className="flex items-center gap-4">
-                  <div className="relative h-20 w-40 overflow-hidden rounded-[26px] border border-[#C9A34E]/26 bg-[#050505]/50 shadow-gold backdrop-blur-xl sm:h-24 sm:w-48">
-                    <Image src={brandAssets.logo} alt="Logo oficial HUMANEXUS" fill className="object-contain p-2.5" priority />
-                  </div>
-                  <div className="hidden rounded-full border border-[#C9A34E]/28 bg-[#050505]/55 px-4 py-2 text-[11px] uppercase tracking-[0.32em] text-[#C9A34E] backdrop-blur-xl sm:inline-flex">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="rounded-full border border-[#C9A34E]/28 bg-[#050505]/62 px-4 py-2 text-[11px] uppercase tracking-[0.32em] text-[#C9A34E] backdrop-blur-xl">
                     Instituto HUMANEXUS
                   </div>
-                </div>
-                <div className="absolute right-[-6%] top-10 hidden opacity-[0.08] xl:block">
-                  <div className="relative h-[360px] w-[360px]">
-                    <Image src={brandAssets.logo} alt="" fill className="object-contain" aria-hidden />
+                  <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.28em] text-[#D4D4D4] backdrop-blur-xl">
+                    Programa contínuo de desenvolvimento humano operacional
                   </div>
                 </div>
                 <div className="space-y-5">
-                  <h1 className="max-w-5xl text-4xl font-semibold leading-[1.04] text-[#F5F5F5] md:text-6xl lg:text-7xl">
+                  <h1 className="max-w-5xl text-4xl font-semibold leading-[1.02] text-[#F5F5F5] md:text-6xl lg:text-[4.8rem]">
                     O HUMANEXUS operacionaliza a Inteligência Regulatória Humana em ambientes de elevada exigência.
                   </h1>
                   <p className="max-w-3xl text-lg leading-8 text-[#D4D4D4] md:text-xl">
                     Ciência aplicada, fatores humanos e tecnologia operacional em uma estrutura premium de desenvolvimento contínuo para organizações onde estabilidade, decisão e confiança são inegociáveis.
                   </p>
                 </div>
-                <div className="flex flex-col gap-4 sm:flex-row">
+                <div className="grid max-w-3xl gap-3 sm:grid-cols-3">
+                  {[
+                    "HUMANEXUS",
+                    "Instituto de Inteligência Operacional Humana",
+                    "Programa contínuo para ambientes críticos"
+                  ].map((item) => (
+                    <div
+                      key={item}
+                      className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#E5E5E5] backdrop-blur-xl"
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:flex-wrap">
                   <PrimaryButton href="/sobre">Conhecer o Instituto</PrimaryButton>
                   <SecondaryButton href="/contato">Solicitar Avaliação Estratégica</SecondaryButton>
                   <SecondaryButton href="/formacao">Formação HUMANEXUS</SecondaryButton>
@@ -88,10 +67,37 @@ export default function HomePage() {
             </Reveal>
 
             <Reveal delay={0.08}>
-              <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-                {coreMessages.map((item) => (
-                  <GlassCard key={item.title} accent="gold" title={item.title} description={item.description} />
-                ))}
+              <div className="relative overflow-hidden rounded-[36px] border border-[#C9A34E]/24 bg-[linear-gradient(180deg,rgba(10,10,14,0.96),rgba(6,8,12,0.96))] p-6 shadow-[0_0_80px_rgba(201,163,78,0.12)] backdrop-blur-2xl sm:p-8">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_22%,rgba(201,163,78,0.18),transparent_18%),radial-gradient(circle_at_30%_82%,rgba(36,92,164,0.18),transparent_24%)]" />
+                <div className="absolute right-[-6%] top-[-8%] opacity-[0.09]">
+                  <div className="relative h-[360px] w-[360px] sm:h-[420px] sm:w-[420px]">
+                    <Image src={brandAssets.logo} alt="" fill className="object-contain" aria-hidden />
+                  </div>
+                </div>
+                <div className="relative space-y-8">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.32em] text-[#C9A34E]">HUMANEXUS</p>
+                      <p className="mt-3 text-sm uppercase tracking-[0.18em] text-[#BFC6D4]">
+                        Instituto de Inteligência Operacional Humana
+                      </p>
+                    </div>
+                    <div className="relative h-24 w-40 overflow-hidden rounded-[28px] border border-[#C9A34E]/30 bg-black/45 shadow-gold sm:h-28 sm:w-48">
+                      <Image src={brandAssets.logo} alt="Assinatura HUMANEXUS" fill className="object-contain p-2.5" />
+                    </div>
+                  </div>
+                  <div className="rounded-[28px] border border-white/10 bg-[#050505]/54 p-5 backdrop-blur-xl">
+                    <p className="text-sm uppercase tracking-[0.26em] text-[#C9A34E]">Assinatura institucional</p>
+                    <h2 className="mt-4 text-3xl font-semibold leading-tight text-[#F5F5F5] sm:text-[2.5rem]">
+                      Organização avançada para estabilidade humana, segurança operacional e performance sob pressão.
+                    </h2>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    {coreMessages.map((item) => (
+                      <GlassCard key={item.title} accent="gold" title={item.title} description={item.description} />
+                    ))}
+                  </div>
+                </div>
               </div>
             </Reveal>
           </div>
@@ -190,20 +196,20 @@ export default function HomePage() {
           <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
             <Reveal>
               <PremiumVideo
-                src={brandAssets.videos.formationCrm}
-                poster={brandAssets.media.aviationTalk}
-                eyebrow="Formação HUMANEXUS"
-                title="Treinamento, CRM e desenvolvimento de equipes em uma linguagem compatível com ambientes operacionais reais."
-                description="Vídeo institucional aplicado à formação, cultura operacional e presença profissional em ambientes de elevada exigência."
+                src={brandAssets.videos.heroInstitutional}
+                poster={brandAssets.media.eegOperatorHero}
+                eyebrow="Prova institucional"
+                title="Atuação operacional real, presença institucional e tecnologia aplicada em campo."
+                description="O vídeo principal sai da primeira dobra e passa a funcionar como prova institucional, bastidor operacional e legitimidade visual do HUMANEXUS."
                 className="min-h-[520px]"
               />
             </Reveal>
             <Reveal delay={0.08}>
               <div className="space-y-8">
                 <SectionIntro
-                  eyebrow="Formação"
-                  title="Capacitação premium para organizações que precisam elevar padrão técnico, progressão operacional e presença institucional."
-                  description="Formação HUMANEXUS, CRM aplicado, leitura regulatória humana e desenvolvimento de performance sob pressão em uma jornada de alto valor."
+                  eyebrow="Presença operacional"
+                  title="Tecnologia humana aplicada com sobriedade, autoridade e leitura institucional clara."
+                  description="O HUMANEXUS não precisa de ruído visual para parecer avançado. A experiência institucional combina presença de marca, rigor operacional e narrativa de alto valor."
                 />
                 <div className="grid gap-4">
                   {formationHighlights.map((item) => (
@@ -211,7 +217,7 @@ export default function HomePage() {
                   ))}
                 </div>
                 <div className="flex flex-col gap-4 sm:flex-row">
-                  <PrimaryButton href="/formacao">Iniciar Desenvolvimento Operacional</PrimaryButton>
+                  <PrimaryButton href="/contato">Implementar o Programa HUMANEXUS</PrimaryButton>
                   <SecondaryButton href="/contato">Agendar Reunião Institucional</SecondaryButton>
                 </div>
               </div>
@@ -241,14 +247,26 @@ export default function HomePage() {
             </div>
           </Reveal>
           <Reveal delay={0.08}>
-            <PremiumVideo
-              src={brandAssets.videos.instituteSignature}
-              poster={brandAssets.media.founderCenipa}
-              eyebrow="Assinatura institucional"
-              title="Presença premium para implementação institucional, reuniões executivas e percepção internacional."
-              description="Vídeo institucional para reforçar autoridade, exclusividade e posicionamento de alto valor."
-              className="min-h-[480px]"
-            />
+            <div className="relative min-h-[480px] overflow-hidden rounded-[34px] border border-white/10 bg-[#050505] shadow-panel">
+              <Image
+                src={brandAssets.media.eegSetup}
+                alt="Configuração operacional HUMANEXUS"
+                fill
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,10,24,0.12),rgba(5,5,5,0.84))]" />
+              <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
+                <div className="max-w-2xl rounded-[28px] border border-white/10 bg-[#050505]/66 p-5 backdrop-blur-xl">
+                  <p className="text-xs uppercase tracking-[0.3em] text-[#C9A34E]">Arquitetura aplicada</p>
+                  <h3 className="mt-3 text-2xl font-semibold text-[#F5F5F5]">
+                    Presença premium, discrição tecnológica e autoridade científica em uma mesma linguagem visual.
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-[#B8B8B8]">
+                    A comunicação pública mostra profundidade suficiente para gerar interesse, sem expor engenharia interna ou competir com a marca.
+                  </p>
+                </div>
+              </div>
+            </div>
           </Reveal>
         </div>
       </section>

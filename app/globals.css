@@ -56,6 +56,31 @@ body::after {
   opacity: 0.85;
 }
 
+.hero-premium::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(201, 163, 78, 0.12), transparent 18%),
+    radial-gradient(circle at 88% 18%, rgba(36, 92, 164, 0.14), transparent 18%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.04), transparent 28%);
+  opacity: 0.9;
+}
+
+.hero-premium::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 160px 160px;
+  mask-image: radial-gradient(circle at center, black, transparent 78%);
+  opacity: 0.38;
+}
+
 ::selection {
   background: rgba(201, 163, 78, 0.24);
   color: #f5f5f5;
