@@ -19,37 +19,32 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/85 backdrop-blur-xl">
-      <div className="border-b border-[#C9A34E]/18 bg-[#0A0A0A]">
-        <div className="mx-auto flex max-w-7xl px-6 py-2 text-[11px] uppercase tracking-[0.22em] text-[#C9A34E] lg:px-8">
-          <span>Programa contínuo de desenvolvimento humano operacional para ambientes críticos</span>
-        </div>
-      </div>
+    <header className="sticky top-0 z-50 border-b border-white/8 bg-[#050505]/78 backdrop-blur-2xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4 lg:px-8">
         <Link href="/" className="group flex items-center gap-4">
-          <div className="relative h-[74px] w-[152px] overflow-hidden rounded-[26px] border border-[#C9A34E]/30 bg-[linear-gradient(180deg,rgba(8,8,12,0.92),rgba(5,5,5,0.92))] shadow-[0_0_44px_rgba(201,163,78,0.14)] transition duration-300 group-hover:border-[#C9A34E]/56 group-hover:shadow-[0_0_62px_rgba(201,163,78,0.22)] sm:h-[84px] sm:w-[176px]">
+          <div className="relative h-[78px] w-[168px] overflow-hidden rounded-[26px] border border-[#C9A34E]/24 bg-[linear-gradient(180deg,rgba(8,8,12,0.94),rgba(5,5,5,0.94))] shadow-[0_0_44px_rgba(201,163,78,0.12)] transition duration-300 group-hover:border-[#C9A34E]/48 group-hover:shadow-[0_0_62px_rgba(201,163,78,0.18)] sm:h-[88px] sm:w-[190px]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(201,163,78,0.18),transparent_36%)]" />
             <Image src={brandAssets.logoPremium} alt="HUMANEXUS" fill className="object-contain p-2" />
           </div>
           <div className="space-y-1">
-            <p className="font-semibold uppercase tracking-[0.36em] text-[#F5F5F5] transition group-hover:text-white">
+            <p className="font-semibold uppercase tracking-[0.34em] text-[#F5F5F5] transition group-hover:text-white">
               HUMANEXUS
             </p>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-[#D0D4DC] sm:text-xs">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[#8E949E] sm:text-xs">
               Instituto de Inteligência Operacional Humana
             </p>
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-2 lg:flex">
+        <nav className="hidden items-center gap-1 lg:flex">
           {navigation.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={`rounded-full px-4 py-2 text-sm transition ${
                 isActive(pathname, item.href)
-                  ? "bg-[#C9A34E]/14 text-[#F5F5F5]"
-                  : "text-[#B8B8B8] hover:bg-white/5 hover:text-[#F5F5F5]"
+                  ? "bg-[#C9A34E]/12 text-[#F5F5F5]"
+                  : "text-[#A0A6B1] hover:bg-white/5 hover:text-[#F5F5F5]"
               }`}
             >
               {item.label}
@@ -62,7 +57,7 @@ export function SiteHeader() {
             href="https://wa.me/5592981187777"
             target="_blank"
             rel="noreferrer"
-            className="rounded-full bg-[#C9A34E] px-4 py-2 text-sm font-semibold text-[#050505] shadow-gold transition hover:bg-[#d6b56a]"
+            className="rounded-full border border-[#C9A34E]/26 bg-[linear-gradient(135deg,#d6b45d,#b98b2d)] px-4 py-2 text-sm font-semibold text-[#050505] shadow-[0_14px_34px_rgba(201,163,78,0.22)] transition hover:brightness-105"
           >
             Falar com o Instituto
           </Link>

@@ -1,109 +1,88 @@
-import { CardGrid, GlassCard, PageHero, PrimaryButton, SecondaryButton, SectionIntro } from "@/components/ui";
-import {
-  programCards,
-  psychosocialAudiences,
-  psychosocialDeliverables,
-  psychosocialPainCards,
-  psychosocialSolutionCards,
-  serviceHighlights
-} from "@/lib/site-data";
+import { CardGrid, GlassCard, PageHero, SectionIntro } from "@/components/ui";
 
-const sectors = [
+const programCards = [
+  {
+    title: "Programa HUMANEXUS de Desenvolvimento Humano Operacional",
+    description: "Estrutura contínua para estabilidade humana, cultura operacional, liderança e capacidade decisória em ambientes críticos."
+  },
+  {
+    title: "Riscos Psicossociais e Estabilidade Operacional",
+    description: "Programa recorrente para vulnerabilidades humanas, carga operacional, práticas preventivas e evidências institucionais."
+  },
+  {
+    title: "Formação em Fatores Humanos, CRM e Liderança",
+    description: "Capacitação premium para equipes que precisam elevar coordenação, disciplina operacional e cultura de segurança."
+  },
+  {
+    title: "Pesquisa Aplicada e Inteligência Regulatória Humana",
+    description: "Camada conceitual e executiva para organizações que desejam sustentar seus programas com base proprietária."
+  },
+  {
+    title: "Núcleo Aviation HUMANEXUS",
+    description: "Aplicação orientada a operadores aéreos, táxi aéreo, equipes de voo, gestores e segurança operacional."
+  }
+];
+
+const programStructure = [
+  {
+    title: "Objetivo",
+    description: "Transformar o fator humano em capacidade estratégica por meio de acompanhamento, leitura operacional e desenvolvimento contínuo."
+  },
+  {
+    title: "Para quem",
+    description: "Organizações críticas, operadores aéreos, lideranças operacionais, saúde, segurança e ambientes de alta responsabilidade."
+  },
+  {
+    title: "Entregas",
+    description: "Leitura institucional, relatórios executivos, protocolos HUMANEXUS, formação, reuniões de devolutiva e progressão longitudinal."
+  },
+  {
+    title: "Resultado esperado",
+    description: "Mais estabilidade, clareza decisória, fortalecimento de cultura operacional e maior maturidade humana em contexto de missão."
+  }
+];
+
+const applicationAreas = [
   "Aviação e táxi aéreo",
   "Segurança operacional",
-  "Forças de segurança",
-  "Medicina de alta demanda",
-  "Lideranças e equipes críticas",
+  "Riscos psicossociais",
+  "CRM e coordenação crítica",
+  "Liderança sob pressão",
   "Organizações de alta responsabilidade"
 ];
 
 export default function ServicosPage() {
-  const psychosocialProgram = programCards.find((item) =>
-    item.name.includes("Riscos Psicossociais e Estabilidade Operacional")
-  );
-
   return (
     <>
       <PageHero
         eyebrow="Programas HUMANEXUS"
-        title="Uma estrutura contínua para organizações que precisam tratar performance humana com rigor estratégico."
-        description="Programas compactos, objetivos e sofisticados para fortalecer fatores humanos, leitura operacional, CRM, estabilidade adaptativa e desenvolvimento de equipes sob pressão."
+        title="Uma estrutura recorrente para organizações que precisam tratar performance humana com rigor institucional."
+        description="O HUMANEXUS não vende intervenção avulsa. Ele implementa programas contínuos de desenvolvimento humano operacional."
         primary={{ href: "/contato", label: "Agendar Reunião Institucional" }}
-        secondary={{ href: "https://wa.me/5592981187777", label: "Falar com o Instituto" }}
       />
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
         <SectionIntro
-          eyebrow="Estruturas de desenvolvimento"
-          title="Programas desenhados para transmitir valor institucional, continuidade e utilidade operacional."
-          description="A comunicação pública do HUMANEXUS mostra resultado, maturidade e exclusividade sem revelar a engenharia profunda do sistema."
+          eyebrow="Portfólio institucional"
+          title="Programas desenhados para contratos recorrentes, confiança executiva e aplicação real."
+          description="Cada núcleo foi concebido para sustentar desenvolvimento longitudinal, não entrega pontual."
         />
         <div className="mt-12">
-          <CardGrid items={serviceHighlights} columns="xl:grid-cols-4" />
-        </div>
-      </section>
-
-      {psychosocialProgram ? (
-        <section className="border-y border-white/10 bg-[#06080d]">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-              <SectionIntro
-                eyebrow="Programa contínuo"
-                title={psychosocialProgram.name}
-                description={psychosocialProgram.description}
-              />
-              <GlassCard accent="gold">
-                <div className="space-y-4">
-                  <p className="text-xs uppercase tracking-[0.32em] text-[#C9A34E]">Aplicações</p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {psychosocialProgram.items.map((item) => (
-                      <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-[#F5F5F5]">
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </GlassCard>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <SectionIntro
-          eyebrow="Riscos e vulnerabilidades"
-          title="Onde o HUMANEXUS apoia organizações a estruturar ações contínuas."
-          description="O programa foi desenhado para ambientes em que fatores humanos, risco psicossocial, fadiga e pressão decisória precisam ser tratados com acompanhamento, evidência e progressão."
-        />
-        <div className="mt-12">
-          <CardGrid items={psychosocialPainCards} columns="xl:grid-cols-5" />
-        </div>
-      </section>
-
-      <section className="border-y border-white/10 bg-[#05070b]">
-        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-          <SectionIntro
-            eyebrow="Soluções HUMANEXUS"
-            title="Estrutura aplicada para leitura regulatória humana, estabilidade funcional e fortalecimento institucional."
-            description="O HUMANEXUS apoia, organiza e complementa programas internos com ações contínuas voltadas à prevenção, desenvolvimento humano operacional e performance sustentável."
-          />
-          <div className="mt-12">
-            <CardGrid items={psychosocialSolutionCards} columns="xl:grid-cols-5" />
-          </div>
+          <CardGrid items={programCards} columns="xl:grid-cols-3" />
         </div>
       </section>
 
       <section className="border-y border-white/10 bg-[#06080d]">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-          <div className="grid gap-10 lg:grid-cols-[0.94fr_1.06fr] lg:items-start">
+          <div className="grid gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-start">
             <SectionIntro
-              eyebrow="Aplicação"
-              title="Programas voltados a setores em que o erro humano tem custo operacional, reputacional e estratégico."
-              description="A proposta do Instituto HUMANEXUS é modular, institucional e adequada a reuniões executivas, implementação por ciclo e jornadas recorrentes."
+              eyebrow="Arquitetura do programa"
+              title="Pouco ruído. Estrutura clara. Valor institucional alto."
+              description="O HUMANEXUS organiza a relação com o cliente em torno de objetivo, contexto, acompanhamento e resultados observáveis."
             />
             <div className="grid gap-4 sm:grid-cols-2">
-              {sectors.map((item) => (
-                <GlassCard key={item} accent="gold" description={item} />
+              {programStructure.map((item, index) => (
+                <GlassCard key={item.title} accent={index === 0 ? "gold" : "soft"} title={item.title} description={item.description} />
               ))}
             </div>
           </div>
@@ -111,47 +90,30 @@ export default function ServicosPage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[1fr_1fr]">
-          <div>
+        <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-start">
+          <div className="space-y-8">
             <SectionIntro
-              eyebrow="O que o HUMANEXUS entrega"
-              title="Uma trilha institucional de acompanhamento, leitura e desenvolvimento."
-              description="Sem substituir exigências legais, auditorias ou programas formais internos, o HUMANEXUS contribui para organizar ações contínuas, gerar evidências e fortalecer a gestão do fator humano."
+              eyebrow="Aplicações"
+              title="Projetado para setores em que a instabilidade humana se converte rapidamente em risco operacional."
+              description="O Instituto atua em contextos nos quais liderança, tomada de decisão, coordenação e cultura de segurança precisam ser tratadas com método e continuidade."
             />
-            <div className="mt-12">
-              <CardGrid items={psychosocialDeliverables} columns="xl:grid-cols-2" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {applicationAreas.map((item, index) => (
+                <GlassCard key={item} accent={index === 0 ? "gold" : "soft"} description={item} />
+              ))}
             </div>
           </div>
-          <div>
-            <SectionIntro
-              eyebrow="Para quem"
-              title="Organizações e equipes que precisam transformar instabilidade humana em estrutura operacional."
-              description="A proposta se encaixa em ambientes críticos que demandam leitura aplicada, progressão longitudinal e reforço de cultura operacional."
-            />
-            <div className="mt-12">
-              <CardGrid items={psychosocialAudiences} columns="xl:grid-cols-2" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <div className="rounded-[34px] border border-[#C9A34E]/20 bg-[#0A0C11]/94 p-8 shadow-gold sm:p-10">
-          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+          <GlassCard accent="gold">
             <div className="space-y-4">
-              <p className="text-xs uppercase tracking-[0.32em] text-[#C9A34E]">Conversa comercial</p>
-              <h2 className="text-3xl font-semibold text-[#F5F5F5]">
-                O formato correto de avançar é uma conversa sobre risco humano, jornada regulatória e implementação institucional.
+              <p className="text-[10px] uppercase tracking-[0.32em] text-[#C9A34E]">Direção comercial</p>
+              <h2 className="text-3xl font-semibold leading-tight text-[#F5F5F5]">
+                A decisão correta não é contratar um serviço isolado. É implementar uma jornada operacional.
               </h2>
-              <p className="max-w-3xl text-base leading-8 text-[#B8B8B8]">
-                O HUMANEXUS foi desenhado para gerar confiança imediata, percepção premium e decisão executiva, não para parecer uma entrega genérica ou avulsa.
+              <p className="text-base leading-8 text-[#9EA3AE]">
+                O posicionamento do HUMANEXUS é recorrente, institucional e orientado a construção de capacidade humana em médio e longo prazo.
               </p>
             </div>
-            <div className="flex flex-col gap-3">
-              <PrimaryButton href="/contato">Agendar Reunião Institucional</PrimaryButton>
-              <SecondaryButton href="https://wa.me/5592981187777">Falar com o Instituto</SecondaryButton>
-            </div>
-          </div>
+          </GlassCard>
         </div>
       </section>
     </>

@@ -1,74 +1,79 @@
 import Image from "next/image";
 import { PremiumVideo } from "@/components/premium-video";
-import { CardGrid, GlassCard, PageHero, PrimaryButton, SecondaryButton, SectionIntro } from "@/components/ui";
+import { CardGrid, GlassCard, PageHero, SectionIntro } from "@/components/ui";
 import { brandAssets } from "@/lib/brand-assets";
-import { authorityPoints, instituteValues } from "@/lib/site-data";
+
+const institutePillars = [
+  {
+    title: "Missão",
+    description: "Desenvolver estabilidade humana, inteligência operacional e capacidade decisória em ambientes de elevada exigência."
+  },
+  {
+    title: "Visão",
+    description: "Ser referência em inteligência operacional humana aplicada à segurança, performance e desenvolvimento institucional."
+  },
+  {
+    title: "Posicionamento",
+    description: "Instituto premium para organizações que tratam o fator humano como infraestrutura estratégica."
+  }
+];
+
+const authoritySignals = [
+  "Psicólogo de Aviação",
+  "Mestre e Doutor",
+  "Formação em Fatores Humanos",
+  "Experiência em Forças Armadas",
+  "CRM e segurança operacional",
+  "Programas para ambientes críticos"
+];
 
 export default function SobrePage() {
   return (
     <>
       <PageHero
         eyebrow="Sobre o Instituto"
-        title="Autoridade institucional, experiência operacional e ciência aplicada em uma mesma assinatura."
-        description="O Instituto HUMANEXUS foi estruturado para posicionar fatores humanos, performance operacional e Inteligência Regulatória Humana em um padrão premium, estratégico, institucional e contínuo."
+        title="Um instituto desenhado para tratar o fator humano como capacidade estratégica."
+        description="O HUMANEXUS integra ciência aplicada, experiência operacional e linguagem institucional de alto nível para organizações que operam sob pressão."
         primary={{ href: "/contato", label: "Agendar Reunião Institucional" }}
-        secondary={{ href: "/pesquisa", label: "Conhecer a área de pesquisa" }}
         media={{
-          src: brandAssets.media.founderCenipa,
-          alt: "Dr. Marcos em contexto institucional",
-          badge: "Autoridade institucional"
+          src: brandAssets.media.founderExecutive,
+          alt: "Retrato institucional de Marcos Lázaro Pereira de Alcântara",
+          badge: "Direção científica"
         }}
       />
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <div className="grid gap-6 lg:grid-cols-3">
-          <GlassCard
-            accent="gold"
-            title="Missão"
-            description="Integrar ciência aplicada, fatores humanos e tecnologia operacional para desenvolver estabilidade, segurança e performance humana em contextos de alta exigência."
-          />
-          <GlassCard
-            title="Visão"
-            description="Consolidar o HUMANEXUS como referência de elite em Inteligência Regulatória Humana, performance operacional e neurotecnologia aplicada."
-          />
-          <GlassCard
-            title="Posicionamento"
-            description="Instituto premium para líderes, operadores e organizações que tratam o fator humano como ativo estratégico e desenvolvimento contínuo."
-          />
-        </div>
+        <CardGrid items={institutePillars} columns="lg:grid-cols-3" />
       </section>
 
       <section className="border-y border-white/10 bg-[#06080d]">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-          <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
+          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div className="space-y-8">
               <SectionIntro
-                eyebrow="Fundador"
-                title="Dr. Marcos Lázaro Pereira de Alcântara"
-                description="Psicólogo, Psicólogo de Aviação, Mestre e Doutor, com trajetória vinculada a fatores humanos, ambientes críticos e presença operacional. O HUMANEXUS nasce dessa convergência entre formação acadêmica, vivência institucional e visão estratégica."
+                eyebrow="Fundação institucional"
+                title="O HUMANEXUS nasce da convergência entre aviação, fatores humanos, liderança e desenvolvimento contínuo."
+                description="A assinatura do Instituto foi construída para dialogar com executivos, operadores, organizações críticas e ambientes em que segurança operacional e estabilidade humana precisam coexistir."
               />
-              <div className="grid gap-4 sm:grid-cols-2">
-                {authorityPoints.slice(0, 8).map((item) => (
-                  <GlassCard key={item.title} accent="gold" title={item.title} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                {authoritySignals.map((item, index) => (
+                  <GlassCard key={item} accent={index === 0 ? "gold" : "soft"} description={item} />
                 ))}
               </div>
-              <div className="flex flex-col gap-4 sm:flex-row">
-                <PrimaryButton href="/fundador">Ver perfil completo</PrimaryButton>
-                <SecondaryButton href="/contato">Iniciar Desenvolvimento Operacional</SecondaryButton>
-              </div>
             </div>
+
             <div className="relative min-h-[560px] overflow-hidden rounded-[34px] border border-white/10 bg-[#090909] shadow-panel">
               <Image
-                src={brandAssets.media.institutionalPortrait}
-                alt="Retrato institucional do fundador"
+                src={brandAssets.media.founderAviationCeremony}
+                alt="Marcos Lázaro Pereira de Alcântara em contexto institucional militar"
                 fill
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.12),rgba(5,5,5,0.84))]" />
-              <div className="absolute inset-x-6 bottom-6 rounded-[26px] border border-white/10 bg-[#050505]/68 p-5">
-                <p className="text-xs uppercase tracking-[0.28em] text-[#C9A34E]">Liderança científica</p>
-                <p className="mt-3 text-lg text-[#F5F5F5]">
-                  Presença institucional sóbria, experiência operacional e linguagem compatível com ambientes de alta responsabilidade.
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.04),rgba(5,5,5,0.82))]" />
+              <div className="absolute inset-x-6 bottom-6 rounded-[26px] border border-white/10 bg-[#050505]/68 p-5 backdrop-blur-xl">
+                <p className="text-[10px] uppercase tracking-[0.32em] text-[#C9A34E]">Autoridade aplicada</p>
+                <p className="mt-3 text-base leading-7 text-[#E1E5EA]">
+                  A presença institucional do Instituto é resultado de trajetória real em formação, operação, cultura de segurança e fatores humanos.
                 </p>
               </div>
             </div>
@@ -77,22 +82,26 @@ export default function SobrePage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+        <div className="grid gap-10 lg:grid-cols-[1.04fr_0.96fr] lg:items-center">
           <PremiumVideo
             src={brandAssets.videos.instituteSignature}
-            poster={brandAssets.media.tirhPresentation}
-            eyebrow="Assinatura institucional"
-            title="Presença visual premium para reforçar confiança, autoridade e sofisticação."
-            description="O Instituto HUMANEXUS comunica ciência aplicada e maturidade operacional sem excesso de exposição técnica."
-            className="min-h-[500px]"
+            poster={brandAssets.media.founderStageBlue}
+            eyebrow="Presença institucional"
+            title="Uma assinatura visual e conceitual projetada para confiança executiva."
+            description="O HUMANEXUS comunica sofisticação, rigor e discrição tecnológica sem se confundir com treinamento genérico ou oferta indiferenciada."
+            className="min-h-[520px]"
           />
           <div className="space-y-8">
             <SectionIntro
-              eyebrow="Valores"
-              title="Excelência, segurança operacional e inovação aplicada como padrão de relacionamento institucional."
-              description="Os valores do Instituto HUMANEXUS organizam confiança, ética, consistência técnica e performance sustentável em uma narrativa adequada a clientes de alto nível."
+              eyebrow="Por que existe"
+              title="Porque ambientes críticos exigem mais do que conhecimento técnico isolado."
+              description="O HUMANEXUS existe para organizar, desenvolver e sustentar a dimensão humana da operação com profundidade institucional, acompanhamento contínuo e linguagem compatível com decisão de alto nível."
             />
-            <CardGrid items={instituteValues} columns="lg:grid-cols-2" />
+            <div className="grid gap-4">
+              <GlassCard accent="gold" title="Modelo contínuo" description="Programas recorrentes, leitura longitudinal e evolução operacional humana." />
+              <GlassCard title="Clientes de alta exigência" description="Organizações que operam com risco, pressão e responsabilidade elevada." />
+              <GlassCard title="Posição de mercado" description="Instituto premium, reservado e difícil de replicar." />
+            </div>
           </div>
         </div>
       </section>

@@ -1,21 +1,20 @@
 import Image from "next/image";
 import { PremiumVideo } from "@/components/premium-video";
-import { CardGrid, GlassCard, PageHero, PrimaryButton, SecondaryButton, SectionIntro } from "@/components/ui";
+import { CardGrid, GlassCard, PageHero, SectionIntro } from "@/components/ui";
 import { brandAssets } from "@/lib/brand-assets";
-import { formationHighlights } from "@/lib/site-data";
 
 const trainingTracks = [
   {
-    title: "Formação HUMANEXUS",
-    description: "Capacitação orientada a fatores humanos, performance sob pressão e posicionamento profissional de alto nível."
+    title: "CRM e coordenação crítica",
+    description: "Formação institucional para decisão, comunicação, consciência situacional e disciplina operacional."
   },
   {
-    title: "CRM aplicado",
-    description: "Conteúdo e prática direcionados a coordenação, segurança operacional e tomada de decisão em ambientes de alta responsabilidade."
+    title: "Fatores humanos aplicados",
+    description: "Capacitação para liderança, cultura de segurança e leitura de vulnerabilidades humanas."
   },
   {
-    title: "Desenvolvimento institucional",
-    description: "Programas customizados para organizações que desejam elevar cultura operacional, progressão humana e maturidade decisória."
+    title: "Desenvolvimento sob demanda",
+    description: "Programas modulados conforme contexto operacional, maturidade institucional e nível de exposição ao risco."
   }
 ];
 
@@ -24,90 +23,37 @@ export default function FormacaoPage() {
     <>
       <PageHero
         eyebrow="Formação"
-        title="Formação HUMANEXUS para profissionais, equipes e organizações que operam sob pressão."
-        description="Programas premium em fatores humanos, CRM, leitura operacional e performance cognitiva para ambientes críticos."
-        primary={{ href: "/contato", label: "Solicitar agenda de formação" }}
-        secondary={{ href: "https://wa.me/5592981187777", label: "Falar com especialista" }}
+        title="Formação premium para equipes, lideranças e organizações que operam sob pressão."
+        description="A formação HUMANEXUS foi desenhada para parecer programa institucional de elite, não curso genérico."
+        primary={{ href: "/contato", label: "Agendar Reunião Institucional" }}
+        media={{
+          src: brandAssets.media.founderStageBlue,
+          alt: "Marcos Lázaro Pereira de Alcântara ministrando formação",
+          badge: "Formação executiva"
+        }}
       />
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[1.04fr_0.96fr] lg:items-center">
+        <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
           <PremiumVideo
             src={brandAssets.videos.formationCrm}
             poster={brandAssets.media.founderCongressDownload}
-            eyebrow="Vídeo institucional"
-            title="Formação, CRM e desenvolvimento com presença institucional forte."
-            description="Um posicionamento visual alinhado a disciplina, profissionalismo e cultura operacional."
+            eyebrow="CRM e treinamento"
+            title="Presença de campo, disciplina operacional e narrativa de alto padrão."
+            description="A experiência visual da formação reforça seriedade, exigência e contexto real de aplicação."
             className="min-h-[540px]"
             priority
           />
           <div className="space-y-8">
             <SectionIntro
-              eyebrow="Experiência premium"
-              title="A formação HUMANEXUS não parece curso comum. Parece padrão institucional de elite."
-              description="A proposta visual e conceitual foi desenhada para empresas, operadores aéreos, lideranças e contextos que exigem maturidade técnica e percepção de alto valor."
+              eyebrow="Estrutura formativa"
+              title="Conteúdo aplicado para equipes que precisam decidir, coordenar e sustentar performance."
+              description="O HUMANEXUS estrutura a formação como ativo institucional. Não como produto de prateleira."
             />
             <div className="grid gap-4">
-              {formationHighlights.map((item) => (
-                <GlassCard key={item.title} accent="gold" title={item.title} description={item.description} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="border-y border-white/10 bg-[#06080d]">
-        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-          <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
-            <div className="space-y-8">
-              <SectionIntro
-                eyebrow="Atuação em campo"
-                title="Formação com presença real em auditórios, ambientes institucionais e programas de alta exigência."
-                description="As imagens de campo reforçam que a Formação HUMANEXUS nasce de experiência aplicada, liderança em sala e leitura operacional em ambientes onde atenção, comunicação e estabilidade importam."
-              />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <GlassCard
-                  accent="gold"
-                  title="Ambiente institucional"
-                  description="Conteúdo aplicado com postura compatível com programas executivos, formação aeronáutica e cultura operacional."
-                />
-                <GlassCard
-                  title="Leitura sob pressão"
-                  description="A formação trabalha liderança, fatores humanos e tomada de decisão com linguagem acessível para equipes críticas e gestores."
-                />
-              </div>
-            </div>
-            <div className="grid gap-5 lg:grid-cols-[1.04fr_0.96fr]">
-              <div className="relative min-h-[420px] overflow-hidden rounded-[32px] border border-[#C9A34E]/20 bg-[#090909] shadow-gold">
-                <Image
-                  src={brandAssets.media.founderSeripaAuditorium}
-                  alt="Dr. Marcos em apresentação institucional sobre fatores humanos"
-                  fill
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.04),rgba(5,5,5,0.78))]" />
-                <div className="absolute inset-x-5 bottom-5 rounded-[24px] border border-white/10 bg-[#050505]/68 p-4 backdrop-blur-xl">
-                  <p className="text-xs uppercase tracking-[0.28em] text-[#C9A34E]">Fatores humanos</p>
-                  <p className="mt-2 text-sm leading-6 text-[#E5E5E5]">
-                    Conteúdo aplicado em contexto aeronáutico real, com foco em cultura operacional e decisão sob pressão.
-                  </p>
-                </div>
-              </div>
-              <div className="relative min-h-[420px] overflow-hidden rounded-[32px] border border-white/10 bg-[#090909] shadow-panel">
-                <Image
-                  src={brandAssets.media.founderAeteKeynote}
-                  alt="Dr. Marcos conduzindo keynote institucional"
-                  fill
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.02),rgba(5,5,5,0.78))]" />
-                <div className="absolute inset-x-5 bottom-5 rounded-[24px] border border-white/10 bg-[#050505]/68 p-4 backdrop-blur-xl">
-                  <p className="text-xs uppercase tracking-[0.28em] text-[#C9A34E]">Estabilidade humana</p>
-                  <p className="mt-2 text-sm leading-6 text-[#E5E5E5]">
-                    Narrativa institucional orientada a percepção, estabilidade e desenvolvimento longitudinal em ambientes críticos.
-                  </p>
-                </div>
-              </div>
+              <GlassCard accent="gold" title="Formato" description="Treinamentos sob demanda, jornadas internas, workshops executivos e formação de equipes críticas." />
+              <GlassCard title="Foco" description="Fatores humanos, liderança, CRM, cultura operacional, estabilidade humana e decisão sob pressão." />
+              <GlassCard title="Aplicação" description="Aviação, organizações críticas, ambientes táticos, saúde, educação corporativa e programas institucionais." />
             </div>
           </div>
         </div>
@@ -116,33 +62,41 @@ export default function FormacaoPage() {
       <section className="border-y border-white/10 bg-[#06080d]">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
           <SectionIntro
-            eyebrow="Trilhas"
-            title="Programas compactos e sofisticados para diferentes níveis de maturidade operacional."
-            description="O site apresenta a direção da formação sem expor metodologias sensíveis, preservando exclusividade e valor percebido."
+            eyebrow="Atuação em campo"
+            title="Formação com presença real em auditórios, programas operacionais e ambientes de alta exigência."
+            description="As imagens reforçam autoridade aplicada, domínio de sala e contexto institucional concreto."
           />
-          <div className="mt-12">
-            <CardGrid items={trainingTracks} />
+          <div className="mt-12 grid gap-5 lg:grid-cols-2">
+            <div className="relative min-h-[420px] overflow-hidden rounded-[32px] border border-white/10 bg-[#090909] shadow-panel">
+              <Image
+                src={brandAssets.media.founderSeripaAuditorium}
+                alt="Marcos Lázaro Pereira de Alcântara em auditório institucional"
+                fill
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.04),rgba(5,5,5,0.8))]" />
+            </div>
+            <div className="relative min-h-[420px] overflow-hidden rounded-[32px] border border-white/10 bg-[#090909] shadow-panel">
+              <Image
+                src={brandAssets.media.founderAeteKeynote}
+                alt="Marcos Lázaro Pereira de Alcântara em keynote institucional"
+                fill
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.04),rgba(5,5,5,0.8))]" />
+            </div>
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <div className="rounded-[34px] border border-white/10 bg-[#0A0C11]/94 p-8 shadow-panel sm:p-10">
-          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div className="space-y-4">
-              <p className="text-xs uppercase tracking-[0.32em] text-[#C9A34E]">Próximo passo</p>
-              <h2 className="text-3xl font-semibold text-[#F5F5F5]">
-                Leve a Formação HUMANEXUS para sua equipe ou conheça a agenda institucional disponível.
-              </h2>
-              <p className="max-w-3xl text-base leading-8 text-[#B8B8B8]">
-                O objetivo é transformar interesse em reunião e reunião em programa institucional, sem ruído e sem promessas superficiais.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <PrimaryButton href="/contato">Agendar Reunião Institucional</PrimaryButton>
-              <SecondaryButton href="/servicos">Conhecer os Programas HUMANEXUS</SecondaryButton>
-            </div>
-          </div>
+        <SectionIntro
+          eyebrow="Trilhas"
+          title="Programas compactos, recorrentes e compatíveis com ambientes de alta responsabilidade."
+          description="A formação é organizada para gerar maturidade, não apenas exposição pontual a conteúdo."
+        />
+        <div className="mt-12">
+          <CardGrid items={trainingTracks} columns="lg:grid-cols-3" />
         </div>
       </section>
     </>

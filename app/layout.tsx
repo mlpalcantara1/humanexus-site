@@ -7,25 +7,26 @@ import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://humanexus.com"),
-  title: "Instituto HUMANEXUS | Inteligência Regulatória Humana e Performance Operacional",
+  metadataBase: new URL("https://institutohumanexus.com"),
+  title: "Instituto HUMANEXUS | Inteligência Operacional Humana",
   description:
-    "Instituto HUMANEXUS: fatores humanos, neuroergonomia, CRM aviação, EEG operacional e performance humana para segurança operacional e ambientes críticos.",
+    "Instituto HUMANEXUS: inteligência operacional humana, fatores humanos, CRM, riscos psicossociais, segurança operacional e desenvolvimento contínuo para ambientes críticos.",
   keywords: [
+    "inteligência operacional humana",
     "fatores humanos",
     "neuroergonomia",
     "CRM aviação",
-    "psicologia aeronáutica",
-    "EEG operacional",
-    "performance humana",
+    "riscos psicossociais",
     "segurança operacional",
+    "performance humana",
+    "liderança sob pressão",
     "inteligência regulatória"
   ],
   openGraph: {
-    title: "Instituto HUMANEXUS | Inteligência Regulatória Humana e Performance Operacional",
+    title: "Instituto HUMANEXUS | Inteligência Operacional Humana",
     description:
-      "Instituto HUMANEXUS: fatores humanos, neuroergonomia, CRM aviação, EEG operacional e performance humana para segurança operacional e ambientes críticos.",
-    url: "https://humanexus.com",
+      "Instituto HUMANEXUS: inteligência operacional humana, fatores humanos, segurança operacional e desenvolvimento contínuo para ambientes críticos.",
+    url: "https://institutohumanexus.com",
     siteName: "HUMANEXUS",
     locale: "pt_BR",
     type: "website",
@@ -40,9 +41,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Instituto HUMANEXUS | Inteligência Regulatória Humana e Performance Operacional",
+    title: "Instituto HUMANEXUS | Inteligência Operacional Humana",
     description:
-      "Instituto HUMANEXUS: fatores humanos, CRM, EEG operacional e performance humana para ambientes críticos.",
+      "Instituto HUMANEXUS: inteligência operacional humana, fatores humanos e segurança operacional para ambientes críticos.",
     images: [brandAssets.socialPreview]
   }
 };
