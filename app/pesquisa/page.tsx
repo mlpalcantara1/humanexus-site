@@ -4,28 +4,21 @@ import { brandAssets } from "@/lib/brand-assets";
 
 const researchFrames = [
   {
-    title: "Inteligência Regulatória Humana",
-    description: "Base conceitual do Instituto voltada à estabilidade funcional, adaptação sob pressão e capacidade decisória."
+    title: "Segurança operacional",
+    description: "Estudos aplicados para fortalecer confiabilidade humana, disciplina institucional e maturidade operacional."
   },
   {
-    title: "Fatores humanos",
-    description: "Leitura institucional da interação entre pessoa, contexto, missão, pressão e desempenho."
+    title: "Fatores humanos avançados",
+    description: "Produção técnica voltada a contextos em que resposta humana, coordenação e consequência caminham juntas."
   },
   {
     title: "Cognição operacional",
-    description: "Aplicação da ciência ao comportamento humano em ambientes onde erro, fadiga e sobrecarga têm alto custo."
+    description: "Base aplicada para apoiar organizações em cenários de sobrecarga, decisão sob pressão e alta exigência."
   },
   {
     title: "Riscos psicossociais",
-    description: "Abordagem estratégica e contínua para vulnerabilidades que afetam cultura, segurança e performance."
+    description: "Abordagem contínua para vulnerabilidades que afetam cultura, segurança e performance sustentável."
   }
-];
-
-const boundaries = [
-  "Arquitetura conceitual proprietária",
-  "Método próprio com confidencialidade operacional",
-  "Pesquisa aplicada com valor institucional",
-  "Tecnologia mostrada com discrição"
 ];
 
 export default function PesquisaPage() {
@@ -33,12 +26,11 @@ export default function PesquisaPage() {
     <>
       <PageHero
         eyebrow="Pesquisa"
-        title="Ciência aplicada apresentada com densidade institucional e reserva estratégica."
-        description="A área de pesquisa do HUMANEXUS comunica profundidade suficiente para gerar confiança, sem expor a engenharia interna do método."
-        primary={{ href: "/contato", label: "Agendar Reunião Institucional" }}
+        title="Base técnica com densidade institucional e reserva estratégica."
+        description="A pesquisa pública do HUMANEXUS foi organizada para demonstrar consistência, sem expor mecanismo, lógica interna ou ativos proprietários."
         media={{
-          src: brandAssets.media.founderBriefingStageAlt,
-          alt: "Marcos Alcântara em apresentação institucional de pesquisa aplicada",
+          src: brandAssets.media.founderAviationKeynote,
+          alt: "Apresentação institucional do HUMANEXUS",
           badge: "Pesquisa aplicada"
         }}
       />
@@ -46,22 +38,27 @@ export default function PesquisaPage() {
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div className="space-y-8">
-            <SectionIntro
-              eyebrow="Base conceitual"
-              title="O HUMANEXUS apresenta profundidade. Não entrega a fórmula."
-              description="A pesquisa pública foi organizada para sustentar reputação, confiança e diferenciação institucional."
-            />
-            <div className="grid gap-3 sm:grid-cols-2">
-              {boundaries.map((item, index) => (
-                <GlassCard key={item} accent={index === 0 ? "gold" : "soft"} description={item} />
+              <SectionIntro
+                eyebrow="Base conceitual"
+                title="Conhecimento suficiente para gerar confiança. Reserva suficiente para preservar diferenciação."
+                description="O HUMANEXUS comunica consistência, experiência e aplicabilidade com clareza executiva, sem abrir modelagens sensíveis ou estruturas proprietárias."
+              />
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  "Base institucional reservada",
+                  "Pesquisa aplicada a operações críticas",
+                  "Produção técnica com discrição",
+                  "Valor institucional preservado"
+                ].map((item, index) => (
+                  <GlassCard key={item} accent={index === 0 ? "gold" : "soft"} description={item} />
               ))}
             </div>
           </div>
 
-          <div className="relative min-h-[520px] overflow-hidden rounded-[30px] border border-white/10 bg-[#090909] shadow-panel">
+          <div className="relative min-h-[560px] overflow-hidden rounded-[30px] border border-white/10 bg-[#090909] shadow-panel">
             <Image
-              src={brandAssets.media.founderStageRoom}
-              alt="Marcos Alcântara em apresentação institucional"
+              src={brandAssets.media.founderHangarCommand}
+              alt="Contexto operacional do HUMANEXUS em ambiente crítico"
               fill
               className="object-cover"
             />
@@ -75,7 +72,7 @@ export default function PesquisaPage() {
           <SectionIntro
             eyebrow="Campos de investigação"
             title="Pesquisa aplicada à estabilidade humana, cultura operacional e decisão sob pressão."
-            description="Os conceitos são apresentados com clareza suficiente para decisores, sem abrir modelagens sensíveis."
+            description="Os campos abaixo representam a camada pública da pesquisa. O núcleo proprietário permanece preservado."
           />
           <div className="mt-12">
             <CardGrid items={researchFrames} columns="xl:grid-cols-4" />

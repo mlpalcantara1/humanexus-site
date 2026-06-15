@@ -7,8 +7,8 @@ export default function LoginPage() {
     <>
       <PageHero
         eyebrow="Placeholder visual"
-        title="Acesso futuro à plataforma HUMANEXUS."
-        description="Tela demonstrativa para apresentar a futura área privada. Sem autenticação real, sem banco e sem integração operacional."
+        title="Ambiente reservado do Instituto HUMANEXUS."
+        description="Tela demonstrativa da futura área privada. Sem autenticação real e sem conexão com o sistema operacional."
         secondary={{ href: "/area-humanexus", label: "Voltar para Área HUMANEXUS" }}
       />
       <section className="mx-auto max-w-5xl px-6 py-20 lg:px-8">
@@ -16,11 +16,11 @@ export default function LoginPage() {
           <div className="space-y-8">
             <SectionIntro
               eyebrow="Mockup"
-              title="Visual premium da futura entrada do ecossistema."
-              description="Placeholder preparado para apontar no futuro para `/login` ou `app.humanexus.com`, sem qualquer integração real nesta aplicação institucional."
+              title="Visual premium da futura entrada reservada."
+              description="Placeholder preparado para uma camada privada futura, sem qualquer vínculo ativo nesta aplicação institucional."
             />
             <div className="relative min-h-[280px] overflow-hidden rounded-[30px] border border-white/10 bg-[#090909]">
-              <Image src={brandAssets.brandBoard} alt="Identidade oficial HUMANEXUS" fill className="object-cover" />
+              <Image src={brandAssets.media.instituteSpaceWide} alt="Identidade institucional do HUMANEXUS" fill className="object-cover" />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.14),rgba(5,5,5,0.76))]" />
             </div>
           </div>

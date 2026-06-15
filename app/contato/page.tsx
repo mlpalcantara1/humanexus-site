@@ -7,7 +7,7 @@ export default function ContatoPage() {
       <PageHero
         eyebrow="Contato"
         title="Converse com o Instituto HUMANEXUS."
-        description="Entrada institucional para organizações que desejam discutir programa, plataforma, operação e desenvolvimento humano em ambientes críticos."
+        description="Entrada institucional para organizações que desejam discutir programa, operação e desenvolvimento humano em ambientes críticos."
       />
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
@@ -23,7 +23,7 @@ export default function ContatoPage() {
               <div className="space-y-4">
                 <p className="text-[10px] uppercase tracking-[0.32em] text-[#C9A34E]">Contato</p>
                 <h3 className="text-2xl font-semibold text-[#F5F5F5]">contato@institutohumanexus.com</h3>
-                <p className="text-sm leading-7 text-[#9EA3AE]">WhatsApp institucional: +55 92 98118-7777</p>
+                <p className="text-sm leading-7 text-[#9EA3AE]">WhatsApp: +55 92 98118-7777</p>
               </div>
             </GlassCard>
 

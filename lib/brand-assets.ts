@@ -2,17 +2,19 @@ export const brandAssets = {
   logo: "/brand/logo-official.png",
   logoPremium: "/brand/logo-download-gold.png",
   monogramLight: "/brand/monogram-download-black.png",
-  brandBoard: "/brand/brand-board.jpg",
-  socialPreview: "/brand/brand-board.jpg",
+  socialPreview: "/brand/logo-download-gold.png",
   media: {
+    instituteSpaceWide: "/media/institute-space-wide.jpeg",
+    instituteSpaceFront: "/media/institute-space-front.jpeg",
+    instituteSpaceDesk: "/media/institute-space-desk.jpeg",
+    founderHangarElite: "/media/founder-hangar-elite.jpg",
+    founderSeripaLecture: "/media/founder-seripa-lecture.jpg",
+    founderKeynoteHeic: "/media/founder-keynote-heic.jpg",
     simulatorAviation: "/media/simulator-aviation.jpg",
-    tirhPresentation: "/media/tirh-presentation.jpg",
     cockpitSimulator: "/media/cockpit-simulator.jpg",
     institutionalPortrait: "/media/institutional-portrait.jpg",
     aviationTalk: "/media/aviation-talk.jpg",
     hangarOperations: "/media/hangar-operations.jpg",
-    eegOperatorHero: "/media/eeg-operator-hero.jpg",
-    eegSetup: "/media/eeg-setup.jpg",
     founderCenipa: "/media/founder-cenipa.jpg",
     founderExecutive: "/media/founder-executive.jpg",
     founderStageBlue: "/media/founder-stage-blue.jpg",
@@ -29,36 +31,8 @@ export const brandAssets = {
     founderBriefingStageAlt: "/media/founder-briefing-stage-2.png"
   },
   videos: {
-    heroInstitutional: "/media/hero-institutional.mp4",
-    operationalField: "/media/operational-field.mp4",
+    institutionalHero: "/media/institucional-hero.mov",
     instituteSignature: "/media/instituto-signature.mp4",
     formationOperational: "/media/formacao-operacional.mp4"
   }
 } as const;
-
-export const theoryFlow = [
-  {
-    step: "Nível 1",
-    title: "Teoria da Inteligência Regulatória Humana",
-    description:
-      "Fundamento científico proprietário criado pelo Dr. Marcos Lázaro Pereira de Alcântara para compreender estabilidade funcional, adaptação sob pressão e inteligência regulatória em ambientes críticos."
-  },
-  {
-    step: "Nível 2",
-    title: "HUMANEXUS como operacionalização aplicada",
-    description:
-      "O HUMANEXUS transforma a teoria em metodologia, leitura regulatória humana, modelagem vetorial, protocolos e entregáveis institucionais."
-  },
-  {
-    step: "Nível 3",
-    title: "Aplicações operacionais",
-    description:
-      "Aviação, táxi aéreo, operações críticas, segurança pública, medicina, esporte de alta performance e ambientes corporativos de elevada exigência."
-  },
-  {
-    step: "Nível 4",
-    title: "Tecnologia aplicada",
-    description:
-      "EEG, HRV, cockpit, dashboards, leitura regulatória, protocolos, indicadores operacionais humanos e análise de estabilidade adaptativa."
-  }
-] as const;

@@ -5,19 +5,21 @@ export type NavItem = {
 
 export const navigation: NavItem[] = [
   { href: "/", label: "Início" },
-  { href: "/#programa", label: "Programa" },
-  { href: "/#plataforma", label: "Plataforma" },
-  { href: "/#areas", label: "Áreas de Atuação" },
-  { href: "/#autoridade", label: "Autoridade Técnica" },
+  { href: "/sobre", label: "Instituto" },
+  { href: "/servicos", label: "Programas" },
+  { href: "/formacao", label: "Formação" },
+  { href: "/pesquisa", label: "Pesquisa" },
   { href: "/contato", label: "Contato" }
 ];
 
 export const contactSegments = [
-  "Aviação operacional",
+  "Operador aéreo",
   "Táxi aéreo",
+  "Operações aeromédicas",
   "Operações críticas",
   "Saúde",
   "Segurança pública",
+  "Indústria e energia",
   "Corporativo",
   "Outro"
 ];
@@ -38,7 +40,7 @@ export const areaProfiles = [
   },
   {
     title: "HUMANEXUS Specialist",
-    description: "Profissional preparado para aplicação de protocolos, leitura de indicadores e condução de programas HUMANEXUS."
+    description: "Profissional preparado para acompanhar programas institucionais e conduzir desenvolvimento humano em ambientes críticos."
   },
   {
     title: "HUMANEXUS Strategic Partner",
@@ -47,12 +49,12 @@ export const areaProfiles = [
 ];
 
 export const authorityPoints = [
-  { title: "Psicólogo" },
-  { title: "Especialista em Psicologia da Aviação" },
-  { title: "Mestre e Doutor em Educação" },
-  { title: "Formação em Fatores Humanos" },
-  { title: "Investigação e prevenção de acidentes aeronáuticos" },
-  { title: "Experiência aplicada à segurança operacional" },
+  { title: "Psicólogo de aviação" },
+  { title: "21 anos de atuação profissional" },
+  { title: "Mestre e Doutor" },
+  { title: "Operações críticas e segurança operacional" },
+  { title: "Formação de equipes e lideranças" },
   { title: "Atuação com Forças Armadas" },
-  { title: "Criador da Teoria da Inteligência Regulatória Humana" }
+  { title: "Pesquisa aplicada ao fator humano" },
+  { title: "Direção científica e institucional" }
 ];

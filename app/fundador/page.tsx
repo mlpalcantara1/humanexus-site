@@ -9,9 +9,9 @@ export default function FundadorPage() {
       <PageHero
         eyebrow="Fundador e Diretor Científico"
         title="Dr. Marcos Lázaro Pereira de Alcântara"
-        description="Psicólogo, pesquisador, especialista em Psicologia da Aviação e criador da Teoria da Inteligência Regulatória Humana."
-        primary={{ href: "/pesquisa", label: "Conhecer a base científica do HUMANEXUS" }}
-        secondary={{ href: "/contato", label: "Solicitar apresentação institucional" }}
+        description="Psicólogo de aviação, pesquisador e fundador do Instituto HUMANEXUS."
+        primary={{ href: "/sobre", label: "Conhecer o Instituto" }}
+        secondary={{ href: "/contato", label: "Agendar Reunião Institucional" }}
         media={{
           src: brandAssets.media.institutionalPortrait,
           alt: "Dr. Marcos Lázaro Pereira de Alcântara",
@@ -24,8 +24,8 @@ export default function FundadorPage() {
           <div className="space-y-8">
             <SectionIntro
               eyebrow="Trajetória"
-              title="Psicologia, fatores humanos, segurança operacional, educação, aviação e tecnologia em uma mesma arquitetura aplicada."
-              description="Com trajetória acadêmica, operacional e institucional, Dr. Marcos Alcântara integra Psicologia, Fatores Humanos, Segurança Operacional, Educação, Aviação e Tecnologia para estruturar o HUMANEXUS como um ecossistema aplicado de Inteligência Regulatória Humana."
+              title="Trajetória construída em aviação, fatores humanos, segurança operacional e desenvolvimento institucional."
+              description="Com trajetória acadêmica, operacional e institucional, Dr. Marcos Alcântara atua na convergência entre psicologia da aviação, fatores humanos, segurança operacional e desenvolvimento de equipes em ambientes críticos."
             />
             <div className="flex flex-col gap-4 sm:flex-row">
               <PrimaryButton href="http://lattes.cnpq.br/2740055296386524">Currículo Lattes</PrimaryButton>
@@ -33,13 +33,13 @@ export default function FundadorPage() {
             </div>
             <GlassCard
               accent="gold"
-              title="Base científica e experiência operacional"
-              description="O HUMANEXUS nasce da integração entre ciência comportamental, fatores humanos, experiência operacional em aviação, investigação aeronáutica e tecnologia aplicada à performance humana. Sua arquitetura conceitual é sustentada pela Teoria da Inteligência Regulatória Humana, desenvolvida pelo Dr. Marcos Lázaro Pereira de Alcântara."
+              title="Base técnica e experiência operacional"
+              description="O HUMANEXUS nasce da convergência entre ciência comportamental, fatores humanos, experiência operacional em aviação, investigação aeronáutica e desenvolvimento institucional aplicado."
             />
           </div>
           <div className="grid gap-5">
             <div className="relative min-h-[360px] overflow-hidden rounded-[32px] border border-[#C9A34E]/22 bg-[#090909] shadow-gold">
-              <Image src={brandAssets.media.eegOperatorHero} alt="Dr. Marcos aplicando EEG em operador real" fill className="object-cover" />
+              <Image src={brandAssets.media.founderAviationCeremony} alt="Dr. Marcos em contexto institucional aeronáutico" fill className="object-cover" />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.10),rgba(5,5,5,0.74))]" />
             </div>
             <div className="relative min-h-[280px] overflow-hidden rounded-[32px] border border-white/10 bg-[#090909]">
@@ -53,8 +53,8 @@ export default function FundadorPage() {
       <section className="border-y border-white/10 bg-[#080808]">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
           <SectionIntro
-            eyebrow="Autoridade científica"
-            title="Formação, experiência e credenciais que sustentam a TIRH e a operacionalização HUMANEXUS."
+            eyebrow="Autoridade técnica"
+            title="Formação, experiência e presença institucional colocadas a serviço de operações críticas."
             description="Uma camada de legitimidade para programas institucionais, aviação, segurança operacional e ambientes de elevada exigência."
           />
           <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">

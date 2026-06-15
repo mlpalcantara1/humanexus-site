@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 export const size = {
@@ -10,128 +8,108 @@ export const size = {
 export const contentType = "image/png";
 
 export default function OpenGraphImage() {
-  const board = readFileSync(join(process.cwd(), "public/brand/brand-board.jpg")).toString("base64");
-  const logo = readFileSync(join(process.cwd(), "public/brand/logo-official.png")).toString("base64");
-
   return new ImageResponse(
     (
       <div
         style={{
-          display: "flex",
           width: "100%",
           height: "100%",
-          background: "linear-gradient(135deg, #050505 0%, #0D0D0D 60%, #1A1A1A 100%)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          padding: "42px",
           color: "#F5F5F5",
-          padding: "36px",
-          fontFamily: "sans-serif"
+          background:
+            "radial-gradient(circle at 82% 14%, rgba(201,163,78,0.18), transparent 22%), radial-gradient(circle at 18% 18%, rgba(37,84,148,0.12), transparent 24%), linear-gradient(135deg, #050505 0%, #0D0D0D 58%, #16181C 100%)",
+          fontFamily: "Arial, sans-serif"
         }}
       >
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
-            width: "100%",
-            border: "1px solid rgba(201,163,78,0.22)",
-            borderRadius: "34px",
-            overflow: "hidden",
-            background: "rgba(255,255,255,0.02)"
+            alignItems: "center",
+            justifyContent: "space-between"
           }}
         >
           <div
             style={{
-              position: "relative",
               display: "flex",
-              flex: 1,
-              padding: "42px"
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "18px 24px",
+              borderRadius: "22px",
+              border: "1px solid rgba(201,163,78,0.26)",
+              background: "rgba(255,255,255,0.03)",
+              fontSize: 34,
+              fontWeight: 700,
+              letterSpacing: "0.08em"
             }}
           >
-            <img
-              src={`data:image/jpeg;base64,${board}`}
-              alt="Identidade visual oficial HUMANEXUS"
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                opacity: 0.26
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "linear-gradient(90deg, rgba(5,5,5,0.94) 0%, rgba(5,5,5,0.82) 42%, rgba(5,5,5,0.52) 100%)"
-              }}
-            />
-            <div
-              style={{
-                position: "relative",
-                zIndex: 1,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                width: "100%"
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <img
-                  src={`data:image/png;base64,${logo}`}
-                  alt="Logo HUMANEXUS"
-                  style={{ width: 250, height: 146, objectFit: "contain", objectPosition: "left center" }}
-                />
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: "1px solid rgba(201,163,78,0.28)",
-                    borderRadius: 999,
-                    padding: "10px 18px",
-                    background: "rgba(5,5,5,0.48)",
-                    color: "#C9A34E",
-                    fontSize: 16,
-                    letterSpacing: "0.24em"
-                  }}
-                >
-                  INSTITUTO HUMANEXUS
-                </div>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "18px",
-                  maxWidth: "760px"
-                }}
-              >
-                <div style={{ fontSize: 56, lineHeight: 1.04, fontWeight: 700 }}>
-                  O HUMANEXUS operacionaliza a Inteligência Regulatória Humana em ambientes de elevada exigência.
-                </div>
-                <div style={{ fontSize: 22, lineHeight: 1.42, color: "#D5D5D5" }}>
-                  Neurociência aplicada, fatores humanos e performance operacional integrados em uma
-                  experiência premium para organizações críticas.
-                </div>
-              </div>
-            </div>
+            HUMANEXUS
           </div>
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
-              padding: "16px 28px",
-              borderTop: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(5,5,5,0.84)",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "10px 18px",
+              borderRadius: 999,
+              border: "1px solid rgba(201,163,78,0.26)",
+              background: "rgba(5,5,5,0.48)",
               color: "#C9A34E",
-              fontSize: 17
+              fontSize: 16,
+              letterSpacing: "0.24em"
             }}
           >
-            <div>TEORIA</div>
-            <div>HUMANEXUS</div>
-            <div>APLICAÇÕES OPERACIONAIS</div>
-            <div>TECNOLOGIA APLICADA</div>
+            INSTITUTO HUMANEXUS
           </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+            maxWidth: "820px"
+          }}
+        >
+          <div
+            style={{
+              fontSize: 60,
+              lineHeight: 1.02,
+              fontWeight: 700
+            }}
+          >
+            Inteligência operacional humana para ambientes críticos.
+          </div>
+          <div
+            style={{
+              fontSize: 24,
+              lineHeight: 1.42,
+              color: "#D4D7DD",
+              maxWidth: "760px"
+            }}
+          >
+            Segurança operacional, desenvolvimento humano contínuo e acompanhamento executivo
+            para organizações de alta responsabilidade.
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            paddingTop: "18px",
+            color: "#C9A34E",
+            fontSize: 17,
+            letterSpacing: "0.12em"
+          }}
+        >
+          <div>SEGURANÇA OPERACIONAL</div>
+          <div>DESENVOLVIMENTO CONTÍNUO</div>
+          <div>ALTA RESPONSABILIDADE</div>
+          <div>FATORES HUMANOS</div>
         </div>
       </div>
     ),
