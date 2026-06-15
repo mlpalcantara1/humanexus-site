@@ -35,8 +35,8 @@ export default function FormacaoPage() {
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[1.04fr_0.96fr] lg:items-center">
           <PremiumVideo
-            src={brandAssets.videos.formationOperational}
-            poster={brandAssets.media.founderStageBlue}
+            src={brandAssets.videos.formationInstitutional}
+            poster={brandAssets.media.formationInstitutionalPoster}
             eyebrow="Aplicação em campo"
             title="Presença real em ambientes de alta exigência."
             description="Treinamentos, desenvolvimento humano e fortalecimento da capacidade operacional para profissionais que atuam sob pressão e responsabilidade crítica."
@@ -65,7 +65,7 @@ export default function FormacaoPage() {
           <div className="mt-12 grid gap-5 lg:grid-cols-2">
             <div className="relative min-h-[440px] overflow-hidden rounded-[30px] border border-white/10 bg-[#090909] shadow-panel">
               <Image
-                src={brandAssets.media.founderBriefingStage}
+                src={brandAssets.media.formationTrainingApplied}
                 alt="Marcos Alcântara conduzindo formação aplicada"
                 fill
                 className="object-cover"
@@ -74,8 +74,8 @@ export default function FormacaoPage() {
             </div>
             <div className="relative min-h-[440px] overflow-hidden rounded-[30px] border border-white/10 bg-[#090909] shadow-panel">
               <Image
-                src={brandAssets.media.founderBriefingStageAlt}
-                alt="Marcos Alcântara em formação institucional"
+                src={brandAssets.media.formationControlledEnvironment}
+                alt="Ambiente controlado do HUMANEXUS com simulador operacional"
                 fill
                 className="object-cover"
               />

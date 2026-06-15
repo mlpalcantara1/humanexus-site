@@ -28,11 +28,15 @@ export const brandAssets = {
     founderHangarCommand: "/media/founder-hangar-command.jpg",
     founderOperationalBriefing: "/media/founder-operational-briefing.jpg",
     founderBriefingStage: "/media/founder-briefing-stage.jpg",
-    founderBriefingStageAlt: "/media/founder-briefing-stage-2.png"
+    founderBriefingStageAlt: "/media/founder-briefing-stage-2.png",
+    formationTrainingApplied: "/media/formacao-training-applied.jpg",
+    formationControlledEnvironment: "/media/formacao-controlled-environment.jpg",
+    formationInstitutionalPoster: "/media/formacao-institucional-poster.jpg"
   },
   videos: {
     institutionalHero: "/media/institucional-hero.mov",
     instituteSignature: "/media/instituto-signature.mp4",
-    formationOperational: "/media/formacao-operacional.mp4"
+    formationOperational: "/media/formacao-operacional.mp4",
+    formationInstitutional: "/media/formacao-institucional.mp4"
   }
 } as const;
