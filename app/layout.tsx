@@ -10,22 +10,24 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://institutohumanexus.com"),
   title: "Instituto HUMANEXUS | Inteligência Operacional Humana",
   description:
-    "Instituto HUMANEXUS: inteligência operacional humana, fatores humanos, CRM, riscos psicossociais, segurança operacional e desenvolvimento contínuo para ambientes críticos.",
+    "Instituto HUMANEXUS: inteligência operacional humana, estabilidade decisória, segurança operacional e desenvolvimento contínuo para ambientes críticos.",
   keywords: [
     "inteligência operacional humana",
     "fatores humanos",
     "neuroergonomia",
-    "CRM aviação",
     "riscos psicossociais",
     "segurança operacional",
     "performance humana",
     "liderança sob pressão",
-    "inteligência regulatória"
+    "inteligência regulatória",
+    "operações críticas",
+    "aviação operacional",
+    "tomada de decisão sob pressão"
   ],
   openGraph: {
     title: "Instituto HUMANEXUS | Inteligência Operacional Humana",
     description:
-      "Instituto HUMANEXUS: inteligência operacional humana, fatores humanos, segurança operacional e desenvolvimento contínuo para ambientes críticos.",
+      "Instituto HUMANEXUS: inteligência operacional humana, segurança operacional e desenvolvimento contínuo para ambientes críticos.",
     url: "https://institutohumanexus.com",
     siteName: "HUMANEXUS",
     locale: "pt_BR",
@@ -43,7 +45,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Instituto HUMANEXUS | Inteligência Operacional Humana",
     description:
-      "Instituto HUMANEXUS: inteligência operacional humana, fatores humanos e segurança operacional para ambientes críticos.",
+      "Instituto HUMANEXUS: inteligência operacional humana e segurança operacional para ambientes críticos.",
     images: [brandAssets.socialPreview]
   }
 };

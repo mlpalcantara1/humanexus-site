@@ -8,10 +8,12 @@ import { brandAssets } from "@/lib/brand-assets";
 import { navigation } from "@/lib/site-data";
 
 function isActive(pathname: string, href: string) {
+  const [cleanHref] = href.split("#");
+  const target = cleanHref || "/";
   if (href === "/") {
-    return pathname === href;
+    return pathname === "/";
   }
-  return pathname.startsWith(href);
+  return pathname.startsWith(target);
 }
 
 export function SiteHeader() {
@@ -19,14 +21,13 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/8 bg-[#050505]/78 backdrop-blur-2xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4 lg:px-8">
-        <Link href="/" className="group flex items-center gap-4">
-          <div className="relative h-[78px] w-[168px] overflow-hidden rounded-[26px] border border-[#C9A34E]/24 bg-[linear-gradient(180deg,rgba(8,8,12,0.94),rgba(5,5,5,0.94))] shadow-[0_0_44px_rgba(201,163,78,0.12)] transition duration-300 group-hover:border-[#C9A34E]/48 group-hover:shadow-[0_0_62px_rgba(201,163,78,0.18)] sm:h-[88px] sm:w-[190px]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(201,163,78,0.18),transparent_36%)]" />
-            <Image src={brandAssets.logoPremium} alt="HUMANEXUS" fill className="object-contain p-2" />
+    <header className="sticky top-0 z-50 border-b border-white/8 bg-[#050505]/84 backdrop-blur-2xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3.5 lg:px-8">
+        <Link href="/" className="group flex min-w-0 items-center gap-3">
+          <div className="relative h-[54px] w-[124px] shrink-0 transition duration-300 group-hover:opacity-92 sm:h-[72px] sm:w-[190px]">
+            <Image src={brandAssets.logoPremium} alt="HUMANEXUS" fill className="object-contain object-left" priority />
           </div>
-          <div className="space-y-1">
+          <div className="hidden space-y-1 xl:block">
             <p className="font-semibold uppercase tracking-[0.34em] text-[#F5F5F5] transition group-hover:text-white">
               HUMANEXUS
             </p>
@@ -57,9 +58,9 @@ export function SiteHeader() {
             href="https://wa.me/5592981187777"
             target="_blank"
             rel="noreferrer"
-            className="rounded-full border border-[#C9A34E]/26 bg-[linear-gradient(135deg,#d6b45d,#b98b2d)] px-4 py-2 text-sm font-semibold text-[#050505] shadow-[0_14px_34px_rgba(201,163,78,0.22)] transition hover:brightness-105"
+            className="hidden rounded-full border border-[#C9A34E]/24 bg-[linear-gradient(135deg,#d6b45d,#b98b2d)] px-5 py-2.5 text-sm font-semibold text-[#050505] shadow-[0_14px_34px_rgba(201,163,78,0.18)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(201,163,78,0.24)] sm:inline-flex"
           >
-            Falar com o Instituto
+            Fale Conosco
           </Link>
           <button
             type="button"
@@ -95,10 +96,12 @@ export function SiteHeader() {
             ))}
             <Link
               href="https://wa.me/5592981187777"
+              target="_blank"
+              rel="noreferrer"
               onClick={() => setOpen(false)}
               className="mt-3 rounded-full bg-[#C9A34E] px-5 py-3 text-center text-sm font-semibold text-[#050505]"
             >
-              Falar com o Instituto
+              Fale Conosco
             </Link>
           </nav>
         </div>

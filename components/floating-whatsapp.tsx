@@ -6,12 +6,13 @@ export function FloatingWhatsApp() {
       href="https://wa.me/5592981187777"
       target="_blank"
       rel="noreferrer"
-      className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-3 rounded-full border border-[#C9A34E]/28 bg-[#0D0D0D]/88 px-3 py-3 text-sm font-medium text-[#F5F5F5] shadow-[0_18px_40px_rgba(0,0,0,0.36)] backdrop-blur-xl transition hover:-translate-y-1 hover:border-[#C9A34E]/42 hover:bg-[#131313] sm:bottom-6 sm:right-6 sm:px-4"
+      aria-label="WhatsApp institucional"
+      className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full border border-[#C9A34E]/22 bg-[#0D0D0D]/84 px-2.5 py-2.5 text-sm font-medium text-[#F5F5F5] shadow-[0_14px_32px_rgba(0,0,0,0.3)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-[#C9A34E]/38 hover:bg-[#111214] sm:bottom-5 sm:right-5"
     >
-      <span className="grid h-10 w-10 place-items-center rounded-full bg-[#C9A34E] text-base font-semibold text-[#050505]">
+      <span className="grid h-9 w-9 place-items-center rounded-full bg-[#C9A34E] text-[11px] font-semibold tracking-[0.18em] text-[#050505]">
         WA
       </span>
-      <span className="hidden sm:inline">Falar com o Instituto</span>
+      <span className="hidden pr-2 text-xs uppercase tracking-[0.24em] sm:inline">WhatsApp</span>
     </Link>
   );
 }

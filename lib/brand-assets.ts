@@ -22,12 +22,17 @@ export const brandAssets = {
     founderCongressDownload: "/media/founder-congress-download.jpg",
     founderHangarAircraft: "/media/founder-hangar-aircraft.jpg",
     founderSeripaAuditorium: "/media/founder-seripa-auditorium.jpg",
-    founderAeteKeynote: "/media/founder-aete-keynote.png"
+    founderAeteKeynote: "/media/founder-aete-keynote.png",
+    founderHangarCommand: "/media/founder-hangar-command.jpg",
+    founderOperationalBriefing: "/media/founder-operational-briefing.jpg",
+    founderBriefingStage: "/media/founder-briefing-stage.jpg",
+    founderBriefingStageAlt: "/media/founder-briefing-stage-2.png"
   },
   videos: {
     heroInstitutional: "/media/hero-institutional.mp4",
-    formationCrm: "/media/formacao-crm.mp4",
-    instituteSignature: "/media/instituto-signature.mp4"
+    operationalField: "/media/operational-field.mp4",
+    instituteSignature: "/media/instituto-signature.mp4",
+    formationOperational: "/media/formacao-operacional.mp4"
   }
 } as const;
 
