@@ -7,6 +7,7 @@ export const brandAssets = {
     cockpitSimulator: "/media/cockpit-simulator.jpg",
     formationControlledEnvironment: "/media/formacao-controlled-environment.jpg",
     formationInstitutionalPoster: "/media/formacao-institucional-poster.jpg",
+    homeAuthorityInstitutionalPoster: "/media/home-authority-institutional-poster.png",
     founderAviationCeremony: "/media/founder-aviation-ceremony.jpg",
     founderCenipa: "/media/founder-cenipa.jpg",
     founderCongressDownload: "/media/founder-congress-download.jpg",
@@ -21,6 +22,7 @@ export const brandAssets = {
   },
   videos: {
     institutionalHero: "/media/hero-institutional.mp4",
+    homeAuthorityInstitutional: "/media/home-authority-institutional.mp4",
     instituteSignature: "/media/instituto-signature.mp4",
     formationInstitutional: "/media/formacao-institucional.mp4"
   }

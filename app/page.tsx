@@ -80,24 +80,29 @@ const deliverables = [
 
 const evidenceCards = [
   {
+    kind: "image",
     src: brandAssets.media.founderAviationCeremony,
     alt: "Marcos Alcântara em contexto aeronáutico institucional",
     title: "Aviação e autoridade operacional",
     description: "Presença real em ambientes em que o fator humano tem impacto direto na segurança da missão."
   },
   {
-    src: brandAssets.media.founderCenipa,
-    alt: "Marcos Alcântara em contexto institucional ligado à prevenção aeronáutica",
-    title: "Segurança e prevenção",
-    description: "Experiência conectada à cultura de prevenção, disciplina operacional e responsabilidade institucional."
+    kind: "video",
+    src: brandAssets.videos.homeAuthorityInstitutional,
+    poster: brandAssets.media.homeAuthorityInstitutionalPoster,
+    alt: "Marcos Alcântara conduzindo formação institucional em ambiente de alta exigência",
+    title: "Formação institucional",
+    description: "Atuação direta na condução de desenvolvimento humano aplicado para organizações que exigem clareza, disciplina e responsabilidade."
   },
   {
+    kind: "image",
     src: brandAssets.media.instituteSpaceWide,
     alt: "Estrutura física do Instituto HUMANEXUS",
     title: "Instituto HUMANEXUS",
     description: "Estrutura própria para relacionamento executivo, desenvolvimento supervisionado e acompanhamento contínuo."
   },
   {
+    kind: "image",
     src: brandAssets.media.cockpitSimulator,
     alt: "Ambiente controlado do Instituto HUMANEXUS",
     title: "Ambiente controlado",
@@ -251,7 +256,22 @@ export default function HomePage() {
             {evidenceCards.map((item, index) => (
               <Reveal key={item.title} delay={index * 0.06}>
                 <div className="relative min-h-[420px] overflow-hidden rounded-[28px] border border-white/10 bg-[#090909] shadow-panel">
-                  <Image src={item.src} alt={item.alt} fill className="object-cover" />
+                  {item.kind === "video" ? (
+                    <video
+                      className="h-full w-full object-cover"
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      poster={item.poster}
+                      disablePictureInPicture
+                    >
+                      <source src={item.src} type="video/mp4" />
+                    </video>
+                  ) : (
+                    <Image src={item.src} alt={item.alt} fill className="object-cover" />
+                  )}
                   <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.02),rgba(5,5,5,0.84))]" />
                   <div className="absolute inset-x-5 bottom-5 rounded-[22px] border border-white/10 bg-[#050505]/74 p-4 backdrop-blur-xl">
                     <p className="text-[10px] uppercase tracking-[0.32em] text-[#D4AF37]">{item.title}</p>
