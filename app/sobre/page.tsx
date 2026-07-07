@@ -19,23 +19,23 @@ export const metadata: Metadata = {
 const pillars = [
   {
     title: "Missão",
-    description: "Desenvolver estabilidade humana, inteligência operacional e capacidade decisória em ambientes de elevada exigência."
+    description: "Desenvolver estabilidade humana, inteligência regulatória e capacidade decisória em ambientes de elevada exigência."
   },
   {
     title: "Visão",
-    description: "Ser referência em inteligência operacional humana aplicada à segurança, performance e desenvolvimento institucional."
+    description: "Ser referência em Inteligência Regulatória Humana aplicada à segurança, à performance e ao desenvolvimento institucional."
   },
   {
     title: "Posicionamento",
-    description: "Instituto voltado a organizações que tratam o fator humano como camada estratégica da operação."
+    description: "Instituto voltado a organizações que tratam o fator humano como ativo estratégico de continuidade, liderança e segurança."
   }
 ];
 
 const authoritySignals = [
+  "Criador da Teoria da Inteligência Regulatória Humana",
   "Psicólogo de aviação",
   "Mestre e Doutor em Educação",
-  "21 anos de atuação profissional",
-  "Atuação em ambientes críticos"
+  "Forças Armadas e ambientes críticos"
 ];
 
 export default function SobrePage() {
@@ -43,8 +43,8 @@ export default function SobrePage() {
     <>
       <PageHero
         eyebrow="Instituto HUMANEXUS"
-        title="Uma estrutura criada para ambientes em que confiança operacional não pode ser improvisada."
-        description="O HUMANEXUS organiza desenvolvimento humano, presença institucional e linguagem executiva para organizações que precisam operar com mais estabilidade sob pressão."
+        title="O Instituto que apresenta a Teoria da Inteligência Regulatória Humana."
+        description="O HUMANEXUS reúne direção científica, presença institucional e programas contínuos para organizações que operam sob responsabilidade, risco e consequência."
         media={{
           src: brandAssets.media.founderExecutive,
           alt: "Retrato institucional de Marcos Alcântara",
@@ -70,8 +70,8 @@ export default function SobrePage() {
                 src={brandAssets.videos.instituteSignature}
                 poster={brandAssets.media.institutionalPortrait}
                 eyebrow="Presença institucional"
-                title="Uma identidade construída para dialogar com liderança, operação e segurança."
-                description="O Instituto foi desenhado para transmitir reserva estratégica, densidade institucional e alto padrão de relacionamento."
+                title="Uma identidade construída para dialogar com liderança, confiança e alta responsabilidade."
+                description="O Instituto foi desenhado para expressar densidade institucional, clareza científica e relacionamento reservado com organizações de alta exigência."
                 className="min-h-[560px]"
               />
             </Reveal>
@@ -80,8 +80,8 @@ export default function SobrePage() {
               <div className="space-y-8">
                 <SectionIntro
                   eyebrow="Direção científica"
-                  title="Autoridade técnica apresentada com sobriedade, não como currículo inflado."
-                  description="Criado por Marcos Lázaro Pereira de Alcântara, o HUMANEXUS reúne psicologia da aviação, fatores humanos, desenvolvimento institucional e experiência aplicada a operações de alta responsabilidade."
+                  title="A base científica do Instituto nasce da Teoria da Inteligência Regulatória Humana."
+                  description="Criado por Marcos Lázaro Pereira de Alcântara, o HUMANEXUS articula psicologia da aviação, fatores humanos e experiência aplicada a ambientes operacionais de alta responsabilidade."
                 />
                 <div className="grid gap-3 sm:grid-cols-2">
                   {authoritySignals.map((item, index) => (

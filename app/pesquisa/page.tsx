@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Reveal } from "@/components/reveal";
 import { GlassCard, PageHero, SectionIntro } from "@/components/ui";
+import { brandAssets } from "@/lib/brand-assets";
 
 export const metadata: Metadata = {
-  title: "Pesquisa Aplicada",
+  title: "Teoria da Inteligência Regulatória Humana",
   description:
-    "Pesquisa aplicada com densidade institucional, reserva estratégica e foco em estabilidade humana para ambientes críticos.",
+    "Apresentação institucional da base científica que sustenta o Instituto HUMANEXUS.",
   alternates: {
     canonical: "/pesquisa"
   },
@@ -14,74 +16,103 @@ export const metadata: Metadata = {
   }
 };
 
-const researchFrames = [
+const theoryFrames = [
   {
-    title: "Segurança operacional",
-    description: "Base pública voltada ao fortalecimento da confiabilidade humana e da maturidade operacional."
+    title: "Base científica",
+    description: "Fundamentação conceitual própria para leitura da estabilidade humana em contextos de alta exigência."
   },
   {
-    title: "Fatores humanos avançados",
-    description: "Produção técnica aplicada a contextos em que resposta humana, coordenação e consequência caminham juntas."
+    title: "Estabilidade humana",
+    description: "Direção intelectual orientada à adaptação, à continuidade e à capacidade decisória sob pressão."
   },
   {
-    title: "Cognição operacional",
-    description: "Apoio conceitual para cenários de sobrecarga, decisão sob pressão e alta exigência."
+    title: "Ambientes operacionais",
+    description: "Aplicação institucional em estruturas nas quais segurança, consequência e responsabilidade se encontram."
   },
   {
-    title: "Riscos psicossociais",
-    description: "Leitura institucional contínua para vulnerabilidades que afetam cultura, segurança e estabilidade."
+    title: "Desenvolvimento contínuo",
+    description: "Referência científica para programas orientados a evolução humana e maturidade institucional."
   }
 ];
 
-const publicPrinciples = [
-  "Base técnica com reserva estratégica",
-  "Pesquisa aplicada a ambientes críticos",
-  "Comunicação executiva sem abrir mecanismo",
-  "Diferenciação proprietária preservada"
+const theoryPrinciples = [
+  "Fundamentação conceitual própria",
+  "Segurança operacional e alta exigência",
+  "Leitura institucional do fator humano",
+  "Autoridade científica do Instituto"
 ];
 
 export default function PesquisaPage() {
   return (
     <>
       <PageHero
-        eyebrow="Pesquisa"
-        title="Base técnica suficiente para gerar confiança. Reserva suficiente para preservar diferenciação."
-        description="A pesquisa pública do HUMANEXUS foi organizada para demonstrar consistência e aplicabilidade institucional sem expor mecanismo interno."
+        eyebrow="Teoria"
+        title="A base científica que sustenta o Instituto HUMANEXUS."
+        description="A Teoria da Inteligência Regulatória Humana organiza a direção conceitual do Instituto e orienta sua aplicação a ambientes operacionais de alta exigência."
       />
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.86fr_1.14fr] lg:items-start">
+        <div className="grid gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-center">
           <Reveal>
-            <SectionIntro
-              eyebrow="Campos públicos"
-              title="O suficiente para transmitir densidade institucional. Não para ensinar o mecanismo."
-              description="O HUMANEXUS comunica valor, consistência e maturidade técnica. O núcleo proprietário permanece fora da superfície pública."
-            />
+            <div className="relative overflow-hidden rounded-[32px] border border-[#D4AF37]/16 bg-[linear-gradient(180deg,rgba(212,175,55,0.08),rgba(255,255,255,0.012))] p-6 shadow-[0_28px_90px_rgba(0,0,0,0.3)]">
+              <div className="relative mx-auto max-w-[360px] overflow-hidden rounded-[24px] border border-white/10 bg-[#050505] shadow-[0_30px_90px_rgba(0,0,0,0.34)]">
+                <Image
+                  src={brandAssets.media.bookTrhCover}
+                  alt="Capa oficial do livro Teoria da Inteligência Regulatória Humana"
+                  width={1200}
+                  height={1697}
+                  className="h-auto w-full object-cover"
+                  priority
+                />
+              </div>
+            </div>
           </Reveal>
 
           <Reveal delay={0.08}>
-            <div className="grid gap-5 md:grid-cols-2">
-              {researchFrames.map((item, index) => (
-                <GlassCard key={item.title} accent={index === 0 ? "gold" : "soft"} title={item.title} description={item.description} />
-              ))}
-            </div>
+            <SectionIntro
+              eyebrow="Obra fundadora"
+              title="Teoria da Inteligência Regulatória Humana"
+              description="Obra que apresenta os fundamentos científicos da Teoria da Inteligência Regulatória Humana e sustenta a base conceitual do Instituto HUMANEXUS."
+            />
           </Reveal>
         </div>
       </section>
 
       <section className="border-y border-white/10 bg-[#06080d]">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+          <div className="grid gap-10 lg:grid-cols-[0.86fr_1.14fr] lg:items-start">
+            <Reveal>
+              <SectionIntro
+                eyebrow="Eixos conceituais"
+                title="A teoria organiza a leitura institucional do fator humano com profundidade científica e linguagem executiva."
+                description="O HUMANEXUS apresenta sua base conceitual em uma superfície pública compatível com autoridade, discrição e presença institucional."
+              />
+            </Reveal>
+
+            <Reveal delay={0.08}>
+              <div className="grid gap-5 md:grid-cols-2">
+                {theoryFrames.map((item, index) => (
+                  <GlassCard key={item.title} accent={index === 0 ? "gold" : "soft"} title={item.title} description={item.description} />
+                ))}
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+        <div>
           <Reveal>
             <SectionIntro
-              eyebrow="Princípios públicos"
-              title="Pesquisa aplicada com linguagem executiva, confidencialidade e aderência institucional."
-              description="A camada pública da pesquisa foi desenhada para gerar confiança junto a organizações de alta responsabilidade."
+              eyebrow="Presença institucional"
+              title="A Teoria da Inteligência Regulatória Humana atua como principal ativo científico do Instituto."
+              description="Ela sustenta o posicionamento público do HUMANEXUS e reforça sua legitimidade junto a organizações expostas a alta responsabilidade."
             />
           </Reveal>
 
           <Reveal delay={0.08} className="mt-12">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {publicPrinciples.map((item, index) => (
+              {theoryPrinciples.map((item, index) => (
                 <GlassCard key={item} accent={index === 0 ? "gold" : "soft"} description={item} />
               ))}
             </div>

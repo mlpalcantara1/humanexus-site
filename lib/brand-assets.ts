@@ -3,6 +3,7 @@ export const brandAssets = {
   logoPremium: "/brand/logo-download-gold.png",
   socialPreview: "/brand/logo-download-gold.png",
   media: {
+    bookTrhCover: "/media/book-trh-cover.png",
     cockpitSimulator: "/media/cockpit-simulator.jpg",
     formationControlledEnvironment: "/media/formacao-controlled-environment.jpg",
     formationInstitutionalPoster: "/media/formacao-institucional-poster.jpg",

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 const programs = [
   {
-    title: "Programa HUMANEXUS de Desenvolvimento Humano Operacional",
+    title: "Programa HUMANEXUS de Desenvolvimento Humano Aplicado",
     description:
       "Estrutura longitudinal para organizações que precisam fortalecer estabilidade humana, disciplina operacional e capacidade decisória."
   },

@@ -11,7 +11,7 @@ export function SiteFooter() {
             <Image src={brandAssets.logoPremium} alt="Logo oficial HUMANEXUS" fill className="object-contain object-left" />
           </div>
           <p className="max-w-md text-sm leading-7 text-[#98A0AB]">
-            Instituto de Inteligência Operacional Humana para organizações que operam sob responsabilidade, pressão e consequência.
+            Instituto de Inteligência Regulatória Humana aplicado à segurança operacional, à liderança e ao desenvolvimento humano em ambientes de alta exigência.
           </p>
         </div>
         <div className="flex flex-col items-start gap-2 text-sm text-[#98A0AB] lg:items-end">

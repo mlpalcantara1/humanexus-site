@@ -6,9 +6,9 @@ import { DashboardMock, PrimaryButton, SecondaryButton, SectionIntro } from "@/c
 import { brandAssets } from "@/lib/brand-assets";
 
 export const metadata: Metadata = {
-  title: "Instituto de Inteligência Operacional Humana",
+  title: "Instituto de Inteligência Regulatória Humana",
   description:
-    "Programa contínuo de desenvolvimento do fator humano para organizações que operam sob pressão, responsabilidade e consequência.",
+    "O HUMANEXUS apresenta a Teoria da Inteligência Regulatória Humana aplicada à segurança operacional, à liderança e ao desenvolvimento humano em ambientes críticos.",
   alternates: {
     canonical: "/"
   },
@@ -18,10 +18,10 @@ export const metadata: Metadata = {
 };
 
 const trustSignals = [
+  "Teoria própria",
   "21 anos de atuação",
   "Forças Armadas e aviação",
-  "Ambientes críticos",
-  "Desenvolvimento contínuo"
+  "Ambientes críticos"
 ];
 
 const sectors = [
@@ -121,13 +121,13 @@ export default function HomePage() {
 
                 <div className="space-y-5">
                   <p className="text-[10px] uppercase tracking-[0.42em] text-[#D4AF37] md:text-[11px]">
-                    Instituto de Inteligência Operacional Humana
+                    Instituto de Inteligência Regulatória Humana
                   </p>
                   <h1 className="max-w-4xl text-[3rem] font-semibold leading-[0.9] text-[#F5F5F5] sm:text-5xl md:text-6xl xl:text-[5.2rem]">
-                    O fator humano como infraestrutura estratégica.
+                    O HUMANEXUS apresenta a Teoria da Inteligência Regulatória Humana.
                   </h1>
                   <p className="max-w-2xl text-lg leading-8 text-[#9EA6B1] md:text-xl">
-                    Programa contínuo para organizações que precisam sustentar segurança operacional, liderança e estabilidade humana sob pressão.
+                    Base científica e institucional para programas contínuos voltados à segurança operacional, à liderança e ao desenvolvimento humano em ambientes de alta exigência.
                   </p>
                 </div>
 
@@ -186,8 +186,8 @@ export default function HomePage() {
           <Reveal>
             <SectionIntro
               eyebrow="O que o HUMANEXUS entrega"
-              title="Valor institucional apresentado com discrição, continuidade e densidade executiva."
-              description="O foco público é a entrega. A lógica proprietária permanece preservada."
+              title="Programas contínuos para fortalecer estabilidade humana, decisão e consistência institucional."
+              description="O Instituto organiza desenvolvimento contínuo para ambientes em que responsabilidade, consequência e segurança caminham juntas."
             />
           </Reveal>
           <Reveal delay={0.08} className="mt-12">
@@ -224,13 +224,13 @@ export default function HomePage() {
             <div className="space-y-8">
               <SectionIntro
                 eyebrow="Posicionamento"
-                title="Não é curso. Não é consultoria comum. Não é resposta pontual."
-                description="O HUMANEXUS foi estruturado como programa contínuo de desenvolvimento do fator humano para organizações que operam sob responsabilidade, risco e consequência."
+                title="A teoria que originou o Instituto."
+                description="A Teoria da Inteligência Regulatória Humana sustenta a presença institucional do HUMANEXUS e orienta sua aplicação em ambientes operacionais de alta exigência."
               />
               <div className="space-y-4 border-l border-[#D4AF37]/30 pl-5 text-sm leading-8 text-[#9CA4AE]">
-                <p>Desenvolvimento longitudinal.</p>
-                <p>Leitura institucional para liderança e segurança operacional.</p>
-                <p>Relacionamento compatível com ambientes que exigem discrição.</p>
+                <p>Base científica própria.</p>
+                <p>Aplicação voltada a segurança operacional e liderança.</p>
+                <p>Programas contínuos para organizações que exigem estabilidade sob pressão.</p>
               </div>
             </div>
           </Reveal>
@@ -269,11 +269,11 @@ export default function HomePage() {
           <div className="rounded-[34px] border border-[#D4AF37]/16 bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.01))] px-8 py-10 text-center shadow-[0_26px_90px_rgba(0,0,0,0.28)]">
             <p className="text-[10px] uppercase tracking-[0.42em] text-[#D4AF37]">Instituto HUMANEXUS</p>
             <h2 className="mt-4 text-3xl font-semibold leading-[0.98] text-[#F5F5F5] md:text-5xl">
-              Confiança institucional para ambientes onde a resposta humana precisa estar à altura da operação.
+              Inteligência Regulatória Humana para organizações que operam sob alta responsabilidade.
             </h2>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <PrimaryButton href="/contato">Fale Conosco</PrimaryButton>
-              <SecondaryButton href="/sobre">Conhecer o Instituto</SecondaryButton>
+              <SecondaryButton href="/pesquisa">Conhecer a teoria</SecondaryButton>
             </div>
           </div>
         </Reveal>

@@ -8,7 +8,7 @@ export const navigation: NavItem[] = [
   { href: "/sobre", label: "Instituto" },
   { href: "/servicos", label: "Programas" },
   { href: "/formacao", label: "Formação" },
-  { href: "/pesquisa", label: "Pesquisa" },
+  { href: "/pesquisa", label: "Teoria" },
   { href: "/contato", label: "Contato" }
 ];
 
@@ -26,9 +26,9 @@ export const contactSegments = [
 
 export const contactInterests = [
   "Programa institucional",
-  "Desenvolvimento humano operacional",
+  "Desenvolvimento humano aplicado",
   "Riscos psicossociais",
   "Operações aéreas e aeromédicas",
-  "Pesquisa aplicada",
+  "Teoria da Inteligência Regulatória Humana",
   "Reunião institucional"
 ];

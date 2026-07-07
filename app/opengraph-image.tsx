@@ -90,8 +90,7 @@ export default function OpenGraphImage() {
               maxWidth: "760px"
             }}
           >
-            Inteligência operacional humana para organizações que operam sob alta responsabilidade,
-            pressão e consequência.
+            Inteligência Regulatória Humana aplicada a ambientes operacionais de alta exigência.
           </div>
         </div>
 

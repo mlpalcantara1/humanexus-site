@@ -203,7 +203,7 @@ export function DashboardMock() {
           <div className="absolute inset-x-6 bottom-6 rounded-[24px] border border-white/10 bg-[#050505]/70 p-5 backdrop-blur-xl">
             <p className="text-[10px] uppercase tracking-[0.34em] text-[#D4AF37]">Visão de comando</p>
             <p className="mt-3 max-w-lg text-sm leading-7 text-[#E3E7ED]">
-              Estrutura visual preparada para acompanhar desenvolvimento humano, consistência operacional e decisão institucional sem expor mecanismo interno.
+              Presença visual compatível com acompanhamento executivo, continuidade institucional e ambientes em que a resposta humana influencia a operação.
             </p>
           </div>
         </div>
@@ -216,7 +216,7 @@ export function DashboardMock() {
             </h3>
             <div className="mt-6 h-px w-full bg-[linear-gradient(90deg,rgba(212,175,55,0.58),transparent)]" />
             <p className="mt-6 max-w-2xl text-base leading-8 text-[#8F95A0]">
-              O programa organiza prioridades, devolutivas e presença institucional para ambientes em que a resposta humana influencia a missão.
+              O Instituto sustenta programas contínuos para organizações que precisam fortalecer estabilidade humana, leitura executiva e segurança operacional.
             </p>
           </div>
 

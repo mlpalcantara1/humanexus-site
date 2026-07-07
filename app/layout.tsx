@@ -9,26 +9,27 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://institutohumanexus.com"),
   title: {
-    default: "Instituto HUMANEXUS | Inteligência Operacional Humana",
+    default: "Instituto HUMANEXUS | Inteligência Regulatória Humana",
     template: "%s | Instituto HUMANEXUS"
   },
   description:
-    "Instituto HUMANEXUS: inteligência operacional humana para organizações que operam sob alta responsabilidade, pressão e consequência.",
+    "Instituto HUMANEXUS: Inteligência Regulatória Humana aplicada a ambientes operacionais de alta exigência.",
   keywords: [
-    "inteligência operacional humana",
+    "inteligência regulatória humana",
+    "teoria da inteligência regulatória humana",
     "fatores humanos",
     "riscos psicossociais",
     "segurança operacional",
-    "desenvolvimento humano operacional",
+    "desenvolvimento humano aplicado",
     "liderança sob pressão",
     "operações críticas",
     "aviação operacional",
     "tomada de decisão sob pressão"
   ],
   openGraph: {
-    title: "Instituto HUMANEXUS | Inteligência Operacional Humana",
+    title: "Instituto HUMANEXUS | Inteligência Regulatória Humana",
     description:
-      "Instituto HUMANEXUS: desenvolvimento humano operacional, segurança operacional e acompanhamento contínuo para ambientes críticos.",
+      "Instituto HUMANEXUS: Teoria da Inteligência Regulatória Humana aplicada à segurança operacional, à liderança e ao desenvolvimento humano em ambientes críticos.",
     url: "https://institutohumanexus.com",
     siteName: "HUMANEXUS",
     locale: "pt_BR",
@@ -44,9 +45,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Instituto HUMANEXUS | Inteligência Operacional Humana",
+    title: "Instituto HUMANEXUS | Inteligência Regulatória Humana",
     description:
-      "Instituto HUMANEXUS: inteligência operacional humana para ambientes críticos.",
+      "Instituto HUMANEXUS: base científica e institucional da Inteligência Regulatória Humana.",
     images: [brandAssets.socialPreview]
   },
   alternates: {
@@ -61,7 +62,7 @@ const organizationSchema = {
   url: "https://institutohumanexus.com",
   email: "contato@institutohumanexus.com",
   description:
-    "Instituto de inteligência operacional humana para ambientes de alta criticidade.",
+    "Instituto de Inteligência Regulatória Humana para ambientes operacionais de alta exigência.",
   areaServed: "BR",
   sameAs: ["https://www.institutohumanexus.com"]
 };

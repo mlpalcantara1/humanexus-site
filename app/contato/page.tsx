@@ -20,7 +20,7 @@ export default function ContatoPage() {
       <PageHero
         eyebrow="Contato"
         title="Canal institucional para relacionamento executivo e reservado."
-        description="Entrada pública para organizações que desejam discutir programa, desenvolvimento humano operacional e escopo institucional."
+        description="Entrada pública para organizações que desejam discutir programa, desenvolvimento humano aplicado e escopo institucional."
       />
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
