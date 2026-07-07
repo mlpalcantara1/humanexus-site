@@ -8,7 +8,13 @@ import { brandAssets } from "@/lib/brand-assets";
 export const metadata: Metadata = {
   title: "Formação Aplicada",
   description:
-    "Formação institucional para equipes que operam sob pressão, responsabilidade crítica e necessidade de maior confiabilidade humana."
+    "Formação institucional para equipes que operam sob pressão, responsabilidade crítica e necessidade de maior confiabilidade humana.",
+  alternates: {
+    canonical: "/formacao"
+  },
+  openGraph: {
+    url: "/formacao"
+  }
 };
 
 const formationTracks = [

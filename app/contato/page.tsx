@@ -5,7 +5,13 @@ import { contactInterests, contactSegments } from "@/lib/site-data";
 export const metadata: Metadata = {
   title: "Contato",
   description:
-    "Canal institucional para organizações interessadas nos programas HUMANEXUS e em uma conversa executiva reservada."
+    "Canal institucional para organizações interessadas nos programas HUMANEXUS e em uma conversa executiva reservada.",
+  alternates: {
+    canonical: "/contato"
+  },
+  openGraph: {
+    url: "/contato"
+  }
 };
 
 export default function ContatoPage() {

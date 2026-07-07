@@ -8,7 +8,13 @@ import { brandAssets } from "@/lib/brand-assets";
 export const metadata: Metadata = {
   title: "Instituto de Inteligência Operacional Humana",
   description:
-    "Programa contínuo de desenvolvimento do fator humano para organizações que operam sob pressão, responsabilidade e consequência."
+    "Programa contínuo de desenvolvimento do fator humano para organizações que operam sob pressão, responsabilidade e consequência.",
+  alternates: {
+    canonical: "/"
+  },
+  openGraph: {
+    url: "/"
+  }
 };
 
 const trustSignals = [

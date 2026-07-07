@@ -5,9 +5,15 @@ import { GlassCard, PageHero, SectionIntro } from "@/components/ui";
 import { brandAssets } from "@/lib/brand-assets";
 
 export const metadata: Metadata = {
-  title: "Instituto HUMANEXUS",
+  title: "Instituto",
   description:
-    "Conheça o posicionamento institucional, a direção científica e a estrutura própria do Instituto HUMANEXUS."
+    "Conheça o posicionamento institucional, a direção científica e a estrutura própria do Instituto HUMANEXUS.",
+  alternates: {
+    canonical: "/sobre"
+  },
+  openGraph: {
+    url: "/sobre"
+  }
 };
 
 const pillars = [

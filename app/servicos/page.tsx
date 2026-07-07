@@ -6,7 +6,13 @@ import { brandAssets } from "@/lib/brand-assets";
 export const metadata: Metadata = {
   title: "Programas HUMANEXUS",
   description:
-    "Programas contínuos para desenvolvimento do fator humano, estabilidade operacional e evolução institucional."
+    "Programas contínuos para desenvolvimento do fator humano, estabilidade operacional e evolução institucional.",
+  alternates: {
+    canonical: "/servicos"
+  },
+  openGraph: {
+    url: "/servicos"
+  }
 };
 
 const programs = [

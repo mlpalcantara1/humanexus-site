@@ -5,7 +5,13 @@ import { GlassCard, PageHero, SectionIntro } from "@/components/ui";
 export const metadata: Metadata = {
   title: "Pesquisa Aplicada",
   description:
-    "Pesquisa aplicada com densidade institucional, reserva estratégica e foco em estabilidade humana para ambientes críticos."
+    "Pesquisa aplicada com densidade institucional, reserva estratégica e foco em estabilidade humana para ambientes críticos.",
+  alternates: {
+    canonical: "/pesquisa"
+  },
+  openGraph: {
+    url: "/pesquisa"
+  }
 };
 
 const researchFrames = [
