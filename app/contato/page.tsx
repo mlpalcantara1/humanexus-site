@@ -1,33 +1,45 @@
+import type { Metadata } from "next";
 import { GlassCard, PageHero, PrimaryButton, SectionIntro } from "@/components/ui";
 import { contactInterests, contactSegments } from "@/lib/site-data";
+
+export const metadata: Metadata = {
+  title: "Contato",
+  description:
+    "Canal institucional para organizações interessadas nos programas HUMANEXUS e em uma conversa executiva reservada."
+};
 
 export default function ContatoPage() {
   return (
     <>
       <PageHero
         eyebrow="Contato"
-        title="Converse com o Instituto HUMANEXUS."
-        description="Entrada institucional para organizações que desejam discutir programa, operação e desenvolvimento humano em ambientes críticos."
+        title="Canal institucional para relacionamento executivo e reservado."
+        description="Entrada pública para organizações que desejam discutir programa, desenvolvimento humano operacional e escopo institucional."
       />
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="grid gap-10 lg:grid-cols-[0.78fr_1.22fr]">
           <div className="space-y-6">
             <SectionIntro
-              eyebrow="Contato público"
-              title="Contato objetivo, reservado e compatível com decisão executiva."
-              description="A comunicação pública do Instituto é concentrada em um canal único para relacionamento institucional."
+              eyebrow="Relação institucional"
+              title="Um canal único para conversas de alto valor."
+              description="A comunicação pública do Instituto é concentrada em uma entrada simples, reservada e compatível com decisão executiva."
             />
 
             <GlassCard accent="gold">
               <div className="space-y-4">
-                <p className="text-[10px] uppercase tracking-[0.32em] text-[#C9A34E]">Contato</p>
-                <h3 className="text-2xl font-semibold text-[#F5F5F5]">contato@institutohumanexus.com</h3>
-                <p className="text-sm leading-7 text-[#9EA3AE]">WhatsApp: +55 92 98118-7777</p>
+                <p className="text-[10px] uppercase tracking-[0.32em] text-[#C9A34E]">Canal institucional</p>
+                <p className="text-sm leading-7 text-[#9EA3AE]">
+                  Atendimento inicial para organizações interessadas em programas, formação aplicada e desenvolvimento contínuo do fator humano.
+                </p>
+                <p className="text-sm leading-7 text-[#F5F5F5]">WhatsApp institucional: +55 92 98118-7777</p>
               </div>
             </GlassCard>
 
-            <PrimaryButton href="https://wa.me/5592981187777">Fale Conosco</PrimaryButton>
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <PrimaryButton href="https://wa.me/5592981187777">Fale Conosco</PrimaryButton>
+              <PrimaryButton href="mailto:contato@institutohumanexus.com">Enviar e-mail</PrimaryButton>
+            </div>
           </div>
 
           <form className="rounded-[30px] border border-[#C9A34E]/18 bg-[#0A0C11]/94 p-7 shadow-[0_26px_90px_rgba(201,163,78,0.08)] backdrop-blur-xl sm:p-8">
@@ -35,7 +47,7 @@ export default function ContatoPage() {
               <p className="text-[10px] uppercase tracking-[0.32em] text-[#C9A34E]">Formulário institucional</p>
               <h3 className="text-2xl font-semibold text-[#F5F5F5]">Agende uma conversa institucional.</h3>
               <p className="text-sm leading-7 text-[#9EA3AE]">
-                Estrutura preparada para relacionamento institucional e organização futura de leads.
+                Estrutura preparada para organização futura de leads e relacionamento institucional.
               </p>
             </div>
             <div className="grid gap-5 md:grid-cols-2">
@@ -75,7 +87,7 @@ export default function ContatoPage() {
               </label>
             </div>
             <div className="mt-6">
-              <PrimaryButton href="mailto:contato@institutohumanexus.com">Enviar e-mail institucional</PrimaryButton>
+              <PrimaryButton href="mailto:contato@institutohumanexus.com">Enviar mensagem institucional</PrimaryButton>
             </div>
           </form>
         </div>

@@ -7,11 +7,11 @@ export function SiteFooter() {
     <footer className="border-t border-white/10 bg-[#080808]">
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10 lg:flex-row lg:items-end lg:justify-between lg:px-8">
         <div className="space-y-4">
-          <div className="relative h-14 w-44">
+          <div className="relative h-12 w-40 sm:h-14 sm:w-44">
             <Image src={brandAssets.logoPremium} alt="Logo oficial HUMANEXUS" fill className="object-contain object-left" />
           </div>
           <p className="max-w-md text-sm leading-7 text-[#98A0AB]">
-            Instituto HUMANEXUS. Inteligência operacional humana, estabilidade decisória e desenvolvimento contínuo para ambientes de alta criticidade.
+            Instituto de Inteligência Operacional Humana para organizações que operam sob responsabilidade, pressão e consequência.
           </p>
         </div>
         <div className="flex flex-col items-start gap-2 text-sm text-[#98A0AB] lg:items-end">

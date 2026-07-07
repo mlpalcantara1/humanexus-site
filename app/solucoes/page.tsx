@@ -1,1 +1,5 @@
-export { default } from "../servicos/page";
+import { permanentRedirect } from "next/navigation";
+
+export default function SolucoesRedirectPage() {
+  permanentRedirect("/servicos");
+}

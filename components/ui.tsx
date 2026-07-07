@@ -17,12 +17,12 @@ export function SectionIntro({
   className = ""
 }: SectionProps) {
   return (
-    <div className={`max-w-3xl space-y-4 ${className}`}>
+    <div className={`max-w-3xl space-y-5 ${className}`}>
       {eyebrow ? (
         <p className="text-[10px] uppercase tracking-[0.42em] text-[#D4AF37] md:text-[11px]">{eyebrow}</p>
       ) : null}
-      <h2 className="text-3xl font-semibold leading-[0.94] text-[#F5F5F5] md:text-5xl xl:text-[3.6rem]">{title}</h2>
-      {description ? <p className="max-w-2xl text-base leading-7 text-[#9EA3AE] md:text-[1.05rem]">{description}</p> : null}
+      <h2 className="text-3xl font-semibold leading-[0.95] text-[#F5F5F5] md:text-5xl xl:text-[3.7rem]">{title}</h2>
+      {description ? <p className="max-w-2xl text-base leading-8 text-[#98A1AE] md:text-[1.04rem]">{description}</p> : null}
     </div>
   );
 }
@@ -31,24 +31,26 @@ export function GlassCard({
   title,
   description,
   accent = "soft",
+  className = "",
   children
 }: PropsWithChildren<{
   title?: string;
   description?: string;
   accent?: "soft" | "gold";
+  className?: string;
 }>) {
   return (
     <div
-      className={`group relative overflow-hidden rounded-[26px] border p-6 backdrop-blur-xl transition duration-500 ${
+      className={`group relative overflow-hidden rounded-[28px] border p-6 backdrop-blur-xl transition duration-500 ${
         accent === "gold"
-          ? "border-[#D4AF37]/22 bg-[linear-gradient(180deg,rgba(212,175,55,0.08),rgba(255,255,255,0.02))] shadow-[0_24px_90px_rgba(212,175,55,0.08)]"
-          : "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] shadow-[0_22px_70px_rgba(0,0,0,0.3)]"
-      }`}
+          ? "border-[#D4AF37]/20 bg-[linear-gradient(180deg,rgba(212,175,55,0.08),rgba(255,255,255,0.015))] shadow-[0_26px_90px_rgba(212,175,55,0.08)]"
+          : "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] shadow-[0_22px_70px_rgba(0,0,0,0.32)]"
+      } ${className}`}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.05),transparent_28%)] opacity-0 transition duration-500 group-hover:opacity-100" />
       <div className="relative">
         {title ? <h3 className="text-lg font-semibold leading-tight text-[#F5F5F5] md:text-xl">{title}</h3> : null}
-        {description ? <p className="mt-3 text-sm leading-7 text-[#9EA3AE]">{description}</p> : null}
+        {description ? <p className="mt-3 text-sm leading-7 text-[#99A2AE]">{description}</p> : null}
         {children ? <div className={title || description ? "mt-5" : ""}>{children}</div> : null}
       </div>
     </div>
@@ -68,7 +70,7 @@ export function PrimaryButton({
       href={href}
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer" : undefined}
-      className="inline-flex items-center justify-center rounded-full border border-[#D4AF37]/22 bg-[linear-gradient(135deg,rgba(212,175,55,0.18),rgba(212,175,55,0.08))] px-6 py-3.5 text-sm font-semibold tracking-[0.08em] text-[#F5F5F5] shadow-[0_18px_40px_rgba(212,175,55,0.12)] transition duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/36 hover:shadow-[0_24px_52px_rgba(212,175,55,0.18)]"
+      className="inline-flex items-center justify-center rounded-full border border-[#D4AF37]/24 bg-[linear-gradient(135deg,rgba(212,175,55,0.28),rgba(212,175,55,0.1))] px-6 py-3.5 text-sm font-semibold tracking-[0.12em] text-[#F5F5F5] shadow-[0_18px_44px_rgba(212,175,55,0.14)] transition duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/40 hover:shadow-[0_26px_58px_rgba(212,175,55,0.18)]"
     >
       {children}
     </Link>
@@ -88,7 +90,7 @@ export function SecondaryButton({
       href={href}
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer" : undefined}
-      className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.025] px-6 py-3.5 text-sm font-medium tracking-[0.04em] text-[#F5F5F5] transition duration-300 hover:-translate-y-0.5 hover:border-[#C9A34E]/36 hover:bg-white/[0.05]"
+      className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.025] px-6 py-3.5 text-sm font-medium tracking-[0.08em] text-[#F5F5F5] transition duration-300 hover:-translate-y-0.5 hover:border-[#C9A34E]/36 hover:bg-white/[0.05]"
     >
       {children}
     </Link>
@@ -114,7 +116,7 @@ export function PageHero({
     <section className="relative overflow-hidden border-b border-white/8 bg-[#040507]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_12%,rgba(201,163,78,0.12),transparent_22%),radial-gradient(circle_at_16%_14%,rgba(34,84,148,0.12),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_60%)]" />
       <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.022)_1px,transparent_1px)] [background-size:152px_152px] [mask-image:radial-gradient(circle_at_center,black,transparent_82%)]" />
-      <div className="relative mx-auto max-w-7xl px-6 py-24 lg:px-8 lg:py-28">
+      <div className="relative mx-auto max-w-7xl px-6 py-24 lg:px-8 lg:py-32">
         <div className={media ? "grid gap-12 lg:grid-cols-[0.86fr_1.14fr] lg:items-center" : ""}>
           <div className="max-w-4xl space-y-8">
             <div className="flex items-center gap-3">
@@ -170,8 +172,15 @@ export function DashboardMock() {
   const metrics = [
     ["Escopo", "Institucional"],
     ["Modelo", "Contínuo"],
-    ["Aplicação", "Alta responsabilidade"],
+    ["Aplicação", "Alta criticidade"],
     ["Entrega", "Executiva"]
+  ];
+
+  const signals = [
+    "Segurança operacional",
+    "Riscos psicossociais",
+    "Liderança sob pressão",
+    "Acompanhamento longitudinal"
   ];
 
   return (
@@ -183,25 +192,31 @@ export function DashboardMock() {
           <Image src={brandAssets.media.hangarOperations} alt="Ambiente operacional do Instituto HUMANEXUS" fill className="object-cover object-center" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.04),rgba(5,5,5,0.76))]" />
           <div className="absolute inset-x-6 top-6 flex items-center gap-3">
-            <div className="relative h-11 w-11">
-              <Image src={brandAssets.monogramLight} alt="Monograma HUMANEXUS" fill className="object-contain invert" />
+            <div className="rounded-full border border-[#D4AF37]/26 bg-[#050505]/72 px-3 py-2 text-[10px] uppercase tracking-[0.38em] text-[#D4AF37]">
+              HX
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-[0.34em] text-[#D4AF37]">HUMANEXUS</p>
-              <p className="text-sm text-[#DCE0E6]">Camada executiva reservada</p>
+              <p className="text-sm text-[#DCE0E6]">Painel institucional reservado</p>
             </div>
+          </div>
+          <div className="absolute inset-x-6 bottom-6 rounded-[24px] border border-white/10 bg-[#050505]/70 p-5 backdrop-blur-xl">
+            <p className="text-[10px] uppercase tracking-[0.34em] text-[#D4AF37]">Visão de comando</p>
+            <p className="mt-3 max-w-lg text-sm leading-7 text-[#E3E7ED]">
+              Estrutura visual preparada para acompanhar desenvolvimento humano, consistência operacional e decisão institucional sem expor mecanismo interno.
+            </p>
           </div>
         </div>
 
         <div className="min-w-0 space-y-4">
           <div className="rounded-[28px] border border-[#D4AF37]/14 bg-white/[0.02] p-6">
-            <p className="text-[10px] uppercase tracking-[0.38em] text-[#B1B5BE]">Acompanhamento institucional</p>
+            <p className="text-[10px] uppercase tracking-[0.38em] text-[#B1B5BE]">Sistema HUMANEXUS</p>
             <h3 className="mt-6 max-w-3xl text-3xl font-semibold leading-[0.95] text-[#F5F5F5] sm:text-4xl">
-              O HUMANEXUS organiza acompanhamento institucional em linguagem executiva.
+              Acompanhamento institucional em linguagem compatível com comando, risco e continuidade.
             </h3>
             <div className="mt-6 h-px w-full bg-[linear-gradient(90deg,rgba(212,175,55,0.58),transparent)]" />
             <p className="mt-6 max-w-2xl text-base leading-8 text-[#8F95A0]">
-              O programa consolida visão, prioridades, desenvolvimento contínuo e devolutivas compatíveis com decisão institucional.
+              O programa organiza prioridades, devolutivas e presença institucional para ambientes em que a resposta humana influencia a missão.
             </p>
           </div>
 
@@ -212,6 +227,17 @@ export function DashboardMock() {
                 <p className="mt-4 text-base font-medium leading-7 text-[#F5F5F5]">{value}</p>
               </div>
             ))}
+          </div>
+
+          <div className="rounded-[28px] border border-white/10 bg-white/[0.02] p-5">
+            <p className="text-[10px] uppercase tracking-[0.34em] text-[#AAB0BB]">Frentes priorizadas</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {signals.map((signal) => (
+                <div key={signal} className="rounded-full border border-white/10 bg-[#090b0f] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[#E0E4EA]">
+                  {signal}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

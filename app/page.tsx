@@ -1,53 +1,47 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { Reveal } from "@/components/reveal";
 import { PremiumVideo } from "@/components/premium-video";
-import { CardGrid, DashboardMock, GlassCard, PrimaryButton, SectionIntro, SecondaryButton } from "@/components/ui";
+import { DashboardMock, PrimaryButton, SecondaryButton, SectionIntro } from "@/components/ui";
 import { brandAssets } from "@/lib/brand-assets";
 
-const heroBadges = [
-  "SEGURANÇA OPERACIONAL",
-  "FATORES HUMANOS",
-  "ESTRUTURA PROPRIETÁRIA",
-  "PROGRAMA CONTÍNUO",
-  "INTELIGÊNCIA OPERACIONAL",
-  "OPERAÇÕES CRÍTICAS"
-];
+export const metadata: Metadata = {
+  title: "Instituto de Inteligência Operacional Humana",
+  description:
+    "Programa contínuo de desenvolvimento do fator humano para organizações que operam sob pressão, responsabilidade e consequência."
+};
 
-const authoritySignals = [
-  "Psicólogo de aviação",
+const trustSignals = [
   "21 anos de atuação",
-  "Forças Armadas e ambientes críticos",
-  "Pesquisa aplicada ao fator humano"
+  "Forças Armadas e aviação",
+  "Ambientes críticos",
+  "Desenvolvimento contínuo"
 ];
 
-const operatingAreas = [
+const sectors = [
   {
-    title: "Aviação operacional",
-    description: "Operadores aéreos, táxi aéreo, operações aeromédicas e equipes em que a resposta humana interfere diretamente na missão."
+    title: "Táxi aéreo e aviação operacional",
+    description: "Operações em que coordenação, disciplina e resposta humana interferem diretamente na missão."
   },
   {
-    title: "Operações críticas",
-    description: "Ambientes em que carga decisória, comunicação, coordenação e disciplina operacional precisam de maior confiabilidade humana."
+    title: "Operações aeromédicas",
+    description: "Contextos em que tempo, decisão e responsabilidade clínica exigem maior estabilidade operacional."
   },
   {
-    title: "Segurança operacional",
-    description: "Leitura institucional para apoiar maturidade operacional, prevenção, cultura de segurança e tomada de decisão."
+    title: "Forças Armadas e segurança pública",
+    description: "Ambientes de comando em que liderança, pressão e consequência caminham juntas."
   },
   {
-    title: "Performance cognitiva",
-    description: "Estabilidade funcional, atenção, pressão, adaptação e capacidade decisória em contextos de alta exigência."
+    title: "Saúde e alta responsabilidade",
+    description: "Equipes sujeitas a fadiga, sobrecarga e decisões com impacto humano e institucional."
   },
   {
-    title: "Liderança sob pressão",
-    description: "Desenvolvimento de lideranças responsáveis por ambientes em que risco, tempo e consequência caminham juntos."
+    title: "Energia e infraestrutura crítica",
+    description: "Operações que exigem confiabilidade humana contínua e cultura de segurança madura."
   },
   {
-    title: "Gestão de fatores humanos",
-    description: "Apoio institucional para fortalecer cultura operacional, coordenação entre equipes e maior confiabilidade humana."
-  },
-  {
-    title: "Desenvolvimento institucional",
-    description: "Programas contínuos para organizações que tratam estabilidade humana e segurança operacional como ativos estratégicos."
+    title: "Lideranças estratégicas",
+    description: "Dirigentes que precisam tratar o fator humano como ativo estruturante da operação."
   }
 ];
 
@@ -80,105 +74,103 @@ const deliverables = [
 
 const evidenceCards = [
   {
-    src: brandAssets.media.founderHangarElite,
-    alt: "Marcos Alcântara em hangar aeronáutico",
+    src: brandAssets.media.founderAviationCeremony,
+    alt: "Marcos Alcântara em contexto aeronáutico institucional",
     title: "Aviação e autoridade operacional",
-    description: "Experiência real em ambientes onde a disciplina humana, a coordenação e o risco fazem parte da rotina."
+    description: "Presença real em ambientes em que o fator humano tem impacto direto na segurança da missão."
   },
   {
-    src: brandAssets.media.founderSeripaLecture,
-    alt: "Marcos Alcântara conduzindo treinamento em auditório operacional",
-    title: "Treinamento aplicado",
-    description: "Formação conduzida para públicos operacionais de alta responsabilidade, com linguagem compatível com comando e missão."
+    src: brandAssets.media.founderCenipa,
+    alt: "Marcos Alcântara em contexto institucional ligado à prevenção aeronáutica",
+    title: "Segurança e prevenção",
+    description: "Experiência conectada à cultura de prevenção, disciplina operacional e responsabilidade institucional."
   },
   {
     src: brandAssets.media.instituteSpaceWide,
     alt: "Estrutura física do Instituto HUMANEXUS",
     title: "Instituto HUMANEXUS",
-    description: "Ambiente preparado para leitura humana, atendimento executivo e desenvolvimento contínuo com identidade própria."
+    description: "Estrutura própria para relacionamento executivo, desenvolvimento supervisionado e acompanhamento contínuo."
   },
   {
     src: brandAssets.media.cockpitSimulator,
-    alt: "Cockpit e ambiente de simulação HUMANEXUS",
+    alt: "Ambiente controlado do Instituto HUMANEXUS",
     title: "Ambiente controlado",
-    description: "Estrutura preparada para desenvolvimento supervisionado em contextos que exigem disciplina, resposta e confiabilidade."
+    description: "Espaço preparado para formação aplicada, supervisão técnica e trabalho em contexto reservado."
   }
 ];
 
 export default function HomePage() {
   return (
     <>
-      <section className="hero-premium grain-overlay relative isolate overflow-hidden border-b border-white/10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_12%,rgba(212,175,55,0.14),transparent_24%),radial-gradient(circle_at_86%_16%,rgba(31,78,138,0.16),transparent_24%),linear-gradient(180deg,rgba(4,4,6,0.88),rgba(4,4,6,0.98)_58%,rgba(4,4,6,1))]" />
-        <div className="relative mx-auto max-w-7xl px-6 py-14 lg:px-8 lg:py-20">
-          <div className="grid gap-10 xl:grid-cols-[0.78fr_1.22fr] xl:items-center">
+      <section className="hero-premium grain-overlay relative isolate overflow-hidden border-b border-white/10 bg-[#040507]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_14%,rgba(212,175,55,0.14),transparent_24%),radial-gradient(circle_at_86%_18%,rgba(29,73,129,0.15),transparent_24%),linear-gradient(180deg,rgba(4,5,7,0.94),rgba(4,5,7,0.98)_58%,rgba(4,5,7,1))]" />
+        <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(255,255,255,0.024)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.018)_1px,transparent_1px)] [background-size:144px_144px] [mask-image:radial-gradient(circle_at_center,black,transparent_84%)]" />
+        <div className="relative mx-auto max-w-7xl px-6 py-16 lg:px-8 lg:py-24">
+          <div className="grid gap-12 xl:grid-cols-[0.78fr_1.22fr] xl:items-center">
             <Reveal>
               <div className="max-w-3xl space-y-8">
-                <div className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
+                <div className="relative h-20 w-[320px] sm:h-24 sm:w-[380px]">
                   <Image src={brandAssets.logoPremium} alt="HUMANEXUS" fill priority className="object-contain object-left" />
                 </div>
 
                 <div className="space-y-5">
-                  <p className="text-[10px] uppercase tracking-[0.42em] text-[#D4AF37]">Instituto de Inteligência Operacional Humana</p>
-                  <h1 className="max-w-4xl text-[3rem] font-semibold leading-[0.92] text-[#F5F5F5] sm:text-5xl md:text-6xl xl:text-[5.1rem]">
-                    Inteligência operacional humana para ambientes de alta criticidade.
+                  <p className="text-[10px] uppercase tracking-[0.42em] text-[#D4AF37] md:text-[11px]">
+                    Instituto de Inteligência Operacional Humana
+                  </p>
+                  <h1 className="max-w-4xl text-[3rem] font-semibold leading-[0.9] text-[#F5F5F5] sm:text-5xl md:text-6xl xl:text-[5.2rem]">
+                    O fator humano como infraestrutura estratégica.
                   </h1>
-                  <p className="max-w-2xl text-lg leading-8 text-[#A7ADB7] md:text-xl">
-                    O HUMANEXUS apoia organizações que precisam reduzir vulnerabilidades humanas, fortalecer liderança e sustentar segurança operacional sob pressão.
+                  <p className="max-w-2xl text-lg leading-8 text-[#9EA6B1] md:text-xl">
+                    Programa contínuo para organizações que precisam sustentar segurança operacional, liderança e estabilidade humana sob pressão.
                   </p>
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                  {heroBadges.map((badge) => (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {trustSignals.map((signal) => (
                     <div
-                      key={badge}
-                      className="rounded-full border border-[#D4AF37]/18 bg-[#0B0D10]/82 px-4 py-2 text-[10px] uppercase tracking-[0.28em] text-[#D4AF37]"
+                      key={signal}
+                      className="rounded-full border border-white/10 bg-[#0B0D11]/82 px-4 py-2 text-[10px] uppercase tracking-[0.28em] text-[#D4AF37]"
                     >
-                      {badge}
+                      {signal}
                     </div>
                   ))}
                 </div>
 
                 <div className="flex flex-col gap-4 sm:flex-row">
-                  <PrimaryButton href="/contato">Agendar Reunião Institucional</PrimaryButton>
-                  <SecondaryButton href="/servicos">Conhecer o Programa</SecondaryButton>
+                  <PrimaryButton href="/contato">Fale Conosco</PrimaryButton>
+                  <SecondaryButton href="/servicos">Ver Programas</SecondaryButton>
                 </div>
               </div>
             </Reveal>
 
             <Reveal delay={0.08}>
-              <PremiumVideo
-                src={brandAssets.videos.institutionalHero}
-                poster={brandAssets.media.instituteSpaceFront}
-                className="min-h-[520px]"
-                priority
-              />
+              <DashboardMock />
             </Reveal>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 py-10 lg:px-8">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {authoritySignals.map((signal, index) => (
-            <Reveal key={signal} delay={index * 0.05}>
-              <GlassCard accent={index === 0 ? "gold" : "soft"} description={signal} />
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      <section id="areas" className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.86fr_1.14fr] lg:items-start">
+      <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
           <Reveal>
             <SectionIntro
-              eyebrow="Áreas de atuação"
-              title="O fator humano tratado como infraestrutura estratégica da operação."
-              description="O HUMANEXUS opera onde a estabilidade humana, a segurança operacional e a capacidade decisória exigem estrutura contínua, não resposta improvisada."
+              eyebrow="Frentes prioritárias"
+              title="Aplicado a operações em que vulnerabilidade humana custa caro."
+              description="O HUMANEXUS foi desenhado para estruturas que não podem tratar desenvolvimento humano como resposta improvisada."
             />
           </Reveal>
           <Reveal delay={0.08}>
-            <CardGrid items={operatingAreas} columns="xl:grid-cols-2" />
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {sectors.map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.01))] p-5"
+                >
+                  <p className="text-sm font-semibold leading-6 text-[#F5F5F5]">{item.title}</p>
+                  <p className="mt-3 text-sm leading-7 text-[#97A0AC]">{item.description}</p>
+                </div>
+              ))}
+            </div>
           </Reveal>
         </div>
       </section>
@@ -188,19 +180,19 @@ export default function HomePage() {
           <Reveal>
             <SectionIntro
               eyebrow="O que o HUMANEXUS entrega"
-              title="Entregas institucionais desenhadas para ambientes em que o fator humano tem impacto direto no risco."
-              description="Valor entregue com linguagem executiva, continuidade de programa e confidencialidade operacional preservada."
+              title="Valor institucional apresentado com discrição, continuidade e densidade executiva."
+              description="O foco público é a entrega. A lógica proprietária permanece preservada."
             />
           </Reveal>
           <Reveal delay={0.08} className="mt-12">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {deliverables.map((step) => (
+              {deliverables.map((item) => (
                 <div
-                  key={step.title}
-                  className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] p-5"
+                  key={item.title}
+                  className="rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] p-5"
                 >
-                  <p className="text-[10px] uppercase tracking-[0.34em] text-[#D4AF37]">{step.title}</p>
-                  <p className="mt-4 text-sm leading-7 text-[#B5BBC4]">{step.description}</p>
+                  <p className="text-[10px] uppercase tracking-[0.34em] text-[#D4AF37]">{item.title}</p>
+                  <p className="mt-4 text-sm leading-7 text-[#B2B8C2]">{item.description}</p>
                 </div>
               ))}
             </div>
@@ -208,26 +200,44 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="plataforma" className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <Reveal>
-          <SectionIntro
-            eyebrow="Visão executiva"
-            title="Acompanhamento institucional organizado para decisão, continuidade e desenvolvimento."
-            description="O HUMANEXUS traduz valor operacional em linguagem compatível com liderança, gestão de risco e acompanhamento estratégico."
-          />
-        </Reveal>
-        <Reveal delay={0.08} className="mt-12">
-          <DashboardMock />
-        </Reveal>
+      <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+          <Reveal>
+            <PremiumVideo
+              src={brandAssets.videos.institutionalHero}
+              poster={brandAssets.media.instituteSpaceFront}
+              eyebrow="Presença institucional"
+              title="Uma linguagem visual compatível com decisão, comando e confiança."
+              description="O Instituto opera com densidade institucional, presença própria e relação reservada com organizações de alta responsabilidade."
+              className="min-h-[560px]"
+              priority
+            />
+          </Reveal>
+
+          <Reveal delay={0.08}>
+            <div className="space-y-8">
+              <SectionIntro
+                eyebrow="Posicionamento"
+                title="Não é curso. Não é consultoria comum. Não é resposta pontual."
+                description="O HUMANEXUS foi estruturado como programa contínuo de desenvolvimento do fator humano para organizações que operam sob responsabilidade, risco e consequência."
+              />
+              <div className="space-y-4 border-l border-[#D4AF37]/30 pl-5 text-sm leading-8 text-[#9CA4AE]">
+                <p>Desenvolvimento longitudinal.</p>
+                <p>Leitura institucional para liderança e segurança operacional.</p>
+                <p>Relacionamento compatível com ambientes que exigem discrição.</p>
+              </div>
+            </div>
+          </Reveal>
+        </div>
       </section>
 
-      <section id="autoridade" className="border-y border-white/10 bg-[#06080d]">
+      <section className="border-y border-white/10 bg-[#06080d]">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
           <Reveal>
             <SectionIntro
-              eyebrow="Evidências de experiência aplicada"
-              title="Aviação, treinamento, estrutura própria e presença institucional mostrados com reserva."
-              description="Cada bloco abaixo representa frentes reais de atuação, sem banco de imagens, sem narrativa artificial e sem exposição de mecanismo interno."
+              eyebrow="Evidências de atuação"
+              title="Presença real em aviação, prevenção, estrutura própria e ambiente controlado."
+              description="Sem banco de imagens. Sem narrativa artificial. Apenas sinais concretos de autoridade institucional."
             />
           </Reveal>
 
@@ -236,10 +246,10 @@ export default function HomePage() {
               <Reveal key={item.title} delay={index * 0.06}>
                 <div className="relative min-h-[420px] overflow-hidden rounded-[28px] border border-white/10 bg-[#090909] shadow-panel">
                   <Image src={item.src} alt={item.alt} fill className="object-cover" />
-                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.04),rgba(5,5,5,0.84))]" />
-                  <div className="absolute inset-x-5 bottom-5 rounded-[22px] border border-white/10 bg-[#050505]/72 p-4 backdrop-blur-xl">
-                    <p className="text-[10px] uppercase tracking-[0.28em] text-[#D4AF37]">{item.title}</p>
-                    <p className="mt-3 text-sm leading-7 text-[#E1E5EB]">{item.description}</p>
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.02),rgba(5,5,5,0.84))]" />
+                  <div className="absolute inset-x-5 bottom-5 rounded-[22px] border border-white/10 bg-[#050505]/74 p-4 backdrop-blur-xl">
+                    <p className="text-[10px] uppercase tracking-[0.32em] text-[#D4AF37]">{item.title}</p>
+                    <p className="mt-3 text-sm leading-7 text-[#D6DAE1]">{item.description}</p>
                   </div>
                 </div>
               </Reveal>
@@ -250,18 +260,14 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
         <Reveal>
-          <div className="rounded-[32px] border border-[#D4AF37]/18 bg-[linear-gradient(180deg,rgba(10,12,16,0.96),rgba(7,8,10,0.96))] p-8 shadow-[0_28px_100px_rgba(212,175,55,0.08)] sm:p-10 lg:p-12">
-            <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
-              <div className="space-y-4">
-                <p className="text-[10px] uppercase tracking-[0.34em] text-[#D4AF37]">Fechamento institucional</p>
-                <h2 className="max-w-4xl text-3xl font-semibold leading-tight text-[#F5F5F5] md:text-5xl">
-                  Estruture a resposta humana como parte da sua infraestrutura operacional.
-                </h2>
-                <p className="max-w-2xl text-base leading-8 text-[#9EA3AE]">
-                  O HUMANEXUS foi desenhado para organizações que tratam segurança, estabilidade humana e confiabilidade operacional como ativos estratégicos.
-                </p>
-                <p className="text-base leading-8 text-[#E0E4EA]">contato@institutohumanexus.com</p>
-              </div>
+          <div className="rounded-[34px] border border-[#D4AF37]/16 bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.01))] px-8 py-10 text-center shadow-[0_26px_90px_rgba(0,0,0,0.28)]">
+            <p className="text-[10px] uppercase tracking-[0.42em] text-[#D4AF37]">Instituto HUMANEXUS</p>
+            <h2 className="mt-4 text-3xl font-semibold leading-[0.98] text-[#F5F5F5] md:text-5xl">
+              Confiança institucional para ambientes onde a resposta humana precisa estar à altura da operação.
+            </h2>
+            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <PrimaryButton href="/contato">Fale Conosco</PrimaryButton>
+              <SecondaryButton href="/sobre">Conhecer o Instituto</SecondaryButton>
             </div>
           </div>
         </Reveal>

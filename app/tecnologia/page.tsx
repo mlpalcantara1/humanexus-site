@@ -1,1 +1,5 @@
-export { default } from "../pesquisa/page";
+import { permanentRedirect } from "next/navigation";
+
+export default function TecnologiaRedirectPage() {
+  permanentRedirect("/pesquisa");
+}

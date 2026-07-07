@@ -6,6 +6,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/"
     },
-    sitemap: "https://humanexus.com/sitemap.xml"
+    sitemap: "https://institutohumanexus.com/sitemap.xml"
   };
 }

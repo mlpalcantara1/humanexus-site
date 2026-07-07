@@ -3,7 +3,7 @@ import { navigation } from "@/lib/site-data";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  return [...navigation, { href: "/fundador", label: "Fundador" }].map((item) => ({
+  return navigation.map((item) => ({
     url: `https://institutohumanexus.com${item.href}`,
     lastModified: now,
     changeFrequency: item.href === "/" ? "weekly" : "monthly",

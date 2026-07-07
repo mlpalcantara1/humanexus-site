@@ -1,55 +1,49 @@
-import Image from "next/image";
-import { CardGrid, GlassCard, PageHero, SectionIntro } from "@/components/ui";
+import type { Metadata } from "next";
+import { Reveal } from "@/components/reveal";
+import { PageHero, PrimaryButton, SectionIntro } from "@/components/ui";
 import { brandAssets } from "@/lib/brand-assets";
+
+export const metadata: Metadata = {
+  title: "Programas HUMANEXUS",
+  description:
+    "Programas contínuos para desenvolvimento do fator humano, estabilidade operacional e evolução institucional."
+};
 
 const programs = [
   {
-    title: "Desenvolvimento Humano Operacional",
-    description: "Programa longitudinal para fortalecer estabilidade humana, confiabilidade operacional e capacidade decisória."
+    title: "Programa HUMANEXUS de Desenvolvimento Humano Operacional",
+    description:
+      "Estrutura longitudinal para organizações que precisam fortalecer estabilidade humana, disciplina operacional e capacidade decisória."
   },
   {
-    title: "Riscos Psicossociais e Estabilidade Operacional",
-    description: "Estrutura contínua para leitura de vulnerabilidades humanas, pressão operacional e maturidade preventiva."
+    title: "Programa HUMANEXUS de Riscos Psicossociais e Estabilidade Operacional",
+    description:
+      "Frente contínua para apoiar ações relacionadas à prevenção, maturidade institucional e vulnerabilidades humanas em ambientes de alta exigência."
   },
   {
-    title: "Operações Aeromédicas e Aviação Operacional",
-    description: "Acompanhamento aplicado a operadores aéreos, equipes críticas e cenários em que missão, tempo e risco caminham juntos."
+    title: "Programa para Aviação Operacional, Táxi Aéreo e Operações Aeromédicas",
+    description:
+      "Aplicação voltada a operações em que coordenação, resposta humana e segurança da missão caminham juntas."
   },
   {
-    title: "Liderança sob Pressão",
-    description: "Desenvolvimento de lideranças responsáveis por ambientes em que erro humano tem alto custo operacional e institucional."
+    title: "Programa de Liderança sob Pressão",
+    description:
+      "Desenvolvimento direcionado a lideranças responsáveis por ambientes em que erro humano tem alto custo operacional e reputacional."
   },
   {
     title: "Pesquisa Aplicada e Desenvolvimento Institucional",
-    description: "Frente estratégica para organizações que precisam consolidar conhecimento, continuidade e maturidade operacional."
+    description:
+      "Base de apoio para organizações que precisam consolidar maturidade operacional, continuidade e visão estratégica sobre o fator humano."
   }
 ];
 
-const deliveries = [
-  {
-    title: "Segurança Operacional",
-    description: "Fortalecimento da capacidade humana em ambientes de alta responsabilidade."
-  },
-  {
-    title: "Desenvolvimento Contínuo",
-    description: "Programas estruturados para evolução individual e institucional."
-  },
-  {
-    title: "Riscos Psicossociais",
-    description: "Apoio às iniciativas relacionadas à NR-1 e NR-17."
-  },
-  {
-    title: "Tomada de Decisão",
-    description: "Informações relevantes para acompanhamento institucional."
-  },
-  {
-    title: "Treinamento Aplicado",
-    description: "Desenvolvimento supervisionado para contextos operacionais complexos."
-  },
-  {
-    title: "Acompanhamento Longitudinal",
-    description: "Monitoramento contínuo da evolução organizacional."
-  }
+const segments = [
+  "Táxi aéreo",
+  "Operações aeromédicas",
+  "Forças Armadas",
+  "Segurança pública",
+  "Saúde",
+  "Energia e infraestrutura crítica"
 ];
 
 export default function ServicosPage() {
@@ -58,52 +52,74 @@ export default function ServicosPage() {
       <PageHero
         eyebrow="Programas HUMANEXUS"
         title="Programas contínuos para organizações que operam sob exigência real."
-        description="O HUMANEXUS não oferece entrega avulsa. Ele estrutura programas contínuos para segurança operacional, desenvolvimento institucional e estabilidade humana."
+        description="O HUMANEXUS não foi desenhado para entrega avulsa. Ele estrutura continuidade, desenvolvimento humano e visão institucional em ambientes críticos."
+        media={{
+          src: brandAssets.media.founderHangarSignature,
+          alt: "Marcos Alcântara em hangar aeronáutico",
+          badge: "Programa contínuo"
+        }}
       />
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <SectionIntro
-          eyebrow="Portfólio institucional"
-          title="Frentes desenhadas para contratos recorrentes, ambientes críticos e decisão de alto nível."
-          description="Cada programa foi organizado para suportar operação, liderança, segurança e evolução institucional com reserva e consistência."
-        />
-        <div className="mt-12">
-          <CardGrid items={programs} columns="xl:grid-cols-3" />
+        <div className="grid gap-10 lg:grid-cols-[0.84fr_1.16fr] lg:items-start">
+          <Reveal>
+            <SectionIntro
+              eyebrow="Estruturas de desenvolvimento"
+              title="Portfólio organizado para contrato recorrente, decisão executiva e evolução institucional."
+              description="Cada frente foi desenhada para ambientes em que o fator humano não pode ser tratado como tema periférico."
+            />
+          </Reveal>
+
+          <Reveal delay={0.08}>
+            <div className="space-y-4">
+              {programs.map((item, index) => (
+                <div
+                  key={item.title}
+                  className={`rounded-[28px] border p-6 ${
+                    index === 0
+                      ? "border-[#D4AF37]/20 bg-[linear-gradient(180deg,rgba(212,175,55,0.08),rgba(255,255,255,0.015))]"
+                      : "border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.01))]"
+                  }`}
+                >
+                  <p className="text-sm font-semibold leading-7 text-[#F5F5F5]">{item.title}</p>
+                  <p className="mt-3 max-w-3xl text-sm leading-7 text-[#9EA6B1]">{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 
       <section className="border-y border-white/10 bg-[#06080d]">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-          <div className="grid gap-10 lg:grid-cols-[0.96fr_1.04fr] lg:items-center">
-            <div className="space-y-8">
+          <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+            <Reveal>
               <SectionIntro
-                eyebrow="O que o HUMANEXUS entrega"
-                title="Entregas institucionais para decisão, prevenção e continuidade."
-                description="A estrutura foi desenhada para apoiar organizações críticas sem expor mecanismo, lógica interna ou ativos proprietários."
+                eyebrow="Segmentos atendidos"
+                title="Aplicado a estruturas em que liderança, risco e consequência se encontram todos os dias."
+                description="O programa foi organizado para organizações de alta confiabilidade, não para comunicação genérica de mercado."
               />
+            </Reveal>
+
+            <Reveal delay={0.08}>
               <div className="grid gap-3 sm:grid-cols-2">
-                {deliveries.map((item, index) => (
-                  <GlassCard key={item.title} accent={index === 0 ? "gold" : "soft"} title={item.title} description={item.description} />
+                {segments.map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-full border border-white/10 bg-[#0B0D11]/82 px-4 py-3 text-center text-[11px] uppercase tracking-[0.2em] text-[#E2E6EC]"
+                  >
+                    {item}
+                  </div>
                 ))}
               </div>
-            </div>
-
-            <div className="relative min-h-[560px] overflow-hidden rounded-[30px] border border-white/10 bg-[#090909] shadow-panel">
-              <Image
-                src={brandAssets.media.founderOperationalBriefing}
-                alt="Sessão institucional do HUMANEXUS em ambiente reservado"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.06),rgba(5,5,5,0.84))]" />
-              <div className="absolute inset-x-6 bottom-6 rounded-[24px] border border-white/10 bg-[#050505]/70 p-5 backdrop-blur-xl">
-                <p className="text-[10px] uppercase tracking-[0.32em] text-[#D4AF37]">Estrutura aplicada</p>
-                <p className="mt-3 text-sm leading-7 text-[#E1E5EB]">
-                  Desenvolvimento humano operacional organizado para continuidade, supervisão institucional e fortalecimento da operação.
-                </p>
-              </div>
-            </div>
+            </Reveal>
           </div>
+
+          <Reveal delay={0.12} className="mt-12">
+            <div className="flex justify-start">
+              <PrimaryButton href="/contato">Fale Conosco</PrimaryButton>
+            </div>
+          </Reveal>
         </div>
       </section>
     </>

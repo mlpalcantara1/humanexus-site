@@ -21,10 +21,10 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/8 bg-[#050505]/78 backdrop-blur-2xl">
+    <header className="sticky top-0 z-50 border-b border-white/8 bg-[#050505]/82 backdrop-blur-2xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3 lg:px-8">
         <Link href="/" className="group flex min-w-0 items-center">
-          <div className="relative h-[46px] w-[188px] shrink-0 transition duration-300 group-hover:opacity-92 sm:h-[58px] sm:w-[236px]">
+          <div className="relative h-[52px] w-[210px] shrink-0 transition duration-300 group-hover:opacity-92 sm:h-[64px] sm:w-[264px]">
             <Image src={brandAssets.logoPremium} alt="HUMANEXUS" fill className="object-contain object-left" priority />
           </div>
         </Link>
@@ -34,7 +34,7 @@ export function SiteHeader() {
             <Link
               key={item.href}
               href={item.href}
-              className={`rounded-full px-4 py-2 text-sm transition ${
+              className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.2em] transition ${
                 isActive(pathname, item.href)
                   ? "bg-[#D4AF37]/10 text-[#F5F5F5]"
                   : "text-[#9CA2AC] hover:bg-white/5 hover:text-[#F5F5F5]"
@@ -50,7 +50,7 @@ export function SiteHeader() {
             href="https://wa.me/5592981187777"
             target="_blank"
             rel="noreferrer"
-            className="hidden rounded-full border border-[#D4AF37]/26 bg-[linear-gradient(135deg,rgba(212,175,55,0.22),rgba(212,175,55,0.08))] px-5 py-2.5 text-sm font-semibold text-[#F5F5F5] shadow-[0_14px_34px_rgba(212,175,55,0.12)] transition duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/38 hover:shadow-[0_18px_40px_rgba(212,175,55,0.18)] sm:inline-flex"
+            className="hidden rounded-full border border-[#D4AF37]/24 bg-[linear-gradient(135deg,rgba(212,175,55,0.24),rgba(212,175,55,0.08))] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-[#F5F5F5] shadow-[0_14px_34px_rgba(212,175,55,0.12)] transition duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/38 hover:shadow-[0_18px_40px_rgba(212,175,55,0.18)] sm:inline-flex"
           >
             Fale Conosco
           </Link>
@@ -91,7 +91,7 @@ export function SiteHeader() {
               target="_blank"
               rel="noreferrer"
               onClick={() => setOpen(false)}
-              className="mt-3 rounded-full border border-[#D4AF37]/26 bg-[linear-gradient(135deg,rgba(212,175,55,0.22),rgba(212,175,55,0.08))] px-5 py-3 text-center text-sm font-semibold text-[#F5F5F5]"
+              className="mt-3 rounded-full border border-[#D4AF37]/26 bg-[linear-gradient(135deg,rgba(212,175,55,0.22),rgba(212,175,55,0.08))] px-5 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-[#F5F5F5]"
             >
               Fale Conosco
             </Link>

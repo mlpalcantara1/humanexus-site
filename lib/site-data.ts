@@ -32,29 +32,3 @@ export const contactInterests = [
   "Pesquisa aplicada",
   "Reunião institucional"
 ];
-
-export const areaProfiles = [
-  {
-    title: "HUMANEXUS Operator",
-    description: "Usuário em acompanhamento, avaliação ou desenvolvimento operacional dentro de programas institucionais."
-  },
-  {
-    title: "HUMANEXUS Specialist",
-    description: "Profissional preparado para acompanhar programas institucionais e conduzir desenvolvimento humano em ambientes críticos."
-  },
-  {
-    title: "HUMANEXUS Strategic Partner",
-    description: "Organização parceira que acompanha programas, relatórios e desenvolvimento humano em escala institucional."
-  }
-];
-
-export const authorityPoints = [
-  { title: "Psicólogo de aviação" },
-  { title: "21 anos de atuação profissional" },
-  { title: "Mestre e Doutor" },
-  { title: "Operações críticas e segurança operacional" },
-  { title: "Formação de equipes e lideranças" },
-  { title: "Atuação com Forças Armadas" },
-  { title: "Pesquisa aplicada ao fator humano" },
-  { title: "Direção científica e institucional" }
-];

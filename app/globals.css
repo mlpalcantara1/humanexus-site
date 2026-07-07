@@ -17,9 +17,9 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 12% 10%, rgba(201, 163, 78, 0.07), transparent 18%),
-    radial-gradient(circle at 88% 14%, rgba(28, 76, 136, 0.08), transparent 20%),
-    linear-gradient(180deg, #020202 0%, #050609 34%, #0a0c10 100%);
+    radial-gradient(circle at 12% 10%, rgba(201, 163, 78, 0.08), transparent 18%),
+    radial-gradient(circle at 88% 14%, rgba(28, 76, 136, 0.07), transparent 20%),
+    linear-gradient(180deg, #020202 0%, #050609 34%, #090b10 100%);
   color: #f5f5f5;
   font-family: var(--font-body);
 }
@@ -98,6 +98,24 @@ body::after {
     repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0, rgba(255, 255, 255, 0.012) 1px, transparent 1px, transparent 3px),
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.008) 0, rgba(255, 255, 255, 0.008) 1px, transparent 1px, transparent 4px);
   mix-blend-mode: soft-light;
+}
+
+.lux-divider {
+  position: relative;
+}
+
+.lux-divider::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 1px;
+  width: min(180px, 100%);
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.8), transparent);
+}
+
+.soft-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
 }
 
 ::selection {

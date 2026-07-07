@@ -80,7 +80,7 @@ export default function OpenGraphImage() {
               fontWeight: 700
             }}
           >
-            Inteligência operacional humana para ambientes críticos.
+            O fator humano como infraestrutura estratégica.
           </div>
           <div
             style={{
@@ -90,8 +90,8 @@ export default function OpenGraphImage() {
               maxWidth: "760px"
             }}
           >
-            Segurança operacional, desenvolvimento humano contínuo e acompanhamento executivo
-            para organizações de alta responsabilidade.
+            Inteligência operacional humana para organizações que operam sob alta responsabilidade,
+            pressão e consequência.
           </div>
         </div>
 
@@ -107,9 +107,9 @@ export default function OpenGraphImage() {
           }}
         >
           <div>SEGURANÇA OPERACIONAL</div>
+          <div>ALTA CRITICIDADE</div>
           <div>DESENVOLVIMENTO CONTÍNUO</div>
-          <div>ALTA RESPONSABILIDADE</div>
-          <div>FATORES HUMANOS</div>
+          <div>DECISÃO EXECUTIVA</div>
         </div>
       </div>
     ),

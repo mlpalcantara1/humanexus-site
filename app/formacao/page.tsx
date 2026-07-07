@@ -1,20 +1,28 @@
+import type { Metadata } from "next";
 import Image from "next/image";
+import { Reveal } from "@/components/reveal";
 import { PremiumVideo } from "@/components/premium-video";
-import { CardGrid, PageHero, SectionIntro } from "@/components/ui";
+import { PageHero, SectionIntro } from "@/components/ui";
 import { brandAssets } from "@/lib/brand-assets";
 
-const trainingTracks = [
+export const metadata: Metadata = {
+  title: "Formação Aplicada",
+  description:
+    "Formação institucional para equipes que operam sob pressão, responsabilidade crítica e necessidade de maior confiabilidade humana."
+};
+
+const formationTracks = [
   {
-    title: "Operações aéreas",
-    description: "Formação para equipes, coordenação e responsabilidade decisória em ambientes em que o fator humano interfere diretamente na missão."
+    title: "Aviação operacional",
+    description: "Desenvolvimento aplicado para equipes em que resposta humana, coordenação e disciplina afetam a missão."
   },
   {
     title: "Fatores humanos avançados",
-    description: "Capacitação institucional para atenção, adaptação, carga operacional, comunicação e estabilidade funcional."
+    description: "Capacitação institucional voltada a estabilidade funcional, comunicação e tomada de decisão sob pressão."
   },
   {
     title: "Liderança operacional",
-    description: "Desenvolvimento aplicado para quem precisa coordenar pessoas, risco e consequência sob pressão contínua."
+    description: "Formação dirigida a quem coordena pessoas, risco e consequência em ambientes de elevada exigência."
   }
 ];
 
@@ -23,64 +31,78 @@ export default function FormacaoPage() {
     <>
       <PageHero
         eyebrow="Formação"
-        title="Desenvolvimento aplicado para equipes que operam sob pressão e responsabilidade crítica."
-        description="A formação HUMANEXUS foi estruturada como programa institucional de alto nível, voltado a operação, segurança e consistência humana."
+        title="Desenvolvimento aplicado para equipes que operam com responsabilidade crítica."
+        description="A formação HUMANEXUS foi estruturada como programa institucional de alto nível, com linguagem compatível com missão, disciplina e continuidade."
         media={{
-          src: brandAssets.media.founderAeteKeynote,
-          alt: "Marcos Alcântara em evento institucional",
-          badge: "Formação executiva"
+          src: brandAssets.media.founderTrainingSignature,
+          alt: "Marcos Alcântara conduzindo treinamento operacional",
+          badge: "Formação aplicada"
         }}
       />
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[1.04fr_0.96fr] lg:items-center">
-          <PremiumVideo
-            src={brandAssets.videos.formationInstitutional}
-            poster={brandAssets.media.formationInstitutionalPoster}
-            eyebrow="Aplicação em campo"
-            title="Presença real em ambientes de alta exigência."
-            description="Treinamentos, desenvolvimento humano e fortalecimento da capacidade operacional para profissionais que atuam sob pressão e responsabilidade crítica."
-            className="min-h-[540px]"
-            priority
-          />
-
-          <div className="space-y-8">
-            <SectionIntro
-              eyebrow="Estrutura formativa"
-              title="A formação entra como camada institucional de desenvolvimento. Não como entrega avulsa."
-              description="Cada jornada é ajustada ao contexto operacional, ao nível de risco e à maturidade da organização."
+          <Reveal>
+            <PremiumVideo
+              src={brandAssets.videos.formationInstitutional}
+              poster={brandAssets.media.formationInstitutionalPoster}
+              eyebrow="Presença em campo"
+              title="Formação para públicos técnicos e ambientes de alta exigência."
+              description="Desenvolvimento humano aplicado para organizações que precisam fortalecer clareza, disciplina e resposta sob pressão."
+              className="min-h-[560px]"
+              priority
             />
-            <CardGrid items={trainingTracks} columns="lg:grid-cols-1" />
-          </div>
+          </Reveal>
+
+          <Reveal delay={0.08}>
+            <div className="space-y-8">
+              <SectionIntro
+                eyebrow="Estrutura formativa"
+                title="A formação entra como camada institucional de desenvolvimento, não como aula isolada."
+                description="Cada jornada é ajustada ao contexto operacional, ao nível de responsabilidade e à maturidade da organização."
+              />
+              <div className="space-y-4">
+                {formationTracks.map((item, index) => (
+                  <div
+                    key={item.title}
+                    className={`rounded-[26px] border p-5 ${
+                      index === 0
+                        ? "border-[#D4AF37]/20 bg-[linear-gradient(180deg,rgba(212,175,55,0.08),rgba(255,255,255,0.015))]"
+                        : "border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.01))]"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold leading-7 text-[#F5F5F5]">{item.title}</p>
+                    <p className="mt-3 text-sm leading-7 text-[#9EA6B1]">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
       <section className="border-y border-white/10 bg-[#06080d]">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-          <SectionIntro
-            eyebrow="Evidências de formação aplicada"
-            title="Ambientes reais, público técnico e linguagem compatível com missão."
-            description="A atuação formativa do HUMANEXUS foi construída para equipes que precisam responder com mais clareza, disciplina e estabilidade sob pressão."
-          />
-          <div className="mt-12 grid gap-5 lg:grid-cols-2">
-            <div className="relative min-h-[440px] overflow-hidden rounded-[30px] border border-white/10 bg-[#090909] shadow-panel">
-              <Image
-                src={brandAssets.media.formationTrainingApplied}
-                alt="Marcos Alcântara conduzindo formação aplicada"
-                fill
-                className="object-cover"
+          <div className="grid gap-10 lg:grid-cols-[0.84fr_1.16fr] lg:items-center">
+            <Reveal>
+              <SectionIntro
+                eyebrow="Ambiente supervisionado"
+                title="Estrutura física preparada para desenvolvimento aplicado, acompanhamento e trabalho em ambiente controlado."
+                description="O Instituto mantém espaço próprio para jornadas supervisionadas e relacionamento institucional com alto padrão de apresentação."
               />
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.04),rgba(5,5,5,0.82))]" />
-            </div>
-            <div className="relative min-h-[440px] overflow-hidden rounded-[30px] border border-white/10 bg-[#090909] shadow-panel">
-              <Image
-                src={brandAssets.media.formationControlledEnvironment}
-                alt="Ambiente controlado do HUMANEXUS com simulador operacional"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.04),rgba(5,5,5,0.82))]" />
-            </div>
+            </Reveal>
+
+            <Reveal delay={0.08}>
+              <div className="relative min-h-[500px] overflow-hidden rounded-[30px] border border-white/10 bg-[#090909] shadow-panel">
+                <Image
+                  src={brandAssets.media.formationControlledEnvironment}
+                  alt="Ambiente supervisionado do Instituto HUMANEXUS"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.04),rgba(5,5,5,0.82))]" />
+              </div>
+            </Reveal>
           </div>
         </div>
       </section>
