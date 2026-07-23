@@ -81,6 +81,7 @@ test("middleware cobre todas as áreas privadas", async () => {
     "/profissional",
     "/operacional",
     "/auditoria",
+    "/plataforma",
     "/sair"
   ]) {
     assert.match(middleware, new RegExp(`"${route.replace("/", "\\/")}`));
