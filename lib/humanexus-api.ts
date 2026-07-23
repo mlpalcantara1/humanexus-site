@@ -6,9 +6,6 @@ export async function humanexusApi<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  if (!API) {
-    throw new HumanexusApiError("A aplicação segura ainda não foi conectada ao ambiente publicado.");
-  }
   const professionalToken =
     typeof window !== "undefined" ? sessionStorage.getItem("humanexus_professional_token") : null;
   const response = await fetch(`${API}${path}`, {

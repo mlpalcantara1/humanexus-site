@@ -61,9 +61,15 @@ export function AnamneseParticipante({ token }: { token: string }) {
   const [completed, setCompleted] = useState(false);
 
   useEffect(() => {
-    humanexusApi<{ estado: string }>(`/api/v1/anamnese/convite/${encodeURIComponent(token)}`)
-      .then(() => humanexusApi<Structure>(`/api/v1/anamnese/convite/${encodeURIComponent(token)}/estrutura`))
-      .then(setStructure)
+    humanexusApi<Structure>(`/api/humanexus/convites/${encodeURIComponent(token)}`)
+      .then((data) => {
+        setStructure(data);
+        const restored = Object.fromEntries(
+          (data as Structure & { respostas?: { question_id: string; answer: string; control_version: number }[] })
+            .respostas?.map((item) => [item.question_id, String(item.answer ?? "")]) ?? []
+        );
+        setAnswers(restored);
+      })
       .catch((error) => setMessage(error.message));
   }, [token]);
 
@@ -94,7 +100,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
     if (!navigator.onLine) return;
     try {
       const saved = await humanexusApi<{ versao_de_controle: number }>(
-        `/api/v1/anamnese/convite/${encodeURIComponent(token)}/respostas/${question.identificador}`,
+        `/api/humanexus/convites/${encodeURIComponent(token)}/respostas/${question.identificador}`,
         {
           method: "PUT",
           body: JSON.stringify({
@@ -115,11 +121,9 @@ export function AnamneseParticipante({ token }: { token: string }) {
   async function start() {
     if (!consent) return;
     try {
-      await humanexusApi(`/api/v1/anamnese/convite/${encodeURIComponent(token)}/iniciar`, {
+      await humanexusApi(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
         method: "POST",
-        body: JSON.stringify({
-          consentimento: { versao: "1.0", finalidade: "ANAMNESE_REGULATORIA" }
-        })
+        body: JSON.stringify({ acao: "INICIAR" })
       });
       setStarted(true);
     } catch (error) {
@@ -129,9 +133,9 @@ export function AnamneseParticipante({ token }: { token: string }) {
 
   async function conclude() {
     if (saveState !== "Salvo") return;
-    await humanexusApi(`/api/v1/anamnese/convite/${encodeURIComponent(token)}/concluir`, {
+    await humanexusApi(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
       method: "POST",
-      body: "{}"
+      body: JSON.stringify({ acao: "CONCLUIR" })
     });
     setCompleted(true);
   }

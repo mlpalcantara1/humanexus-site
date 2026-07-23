@@ -15,7 +15,7 @@ export default function LoginPage() {
     setMessage("Validando acesso…");
     try {
       const result = await humanexusApi<{ token_de_acesso: string }>(
-        "/api/v1/autenticacao/entrar",
+        "/api/humanexus/auth",
         { method: "POST", body: JSON.stringify({ email, senha: password }) }
       );
       sessionStorage.setItem("humanexus_professional_token", result.token_de_acesso);
