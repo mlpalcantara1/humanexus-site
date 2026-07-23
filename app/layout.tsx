@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  manifest: "/manifest.webmanifest",
   metadataBase: new URL("https://institutohumanexus.com"),
   title: {
     default: "Instituto HUMANEXUS | Inteligência Regulatória Humana",
@@ -95,6 +96,7 @@ export default function RootLayout({
         <SiteFooter />
         <FloatingWhatsApp />
         <AnalyticsScripts />
+        <script dangerouslySetInnerHTML={{ __html: "if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'))}" }} />
       </body>
     </html>
   );

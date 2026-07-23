@@ -1,0 +1,13 @@
+{
+  "name": "HUMANEXUS",
+  "short_name": "HUMANEXUS",
+  "description": "Anamnese Regulatória HUMANEXUS",
+  "start_url": "/area-humanexus",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
