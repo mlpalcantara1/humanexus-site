@@ -24,6 +24,9 @@ const trustSignals = [
   "Ambientes críticos"
 ];
 
+const remoteAnamneseUrl =
+  process.env.NEXT_PUBLIC_HUMANEXUS_APP_URL?.replace(/\/$/, "") ?? "/contato";
+
 const sectors = [
   {
     title: "Táxi aéreo e aviação operacional",
@@ -148,6 +151,9 @@ export default function HomePage() {
                 </div>
 
                 <div className="flex flex-col gap-4 sm:flex-row">
+                  <PrimaryButton href={`${remoteAnamneseUrl}/anamnese`}>
+                    Responder Anamnese
+                  </PrimaryButton>
                   <PrimaryButton href="/contato">Fale Conosco</PrimaryButton>
                   <SecondaryButton href="/servicos">Ver Programas</SecondaryButton>
                 </div>

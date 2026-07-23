@@ -47,6 +47,12 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-3">
           <Link
+            href="/area-humanexus"
+            className="hidden rounded-full border border-white/12 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-[#E8E8E8] transition hover:border-[#D4AF37]/38 hover:bg-[#D4AF37]/8 lg:inline-flex"
+          >
+            Área HUMANEXUS
+          </Link>
+          <Link
             href="https://wa.me/5592981187777"
             target="_blank"
             rel="noreferrer"
@@ -86,6 +92,13 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
+            <Link
+              href="/area-humanexus"
+              onClick={() => setOpen(false)}
+              className="rounded-2xl border border-[#C9A34E]/28 bg-[#C9A34E]/10 px-4 py-3 text-sm font-semibold text-[#F5F5F5]"
+            >
+              Área HUMANEXUS
+            </Link>
             <Link
               href="https://wa.me/5592981187777"
               target="_blank"
