@@ -32,7 +32,12 @@ export function PainelProfissional() {
     event.preventDefault();
     setStatus("Cadastrando participante e gerando convite…");
     try {
-      const participant = await humanexusApi<{ id: string }>("/api/humanexus/participantes", {
+      const participant = await humanexusApi<{
+        id: string;
+        identidade_id: string;
+        vinculo_id: string;
+        nicho: string;
+      }>("/api/humanexus/participantes", {
         method: "POST",
         body: JSON.stringify({
           nome: name,
@@ -46,7 +51,12 @@ export function PainelProfissional() {
       });
       const generated = await humanexusApi<{ token_de_entrega_unica: string }>("/api/humanexus/anamneses", {
         method: "POST",
-        body: JSON.stringify({ participante_id: participant.id })
+        body: JSON.stringify({
+          participante_id: participant.id,
+          identidade_id: participant.identidade_id,
+          vinculo_id: participant.vinculo_id,
+          nicho: participant.nicho
+        })
       });
       setInvite(`${window.location.origin}/anamnese/convite/${generated.token_de_entrega_unica}`);
       setStatus("Convite criado. O token completo é exibido somente agora.");

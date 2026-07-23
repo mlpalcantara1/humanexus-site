@@ -1,12 +1,15 @@
-import { ensureSchema, sql } from "@/lib/humanexus-db";
-import { fail, ok } from "@/lib/humanexus-http";
+import { NextResponse } from "next/server";
+import { requisitarNucleoPublico } from "@/lib/humanexus-core";
 
 export async function GET() {
   try {
-    await ensureSchema();
-    const [migration] = await sql`SELECT version, applied_at FROM humanexus_schema_migrations ORDER BY applied_at DESC LIMIT 1`;
-    return ok({ estado: "SAUDAVEL", banco: "POSTGRESQL", migration, algoritmo_alterado: false });
-  } catch (error) {
-    return fail(error, 503);
+    return NextResponse.json(
+      await requisitarNucleoPublico("/api/v1/saude")
+    );
+  } catch {
+    return NextResponse.json(
+      { erro: { mensagem: "Núcleo indisponível." } },
+      { status: 503 }
+    );
   }
 }

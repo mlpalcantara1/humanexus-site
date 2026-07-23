@@ -65,6 +65,13 @@ export function requisitarNucleoAutenticado<T>(
   return requisitar<T>(caminho, init, token);
 }
 
+export function requisitarNucleoPublico<T>(
+  caminho: string,
+  init: RequestInit = {}
+) {
+  return requisitar<T>(caminho, init);
+}
+
 export async function entrarNoNucleo(
   email: string,
   senha: string
