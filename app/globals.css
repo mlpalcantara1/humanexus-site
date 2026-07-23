@@ -127,3 +127,105 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
     display: none;
   }
 }
+/* Plataforma: shell isolado do site institucional. */
+.platform-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  color: #f7f4ec;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(201, 163, 78, 0.14), transparent 34rem),
+    linear-gradient(145deg, #090a0c 0%, #111318 52%, #08090b 100%);
+}
+
+.platform-header {
+  min-height: 5.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1rem clamp(1.25rem, 4vw, 4rem);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(7, 8, 10, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+.platform-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  color: #fff;
+  text-decoration: none;
+}
+
+.platform-brand-mark {
+  display: grid;
+  width: 2.7rem;
+  height: 2.7rem;
+  place-items: center;
+  border: 1px solid #c9a34e;
+  color: #d8bc65;
+  font-weight: 800;
+  letter-spacing: -0.08em;
+}
+
+.platform-brand strong,
+.platform-brand small {
+  display: block;
+}
+
+.platform-brand strong {
+  font-size: 0.95rem;
+  letter-spacing: 0.2em;
+}
+
+.platform-brand small {
+  margin-top: 0.2rem;
+  color: #9da2aa;
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+}
+
+.platform-security {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #aeb2b9;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.platform-security span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #78d69a;
+  box-shadow: 0 0 1rem rgba(120, 214, 154, 0.75);
+}
+
+.platform-content {
+  min-width: 0;
+}
+
+.platform-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem clamp(1.25rem, 4vw, 4rem);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: #777d86;
+  font-size: 0.72rem;
+}
+
+.platform-footer span {
+  color: #b99a52;
+  letter-spacing: 0.2em;
+}
+
+@media (max-width: 640px) {
+  .platform-security,
+  .platform-footer small {
+    display: none;
+  }
+}

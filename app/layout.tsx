@@ -1,7 +1,4 @@
 import type { Metadata } from "next";
-import { FloatingWhatsApp } from "@/components/floating-whatsapp";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -114,10 +111,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
-        <SiteHeader />
         {children}
-        <SiteFooter />
-        <FloatingWhatsApp />
       </body>
     </html>
   );

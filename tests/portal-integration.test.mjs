@@ -30,7 +30,7 @@ test("perfis oficiais possuem destinos privados exatos", async () => {
 
 test("token de sessão não é armazenado no navegador", async () => {
   const files = [
-    "app/entrar/page.tsx",
+    "app/(platform)/entrar/page.tsx",
     "components/formulario-entrada.tsx",
     "lib/humanexus-api.ts"
   ];
@@ -42,6 +42,20 @@ test("token de sessão não é armazenado no navegador", async () => {
   assert.match(login, /httpOnly: true/);
   assert.match(login, /sameSite: "strict"/);
   assert.match(login, /protocol === "https:"/);
+});
+
+test("site e plataforma possuem layouts estruturalmente isolados", async () => {
+  const rootLayout = await source("app/layout.tsx");
+  const siteLayout = await source("app/(site)/layout.tsx");
+  const platformLayout = await source("app/(platform)/layout.tsx");
+  const platformShell = await source("components/platform-shell.tsx");
+
+  assert.doesNotMatch(rootLayout, /SiteHeader|SiteFooter|FloatingWhatsApp/);
+  assert.match(siteLayout, /SiteHeader/);
+  assert.match(siteLayout, /SiteFooter/);
+  assert.match(siteLayout, /FloatingWhatsApp/);
+  assert.match(platformLayout, /PlatformShell/);
+  assert.doesNotMatch(platformShell, /SiteHeader|SiteFooter|FloatingWhatsApp/);
 });
 
 test("autenticação provisória está funcionalmente desativada", async () => {

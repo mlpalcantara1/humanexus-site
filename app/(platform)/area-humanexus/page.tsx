@@ -23,7 +23,7 @@ const accesses = [
 
 export default function AreaHumanexusPage() {
   return (
-    <section className="relative overflow-hidden px-5 py-20 sm:py-28">
+    <section className="relative overflow-hidden px-5 py-14 sm:py-20">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(212,175,55,0.14),transparent_36%)]" />
       <div className="relative mx-auto max-w-6xl">
         <p className="text-xs uppercase tracking-[0.32em] text-[#C9A34E]">Ecossistema seguro</p>
