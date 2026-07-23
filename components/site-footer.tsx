@@ -5,7 +5,7 @@ export function SiteFooter() {
     <footer>
       <div className="container footer-top">
         <div className="footer-brand">
-          <Link href="/" className="brand" aria-label="HUMANEXUS — início">
+          <Link href="/" className="brand">
             <span className="brand-mark">
               <i>H</i>
               <b>X</b>
@@ -27,14 +27,14 @@ export function SiteFooter() {
           </div>
         </div>
         <div>
-          <h4>Navegação</h4>
+          <h2 className="footer-heading">Navegação</h2>
           <Link href="/o-instituto">O Instituto</Link>
           <Link href="/solucoes">Soluções</Link>
           <Link href="/tecnologia-humanexus">Tecnologia</Link>
           <Link href="/areas-de-atuacao">Áreas de atuação</Link>
         </div>
         <div>
-          <h4>Institucional</h4>
+          <h2 className="footer-heading">Institucional</h2>
           <Link href="/performance-operacional">Performance Operacional</Link>
           <Link href="/inteligencia-regulatoria-humana">
             Inteligência Regulatória
@@ -45,7 +45,7 @@ export function SiteFooter() {
           <Link href="/contato">Contato</Link>
         </div>
         <div>
-          <h4>Conecte-se</h4>
+          <h2 className="footer-heading">Conecte-se</h2>
           <Link
             href="https://www.instagram.com/institutohumanexus"
             target="_blank"

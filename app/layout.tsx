@@ -7,6 +7,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   metadataBase: new URL("https://www.institutohumanexus.com"),
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png"
+  },
   title: {
     default: "HUMANEXUS | Inteligência Humana para Operações Aéreas",
     template: "%s"
@@ -92,6 +96,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
+      <head>
+        <link
+          rel="preload"
+          href="/media/hero-command-center.webp"
+          as="image"
+          type="image/webp"
+          fetchPriority="high"
+        />
+      </head>
       <body className="antialiased">
         <script
           type="application/ld+json"

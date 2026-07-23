@@ -4,7 +4,7 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <div className="container header-inner">
-        <Link href="/" className="brand" aria-label="HUMANEXUS — início">
+        <Link href="/" className="brand">
           <span className="brand-mark">
             <i>H</i>
             <b>X</b>
