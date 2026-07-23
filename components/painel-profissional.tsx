@@ -48,7 +48,7 @@ export function PainelProfissional() {
         method: "POST",
         body: JSON.stringify({ participante_id: participant.id })
       });
-      setInvite(`${window.location.origin}/anamnese/${generated.token_de_entrega_unica}`);
+      setInvite(`${window.location.origin}/anamnese/convite/${generated.token_de_entrega_unica}`);
       setStatus("Convite criado. O token completo é exibido somente agora.");
       await loadHistory();
     } catch (error) {

@@ -10,14 +10,14 @@ const accesses = [
   {
     title: "Área Profissional",
     description: "Cadastre participantes, gere convites e acompanhe anamneses em revisão.",
-    href: "/login",
+    href: "/entrar",
     label: "Entrar no painel"
   },
   {
     title: "Área Organizacional",
     description: "Acesso preparado para gestão institucional com separação de finalidades e permissões.",
-    href: "/organizacional",
-    label: "Conhecer acesso"
+    href: "/entrar",
+    label: "Entrar com segurança"
   }
 ];
 

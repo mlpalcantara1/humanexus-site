@@ -22,6 +22,9 @@ export function SiteHeader() {
           <Link href="/inteligencia-regulatoria-humana">TIRH</Link>
           <Link href="/empresas-e-organizacoes">Empresas</Link>
         </nav>
+        <Link href="/area-humanexus" className="header-area">
+          Área HUMANEXUS
+        </Link>
         <Link href="/contato" className="header-cta">
           Agendar <span>↗</span>
         </Link>
@@ -38,6 +41,7 @@ export function SiteHeader() {
             <Link href="/inteligencia-regulatoria-humana">TIRH</Link>
             <Link href="/empresas-e-organizacoes">Empresas</Link>
             <Link href="/performance-operacional">Performance</Link>
+            <Link href="/area-humanexus">Área HUMANEXUS</Link>
             <Link href="/contato">Agendar apresentação</Link>
           </div>
         </details>

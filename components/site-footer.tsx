@@ -32,6 +32,7 @@ export function SiteFooter() {
           <Link href="/solucoes">Soluções</Link>
           <Link href="/tecnologia-humanexus">Tecnologia</Link>
           <Link href="/areas-de-atuacao">Áreas de atuação</Link>
+          <Link href="/area-humanexus">Área HUMANEXUS</Link>
         </div>
         <div>
           <h2 className="footer-heading">Institucional</h2>

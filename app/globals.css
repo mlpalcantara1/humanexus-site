@@ -111,3 +111,19 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
   margin: 2px 0 12px;
   font: 8px monospace;
 }
+
+.header-area {
+  color: var(--gold-hi);
+  border-bottom: 1px solid #c4a56380;
+  padding: 8px 0;
+  font-size: 9px;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (width <= 760px) {
+  .header-area {
+    display: none;
+  }
+}
