@@ -30,29 +30,3 @@ export function verifyInviteToken(token: string): { invite: string; exp: number 
   if (payload.exp <= Math.floor(Date.now() / 1000)) throw new Error("Convite expirado.");
   return payload;
 }
-
-export function createProfessionalToken(email: string) {
-  const body = encode(JSON.stringify({ email, exp: Math.floor(Date.now() / 1000) + 8 * 3600 }));
-  const signature = createHmac("sha256", secret("HUMANEXUS_AUTH_SECRET")).update(body).digest("base64url");
-  return `${body}.${signature}`;
-}
-
-export function verifyProfessionalToken(header: string | null) {
-  if (!header?.startsWith("Bearer ")) throw new Error("Acesso profissional necessário.");
-  const token = header.slice(7);
-  const [body, supplied] = token.split(".");
-  const expected = createHmac("sha256", secret("HUMANEXUS_AUTH_SECRET")).update(body).digest();
-  const received = Buffer.from(supplied ?? "", "base64url");
-  if (received.length !== expected.length || !timingSafeEqual(received, expected)) throw new Error("Sessão inválida.");
-  const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
-  if (payload.exp <= Math.floor(Date.now() / 1000)) throw new Error("Sessão expirada.");
-  return payload as { email: string; exp: number };
-}
-
-export function verifyProfessionalCredentials(email: string, password: string) {
-  const configuredEmail = process.env.HUMANEXUS_PROFESSIONAL_EMAIL ?? "";
-  const configuredPassword = process.env.HUMANEXUS_PROFESSIONAL_PASSWORD ?? "";
-  const supplied = createHash("sha256").update(`${email}\0${password}`).digest();
-  const expected = createHash("sha256").update(`${configuredEmail}\0${configuredPassword}`).digest();
-  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
-}

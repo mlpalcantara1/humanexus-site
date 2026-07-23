@@ -6,13 +6,10 @@ export async function humanexusApi<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  const professionalToken =
-    typeof window !== "undefined" ? sessionStorage.getItem("humanexus_professional_token") : null;
   const response = await fetch(`${API}${path}`, {
     ...init,
     headers: {
       "content-type": "application/json",
-      ...(professionalToken ? { authorization: `Portador ${professionalToken}` } : {}),
       ...init.headers
     },
     cache: "no-store"

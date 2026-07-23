@@ -1,6 +1,13 @@
 import catalog from "@/data/biblioteca-perguntas-1.0.json";
+import { redirect } from "next/navigation";
+import { sessaoAtual } from "@/lib/portal-session";
 
-export default function CatalogoPage() {
+export default async function CatalogoPage() {
+  const sessao = await sessaoAtual();
+  if (!sessao) redirect("/sessao-expirada");
+  if (sessao.usuario.perfil !== "PROFISSIONAL_HUMANEXUS") {
+    redirect("/acesso-negado");
+  }
   const byNiche = catalog.nichos.map((niche) => ({
     niche,
     count: catalog.perguntas.filter((question) => question.nichos_json.includes(niche)).length

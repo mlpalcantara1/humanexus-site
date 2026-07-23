@@ -1,5 +1,5 @@
-import { PainelProfissional } from "@/components/painel-profissional";
+import { PainelSeguro } from "@/components/painel-seguro";
 
 export default function ProfissionalPage() {
-  return <PainelProfissional />;
+  return <PainelSeguro perfilExigido="PROFISSIONAL_HUMANEXUS" />;
 }
