@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { entradaDaPlataforma } from "@/lib/entrada-plataforma";
 
 export function SiteHeader() {
+  const entradaDaArea = entradaDaPlataforma();
+
   return (
     <header className="site-header">
       <div className="container header-inner">
@@ -22,7 +25,7 @@ export function SiteHeader() {
           <Link href="/inteligencia-regulatoria-humana">TIRH</Link>
           <Link href="/empresas-e-organizacoes">Empresas</Link>
         </nav>
-        <Link href="/area-humanexus" className="header-area">
+        <Link href={entradaDaArea} className="header-area">
           Área HUMANEXUS
         </Link>
         <Link href="/contato" className="header-cta">
@@ -41,7 +44,7 @@ export function SiteHeader() {
             <Link href="/inteligencia-regulatoria-humana">TIRH</Link>
             <Link href="/empresas-e-organizacoes">Empresas</Link>
             <Link href="/performance-operacional">Performance</Link>
-            <Link href="/area-humanexus">Área HUMANEXUS</Link>
+            <Link href={entradaDaArea}>Área HUMANEXUS</Link>
             <Link href="/contato">Agendar apresentação</Link>
           </div>
         </details>

@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { entradaDaPlataforma } from "@/lib/entrada-plataforma";
 
 export function SiteFooter() {
+  const entradaDaArea = entradaDaPlataforma();
+
   return (
     <footer>
       <div className="container footer-top">
@@ -32,7 +35,7 @@ export function SiteFooter() {
           <Link href="/solucoes">Soluções</Link>
           <Link href="/tecnologia-humanexus">Tecnologia</Link>
           <Link href="/areas-de-atuacao">Áreas de atuação</Link>
-          <Link href="/area-humanexus">Área HUMANEXUS</Link>
+          <Link href={entradaDaArea}>Área HUMANEXUS</Link>
         </div>
         <div>
           <h2 className="footer-heading">Institucional</h2>

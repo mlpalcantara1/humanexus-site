@@ -6,8 +6,9 @@ export default async function EntrarPage() {
   const sessao = await sessaoAtual();
   if (sessao) redirect(destinoDoPerfil(sessao.usuario.perfil));
   return (
-    <section className="mx-auto min-h-[72vh] max-w-lg px-5 py-20">
-      <FormularioEntrada />
+    <section className="platform-login min-h-[72vh] px-5 py-20">
+      <div className="platform-login__media" aria-hidden="true" />
+      <div className="relative mx-auto max-w-lg"><FormularioEntrada /></div>
     </section>
   );
 }

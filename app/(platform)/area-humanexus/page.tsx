@@ -8,14 +8,14 @@ const accesses = [
     label: "Acesso do participante"
   },
   {
-    title: "Área Profissional",
-    description: "Cadastre participantes, gere convites e acompanhe anamneses em revisão.",
+    title: "Plataforma HUMANEXUS",
+    description: "Entre no mesmo ambiente que reúne clientes, sessões, treinamentos, Cockpit Vivo e inteligência regulatória.",
     href: "/entrar",
-    label: "Entrar no painel"
+    label: "Acessar plataforma"
   },
   {
-    title: "Área Organizacional",
-    description: "Acesso preparado para gestão institucional com separação de finalidades e permissões.",
+    title: "Governança e validação",
+    description: "Acesso por perfil, contexto organizacional, rastreabilidade e HUMANEXUS LAB exclusivo ao Administrador Proprietário.",
     href: "/entrar",
     label: "Entrar com segurança"
   }
@@ -23,7 +23,8 @@ const accesses = [
 
 export default function AreaHumanexusPage() {
   return (
-    <section className="relative overflow-hidden px-5 py-14 sm:py-20">
+    <section className="platform-entry relative overflow-hidden px-5 py-14 sm:py-20">
+      <div className="platform-entry__media" aria-hidden="true" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(212,175,55,0.14),transparent_36%)]" />
       <div className="relative mx-auto max-w-6xl">
         <p className="text-xs uppercase tracking-[0.32em] text-[#C9A34E]">Ecossistema seguro</p>
