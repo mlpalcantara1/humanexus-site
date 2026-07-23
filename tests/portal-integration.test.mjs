@@ -8,9 +8,15 @@ const source = (path) => readFile(new URL(path, root), "utf8");
 test("site expõe Área HUMANEXUS sem substituir AGENDAR", async () => {
   const header = await source("components/site-header.tsx");
   const footer = await source("components/site-footer.tsx");
+  const platformEntry =
+    /https:\/\/app\.institutohumanexus\.com\/recuperar-acesso/;
   assert.match(header, /Área HUMANEXUS/);
+  assert.match(header, /Entrar na Plataforma/);
+  assert.match(header, platformEntry);
   assert.match(header, /Agendar/);
   assert.match(footer, /Área HUMANEXUS/);
+  assert.match(footer, /Entrar na Plataforma/);
+  assert.match(footer, platformEntry);
 });
 
 test("perfis oficiais possuem destinos privados exatos", async () => {
