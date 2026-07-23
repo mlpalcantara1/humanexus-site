@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Fonte variável recuperada da referência autoral do ChatGPT Sites. */
 @font-face {
   font-family: "Geist Mono";
