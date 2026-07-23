@@ -1,5 +1,10 @@
-import { permanentRedirect } from "next/navigation";
+import {
+  metadataForPremiumPage,
+  PremiumReferencePage
+} from "@/components/premium-reference-page";
 
-export default function InteligenciaRegulatoriaRedirectPage() {
-  permanentRedirect("/pesquisa");
+export const metadata = metadataForPremiumPage("inteligencia-regulatoria-humana");
+
+export default function Page() {
+  return <PremiumReferencePage slug="inteligencia-regulatoria-humana" />;
 }

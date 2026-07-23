@@ -3,8 +3,8 @@ import {
   PremiumReferencePage
 } from "@/components/premium-reference-page";
 
-export const metadata = metadataForPremiumPage("solucoes");
+export const metadata = metadataForPremiumPage("o-instituto");
 
 export default function Page() {
-  return <PremiumReferencePage slug="solucoes" />;
+  return <PremiumReferencePage slug="o-instituto" />;
 }

@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { AnalyticsScripts } from "@/components/analytics-scripts";
-import { brandAssets } from "@/lib/brand-assets";
 import { FloatingWhatsApp } from "@/components/floating-whatsapp";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -8,13 +6,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
-  metadataBase: new URL("https://institutohumanexus.com"),
+  metadataBase: new URL("https://www.institutohumanexus.com"),
   title: {
-    default: "Instituto HUMANEXUS | Inteligência Regulatória Humana",
-    template: "%s | Instituto HUMANEXUS"
+    default: "HUMANEXUS | Inteligência Humana para Operações Aéreas",
+    template: "%s"
   },
   description:
-    "Instituto HUMANEXUS: Inteligência Regulatória Humana aplicada a ambientes operacionais de alta exigência.",
+    "Inteligência Regulatória Humana, neurotecnologia e desenvolvimento contínuo para aviação, segurança operacional, comandantes e tripulações.",
   keywords: [
     "inteligência regulatória humana",
     "teoria da inteligência regulatória humana",
@@ -28,51 +26,63 @@ export const metadata: Metadata = {
     "tomada de decisão sob pressão"
   ],
   openGraph: {
-    title: "Instituto HUMANEXUS | Inteligência Regulatória Humana",
+    title: "HUMANEXUS | Inteligência Humana para Operações Aéreas",
     description:
-      "Instituto HUMANEXUS: Teoria da Inteligência Regulatória Humana aplicada à segurança operacional, à liderança e ao desenvolvimento humano em ambientes críticos.",
-    url: "https://institutohumanexus.com",
+      "Ciência e tecnologia aplicadas à segurança, decisão e performance humana em operações aéreas.",
+    url: "https://www.institutohumanexus.com",
     siteName: "HUMANEXUS",
     locale: "pt_BR",
     type: "website",
     images: [
       {
-        url: brandAssets.socialPreview,
-        width: 1400,
-        height: 1164,
-        alt: "Identidade oficial HUMANEXUS"
+        url: "/media/hero-command-center.png",
+        width: 1672,
+        height: 941,
+        alt: "HUMANEXUS — inteligência humana para operações críticas"
       }
     ]
   },
   twitter: {
     card: "summary_large_image",
-    title: "Instituto HUMANEXUS | Inteligência Regulatória Humana",
+    title: "HUMANEXUS",
     description:
-      "Instituto HUMANEXUS: base científica e institucional da Inteligência Regulatória Humana.",
-    images: [brandAssets.socialPreview]
+      "Inteligência Regulatória Humana aplicada à aviação e à segurança operacional.",
+    images: ["/media/hero-command-center.png"]
   },
   alternates: {
-    canonical: "https://institutohumanexus.com"
+    canonical: "https://www.institutohumanexus.com"
   }
 };
 
 const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "Instituto HUMANEXUS",
-  url: "https://institutohumanexus.com",
-  email: "contato@institutohumanexus.com",
+  name: "Instituto Humanexus de Performance Operacional LTDA",
+  alternateName: "HUMANEXUS",
+  url: "https://www.institutohumanexus.com",
+  logo: "https://www.institutohumanexus.com/media/humanexus-logo.png",
+  email: ["contato@institutohumanexus.com", "institutohumanexus@gmail.com"],
+  telephone: "+55 92 98118-7777",
+  founder: {
+    "@type": "Person",
+    name: "Dr. Marcos Alcântara"
+  },
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Manaus",
+    addressRegion: "AM",
+    addressCountry: "BR"
+  },
   description:
-    "Instituto de Inteligência Regulatória Humana para ambientes operacionais de alta exigência.",
-  areaServed: "BR",
-  sameAs: ["https://www.institutohumanexus.com"]
+    "Inteligência Regulatória Humana e tecnologia aplicada à segurança e performance operacional.",
+  areaServed: "BR"
 };
 
 const websiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  name: "Instituto HUMANEXUS",
-  url: "https://institutohumanexus.com"
+  name: "HUMANEXUS",
+  url: "https://www.institutohumanexus.com"
 };
 
 export default function RootLayout({
@@ -92,11 +102,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
         <SiteHeader />
-        <main>{children}</main>
+        {children}
         <SiteFooter />
         <FloatingWhatsApp />
-        <AnalyticsScripts />
-        <script dangerouslySetInnerHTML={{ __html: "if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'))}" }} />
       </body>
     </html>
   );
