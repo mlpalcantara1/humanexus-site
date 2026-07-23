@@ -1,5 +1,17 @@
 import { PainelSeguro } from "@/components/painel-seguro";
+import { PainelAdministrador } from "@/components/painel-administrador";
+import { sessaoAtual } from "@/lib/portal-session";
 
-export default function AdminPage() {
-  return <PainelSeguro perfilExigido="ADMINISTRADOR_DO_SISTEMA" />;
+export default async function AdminPage() {
+  const sessao = await sessaoAtual();
+  return (
+    <>
+      <PainelSeguro perfilExigido="ADMINISTRADOR_DO_SISTEMA" />
+      {sessao ? (
+        <section className="mx-auto max-w-6xl px-5 pb-20">
+          <PainelAdministrador csrf={sessao.csrf} />
+        </section>
+      ) : null}
+    </>
+  );
 }

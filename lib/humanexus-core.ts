@@ -19,6 +19,7 @@ export type UsuarioHumanexus = {
   identificador_da_organizacao: string | null;
   perfil: PerfilHumanexus;
   permissoes: string[];
+  troca_de_senha_obrigatoria: boolean;
 };
 
 export type SessaoDoNucleo = {
@@ -56,6 +57,14 @@ async function requisitar<T>(
   return dados as T;
 }
 
+export function requisitarNucleoAutenticado<T>(
+  caminho: string,
+  token: string,
+  init: RequestInit = {}
+) {
+  return requisitar<T>(caminho, init, token);
+}
+
 export async function entrarNoNucleo(
   email: string,
   senha: string
@@ -88,4 +97,39 @@ export async function renovarNoNucleo(token: string): Promise<SessaoDoNucleo> {
 
 export async function sairDoNucleo(token: string) {
   await requisitar("/api/v1/autenticacao/sair", { method: "POST" }, token);
+}
+
+export function solicitarRecuperacaoNoNucleo(email: string) {
+  return requisitar<{ mensagem: string }>(
+    "/api/v1/autenticacao/recuperacao/solicitar",
+    { method: "POST", body: JSON.stringify({ email }) }
+  );
+}
+
+export function redefinirSenhaNoNucleo(token: string, novaSenha: string) {
+  return requisitar(
+    "/api/v1/autenticacao/recuperacao/redefinir",
+    {
+      method: "POST",
+      body: JSON.stringify({ token, nova_senha: novaSenha })
+    }
+  );
+}
+
+export function alterarSenhaNoNucleo(
+  token: string,
+  senhaAtual: string,
+  novaSenha: string
+) {
+  return requisitar(
+    "/api/v1/autenticacao/alterar-senha",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        senha_atual: senhaAtual,
+        nova_senha: novaSenha
+      })
+    },
+    token
+  );
 }

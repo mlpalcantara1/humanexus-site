@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export function FormularioEntrada() {
   const [email, setEmail] = useState("");
@@ -77,6 +78,14 @@ export function FormularioEntrada() {
       >
         {enviando ? "Entrando…" : "Entrar com segurança"}
       </button>
+      <div className="mt-5 text-center">
+        <Link
+          href="/recuperar-acesso"
+          className="text-sm font-semibold text-[#D8BC65]"
+        >
+          Esqueci minha senha
+        </Link>
+      </div>
       <p aria-live="polite" className="mt-4 text-sm text-[#AEB2B9]">
         {mensagem}
       </p>

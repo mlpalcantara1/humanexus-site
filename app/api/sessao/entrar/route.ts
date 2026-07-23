@@ -16,7 +16,9 @@ export async function POST(request: Request) {
     const usuario = await obterUsuarioDoNucleo(sessao.token);
     const csrf = randomUUID();
     const resposta = NextResponse.json({
-      destino: destinoDoPerfil(usuario.perfil)
+      destino: usuario.troca_de_senha_obrigatoria
+        ? "/alterar-senha"
+        : destinoDoPerfil(usuario.perfil)
     });
     const base = {
       path: "/",

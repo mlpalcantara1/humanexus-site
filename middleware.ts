@@ -7,6 +7,7 @@ const ROTAS_PRIVADAS = [
   "/profissional",
   "/operacional",
   "/auditoria",
+  "/alterar-senha",
   "/sair"
 ];
 
@@ -39,6 +40,7 @@ export const config = {
     "/profissional/:path*",
     "/operacional/:path*",
     "/auditoria/:path*",
+    "/alterar-senha",
     "/sair"
   ]
 };
