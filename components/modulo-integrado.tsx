@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ParametrizacaoProspectiva, type DadosPHP } from "@/components/parametrizacao-prospectiva";
 
 export type ModuloDaPlataforma =
   | "painel"
@@ -66,6 +67,7 @@ function descricaoDosDados(dados: unknown) {
 export function ModuloIntegrado({ modulo }: { modulo: ModuloDaPlataforma }) {
   const definicao = DEFINICOES[modulo];
   const [resposta, setResposta] = useState<Resposta | null>(null);
+  const [php, setPhp] = useState<DadosPHP | null>(null);
   const [erro, setErro] = useState("");
 
   useEffect(() => {
@@ -81,6 +83,23 @@ export function ModuloIntegrado({ modulo }: { modulo: ModuloDaPlataforma }) {
         setResposta(dados as Resposta);
       })
       .catch((causa) => setErro(causa instanceof Error ? causa.message : "Consulta indisponível."));
+  }, [modulo]);
+
+  useEffect(() => {
+    if (modulo !== "humanexus-lab") return;
+    let ativo = true;
+    fetch("/api/plataforma/governanca-restrita", { cache: "no-store" })
+      .then(async (resultado) => {
+        const corpo = await resultado.json();
+        if (!resultado.ok) {
+          throw new Error(corpo?.erro?.mensagem ?? "Recurso restrito indisponível.");
+        }
+        if (ativo) setPhp(corpo.dados as DadosPHP);
+      })
+      .catch((causa) => {
+        if (ativo) setErro(causa instanceof Error ? causa.message : "Recurso restrito indisponível.");
+      });
+    return () => { ativo = false; };
   }, [modulo]);
 
   const recursos = useMemo(() => {
@@ -103,6 +122,7 @@ export function ModuloIntegrado({ modulo }: { modulo: ModuloDaPlataforma }) {
         {!resposta && !erro ? <p className="platform-loading">Consultando o núcleo oficial…</p> : null}
 
         {modulo === "humanexus-lab" && resposta ? (
+          <>
           <article className="platform-data-card platform-data-card--lab">
             <p className="platform-data-card__label">VALIDAÇÃO CIENTÍFICA</p>
             <p className="platform-data-card__value">Dados do HUMANEXUS LAB autorizados pelo núcleo.</p>
@@ -111,6 +131,8 @@ export function ModuloIntegrado({ modulo }: { modulo: ModuloDaPlataforma }) {
               <pre>{JSON.stringify(dadosDoLab, null, 2)}</pre>
             </details>
           </article>
+          <ParametrizacaoProspectiva dados={php} />
+          </>
         ) : null}
 
         {modulo !== "humanexus-lab" && resposta ? (
