@@ -23,74 +23,43 @@ export async function PainelSeguro({
   if (sessao.usuario.perfil !== perfilExigido) redirect("/acesso-negado");
 
   return (
-    <section className="mx-auto min-h-[70vh] max-w-6xl px-5 py-14 sm:py-20">
-      <div className="flex flex-col justify-between gap-6 border-b border-white/10 pb-8 sm:flex-row sm:items-end">
+    <section className="hx-secure-panel">
+      <div className="hx-secure-panel__head">
         <div>
-          <p className="text-xs uppercase tracking-[0.28em] text-[#C9A34E]">
-            Área HUMANEXUS
-          </p>
-          <h1 className="mt-3 text-4xl font-semibold text-white">
-            {TITULOS[perfilExigido]}
-          </h1>
-          <p className="mt-3 text-[#AEB2B9]">
-            Sessão autenticada pelo núcleo oficial HUMANEXUS.
-          </p>
+          <p>ÁREA HUMANEXUS / GOVERNANÇA</p>
+          <h1>{TITULOS[perfilExigido]}</h1>
+          <span>Sessão autenticada pelo núcleo oficial HUMANEXUS.</span>
         </div>
         <BotaoSair csrf={sessao.csrf} />
       </div>
 
-      <div className="mt-10 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-        <article className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-7">
-          <h2 className="text-xl font-semibold text-white">Identidade</h2>
-          <dl className="mt-6 space-y-4 text-sm">
+      <div className="hx-secure-panel__grid">
+        <article>
+          <h2>Identidade</h2>
+          <dl>
             <div>
-              <dt className="text-[#8F949C]">Nome</dt>
-              <dd className="mt-1 text-[#F2F2F2]">{sessao.usuario.nome}</dd>
+              <dt>Nome</dt><dd>{sessao.usuario.nome}</dd>
             </div>
             <div>
-              <dt className="text-[#8F949C]">Perfil</dt>
-              <dd className="mt-1 break-words text-[#F2F2F2]">
-                {sessao.usuario.perfil}
-              </dd>
+              <dt>Perfil</dt><dd>{sessao.usuario.perfil}</dd>
             </div>
             <div>
-              <dt className="text-[#8F949C]">Organização</dt>
-              <dd className="mt-1 break-all text-[#F2F2F2]">
-                {sessao.usuario.identificador_da_organizacao ??
-                  "Escopo sistêmico"}
-              </dd>
+              <dt>Organização</dt><dd>{sessao.usuario.identificador_da_organizacao ?? "Escopo sistêmico"}</dd>
             </div>
           </dl>
         </article>
 
-        <article className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-7">
-          <h2 className="text-xl font-semibold text-white">
-            Permissões efetivas
-          </h2>
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+        <article>
+          <h2>Permissões efetivas</h2>
+          <ul>
             {sessao.usuario.permissoes.map((permissao) => (
-              <li
-                key={permissao}
-                className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-[#D5D7DB]"
-              >
-                {permissao}
-              </li>
+              <li key={permissao}>{permissao}</li>
             ))}
           </ul>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href={destinoDoPerfil(sessao.usuario.perfil)}
-              className="rounded-full bg-[#C9A34E] px-5 py-3 text-sm font-semibold text-black"
-            >
-              Início do painel
-            </Link>
+          <div className="hx-secure-panel__actions">
+            <Link href={destinoDoPerfil(sessao.usuario.perfil)}>Início do painel <span>→</span></Link>
             {perfilExigido === "PROFISSIONAL_HUMANEXUS" ? (
-              <Link
-                href="/profissional/catalogo"
-                className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white"
-              >
-                Catálogo autoral
-              </Link>
+              <Link href="/profissional/catalogo">Catálogo autoral</Link>
             ) : null}
           </div>
         </article>

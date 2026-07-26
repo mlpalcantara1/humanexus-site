@@ -1,11 +1,15 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function AcessoParticipantePage() {
   const [token, setToken] = useState("");
   const router = useRouter();
+  useEffect(() => {
+    const recebido = new URLSearchParams(window.location.search).get("token")?.trim();
+    if (recebido) router.replace(`/anamnese/convite/${encodeURIComponent(recebido)}`);
+  }, [router]);
   function submit(event: FormEvent) {
     event.preventDefault();
     const value = token.trim();

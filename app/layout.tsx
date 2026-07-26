@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./operational.css";
+import "./anamnese-operacional.css";
+import { PwaRuntime } from "@/components/pwa-runtime";
 
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
@@ -92,7 +95,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" data-scroll-behavior="smooth">
       <head>
         <link
           rel="preload"
@@ -112,6 +115,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
         {children}
+        <PwaRuntime />
       </body>
     </html>
   );

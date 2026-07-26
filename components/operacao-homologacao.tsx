@@ -1,0 +1,1689 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import type { ModuloDaPlataforma } from "@/components/modulo-integrado";
+import {
+  CockpitSignalStack,
+  EmptySignalState,
+  LongitudinalEvolutionChart,
+  PhaseComparisonChart,
+  ReplayTimelineChart,
+  TelemetryCommandChart,
+  type HxDataPoint,
+  type HxMarker,
+  type HxPhaseRange,
+  type HxTrack
+} from "@/components/hx-command-visualizations";
+import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
+
+type Registro = Record<string, unknown>;
+type Estado = {
+  aviso: string;
+  usuario: Registro;
+  organizacao: Registro;
+  participante: Registro;
+  sessao: Registro;
+  fases: Registro[];
+  ctr_individual: (Registro & { criterios?: Registro[] }) | null;
+  thx_individual: Registro | null;
+  execucao: Registro | null;
+  ciclo: Registro | null;
+  eventos: Registro[];
+  conectores: Registro[];
+  historicos_conectores: { identificador: unknown; eventos: Registro[] }[];
+  fontes: Registro[];
+  telemetria: Registro[];
+  eventos_tecnicos: Registro[];
+  linhas: Registro[];
+  replay: (Registro & { linha?: Registro; itens?: Registro[] }) | null;
+  rastreabilidade: Registro | null;
+  relatorios: Registro[];
+  formulacoes: Registro[];
+  longitudinal: Registro;
+  movel: { perfil: Registro; comandos: Registro[] };
+  ciencia: {
+    postulados: Registro;
+    macrocampos: Registro[];
+    vetores: Registro[];
+    versao: Registro;
+  };
+  leitura_regulatoria: {
+    evidencias: Registro[];
+    estados_vetoriais: Registro[];
+    configuracoes: Registro[];
+    avaliacoes: Registro[];
+    decisoes: Registro[];
+    trajetorias: Registro[];
+    arr: Registro[];
+    rro: Registro[];
+    anamneses: Registro[];
+    evidencias_anamnese: Registro[];
+    evidencias_anamnese_no_escopo: Registro[];
+    formulacoes_no_escopo: Registro[];
+  };
+  governanca: Registro;
+  contextos: {
+    organizacoes: Registro[];
+    participantes: Registro[];
+    sessoes: Registro[];
+    profissionais: Registro[];
+    selecao: {
+      identificador_da_organizacao: string;
+      identificador_do_participante: string;
+      identificador_da_sessao: string;
+      identificador_do_profissional: string;
+    };
+  };
+};
+
+const AVISO = "SIMULAÇÃO TÉCNICA — NÃO É RESULTADO HUMANO";
+const FASES = ["PRE", "TREINO", "POS"] as const;
+type VisaoCockpit =
+  | "visao-geral"
+  | "evidencias"
+  | "constituicao"
+  | "matriz-vetorial"
+  | "resultante"
+  | "trajetoria"
+  | "pre-treino-pos"
+  | "rotas-regulatorias"
+  | "ctr-thx"
+  | "formulacao"
+  | "longitudinal"
+  | "replay"
+  | "relatorio"
+  | "coletivo"
+  | "tecnico";
+
+const VISOES_COCKPIT: { codigo: string; id: VisaoCockpit; nome: string }[] = [
+  { codigo: "01", id: "visao-geral", nome: "Visão Geral" },
+  { codigo: "02", id: "evidencias", nome: "Evidências" },
+  { codigo: "03", id: "constituicao", nome: "Constituição Operacional da TIRH" },
+  { codigo: "04", id: "matriz-vetorial", nome: "Matriz Vetorial Viva" },
+  { codigo: "05", id: "resultante", nome: "Resultante" },
+  { codigo: "06", id: "trajetoria", nome: "Trajetória" },
+  { codigo: "07", id: "pre-treino-pos", nome: "PRÉ / TREINO / PÓS" },
+  { codigo: "08", id: "rotas-regulatorias", nome: "Rotas Regulatórias" },
+  { codigo: "09", id: "ctr-thx", nome: "CTR e THX" },
+  { codigo: "10", id: "formulacao", nome: "Formulação" },
+  { codigo: "11", id: "longitudinal", nome: "Longitudinal" },
+  { codigo: "12", id: "replay", nome: "Replay" },
+  { codigo: "13", id: "relatorio", nome: "Relatório" },
+  { codigo: "14", id: "coletivo", nome: "Modo Coletivo" },
+  { codigo: "15", id: "tecnico", nome: "Técnico" }
+];
+
+function csrf() {
+  return document.cookie.split("; ").find((item) => item.startsWith("humanexus_csrf="))?.split("=")[1] ?? "";
+}
+
+function texto(valor: unknown, padrao = "INDISPONÍVEL") {
+  return valor == null || valor === "" ? padrao : String(valor).replaceAll("_", " ");
+}
+
+function objeto(valor: unknown): Registro {
+  if (valor && typeof valor === "object" && !Array.isArray(valor)) return valor as Registro;
+  if (typeof valor === "string") {
+    try {
+      const item = JSON.parse(valor);
+      return item && typeof item === "object" && !Array.isArray(item) ? item : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+function lista(valor: unknown): unknown[] {
+  if (Array.isArray(valor)) return valor;
+  if (typeof valor !== "string" || !valor) return [];
+  try {
+    const convertido = JSON.parse(valor);
+    return Array.isArray(convertido) ? convertido : [];
+  } catch {
+    return [];
+  }
+}
+
+function instante(valor: unknown) {
+  const numero = new Date(String(valor ?? "")).getTime();
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+function dataLegivel(valor: unknown) {
+  if (!valor) return "Não registrado";
+  const data = new Date(String(valor));
+  return Number.isNaN(data.getTime())
+    ? texto(valor)
+    : new Intl.DateTimeFormat("pt-BR", {
+        dateStyle: "short",
+        timeStyle: "medium",
+        timeZone: "America/Manaus"
+      }).format(data);
+}
+
+function faseAtual(estado: Estado | null) {
+  if (estado?.sessao.estado === "FINALIZADA") return "NENHUMA FASE ATIVA";
+  const atual = [...(estado?.eventos ?? [])]
+    .reverse()
+    .find((evento) => !["ENCERRAMENTO", "INTERRUPCAO", "INVALIDACAO"].includes(String(evento.tipo)));
+  return texto(atual?.momento, "AGUARDANDO PRÉ");
+}
+
+function Botao({
+  onClick,
+  children,
+  disabled = false,
+  forte = false
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+  disabled?: boolean;
+  forte?: boolean;
+}) {
+  return (
+    <button
+      className={forte ? "hx-op-button hx-op-button--gold" : "hx-op-button"}
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Metadado({
+  rotulo,
+  valor,
+  situacao,
+  fonte
+}: {
+  rotulo: string;
+  valor: string;
+  situacao: string;
+  fonte: string;
+}) {
+  return <div className="hx-hud-cell"><small>{rotulo}</small><strong>{valor}</strong><span>{situacao}</span><em>{fonte}</em></div>;
+}
+
+function AvisoTecnico() {
+  return <div className="hx-op-hud__warning"><span>Esta sessão contém somente dados técnicos de homologação e não produz resultados humanos.</span><b>{AVISO}</b></div>;
+}
+
+function telemetriaOrdenada(telemetria: Registro[]) {
+  return [...telemetria].sort((a, b) => {
+    const tempo = instante(a.timestamp_de_origem) - instante(b.timestamp_de_origem);
+    return tempo || Number(a.sequencia) - Number(b.sequencia);
+  });
+}
+
+function pontoTecnico(item: Registro, valor: number | null, rotulo: string): HxDataPoint {
+  return {
+    time: instante(item.timestamp_de_origem),
+    value: valor,
+    label: rotulo,
+    phase: "SIMULAÇÃO TÉCNICA",
+    source: texto(item.canal, "BRIDGE"),
+    quality: Number(item.qualidade ?? 0),
+    coverage: null,
+    connection: Number(item.perda_detectada ?? 0) > 0
+      ? "PERDA DETECTADA"
+      : Boolean(item.fora_de_ordem)
+        ? "FORA DE ORDEM"
+        : "RECEBIDO",
+    gap: Number(item.perda_detectada ?? 0) > 0,
+    event: Boolean(item.fora_de_ordem) ? "PACOTE FORA DE ORDEM" : undefined
+  };
+}
+
+function pontosTelemetria(telemetria: Registro[], campo: "latencia_ms" | "buffer") {
+  return telemetriaOrdenada(telemetria).map((item) => {
+    const valor = campo === "buffer"
+      ? Number(objeto(objeto(item.dado_normalizado_json).valor).buffer)
+      : Number(item.latencia_ms);
+    return pontoTecnico(
+      item,
+      Number.isFinite(valor) ? valor : null,
+      `Seq. ${texto(item.sequencia)} · ${dataLegivel(item.timestamp_de_origem)}`
+    );
+  });
+}
+
+function pontosFrequencia(telemetria: Registro[]) {
+  const itens = telemetriaOrdenada(telemetria);
+  return itens.map((item, indice) => {
+    if (!indice) return pontoTecnico(item, null, `Seq. ${texto(item.sequencia)} · início da janela`);
+    const atual = instante(item.timestamp_de_origem);
+    const anterior = instante(itens[indice - 1].timestamp_de_origem);
+    return pontoTecnico(
+      item,
+      atual > anterior ? 1000 / (atual - anterior) : null,
+      `Seq. ${texto(item.sequencia)} · frequência observada`
+    );
+  });
+}
+
+function momentos(estado: Estado) {
+  return Array.isArray(estado.ciclo?.momentos) ? estado.ciclo.momentos as Registro[] : [];
+}
+
+function marcadoresDaSessao(estado: Estado): HxMarker[] {
+  const eventos: HxMarker[] = estado.eventos.flatMap((evento) => {
+    const time = instante(evento.ocorrido_em);
+    if (!time) return [];
+    const detalhe = objeto(evento.dados_json ?? evento.dados);
+    const intervencao = Boolean(detalhe.intervencao) || String(detalhe.tipo ?? "").includes("INTERVENCAO");
+    return [{
+      time,
+      label: intervencao ? "INTERVENÇÃO PROFISSIONAL" : texto(evento.tipo),
+      kind: intervencao ? "intervention" : "event",
+      phase: texto(evento.momento)
+    }];
+  });
+  const conectores: HxMarker[] = estado.historicos_conectores.flatMap((historico) =>
+    historico.eventos.flatMap((evento) => {
+      const time = instante(evento.ocorrido_em ?? evento.criado_em);
+      const destino = String(evento.estado_destino ?? evento.estado ?? "");
+      if (!time || !["ERRO", "RECONECTANDO", "TRANSMITINDO"].includes(destino)) return [];
+      return [{
+        time,
+        label: destino === "ERRO" ? "DESCONEXÃO" : destino === "RECONECTANDO" ? "RECONEXÃO" : "CONEXÃO RESTABELECIDA",
+        kind: destino === "ERRO" ? "disconnect" : "reconnect"
+      }];
+    })
+  );
+  return [...eventos, ...conectores].sort((a, b) => a.time - b.time);
+}
+
+function faixasDasFases(estado: Estado): HxPhaseRange[] {
+  const registros = momentos(estado);
+  return FASES.flatMap((fase) => {
+    const inicioEvento = estado.eventos.find((item) => item.momento === fase && item.tipo === "INICIO");
+    const fimEvento = [...estado.eventos].reverse().find((item) => item.momento === fase && item.tipo === "ENCERRAMENTO");
+    const snapshot = registros.find((item) => item.momento === fase);
+    const start = instante(inicioEvento?.ocorrido_em ?? snapshot?.inicio_da_janela ?? snapshot?.coletado_em);
+    const end = instante(fimEvento?.ocorrido_em ?? snapshot?.fim_da_janela ?? snapshot?.coletado_em);
+    if (!start && !end) return [];
+    const inicio = start || Math.max(0, end - 60_000);
+    const fim = Math.max(inicio + 1_000, end || inicio + 60_000);
+    return [{ name: fase === "PRE" ? "PRÉ" : fase === "POS" ? "PÓS" : "TREINO", start: inicio, end: fim }];
+  });
+}
+
+function trilhasDoCockpit(estado: Estado): HxTrack[] {
+  const registros = momentos(estado);
+  const qualidade = registros.map((item) => ({
+    time: instante(item.coletado_em),
+    value: Number(item.confiabilidade ?? 0) * 100,
+    phase: texto(item.momento),
+    source: "Snapshot independente do núcleo",
+    quality: Number(item.confiabilidade ?? 0),
+    coverage: Number(item.cobertura ?? 0),
+    connection: "PRESERVADO",
+    label: dataLegivel(item.coletado_em)
+  }));
+  const cobertura = registros.map((item) => ({
+    time: instante(item.coletado_em),
+    value: Number(item.cobertura ?? 0) * 100,
+    phase: texto(item.momento),
+    source: "Snapshot independente do núcleo",
+    quality: Number(item.confiabilidade ?? 0),
+    coverage: Number(item.cobertura ?? 0),
+    connection: "PRESERVADO",
+    label: dataLegivel(item.coletado_em)
+  }));
+  return [
+    {
+      id: "hr",
+      name: "HR",
+      unit: "bpm",
+      color: C.gold,
+      points: [],
+      emptyReason: "Polar ou sensor cardíaco humano não conectado."
+    },
+    {
+      id: "rmssd",
+      name: "RMSSD",
+      unit: "ms",
+      color: C.cyan,
+      points: [],
+      emptyReason: "Nenhuma série humana de variabilidade foi recebida."
+    },
+    {
+      id: "eeg",
+      name: "EEG autorizado",
+      unit: "µV",
+      color: C.green,
+      points: [],
+      emptyReason: "Headset EEG humano não conectado."
+    },
+    {
+      id: "quality",
+      name: "Qualidade",
+      unit: "%",
+      color: C.green,
+      points: qualidade,
+      min: 0,
+      max: 100,
+      area: true
+    },
+    {
+      id: "coverage",
+      name: "Cobertura",
+      unit: "%",
+      color: C.cyan,
+      points: cobertura,
+      min: 0,
+      max: 100,
+      area: true
+    },
+    {
+      id: "telemetry",
+      name: "Telemetria técnica",
+      unit: "ms",
+      color: C.gold,
+      points: pontosTelemetria(estado.telemetria, "latencia_ms"),
+      technical: true
+    }
+  ];
+}
+
+function fasesComparaveis(estado: Estado) {
+  return FASES.map((fase) => {
+    const item = momentos(estado).find((registro) => registro.momento === fase);
+    const inicio = instante(item?.inicio_da_janela);
+    const fim = instante(item?.fim_da_janela);
+    const sensores = lista(item?.sensores_utilizados_json ?? item?.sensores_utilizados)
+      .map((sensor) => texto(objeto(sensor).identificador))
+      .filter((sensor) => sensor !== "INDISPONÍVEL");
+    const ausencias = lista(item?.ausencias_json ?? item?.ausencias).map((ausencia) => texto(ausencia));
+    return {
+      name: (fase === "PRE" ? "PRÉ" : fase === "POS" ? "PÓS" : "TREINO") as "PRÉ" | "TREINO" | "PÓS",
+      time: instante(item?.coletado_em),
+      quality: item ? Number(item.confiabilidade ?? 0) * 100 : null,
+      coverage: item ? Number(item.cobertura ?? 0) * 100 : null,
+      durationSeconds: inicio && fim ? Math.max(0, Math.round((fim - inicio) / 1000)) : null,
+      sources: sensores,
+      gaps: ausencias
+    };
+  });
+}
+
+function Rastreabilidade({ estado }: { estado: Estado }) {
+  const cadeia = objeto(estado.rastreabilidade?.cadeia);
+  const itens: [string, unknown][] = [
+    ["ARR", cadeia.arr],
+    ["RRO", cadeia.rro],
+    ["NRA", cadeia.nra],
+    ["CTR individual", estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador],
+    ["THX individual", estado.thx_individual?.identificador],
+    ["Execução", estado.execucao?.identificador],
+    ["PRÉ / TREINO / PÓS", momentos(estado).length === 3 ? "3 snapshots preservados" : null],
+    ["Eventos", `${estado.eventos.length} preservados`],
+    ["Replay", estado.replay?.linha?.identificador],
+    ["Formulação", estado.formulacoes.at(-1)?.identificador],
+    ["Longitudinal", Array.isArray(estado.longitudinal?.historico) && (estado.longitudinal.historico as unknown[]).length ? "Disponível" : null],
+    ["Relatório", estado.relatorios.at(-1)?.identificador]
+  ];
+  return (
+    <section className="hx-trace">
+      <p>RASTREABILIDADE DA SESSÃO</p>
+      <div>
+        {itens.map(([nome, valor]) => (
+          <article key={nome} className={valor ? "is-present" : "is-missing"}>
+            <small>{nome}</small>
+            <strong>{valor ? texto(valor) : "NÃO DISPONÍVEL NESTA SIMULAÇÃO"}</strong>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Hud({ estado }: { estado: Estado }) {
+  const fase = faseAtual(estado);
+  return (
+    <section className="hx-op-hud">
+      <div className="hx-op-hud__grid">
+        <Metadado rotulo="IIRH" valor="NÃO CALCULADO" situacao="BLOQUEADO" fonte="Sem evidência humana" />
+        <Metadado rotulo="ZONA" valor="NÃO CALCULADA" situacao="BLOQUEADA" fonte="Sem IIRH oficial" />
+        <Metadado rotulo="THX" valor={texto(estado.thx_individual?.codigo)} situacao={texto(estado.execucao?.estado)} fonte="Execução individual" />
+        <Metadado rotulo="FASE" valor={fase} situacao={texto(estado.sessao.estado)} fonte="Eventos da sessão" />
+        <Metadado rotulo="TEMPO" valor={estado.execucao?.iniciado_em ? dataLegivel(estado.execucao.iniciado_em) : "NÃO INICIADO"} situacao="HORÁRIO LOCAL" fonte="Auditoria UTC preservada" />
+        <Metadado rotulo="HR" valor="NÃO CONECTADO" situacao="SEM VALOR" fonte="Polar / cardíaco" />
+        <Metadado rotulo="RMSSD" valor="NÃO CONECTADO" situacao="SEM VALOR" fonte="Polar / cardíaco" />
+        <Metadado rotulo="EEG" valor="NÃO CONECTADO" situacao="SEM VALOR" fonte="Headset EEG" />
+        <Metadado rotulo="POLAR" valor="NÃO CONECTADO" situacao="HARDWARE AUSENTE" fonte="Conector real" />
+      </div>
+    </section>
+  );
+}
+
+function Contexto({ estado }: { estado: Estado }) {
+  return (
+    <section className="hx-op-context">
+      <div><small>ORGANIZAÇÃO</small><strong>{texto(estado.organizacao.nome)}</strong></div>
+      <div><small>PARTICIPANTE</small><strong>{texto(estado.participante.referencia_externa)}</strong></div>
+      <div><small>SESSÃO</small><strong>{texto(estado.sessao.estado)}</strong><span>{dataLegivel(estado.sessao.finalizado_em ?? estado.sessao.iniciado_em)}</span></div>
+      <div><small>CTR INDIVIDUAL</small><strong>{texto(estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador)}</strong><span>{texto(estado.ctr_individual?.nome)} · {texto(estado.ctr_individual?.situacao)}</span></div>
+      <div><small>THX INDIVIDUAL</small><strong>{texto(estado.thx_individual?.codigo)}</strong><span>{texto(estado.execucao?.estado)}</span></div>
+    </section>
+  );
+}
+
+function Identificacao({ estado }: { estado: Estado }) {
+  return (
+    <section className="hx-identification">
+      <article>
+        <p>CTR INDIVIDUAL EXISTENTE</p>
+        <h3>{texto(estado.ctr_individual?.identificador)}</h3>
+        <dl>
+          <div><dt>Situação</dt><dd>{texto(estado.ctr_individual?.situacao)}</dd></div>
+          <div><dt>Origem do vínculo</dt><dd>{texto(estado.ctr_individual?.origem_do_vinculo)}</dd></div>
+          <div><dt>Condição de validação</dt><dd>{texto(estado.ctr_individual?.condicao_de_validacao)}</dd></div>
+        </dl>
+        <ul>
+          {estado.ctr_individual?.criterios?.map((item) => (
+            <li key={String(item.codigo)}><b>{texto(item.codigo)}</b><span>{texto(item.nome)}</span></li>
+          ))}
+        </ul>
+      </article>
+      <article>
+        <p>THX INDIVIDUAL VINCULADO</p>
+        <h3>{texto(estado.thx_individual?.codigo)} · {texto(estado.thx_individual?.nome)}</h3>
+        <dl>
+          <div><dt>Situação</dt><dd>{texto(estado.execucao?.estado)}</dd></div>
+          <div><dt>CTR vinculado</dt><dd>{texto(estado.thx_individual?.ctr_vinculado)}</dd></div>
+          <div><dt>Profissional</dt><dd>{texto(estado.thx_individual?.profissional_que_autorizou)}</dd></div>
+        </dl>
+        <p className="hx-identification__restriction">PROTOCOLO SIMULADO · NÃO EXECUTÁVEL COMO PROTOCOLO HUMANO REAL</p>
+      </article>
+    </section>
+  );
+}
+
+function valorDoRegistro(registro: Registro | undefined, ...chaves: string[]) {
+  if (!registro) return null;
+  for (const chave of chaves) {
+    const valor = registro[chave];
+    if (valor != null && valor !== "") return valor;
+  }
+  return null;
+}
+
+function nomeDoPostulado(registro: Registro) {
+  const valor = String(registro.postulado ?? registro.nome ?? registro.codigo ?? "");
+  const normalizado = valor.toUpperCase().replaceAll(" ", "_");
+  const nomes: Record<string, string> = {
+    DINAMICA_REGULATORIA: "Postulado da Dinâmica Regulatória",
+    MULTIVETORIALIDADE: "Postulado da Multivetorialidade",
+    INTEGRACAO_REGULATORIA: "Postulado da Integração Regulatória",
+    RESULTANTE_REGULATORIA: "Postulado da Resultante Regulatória",
+    TRAJETORIA_REGULATORIA: "Postulado da Trajetória Regulatória",
+    MENSURABILIDADE_PARCIAL: "Postulado da Mensurabilidade Parcial",
+    ADAPTACAO: "Postulado da Adaptação"
+  };
+  return nomes[normalizado] ?? texto(valor);
+}
+
+function codigoDoMacrocampo(registro: Registro) {
+  return texto(valorDoRegistro(registro, "code", "codigo"), "");
+}
+
+function nomeDoMacrocampo(registro: Registro) {
+  const codigo = codigoDoMacrocampo(registro);
+  const nomesOficiais: Record<string, string> = {
+    MCH: "Campo Humano",
+    MCT: "Campo da Tarefa",
+    MCE: "Campo Estruturante",
+    MCN: "Campo Neuroregulatório"
+  };
+  return nomesOficiais[codigo] ?? texto(valorDoRegistro(registro, "name", "nome"));
+}
+
+function codigoDoVetor(registro: Registro) {
+  return texto(valorDoRegistro(registro, "code", "codigo"), "");
+}
+
+function nomeDoVetor(registro: Registro) {
+  return texto(valorDoRegistro(registro, "name", "nome"));
+}
+
+function estadoDoVetor(estado: Estado, definicao: Registro) {
+  const identificador = valorDoRegistro(definicao, "id", "identificador");
+  const codigo = codigoDoVetor(definicao);
+  return estado.leitura_regulatoria.estados_vetoriais.find((item) =>
+    [
+      item.identificador_da_definicao_vetorial,
+      item.identificador_do_vetor,
+      item.codigo_do_vetor,
+      item.codigo
+    ].some((valor) => valor === identificador || valor === codigo)
+  );
+}
+
+function valorVetorial(valor: unknown, indisponivel: string) {
+  if (valor == null || valor === "") return indisponivel;
+  if (typeof valor === "object") {
+    const registro = objeto(valor);
+    const interno = valorDoRegistro(registro, "valor", "dominio_funcional", "descricao_funcional", "estado");
+    return interno == null ? indisponivel : texto(interno);
+  }
+  return texto(valor);
+}
+
+function ContextoPersistente({ estado, visao }: { estado: Estado; visao: VisaoCockpit }) {
+  const finalizada = estado.sessao.estado === "FINALIZADA";
+  return (
+    <>
+      <section className="hx-cockpit-context" aria-label="Contexto preservado do Cockpit">
+        <div><small>Organização</small><strong>{texto(estado.organizacao.nome)}</strong></div>
+        <div><small>Participante</small><strong>{texto(estado.participante.referencia_externa)}</strong></div>
+        <div><small>Profissional</small><strong>{texto(estado.contextos.profissionais[0]?.nome ?? estado.usuario.nome)}</strong></div>
+        <div><small>Sessão</small><strong>{texto(estado.sessao.identificador)}</strong></div>
+        <div><small>Contexto</small><strong>Homologação técnica isolada</strong></div>
+        <div><small>CTR</small><strong>{texto(estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador)}</strong></div>
+        <div><small>THX</small><strong>{texto(estado.thx_individual?.codigo)}</strong></div>
+        <div><small>Fase atual</small><strong>{faseAtual(estado)}</strong></div>
+        <div><small>Versão científica</small><strong>{texto(valorDoRegistro(estado.ciencia.versao, "code", "codigo"))}</strong></div>
+        <div><small>Visão interna</small><strong>{VISOES_COCKPIT.find((item) => item.id === visao)?.nome}</strong></div>
+      </section>
+      {finalizada ? (
+        <section className="hx-session-final">
+          <strong>SESSÃO FINALIZADA</strong>
+          <span>PRÉ preservado · TREINO preservado · PÓS preservado · snapshots congelados · Replay disponível · relatório disponível</span>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+function SeletorDeContexto({
+  estado,
+  ocupado,
+  selecionar
+}: {
+  estado: Estado;
+  ocupado: boolean;
+  selecionar: (
+    campo: "organizacao" | "participante" | "sessao",
+    identificador: string
+  ) => void;
+}) {
+  const selecao = estado.contextos.selecao;
+  return (
+    <section className="hx-context-selector" aria-label="Seleção do contexto operacional">
+      <header>
+        <div>
+          <small>CONTEXTO OPERACIONAL ÚNICO</small>
+          <strong>Organização → participante → sessão</strong>
+        </div>
+        <span>{ocupado ? "ATUALIZANDO CONTEXTO" : "CONTEXTO PRESERVADO NAS 15 VISÕES"}</span>
+      </header>
+      <div>
+        <label>
+          Organização
+          <select
+            value={selecao.identificador_da_organizacao}
+            disabled={ocupado || estado.contextos.organizacoes.length < 2}
+            onChange={(evento) => selecionar("organizacao", evento.target.value)}
+          >
+            {estado.contextos.organizacoes.map((item) => (
+              <option key={String(item.identificador)} value={String(item.identificador)}>
+                {texto(item.nome)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Participante
+          <select
+            value={selecao.identificador_do_participante}
+            disabled={ocupado}
+            onChange={(evento) => selecionar("participante", evento.target.value)}
+          >
+            {estado.contextos.participantes.map((item) => (
+              <option key={String(item.identificador)} value={String(item.identificador)}>
+                {texto(item.referencia_externa)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Sessão
+          <select
+            value={selecao.identificador_da_sessao}
+            disabled={ocupado}
+            onChange={(evento) => selecionar("sessao", evento.target.value)}
+          >
+            {estado.contextos.sessoes.map((item) => (
+              <option key={String(item.identificador)} value={String(item.identificador)}>
+                {texto(item.estado)} · {dataLegivel(item.iniciado_em ?? item.criado_em)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Profissional
+          <select value={selecao.identificador_do_profissional} disabled>
+            {estado.contextos.profissionais.map((item) => (
+              <option key={String(item.identificador)} value={String(item.identificador)}>
+                {texto(item.nome)} · {texto(item.perfil)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </section>
+  );
+}
+
+function NavegacaoInterna({
+  visao,
+  selecionar
+}: {
+  visao: VisaoCockpit;
+  selecionar: (visao: VisaoCockpit) => void;
+}) {
+  return (
+    <nav className="hx-cockpit-tabs" aria-label="Visões internas do Cockpit Vivo">
+      {VISOES_COCKPIT.map((item) => (
+        <button
+          className={visao === item.id ? "is-active" : ""}
+          type="button"
+          aria-current={visao === item.id ? "page" : undefined}
+          onClick={() => selecionar(item.id)}
+          key={item.id}
+        >
+          <span>{item.codigo}</span>{item.nome}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function TituloDaVisao({ kicker, titulo, descricao }: { kicker: string; titulo: string; descricao: string }) {
+  return (
+    <header className="hx-cockpit-view-title">
+      <p>{kicker}</p>
+      <h2>{titulo}</h2>
+      <span>{descricao}</span>
+    </header>
+  );
+}
+
+function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
+  const evidencias = estado.leitura_regulatoria.evidencias;
+  return (
+    <section className="hx-cockpit-panel">
+      <TituloDaVisao
+        kicker="EVIDÊNCIAS E LIMITAÇÕES"
+        titulo="O que sustenta — e o que impede — a leitura."
+        descricao="Evidência, indicador e vetor permanecem ontologicamente distintos."
+      />
+      <div className="hx-evidence-table" role="table" aria-label="Evidências da sessão">
+        <div className="hx-evidence-table__head" role="row">
+          {["Origem", "Tipo", "Macrocampo", "Fase", "Cobertura", "Confiabilidade", "Integridade"].map((item) => <span role="columnheader" key={item}>{item}</span>)}
+        </div>
+        {evidencias.length ? evidencias.map((evidencia, indice) => (
+          <div role="row" key={String(evidencia.identificador ?? indice)}>
+            <span>{texto(valorDoRegistro(evidencia, "origem", "metodo_de_obtencao"))}</span>
+            <span>{texto(valorDoRegistro(evidencia, "tipo", "natureza"), "TÉCNICA")}</span>
+            <span>{texto(valorDoRegistro(evidencia, "macrocampo", "codigo_do_macrocampo"))}</span>
+            <span>{texto(valorDoRegistro(evidencia, "fase", "identificador_da_fase"))}</span>
+            <span>{typeof evidencia.cobertura === "number" ? `${Math.round(evidencia.cobertura * 100)}%` : "NÃO INFORMADA"}</span>
+            <span>{typeof evidencia.qualidade === "number" ? `${Math.round(evidencia.qualidade * 100)}%` : "NÃO INFORMADA"}</span>
+            <span>{texto(valorDoRegistro(evidencia, "integridade", "estado_de_validade"), "PRESERVADA")}</span>
+          </div>
+        )) : <div className="hx-evidence-table__empty">Nenhuma evidência foi disponibilizada para esta sessão.</div>}
+      </div>
+      <div className="hx-limit-consolidated">
+        <strong>LIMITAÇÃO CONSOLIDADA</strong>
+        <span>As observações disponíveis pertencem à homologação técnica. Não constituem evidência humana suficiente para produzir vetor, Resultante, IIRH, Zona, trajetória ou rota regulatória.</span>
+      </div>
+      {estado.leitura_regulatoria.anamneses.length ? (
+        <details className="hx-technical-details"><summary>Anamnese Regulatória autorizada como fonte de evidência</summary><pre>{JSON.stringify(estado.leitura_regulatoria.anamneses, null, 2)}</pre></details>
+      ) : null}
+      {estado.leitura_regulatoria.evidencias_anamnese?.length ? (
+        <section className="hx-anamnese-evidence">
+          <header><small>FONTE NARRATIVA E CONTEXTUAL</small><strong>Respostas aceitas por decisão profissional</strong></header>
+          {estado.leitura_regulatoria.evidencias_anamnese.map((evidencia, indice) => (
+            <article key={String(evidencia.identificador ?? indice)}>
+              <div><small>Modalidade</small><strong>{texto(evidencia.modalidade)}</strong></div>
+              <div><small>Qualidade</small><strong>{texto(evidencia.qualidade)}</strong></div>
+              <div><small>Estado</small><strong>{texto(evidencia.estado)}</strong></div>
+              <div><small>Limitação</small><strong>{texto(evidencia.limitacao, "Resposta isolada não produz vetor")}</strong></div>
+              <details><summary>Abrir resposta original preservada</summary><pre>{JSON.stringify(evidencia.resposta_original_json, null, 2)}</pre></details>
+            </article>
+          ))}
+        </section>
+      ) : null}
+      {estado.leitura_regulatoria.evidencias_anamnese_no_escopo?.length ? (
+        <section className="hx-anamnese-evidence">
+          <header>
+            <small>ESCOPO PROFISSIONAL · FORA DA SESSÃO SELECIONADA</small>
+            <strong>Evidências narrativas aceitas aguardando vínculo contextual</strong>
+            <span>Visíveis para revisão, mas não incorporadas à sessão técnica atual e sem produzir cálculo.</span>
+          </header>
+          {estado.leitura_regulatoria.evidencias_anamnese_no_escopo.map((evidencia, indice) => (
+            <article key={String(evidencia.identificador ?? indice)}>
+              <div><small>Modalidade</small><strong>{texto(evidencia.modalidade)}</strong></div>
+              <div><small>Qualidade</small><strong>{texto(evidencia.qualidade)}</strong></div>
+              <div><small>Estado</small><strong>{texto(evidencia.estado)}</strong></div>
+              <div><small>Cálculo</small><strong>{evidencia.gera_calculo ? "BLOQUEIO VIOLADO" : "NÃO GERA CÁLCULO"}</strong></div>
+              <details><summary>Abrir resposta original preservada</summary><pre>{JSON.stringify(evidencia.resposta_original_json, null, 2)}</pre></details>
+            </article>
+          ))}
+        </section>
+      ) : null}
+    </section>
+  );
+}
+
+function ConstituicaoOperacional({ estado }: { estado: Estado }) {
+  const regras = Array.isArray(estado.ciencia.postulados.regras) ? estado.ciencia.postulados.regras as Registro[] : [];
+  const eventos = estado.eventos.length;
+  const vetores = estado.ciencia.vetores.length;
+  const evidencias = estado.leitura_regulatoria.evidencias.length;
+  const operacionalizacao = [
+    `${eventos} evento(s) e ${momentos(estado).length} snapshot(s) preservam a dinâmica no tempo.`,
+    `${vetores} definições vetoriais versionadas impedem explicação por variável isolada.`,
+    `${evidencias} evidência(s) permanecem vinculadas a origem, contexto e cobertura.`,
+    "A Resultante é bloqueada sem configuração vetorial humana suficiente.",
+    "A Trajetória exige estados sucessivos comparáveis; um ponto isolado não gera trajetória.",
+    "Ausências e limites inferenciais são declarados sem conversão em zero.",
+    "A reorganização depende de contexto e decisão profissional rastreável."
+  ];
+  return (
+    <section className="hx-cockpit-panel">
+      <TituloDaVisao
+        kicker="CONSTITUIÇÃO OPERACIONAL DA TIRH"
+        titulo="Postulados aplicados como governança da sessão."
+        descricao="Não são cartões decorativos: cada fundamento controla uma decisão ou bloqueio observável."
+      />
+      <div className="hx-constitution-list">
+        {regras.map((regra, indice) => (
+          <article key={String(regra.codigo ?? indice)}>
+            <span>{String(indice + 1).padStart(2, "0")}</span>
+            <div><small>Postulado</small><strong>{nomeDoPostulado(regra)}</strong></div>
+            <div><small>Função na sessão</small><strong>{operacionalizacao[indice] ?? texto(regra.descricao)}</strong></div>
+            <div><small>Cobertura / confiabilidade</small><strong>{evidencias ? "Parcial · evidência técnica" : "Não calculável"}</strong></div>
+            <div><small>Estado e limitação</small><strong>{indice === 5 ? "ATIVO · mensurabilidade parcial declarada" : "ATIVO COMO REGRA · leitura humana bloqueada"}</strong></div>
+            <details><summary>Rastreabilidade</summary><p>{texto(regra.limite_inferencial)}</p><small>{texto(regra.referencia_no_livro)}</small></details>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MatrizVetorial({
+  estado,
+  selecionado,
+  selecionar,
+  resumida = false
+}: {
+  estado: Estado;
+  selecionado: string | null;
+  selecionar: (codigo: string) => void;
+  resumida?: boolean;
+}) {
+  const macrocampos = estado.ciencia.macrocampos;
+  const vetores = estado.ciencia.vetores;
+  const limite = resumida ? 5 : vetores.length;
+  const definicaoSelecionada = vetores.find((item) => codigoDoVetor(item) === selecionado);
+  const estadoSelecionado = definicaoSelecionada ? estadoDoVetor(estado, definicaoSelecionada) : undefined;
+  return (
+    <section className="hx-cockpit-panel hx-vector-matrix">
+      <TituloDaVisao
+        kicker="MATRIZ VETORIAL VIVA"
+        titulo="Forças regulatórias organizadas nos quatro campos oficiais."
+        descricao="Ausência de evidência não é zero; nenhuma propriedade humana é preenchida pela Telemetria Bridge."
+      />
+      <div className="hx-fields-strip">
+        {macrocampos.map((campo) => {
+          const codigo = codigoDoMacrocampo(campo);
+          return <article key={codigo}><small>{codigo}</small><strong>{nomeDoMacrocampo(campo)}</strong><span>{vetores.filter((vetor) => texto(valorDoRegistro(vetor, "macrofield_code", "codigo_do_macrocampo"), "") === codigo).length} vetor(es)</span></article>;
+        })}
+      </div>
+      <div className="hx-vector-table" role="table" aria-label="Matriz Vetorial Viva">
+        <div className="hx-vector-table__head" role="row">
+          {["Vetor", "Campo", "Força funcional", "Magnitude", "Direção", "Sentido", "Interação", "Estado"].map((item) => <span role="columnheader" key={item}>{item}</span>)}
+        </div>
+        {vetores.slice(0, limite).map((definicao) => {
+          const estadoVetorial = estadoDoVetor(estado, definicao);
+          const codigo = codigoDoVetor(definicao);
+          return (
+            <button role="row" type="button" onClick={() => selecionar(codigo)} key={codigo}>
+              <span><b>{codigo}</b>{nomeDoVetor(definicao)}</span>
+              <span>{texto(valorDoRegistro(definicao, "macrofield_code", "codigo_do_macrocampo"))}</span>
+              <span>{valorVetorial(valorDoRegistro(estadoVetorial ?? {}, "forca_funcional"), "FORÇA RELATIVA NÃO CALCULÁVEL")}</span>
+              <span>{valorVetorial(valorDoRegistro(estadoVetorial ?? {}, "magnitude", "magnitude_json"), "NÃO CALCULÁVEL")}</span>
+              <span>{valorVetorial(valorDoRegistro(estadoVetorial ?? {}, "direcao", "direcao_json"), "DOMÍNIO NÃO DETERMINADO")}</span>
+              <span>{valorVetorial(valorDoRegistro(estadoVetorial ?? {}, "sentido", "sentido_funcional"), "NÃO CALCULÁVEL")}</span>
+              <span>{valorVetorial(valorDoRegistro(estadoVetorial ?? {}, "interacao", "interacoes_json", "interdependencias_json"), "NÃO DETERMINADA")}</span>
+              <span>{estadoVetorial ? texto(valorDoRegistro(estadoVetorial, "estado", "estado_processamento")) : "NÃO OBSERVADO"}</span>
+            </button>
+          );
+        })}
+      </div>
+      {resumida && vetores.length > limite ? <p className="hx-matrix-note">A visão completa contém os {vetores.length} vetores oficiais carregados do núcleo.</p> : null}
+      {definicaoSelecionada ? (
+        <aside className="hx-vector-inspector" aria-label={`Detalhe do vetor ${codigoDoVetor(definicaoSelecionada)}`}>
+          <header><div><small>DETALHE DO VETOR</small><h3>{codigoDoVetor(definicaoSelecionada)} · {nomeDoVetor(definicaoSelecionada)}</h3></div><span>{estadoSelecionado ? "ESTADO DISPONÍVEL" : "BLOQUEADO POR SIMULAÇÃO TÉCNICA"}</span></header>
+          <p>{texto(valorDoRegistro(definicaoSelecionada, "description", "descricao"))}</p>
+          <dl>
+            <div><dt>Campo</dt><dd>{texto(valorDoRegistro(definicaoSelecionada, "macrofield_code", "codigo_do_macrocampo"))}</dd></div>
+            <div><dt>Magnitude</dt><dd>{valorVetorial(valorDoRegistro(estadoSelecionado ?? {}, "magnitude", "magnitude_json"), "NÃO CALCULÁVEL")}</dd></div>
+            <div><dt>Direção</dt><dd>{valorVetorial(valorDoRegistro(estadoSelecionado ?? {}, "direcao", "direcao_json"), "DOMÍNIO NÃO DETERMINADO")}</dd></div>
+            <div><dt>Sentido</dt><dd>{valorVetorial(valorDoRegistro(estadoSelecionado ?? {}, "sentido", "sentido_funcional"), "NÃO CALCULÁVEL")}</dd></div>
+            <div><dt>Interações</dt><dd>{valorVetorial(valorDoRegistro(estadoSelecionado ?? {}, "interacao", "interacoes_json"), "NÃO DETERMINADAS")}</dd></div>
+            <div><dt>Evidências</dt><dd>{estadoSelecionado ? texto(valorDoRegistro(estadoSelecionado, "evidencias", "evidencias_ids")) : "EVIDÊNCIA HUMANA AUSENTE"}</dd></div>
+            <div><dt>Cobertura</dt><dd>{estadoSelecionado && typeof estadoSelecionado.cobertura === "number" ? `${Math.round(estadoSelecionado.cobertura * 100)}%` : "NÃO CALCULÁVEL"}</dd></div>
+            <div><dt>Confiabilidade</dt><dd>{estadoSelecionado && typeof estadoSelecionado.confiabilidade === "number" ? `${Math.round(estadoSelecionado.confiabilidade * 100)}%` : "NÃO CALCULÁVEL"}</dd></div>
+            <div><dt>Trajetória</dt><dd>NÃO INFERÍVEL A PARTIR DE UM ÚNICO PONTO</dd></div>
+            <div><dt>Decisão profissional</dt><dd>NENHUMA DECISÃO AUTOMÁTICA</dd></div>
+          </dl>
+          <details><summary>Fontes, eventos, indicadores, CTRs, THXs, limitações e histórico</summary><pre>{JSON.stringify({ definicao: definicaoSelecionada, estado: estadoSelecionado ?? null }, null, 2)}</pre></details>
+        </aside>
+      ) : null}
+    </section>
+  );
+}
+
+function ResultanteRegulatoria({ estado, resumida = false }: { estado: Estado; resumida?: boolean }) {
+  const configuracao = estado.leitura_regulatoria.configuracoes.at(-1);
+  const avaliacao = estado.leitura_regulatoria.avaliacoes.at(-1);
+  const resultado = configuracao ?? avaliacao;
+  return (
+    <section className="hx-cockpit-panel hx-resultant">
+      <TituloDaVisao
+        kicker="RESULTANTE REGULATÓRIA"
+        titulo={resultado ? "Composição vetorial rastreável." : "RESULTANTE REGULATÓRIA NÃO CALCULÁVEL"}
+        descricao="A Resultante é a síntese funcional da configuração vetorial; não é IIRH nem Zona."
+      />
+      <div className="hx-resultant__core">
+        <div><small>Estado</small><strong>{resultado ? texto(valorDoRegistro(resultado, "estado", "estado_processamento")) : "BLOQUEADA"}</strong></div>
+        <div><small>Direção predominante</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "direcao_predominante", "direcao"), "NÃO CALCULÁVEL")}</strong></div>
+        <div><small>Sentido predominante</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "sentido_predominante", "sentido"), "NÃO CALCULÁVEL")}</strong></div>
+        <div><small>Cobertura global</small><strong>{typeof resultado?.cobertura === "number" ? `${Math.round(resultado.cobertura * 100)}%` : "INSUFICIENTE"}</strong></div>
+        <div><small>Confiabilidade global</small><strong>{typeof resultado?.confiabilidade === "number" ? `${Math.round(resultado.confiabilidade * 100)}%` : "INSUFICIENTE"}</strong></div>
+        <div><small>Versão do motor</small><strong>{texto(valorDoRegistro(resultado ?? {}, "versao_do_motor", "versao_algoritmo"), "PRESERVADA NO NÚCLEO")}</strong></div>
+      </div>
+      <div className="hx-limit-consolidated"><strong>MOTIVO CONSOLIDADO</strong><span>{resultado ? "Consulte vetores contribuintes, tensões e compensações na rastreabilidade." : "Sessão técnica: campos humanos ausentes e evidência humana insuficiente."}</span></div>
+      {!resumida && resultado ? <details className="hx-technical-details"><summary>Vetores contribuintes, preservados, comprometidos, tensões e compensações</summary><pre>{JSON.stringify(resultado, null, 2)}</pre></details> : null}
+    </section>
+  );
+}
+
+function TrajetoriaRegulatoria({ estado, resumida = false }: { estado: Estado; resumida?: boolean }) {
+  const trajetorias = estado.leitura_regulatoria.trajetorias;
+  const atual = trajetorias.at(-1);
+  return (
+    <section className="hx-cockpit-panel hx-trajectory">
+      <TituloDaVisao
+        kicker="TRAJETÓRIA REGULATÓRIA"
+        titulo={atual ? "Leitura temporal preservada pelo núcleo." : "TRAJETÓRIA NÃO INFERÍVEL"}
+        descricao="Nenhuma trajetória é inferida a partir de um único ponto ou de sessões incompatíveis."
+      />
+      <div className="hx-trajectory__states">
+        {["Estado inicial", "Estados sucessivos", "Estabilidade", "Oscilação", "Recuperação", "Ruptura", "Direção temporal", "Mudanças de versão"].map((rotulo) => (
+          <article key={rotulo}><small>{rotulo}</small><strong>{atual ? valorVetorial(valorDoRegistro(atual, rotulo.toLowerCase().replaceAll(" ", "_")), "NÃO INFORMADO") : "NÃO OBSERVADO"}</strong></article>
+        ))}
+      </div>
+      <div className="hx-limit-consolidated"><strong>LIMITE TEMPORAL</strong><span>{atual ? "Eventos, intervenções, lacunas e transições permanecem vinculados ao registro longitudinal." : "Não existem dois ou mais estados regulatórios humanos, válidos e comparáveis nesta sessão técnica."}</span></div>
+      {!resumida && atual ? <details className="hx-technical-details"><summary>Resultantes sucessivas, transições de Zona, eventos e intervenções</summary><pre>{JSON.stringify(atual, null, 2)}</pre></details> : null}
+    </section>
+  );
+}
+
+function RotasRegulatorias({ estado }: { estado: Estado }) {
+  const cadeia = objeto(estado.rastreabilidade?.cadeia);
+  const itens = [
+    ["ARR", estado.leitura_regulatoria.arr.at(-1) ?? cadeia.arr],
+    ["Reorganização da Rota Operacional — RRO", estado.leitura_regulatoria.rro.at(-1) ?? cadeia.rro],
+    ["Nova Rota Adaptativa — NRA", cadeia.nra]
+  ] as [string, unknown][];
+  return (
+    <section className="hx-cockpit-panel">
+      <TituloDaVisao kicker="ROTAS REGULATÓRIAS" titulo="ARR → RRO → NRA sob validação profissional." descricao="Hipótese, reorganização operacional e nova rota adaptativa permanecem separadas e auditáveis." />
+      <div className="hx-route-grid">
+        {itens.map(([nome, valor]) => <article key={nome}><small>{nome}</small><strong>{valor ? "REGISTRO LOCALIZADO" : "NÃO CONFIRMADA"}</strong><span>{valor ? "Evidências e histórico disponíveis na rastreabilidade." : "Bloqueada: a simulação técnica não produz gatilho, rota ou adaptação humana."}</span>{valor && typeof valor === "object" ? <details><summary>Inspecionar</summary><pre>{JSON.stringify(valor, null, 2)}</pre></details> : null}</article>)}
+      </div>
+    </section>
+  );
+}
+
+function FormulacaoRegulatoria({ estado }: { estado: Estado }) {
+  const formulacao = estado.formulacoes.at(-1);
+  const formulacoesNoEscopo = estado.leitura_regulatoria.formulacoes_no_escopo ?? [];
+  return (
+    <section className="hx-cockpit-panel">
+      <TituloDaVisao kicker="FORMULAÇÃO REGULATÓRIA" titulo={formulacao ? "Formulação profissional versionada." : formulacoesNoEscopo.length ? "Formulações profissionais aguardando vínculo com a sessão." : "Nenhuma Formulação Regulatória disponível."} descricao="Dado, interpretação, hipótese e decisão profissional permanecem separados." />
+      <div className="hx-formulation-grid">
+        {["Dado", "Interpretação", "Hipótese", "Decisão profissional"].map((item) => <article key={item}><small>{item}</small><strong>{formulacao ? valorVetorial(valorDoRegistro(formulacao, item.toLowerCase().replaceAll(" ", "_")), "NÃO INFORMADO") : "NÃO REGISTRADA"}</strong></article>)}
+      </div>
+      <Rastreabilidade estado={estado} />
+      {formulacao ? <details className="hx-technical-details"><summary>Autoria, versão, justificativa, evidências, vetores, Resultante, Trajetória e histórico</summary><pre>{JSON.stringify(formulacao, null, 2)}</pre></details> : null}
+      {!formulacao && formulacoesNoEscopo.length ? <section className="hx-anamnese-evidence">
+        <header><small>ESCOPO PROFISSIONAL · FORA DA SESSÃO SELECIONADA</small><strong>Citações rastreáveis disponíveis</strong><span>Não são incorporadas à sessão técnica até existir vínculo contextual explícito.</span></header>
+        {formulacoesNoEscopo.map((item, indice) => <article key={String(item.identificador ?? indice)}>
+          <div><small>Estado</small><strong>{texto(item.estado)}</strong></div>
+          <div><small>Revisão</small><strong>{texto(item.numero_da_revisao)}</strong></div>
+          <div><small>Participante</small><strong>{texto(item.identificador_do_participante)}</strong></div>
+          <div><small>Origem</small><strong>ANAMNESE REGULATÓRIA</strong></div>
+          <details><summary>Referências e limites preservados</summary><pre>{JSON.stringify({ referencias: objeto(item.referencias_de_origem_json), limites: lista(item.limites_de_interpretacao_json) }, null, 2)}</pre></details>
+        </article>)}
+      </section> : null}
+    </section>
+  );
+}
+
+export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) {
+  const [estado, setEstado] = useState<Estado | null>(null);
+  const [erro, setErro] = useState("");
+  const [ocupado, setOcupado] = useState("");
+  const [cursor, setCursor] = useState(0);
+  const [tocando, setTocando] = useState(false);
+  const [velocidade, setVelocidade] = useState(1);
+  const [zoom, setZoom] = useState(1);
+  const [intervalo, setIntervalo] = useState<[number, number]>([0, 100]);
+  const [trilhas, setTrilhas] = useState<Record<string, boolean>>({});
+  const [visao, setVisao] = useState<VisaoCockpit>("visao-geral");
+  const [vetorSelecionado, setVetorSelecionado] = useState<string | null>(null);
+  const [painelTecnico, setPainelTecnico] = useState("fontes");
+  const [selecaoInicial, setSelecaoInicial] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const parametros = new URLSearchParams(window.location.search);
+    const solicitada = parametros.get("visao") as VisaoCockpit | null;
+    if (solicitada && VISOES_COCKPIT.some((item) => item.id === solicitada)) setVisao(solicitada);
+    if (parametros.get("painel")) setPainelTecnico(parametros.get("painel") as string);
+    const selecao = {
+      organizacao: parametros.get("organizacao") ?? "",
+      participante: parametros.get("participante") ?? "",
+      sessao: parametros.get("sessao") ?? ""
+    };
+    setSelecaoInicial(selecao);
+    carregar(selecao).catch((causa) => setErro(causa.message));
+  }, []);
+
+  const selecionarVisao = (destino: VisaoCockpit) => {
+    setVisao(destino);
+    const url = new URL(window.location.href);
+    url.pathname = "/plataforma/cockpit-vivo";
+    url.searchParams.set("visao", destino);
+    if (destino !== "tecnico") url.searchParams.delete("painel");
+    window.history.replaceState(window.history.state, "", url);
+  };
+
+  const carregar = async (selecao: Record<string, string> = selecaoInicial) => {
+    const parametros = new URLSearchParams();
+    for (const campo of ["organizacao", "participante", "sessao"]) {
+      if (selecao[campo]) parametros.set(campo, selecao[campo]);
+    }
+    const resposta = await fetch(
+      `/api/operacao-homologacao${parametros.size ? `?${parametros}` : ""}`,
+      { cache: "no-store" }
+    );
+    const dados = await resposta.json();
+    if (!resposta.ok) throw new Error(dados?.erro?.mensagem ?? "Consulta operacional indisponível.");
+    setEstado(dados);
+    const atual = {
+      organizacao: String(dados.contextos.selecao.identificador_da_organizacao),
+      participante: String(dados.contextos.selecao.identificador_do_participante),
+      sessao: String(dados.contextos.selecao.identificador_da_sessao)
+    };
+    setSelecaoInicial(atual);
+    const url = new URL(window.location.href);
+    url.searchParams.set("organizacao", atual.organizacao);
+    url.searchParams.set("participante", atual.participante);
+    url.searchParams.set("sessao", atual.sessao);
+    window.history.replaceState(window.history.state, "", url);
+  };
+
+  const selecionarContexto = async (
+    campo: "organizacao" | "participante" | "sessao",
+    identificador: string
+  ) => {
+    const atual = estado?.contextos.selecao;
+    const proxima: Record<string, string> = {
+      organizacao: String(atual?.identificador_da_organizacao ?? ""),
+      participante: String(atual?.identificador_do_participante ?? ""),
+      sessao: String(atual?.identificador_da_sessao ?? "")
+    };
+    proxima[campo] = identificador;
+    if (campo === "organizacao") {
+      proxima.participante = "";
+      proxima.sessao = "";
+    }
+    if (campo === "participante") proxima.sessao = "";
+    setOcupado("contexto");
+    setErro("");
+    try {
+      await carregar(proxima);
+      const url = new URL(window.location.href);
+      for (const chave of ["organizacao", "participante", "sessao"]) {
+        if (proxima[chave]) url.searchParams.set(chave, proxima[chave]);
+        else url.searchParams.delete(chave);
+      }
+      window.history.replaceState(window.history.state, "", url);
+    } catch (causa) {
+      setErro(causa instanceof Error ? causa.message : "Contexto recusado.");
+    } finally {
+      setOcupado("");
+    }
+  };
+
+  useEffect(() => {
+    if (!tocando) return;
+    const id = window.setInterval(
+      () => setCursor((atual) => atual >= intervalo[1] ? intervalo[0] : Math.min(intervalo[1], atual + velocidade)),
+      500
+    );
+    return () => window.clearInterval(id);
+  }, [tocando, velocidade, intervalo]);
+
+  const enviar = async (acao: string, dados: Record<string, unknown> = {}) => {
+    setOcupado(acao);
+    setErro("");
+    try {
+      const parametros = new URLSearchParams(window.location.search);
+      const selecaoDaUrl = {
+        organizacao: parametros.get("organizacao"),
+        participante: parametros.get("participante"),
+        sessao: parametros.get("sessao")
+      };
+      const resposta = await fetch("/api/operacao-homologacao", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-humanexus-csrf": csrf() },
+        body: JSON.stringify({
+          acao,
+          identificador_da_organizacao:
+            selecaoDaUrl.organizacao
+            ?? estado?.contextos.selecao.identificador_da_organizacao,
+          identificador_do_participante:
+            selecaoDaUrl.participante
+            ?? estado?.contextos.selecao.identificador_do_participante,
+          identificador_da_sessao:
+            selecaoDaUrl.sessao
+            ?? estado?.contextos.selecao.identificador_da_sessao,
+          ...dados
+        })
+      });
+      const retorno = await resposta.json();
+      if (!resposta.ok) throw new Error(retorno?.erro?.mensagem ?? "Comando recusado.");
+      setEstado(retorno);
+    } catch (causa) {
+      setErro(causa instanceof Error ? causa.message : "Comando recusado.");
+    } finally {
+      setOcupado("");
+    }
+  };
+
+  const comandos = useMemo(() => ({
+    iniciar: () => enviar("iniciar-execucao"),
+    fase: (momento: "PRE" | "TREINO" | "POS", comando: string) => enviar("fase", { momento, conector: comando }),
+    evento: () => enviar("evento", { momento: "TREINO" }),
+    intervencao: () => enviar("intervencao"),
+    desconectar: () => enviar("desconectar"),
+    reconectar: () => enviar("reconectar"),
+    comparar: () => enviar("comparar"),
+    telemetria: () => enviar("telemetria"),
+    replay: () => enviar("replay"),
+    exportarReplay: () => enviar("exportar-replay", { inicio_percentual: intervalo[0], fim_percentual: intervalo[1] }),
+    concluirExecucaoThx: () => enviar("concluir-execucao-thx"),
+    concluir: () => enviar("concluir"),
+    relatorio: () => enviar("relatorio")
+  }), [intervalo]);
+
+  if (erro && !estado) return <p className="hx-module__error">{erro}</p>;
+  if (!estado) return <p className="hx-module__loading">Carregando a sessão técnica preservada…</p>;
+
+  const marcadores = marcadoresDaSessao(estado);
+  const faixas = faixasDasFases(estado);
+  const frequencia = pontosFrequencia(estado.telemetria);
+  const latencia = pontosTelemetria(estado.telemetria, "latencia_ms");
+  const buffer = pontosTelemetria(estado.telemetria, "buffer");
+  const ultimoPacote = telemetriaOrdenada(estado.telemetria).at(-1);
+  const perdas = estado.telemetria.reduce((total, item) => total + Number(item.perda_detectada ?? 0), 0);
+  const foraDeOrdem = estado.telemetria.filter((item) => Boolean(item.fora_de_ordem)).length;
+  const duplicados = estado.eventos_tecnicos.filter((item) => item.tipo === "DUPLICIDADE_REJEITADA").length;
+  const seletorContexto = (
+    <SeletorDeContexto
+      estado={estado}
+      ocupado={ocupado !== ""}
+      selecionar={(campo, identificador) => void selecionarContexto(campo, identificador)}
+    />
+  );
+  const parametrosDoContexto = new URLSearchParams({
+    organizacao: estado.contextos.selecao.identificador_da_organizacao,
+    participante: estado.contextos.selecao.identificador_do_participante,
+    sessao: estado.contextos.selecao.identificador_da_sessao
+  });
+  const pdfHref = `/api/operacao-homologacao/pdf?${parametrosDoContexto}`;
+
+  const controles = (
+    <section className="hx-op-controls">
+      <div className="hx-op-controls__head"><p>COMANDOS PROFISSIONAIS</p><span>Sessão httpOnly, CSRF e rastreabilidade do núcleo.</span></div>
+      <div className="hx-op-controls__grid">
+        <Botao onClick={() => comandos.fase("PRE", "iniciar")} disabled={ocupado !== "" || estado.execucao?.estado !== "AUTORIZADA"}>Iniciar PRÉ</Botao>
+        <Botao onClick={() => comandos.fase("PRE", "pausar")} disabled={ocupado !== "" || estado.execucao?.estado !== "AUTORIZADA"}>Pausar PRÉ</Botao>
+        <Botao onClick={() => comandos.fase("PRE", "retomar")} disabled={ocupado !== "" || estado.execucao?.estado !== "AUTORIZADA"}>Retomar PRÉ</Botao>
+        <Botao onClick={() => comandos.fase("PRE", "encerrar")} disabled={ocupado !== "" || estado.execucao?.estado !== "AUTORIZADA"}>Encerrar PRÉ</Botao>
+        <Botao onClick={() => comandos.fase("TREINO", "iniciar")} disabled={ocupado !== "" || estado.execucao?.estado !== "AUTORIZADA"}>Iniciar TREINO</Botao>
+        <Botao forte onClick={comandos.iniciar} disabled={ocupado !== "" || estado.execucao?.estado !== "AUTORIZADA"}>Iniciar execução THX</Botao>
+        <Botao onClick={() => comandos.fase("TREINO", "pausar")} disabled={ocupado !== "" || estado.execucao?.estado !== "INICIADA"}>Pausar TREINO</Botao>
+        <Botao onClick={() => comandos.fase("TREINO", "retomar")} disabled={ocupado !== "" || estado.execucao?.estado !== "INICIADA"}>Retomar TREINO</Botao>
+        <Botao onClick={comandos.evento} disabled={ocupado !== "" || estado.execucao?.estado !== "INICIADA"}>Registrar evento</Botao>
+        <Botao onClick={comandos.intervencao} disabled={ocupado !== "" || estado.execucao?.estado !== "INICIADA"}>Registrar intervenção</Botao>
+        <Botao onClick={() => comandos.fase("TREINO", "encerrar")} disabled={ocupado !== "" || estado.execucao?.estado !== "INICIADA"}>Encerrar TREINO</Botao>
+        <Botao forte onClick={comandos.concluirExecucaoThx} disabled={ocupado !== "" || estado.execucao?.estado !== "INICIADA"}>Concluir execução THX</Botao>
+        <Botao onClick={() => comandos.fase("POS", "iniciar")} disabled={ocupado !== "" || estado.execucao?.estado !== "CONCLUIDA"}>Iniciar PÓS</Botao>
+        <Botao onClick={() => comandos.fase("POS", "encerrar")} disabled={ocupado !== "" || estado.execucao?.estado !== "CONCLUIDA"}>Encerrar PÓS</Botao>
+        <Botao onClick={comandos.desconectar} disabled={ocupado !== ""}>Simular desconexão</Botao>
+        <Botao onClick={comandos.reconectar} disabled={ocupado !== ""}>Reconectar</Botao>
+        <Botao onClick={comandos.telemetria} disabled={ocupado !== "" || estado.telemetria.length > 0}>Gerar telemetria técnica</Botao>
+        <Botao forte onClick={comandos.comparar} disabled={true}>Comparação científica bloqueada</Botao>
+        <Botao forte onClick={comandos.replay} disabled={ocupado !== ""}>Atualizar Replay</Botao>
+        <Botao forte onClick={comandos.concluir} disabled={ocupado !== "" || estado.execucao?.estado !== "CONCLUIDA" || estado.sessao.estado === "FINALIZADA"}>Concluir formalmente a sessão</Botao>
+        <Botao onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>
+      </div>
+    </section>
+  );
+
+  const eventos = (
+    <section className="hx-op-log">
+      <div><p>EVENTOS E MARCADORES</p><strong>{estado.eventos.length} registro(s) preservado(s)</strong></div>
+      <ol>
+        {estado.eventos.length
+          ? estado.eventos.map((evento) => (
+              <li key={String(evento.identificador)}>
+                <span>{texto(evento.momento)}</span>
+                <b>{texto(evento.tipo)}</b>
+                <small>{dataLegivel(evento.ocorrido_em)}</small>
+              </li>
+            ))
+          : <li><b>Nenhum evento registrado.</b></li>}
+      </ol>
+    </section>
+  );
+
+  const telemetria = (
+    <section className="hx-telemetry">
+      <div className="hx-telemetry__heading">
+        <div><p>TELEMETRIA BRIDGE</p><h2>Métricas técnicas preservadas e separadas de evidência humana.</h2></div>
+        <div className="hx-health-indicator"><span className={ultimoPacote?.hash_do_dado_bruto ? "is-ok" : "is-blocked"} /><small>INTEGRIDADE</small><strong>{ultimoPacote?.hash_do_dado_bruto ? "PRESERVADA" : "SEM PACOTES"}</strong></div>
+      </div>
+      <div className="hx-telemetry__grid">
+        {[
+          ["FONTE", estado.fontes.length ? "ATIVA" : "INDISPONÍVEL"],
+          ["CANAL", texto(ultimoPacote?.canal, "SEM PACOTES")],
+          ["SEQUÊNCIA", texto(ultimoPacote?.sequencia)],
+          ["ORIGEM", dataLegivel(ultimoPacote?.timestamp_de_origem)],
+          ["RECEBIMENTO", dataLegivel(ultimoPacote?.timestamp_de_recebimento)],
+          ["FREQUÊNCIA", frequencia.at(-1)?.value != null ? `${frequencia.at(-1)?.value?.toFixed(2)} Hz` : "INDISPONÍVEL"],
+          ["LATÊNCIA", ultimoPacote ? `${Number(ultimoPacote.latencia_ms).toFixed(2)} ms` : "INDISPONÍVEL"],
+          ["PERDA", `${perdas} pacote(s)`],
+          ["DUPLICADOS", `${duplicados} rejeitado(s)`],
+          ["FORA DE ORDEM", `${foraDeOrdem} pacote(s)`],
+          ["BUFFER", texto(objeto(objeto(ultimoPacote?.dado_normalizado_json).valor).buffer)],
+          ["INTEGRIDADE", ultimoPacote?.hash_do_dado_bruto ? "PRESERVADA" : "SEM PACOTES"]
+        ].map(([rotulo, valor]) => (
+          <div key={rotulo}><small>{rotulo}</small><strong>{valor}</strong><span>SIMULAÇÃO TÉCNICA</span></div>
+        ))}
+      </div>
+      <TelemetryCommandChart
+        frequency={frequencia}
+        latency={latencia}
+        buffer={buffer}
+        markers={marcadores.filter((marcador) => ["disconnect", "reconnect"].includes(marcador.kind))}
+      />
+    </section>
+  );
+
+  const conectoresTecnicos = (
+    <section className="hx-technical-stack">
+      {estado.conectores.length === 0 ? (
+        <EmptySignalState
+          title="EPOC X E POLAR H10"
+          status="AGUARDANDO_HOMOLOGACAO_FISICA"
+          reason="O caminho de software permanece disponível, mas nenhum hardware real está fisicamente conectado. Nenhum sinal, evidência humana ou resultado científico foi produzido."
+        />
+      ) : estado.conectores.map((conector) => {
+        const historico = estado.historicos_conectores.find((item) => item.identificador === conector.identificador)?.eventos ?? [];
+        return (
+          <article className="hx-connector" key={String(conector.identificador)}>
+            <div><p>{texto(conector.nome_da_fonte)}</p><strong>{texto(conector.estado)}</strong><span>{texto(conector.modo)}</span></div>
+            <div>
+              <dl>
+                <div><dt>SDK / LICENÇA</dt><dd>REQUISITO AUSENTE PARA HARDWARE REAL</dd></div>
+                <div><dt>FIRMWARE</dt><dd>{texto(conector.firmware)}</dd></div>
+                <div><dt>QUALIDADE</dt><dd>{texto(conector.confiabilidade)}</dd></div>
+                <div><dt>LATÊNCIA</dt><dd>{texto(conector.latencia_ms)}</dd></div>
+              </dl>
+              <div className="hx-connector-timeline">
+                {historico.length ? historico.map((item, indice) => (
+                  <span className={`is-${String(item.estado_destino ?? item.estado).toLowerCase()}`} key={`${texto(item.ocorrido_em ?? item.criado_em)}-${indice}`}>
+                    <i />{texto(item.estado_destino ?? item.estado)}<small>{dataLegivel(item.ocorrido_em ?? item.criado_em)}</small>
+                  </span>
+                )) : <EmptySignalState title="HISTÓRICO DE CONEXÃO" reason="Nenhuma transição foi registrada." />}
+              </div>
+            </div>
+          </article>
+        );
+      })}
+    </section>
+  );
+
+  const visaoPreTreinoPos = (
+    <section className="hx-cockpit-panel">
+      <TituloDaVisao kicker="PRÉ / TREINO / PÓS" titulo="Fases independentes, comparáveis somente sob governança." descricao="Preparação, comandos, snapshots, fontes, eventos e comparação permanecem no contexto da sessão." />
+      {controles}
+      <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
+      <div className="hx-phase-vector-grid">
+        {estado.ciencia.vetores.map((vetor) => (
+          <article key={codigoDoVetor(vetor)}>
+            <small>{codigoDoVetor(vetor)} · {nomeDoVetor(vetor)}</small>
+            <strong>COMPARAÇÃO INDISPONÍVEL</strong>
+            <span>PRÉ, TREINO e PÓS não possuem estado vetorial humano válido. Magnitude, direção, sentido, interação e contribuição não são preenchidos.</span>
+          </article>
+        ))}
+      </div>
+      <p className="hx-comparison-limit">Somente aumento observado, redução observada, estabilidade observada, reorganização observada ou comparação indisponível podem ser apresentados. Nenhuma melhora, piora ou causalidade é inferida.</p>
+      {eventos}
+    </section>
+  );
+
+  const historicoLongitudinal = Array.isArray(estado.longitudinal?.historico) ? estado.longitudinal.historico as Registro[] : [];
+  const pontosLongitudinais = historicoLongitudinal.map((item) => ({
+    time: instante(item.ocorrido_em ?? item.criado_em ?? item.iniciado_em),
+    value: typeof item.iirh === "number" && item.iirh_valido !== false ? item.iirh : null,
+    label: texto(item.identificador_da_sessao),
+    source: "Longitudinal oficial",
+    quality: typeof item.confiabilidade === "number" ? item.confiabilidade : null,
+    coverage: typeof item.cobertura === "number" ? item.cobertura : null,
+    phase: texto(item.zona),
+    zone: texto(item.zona),
+    ctr: texto(item.ctr),
+    thx: texto(item.thx),
+    version: texto(item.versao_cientifica),
+    gap: item.comparavel === false
+  }));
+  const visaoLongitudinal = (
+    <section className="hx-cockpit-panel">
+      <TituloDaVisao kicker="LONGITUDINAL" titulo="Histórico do participante sem recálculo silencioso." descricao="Sessões, ciclos, versões, lacunas e comparabilidade metodológica permanecem preservados." />
+      <LongitudinalEvolutionChart points={pontosLongitudinais} />
+      <Rastreabilidade estado={estado} />
+    </section>
+  );
+
+  const itensReplay = Array.isArray(estado.replay?.itens) ? estado.replay.itens as Registro[] : [];
+  const itensDaLinha = itensReplay.flatMap((item) => {
+    const time = instante(item.timestamp_original);
+    if (!time) return [];
+    const detalhes = objeto(item.dados_de_inspecao_json);
+    return [{
+      time,
+      track: texto(item.modalidade),
+      label: texto(detalhes.tipo, "REGISTRO"),
+      event: texto(detalhes.tipo, ""),
+      source: texto(item.origem, "NÚCLEO OFICIAL")
+    }];
+  });
+  const modalidadesReplay = [...new Set(itensDaLinha.map((item) => item.track))];
+  const trilhasVisiveis = modalidadesReplay.filter((item) => trilhas[item] !== false);
+  const visaoReplay = (
+    <section className="hx-cockpit-panel">
+      <TituloDaVisao kicker="REPLAY" titulo="Linha multimodal da sessão ativa." descricao="Participante, CTR, THX, fases, eventos, fontes e contexto permanecem sincronizados." />
+      <section className="hx-replay hx-replay--operational">
+        <div className="hx-replay__toolbar">
+          <div><p>REPLAY MULTIMODAL SINCRONIZADO</p><strong>{texto(estado.replay?.linha?.identificador, "LINHA NÃO GERADA")}</strong></div>
+          <div><Botao onClick={comandos.replay} disabled={ocupado !== ""}>Atualizar linha</Botao><Botao forte onClick={comandos.exportarReplay} disabled={ocupado !== "" || !itensReplay.length}>Exportar intervalo</Botao></div>
+        </div>
+        <div className="hx-replay-controls">
+          <Botao onClick={() => setTocando(true)} disabled={!itensReplay.length}>Reproduzir</Botao>
+          <Botao onClick={() => setTocando(false)}>Pausar</Botao>
+          <Botao onClick={() => setCursor((valor) => Math.max(intervalo[0], valor - 5))}>Retroceder</Botao>
+          <Botao onClick={() => setCursor((valor) => Math.min(intervalo[1], valor + 5))}>Avançar</Botao>
+          <label>Velocidade<select value={velocidade} onChange={(evento) => setVelocidade(Number(evento.target.value))}><option value=".5">0,5×</option><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+          <label>Zoom<input type="range" min="1" max="6" step=".25" value={zoom} onChange={(evento) => setZoom(Number(evento.target.value))} /></label>
+        </div>
+        <div className="hx-replay-interval">
+          <label>Início do intervalo<input type="range" min="0" max="100" value={intervalo[0]} onChange={(evento) => setIntervalo([Math.min(Number(evento.target.value), intervalo[1] - 1), intervalo[1]])} /></label>
+          <label>Fim do intervalo<input type="range" min="0" max="100" value={intervalo[1]} onChange={(evento) => setIntervalo([intervalo[0], Math.max(Number(evento.target.value), intervalo[0] + 1)])} /></label>
+          <span>Cursor {cursor.toFixed(0)}% · intervalo {intervalo[0]}–{intervalo[1]}%</span>
+        </div>
+        <div className="hx-replay-filters">
+          {modalidadesReplay.map((item) => <label key={item}><input type="checkbox" checked={trilhas[item] !== false} onChange={(evento) => setTrilhas((atual) => ({ ...atual, [item]: evento.target.checked }))} />{item}</label>)}
+          <label><input type="checkbox" disabled checked={false} readOnly />Vetores · indisponíveis</label>
+          <label><input type="checkbox" disabled checked={false} readOnly />Resultante · indisponível</label>
+        </div>
+        <ReplayTimelineChart items={itensDaLinha} phases={faixas} markers={marcadores} cursorPercent={cursor} interval={intervalo} zoom={zoom} visibleTracks={trilhasVisiveis} />
+        <div className="hx-replay-inspection"><small>INSPEÇÃO ATUAL</small><strong>{itensReplay.length} itens íntegros · {estado.linhas.length} versão(ões) preservada(s)</strong><span>Desconexões, reconexões, intervenções, lacunas e eventos permanecem visíveis.</span></div>
+      </section>
+      {eventos}
+    </section>
+  );
+
+  const visaoRelatorio = (
+    <section className="hx-cockpit-panel hx-report-view">
+      <TituloDaVisao kicker="RELATÓRIO" titulo="Documento gerado a partir do contexto já carregado." descricao="Sessão, evidências, vetores, Resultante, Trajetória, fases, decisões e limitações permanecem vinculados." />
+      <section className="hx-report-operation">
+        <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
+        <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>{estado.relatorios.length ? <a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a> : null}</div>
+      </section>
+      <div className="hx-report-charts" data-humanexus-report>
+        <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
+      </div>
+      <Rastreabilidade estado={estado} />
+    </section>
+  );
+
+  const visaoColetiva = (
+    <section className="hx-cockpit-panel">
+      <TituloDaVisao kicker="MODO COLETIVO DO COCKPIT" titulo="Alternância Individual / Coletivo preservando privacidade." descricao="Organização, equipe, período, finalidade, cobertura e amostra elegível são obrigatórios." />
+      <div className="hx-mode-switch"><button type="button" className="is-active">Cockpit Individual</button><button type="button" disabled>Cockpit Coletivo</button></div>
+      <EmptySignalState title="COBERTURA E AMOSTRA COLETIVA" status="AMOSTRA NÃO ELEGÍVEL" reason="A sessão atual é técnica e individual. Não há equipe autorizada, finalidade coletiva, anonimização ou amostra elegível." />
+    </section>
+  );
+
+  const visaoTecnica = (
+    <section className="hx-cockpit-panel">
+      <TituloDaVisao kicker="TÉCNICO" titulo="Infraestrutura recolhível e subordinada à leitura científica." descricao="Somente falhas que comprometam qualidade, cobertura ou conexão recebem destaque na sessão." />
+      <div className="hx-technical-tabs">
+        {["fontes", "conectores", "telemetria", "movel"].map((item) => <button className={painelTecnico === item ? "is-active" : ""} type="button" onClick={() => setPainelTecnico(item)} key={item}>{item}</button>)}
+      </div>
+      {painelTecnico === "fontes" ? (
+        <div className="hx-source-health">
+          <article><small>Fontes</small><strong>{estado.fontes.length ? "DISPONÍVEIS" : "INDISPONÍVEIS"}</strong><span>{estado.fontes.length} registro(s)</span></article>
+          <article><small>Conexão</small><strong>{estado.conectores.some((item) => item.estado === "TRANSMITINDO") ? "ATIVA" : "NÃO ATIVA"}</strong><span>Reconexões preservadas no histórico</span></article>
+          <article><small>Qualidade / cobertura</small><strong>TÉCNICA</strong><span>Não equivale a qualidade de evidência humana</span></article>
+        </div>
+      ) : null}
+      {painelTecnico === "conectores" ? conectoresTecnicos : null}
+      {painelTecnico === "telemetria" ? telemetria : null}
+      {painelTecnico === "movel" ? (
+        <section className="hx-mobile-console">
+          <div><p>ACESSO MÓVEL AUTENTICADO</p><h2>{texto(estado.usuario.nome)}</h2><span>Sessão única por cookie httpOnly · perfil {texto(estado.usuario.perfil)}</span></div>
+          <div className="hx-mobile-console__status">
+            <article><small>Participante</small><strong>{texto(estado.participante.referencia_externa)}</strong></article>
+            <article><small>Fase / tempo</small><strong>{faseAtual(estado)} · {dataLegivel(estado.execucao?.iniciado_em)}</strong></article>
+            <article><small>Conectores</small><strong>{estado.conectores.filter((item) => item.estado === "TRANSMITINDO").length}/{estado.conectores.length} transmitindo</strong></article>
+            <article><small>Alertas</small><strong>{perdas + foraDeOrdem} técnico(s)</strong></article>
+            <article><small>Eventos</small><strong>{estado.eventos.length} sincronizados</strong></article>
+            <article><small>Retomada de rede</small><strong>{estado.historicos_conectores.some((item) => item.eventos.length > 2) ? "DEMONSTRADA" : "NÃO DEMONSTRADA"}</strong></article>
+          </div>
+        </section>
+      ) : null}
+      <details className="hx-technical-details"><summary>Saúde do Bridge, frequência, latência, perda, buffer, duplicados, sequência, firmware, SDK, licença e logs</summary><pre>{JSON.stringify({ fontes: estado.fontes, conectores: estado.conectores, telemetria: estado.telemetria, eventos_tecnicos: estado.eventos_tecnicos }, null, 2)}</pre></details>
+    </section>
+  );
+
+  let conteudoDaVisao: React.ReactNode;
+  if (visao === "evidencias") conteudoDaVisao = <EvidenciasDoCockpit estado={estado} />;
+  else if (visao === "constituicao") conteudoDaVisao = <ConstituicaoOperacional estado={estado} />;
+  else if (visao === "matriz-vetorial") conteudoDaVisao = <MatrizVetorial estado={estado} selecionado={vetorSelecionado} selecionar={setVetorSelecionado} />;
+  else if (visao === "resultante") conteudoDaVisao = <ResultanteRegulatoria estado={estado} />;
+  else if (visao === "trajetoria") conteudoDaVisao = <TrajetoriaRegulatoria estado={estado} />;
+  else if (visao === "pre-treino-pos") conteudoDaVisao = visaoPreTreinoPos;
+  else if (visao === "rotas-regulatorias") conteudoDaVisao = <RotasRegulatorias estado={estado} />;
+  else if (visao === "ctr-thx") conteudoDaVisao = <section className="hx-cockpit-panel"><TituloDaVisao kicker="CTR E THX" titulo="Critério individual e protocolo autorizado no mesmo contexto." descricao="Código, nome e estado da execução permanecem separados do catálogo." /><Identificacao estado={estado} /><Rastreabilidade estado={estado} /></section>;
+  else if (visao === "formulacao") conteudoDaVisao = <FormulacaoRegulatoria estado={estado} />;
+  else if (visao === "longitudinal") conteudoDaVisao = visaoLongitudinal;
+  else if (visao === "replay") conteudoDaVisao = visaoReplay;
+  else if (visao === "relatorio") conteudoDaVisao = visaoRelatorio;
+  else if (visao === "coletivo") conteudoDaVisao = visaoColetiva;
+  else if (visao === "tecnico") conteudoDaVisao = visaoTecnica;
+  else conteudoDaVisao = (
+    <div className="hx-cockpit-overview">
+      <MatrizVetorial estado={estado} selecionado={vetorSelecionado} selecionar={(codigo) => { setVetorSelecionado(codigo); selecionarVisao("matriz-vetorial"); }} resumida />
+      <ResultanteRegulatoria estado={estado} resumida />
+      <TrajetoriaRegulatoria estado={estado} resumida />
+      <EvidenciasDoCockpit estado={estado} />
+      <section className="hx-professional-decision"><small>DECISÃO PROFISSIONAL</small><strong>Nenhuma decisão científica automática disponível</strong><span>A sessão técnica pode ser inspecionada, mas não autoriza interpretação humana, gatilho ou rota.</span></section>
+      <Hud estado={estado} />
+      {controles}
+      <details className="hx-technical-details"><summary>Detalhes técnicos da sessão</summary>{visaoTecnica}</details>
+    </div>
+  );
+
+  if (modulo === "cockpit-vivo") {
+    return (
+      <div className="hx-operacao hx-cockpit-workspace">
+        {seletorContexto}
+        <ContextoPersistente estado={estado} visao={visao} />
+        <AvisoTecnico />
+        <NavegacaoInterna visao={visao} selecionar={selecionarVisao} />
+        <main className="hx-cockpit-view" data-cockpit-view={visao}>{conteudoDaVisao}</main>
+        {erro ? <p className="hx-module__error">{erro}</p> : null}
+      </div>
+    );
+  }
+
+  if (modulo === "conectores") {
+    return (
+      <div className="hx-operacao">
+        {seletorContexto}
+        <section className="hx-op-title"><p>CONECTORES / OPERAÇÃO TÉCNICA</p><h2>Histórico real de conexão, desconexão e retomada do ambiente isolado.</h2></section>
+        <AvisoTecnico />
+        {estado.conectores.map((conector) => {
+          const historico = estado.historicos_conectores.find((item) => item.identificador === conector.identificador)?.eventos ?? [];
+          return (
+            <article className="hx-connector" key={String(conector.identificador)}>
+              <div><p>{texto(conector.nome_da_fonte)}</p><strong>{texto(conector.estado)}</strong><span>{texto(conector.modo)}</span></div>
+              <div>
+                <dl>
+                  <div><dt>SDK / LICENÇA</dt><dd>REQUISITO AUSENTE PARA HARDWARE REAL</dd></div>
+                  <div><dt>FIRMWARE</dt><dd>{texto(conector.firmware)}</dd></div>
+                  <div><dt>QUALIDADE</dt><dd>{texto(conector.confiabilidade)}</dd></div>
+                  <div><dt>LATÊNCIA</dt><dd>{texto(conector.latencia_ms)}</dd></div>
+                </dl>
+                <div className="hx-connector-timeline">
+                  {historico.length ? historico.map((item, indice) => (
+                    <span className={`is-${String(item.estado_destino ?? item.estado).toLowerCase()}`} key={`${texto(item.ocorrido_em ?? item.criado_em)}-${indice}`}>
+                      <i />{texto(item.estado_destino ?? item.estado)}<small>{dataLegivel(item.ocorrido_em ?? item.criado_em)}</small>
+                    </span>
+                  )) : <EmptySignalState title="HISTÓRICO DE CONEXÃO" reason="Nenhuma transição foi registrada." />}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (modulo === "telemetria") return <div className="hx-operacao">{seletorContexto}<Hud estado={estado} />{telemetria}</div>;
+
+  if (modulo === "pre-treino-pos") {
+    return (
+      <div className="hx-operacao">
+        {seletorContexto}
+        <Contexto estado={estado} />
+        {controles}
+        <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
+        <p className="hx-comparison-limit">Diferenças são exibidas apenas como aumento, redução, estabilidade observada ou comparação indisponível. Nenhuma causalidade é inferida.</p>
+        {eventos}
+      </div>
+    );
+  }
+
+  if (modulo === "replay") {
+    const itens = Array.isArray(estado.replay?.itens) ? estado.replay.itens as Registro[] : [];
+    const timelineItems = itens.flatMap((item) => {
+      const time = instante(item.timestamp_original);
+      if (!time) return [];
+      const detalhes = objeto(item.dados_de_inspecao_json);
+      return [{
+        time,
+        track: texto(item.modalidade),
+        label: texto(detalhes.tipo, "REGISTRO"),
+        event: texto(detalhes.tipo, ""),
+        source: texto(item.origem, "NÚCLEO OFICIAL")
+      }];
+    });
+    const modalidades = [...new Set(timelineItems.map((item) => item.track))];
+    const visiveis = modalidades.filter((item) => trilhas[item] !== false);
+    return (
+      <div className="hx-operacao">
+        {seletorContexto}
+        <Contexto estado={estado} />
+        <section className="hx-replay hx-replay--operational">
+          <AvisoTecnico />
+          <div className="hx-replay__toolbar">
+            <div><p>REPLAY MULTIMODAL SINCRONIZADO</p><strong>{texto(estado.replay?.linha?.identificador, "LINHA NÃO GERADA")}</strong></div>
+            <div><Botao onClick={comandos.replay} disabled={ocupado !== ""}>Atualizar linha</Botao><Botao forte onClick={comandos.exportarReplay} disabled={ocupado !== "" || !itens.length}>Exportar intervalo</Botao></div>
+          </div>
+          <div className="hx-replay-controls">
+            <Botao onClick={() => setTocando(true)} disabled={!itens.length}>Reproduzir</Botao>
+            <Botao onClick={() => setTocando(false)}>Pausar</Botao>
+            <Botao onClick={() => setCursor((valor) => Math.max(intervalo[0], valor - 5))}>Retroceder</Botao>
+            <Botao onClick={() => setCursor((valor) => Math.min(intervalo[1], valor + 5))}>Avançar</Botao>
+            <label>Velocidade<select value={velocidade} onChange={(evento) => setVelocidade(Number(evento.target.value))}><option value=".5">0,5×</option><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+            <label>Zoom<input type="range" min="1" max="6" step=".25" value={zoom} onChange={(evento) => setZoom(Number(evento.target.value))} /></label>
+          </div>
+          <div className="hx-replay-interval">
+            <label>Início do intervalo<input type="range" min="0" max="100" value={intervalo[0]} onChange={(evento) => setIntervalo([Math.min(Number(evento.target.value), intervalo[1] - 1), intervalo[1]])} /></label>
+            <label>Fim do intervalo<input type="range" min="0" max="100" value={intervalo[1]} onChange={(evento) => setIntervalo([intervalo[0], Math.max(Number(evento.target.value), intervalo[0] + 1)])} /></label>
+            <span>Cursor {cursor.toFixed(0)}% · intervalo {intervalo[0]}–{intervalo[1]}%</span>
+          </div>
+          <div className="hx-replay-filters">
+            {modalidades.map((item) => (
+              <label key={item}><input type="checkbox" checked={trilhas[item] !== false} onChange={(evento) => setTrilhas((atual) => ({ ...atual, [item]: evento.target.checked }))} />{item}</label>
+            ))}
+          </div>
+          <ReplayTimelineChart
+            items={timelineItems}
+            phases={faixas}
+            markers={marcadores}
+            cursorPercent={cursor}
+            interval={intervalo}
+            zoom={zoom}
+            visibleTracks={visiveis}
+          />
+          <div className="hx-replay-inspection">
+            <small>INSPEÇÃO ATUAL</small>
+            <strong>{itens.length} itens íntegros · {estado.linhas.length} versão(ões) preservada(s)</strong>
+            <span>Desconexões, reconexões, intervenções, lacunas e eventos permanecem visíveis nas trilhas correspondentes.</span>
+          </div>
+        </section>
+        {eventos}
+      </div>
+    );
+  }
+
+  if (modulo === "movel") {
+    return (
+      <div className="hx-operacao hx-mobile-operation">
+        {seletorContexto}
+        <AvisoTecnico />
+        <Contexto estado={estado} />
+        <section className="hx-mobile-console">
+          <div><p>ACESSO MÓVEL AUTENTICADO</p><h2>{texto(estado.usuario.nome)}</h2><span>Sessão única por cookie httpOnly · perfil {texto(estado.usuario.perfil)}</span></div>
+          <div className="hx-mobile-console__status">
+            <article><small>Participante</small><strong>{texto(estado.participante.referencia_externa)}</strong></article>
+            <article><small>Fase / tempo</small><strong>{faseAtual(estado)} · {dataLegivel(estado.execucao?.iniciado_em)}</strong></article>
+            <article><small>Conectores</small><strong>{estado.conectores.filter((item) => item.estado === "TRANSMITINDO").length}/{estado.conectores.length} transmitindo</strong></article>
+            <article><small>Alertas</small><strong>{perdas + foraDeOrdem} técnico(s)</strong></article>
+            <article><small>Eventos</small><strong>{estado.eventos.length} sincronizados</strong></article>
+            <article><small>Retomada de rede</small><strong>{estado.historicos_conectores.some((item) => item.eventos.length > 2) ? "DEMONSTRADA" : "NÃO DEMONSTRADA"}</strong></article>
+          </div>
+          <div className="hx-mobile-console__commands">
+            <Botao onClick={comandos.evento} disabled={ocupado !== "" || estado.sessao.estado === "FINALIZADA"}>Registrar evento permitido</Botao>
+            <Botao onClick={comandos.reconectar} disabled={ocupado !== ""}>Retomar rede</Botao>
+            <span>{estado.movel.comandos.length} comando(s) móvel(is) auditado(s)</span>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  if (modulo === "relatorios") {
+    return (
+      <div className="hx-operacao hx-report-view">
+        {seletorContexto}
+        <AvisoTecnico />
+        <Contexto estado={estado} />
+        <section className="hx-report-operation">
+          <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
+          <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>{estado.relatorios.length ? <a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a> : null}</div>
+        </section>
+        <div className="hx-report-charts" data-humanexus-report>
+          <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
+          <TelemetryCommandChart frequency={frequencia} latency={latencia} buffer={buffer} markers={marcadores.filter((item) => ["disconnect", "reconnect"].includes(item.kind))} />
+        </div>
+        <Rastreabilidade estado={estado} />
+      </div>
+    );
+  }
+
+  if (modulo === "longitudinal") {
+    const historico = Array.isArray(estado.longitudinal?.historico) ? estado.longitudinal.historico as Registro[] : [];
+    const pontos = historico.map((item) => ({
+      time: instante(item.ocorrido_em ?? item.criado_em ?? item.iniciado_em),
+      value: typeof item.iirh === "number" && item.iirh_valido !== false ? item.iirh : null,
+      label: texto(item.identificador_da_sessao),
+      source: "Longitudinal oficial",
+      quality: typeof item.confiabilidade === "number" ? item.confiabilidade : null,
+      coverage: typeof item.cobertura === "number" ? item.cobertura : null,
+      phase: texto(item.zona),
+      zone: texto(item.zona),
+      ctr: texto(item.ctr),
+      thx: texto(item.thx),
+      version: texto(item.versao_cientifica),
+      gap: item.comparavel === false
+    }));
+    return (
+      <div className="hx-operacao">
+        {seletorContexto}
+        <AvisoTecnico />
+        <section className="hx-op-title"><p>LONGITUDINAL</p><h2>Comparabilidade metodológica protegida.</h2><span>Filtros por período, contexto, tarefa e versão científica são aplicados sem ligar sessões incompatíveis.</span></section>
+        <LongitudinalEvolutionChart points={pontos} />
+        <Rastreabilidade estado={estado} />
+      </div>
+    );
+  }
+
+  if (modulo === "indicador-coletivo") {
+    return (
+      <div className="hx-operacao">
+        {seletorContexto}
+        <AvisoTecnico />
+        <section className="hx-op-title"><p>INDICADOR COLETIVO</p><h2>Governança coletiva sem extrapolação individual.</h2></section>
+        <EmptySignalState
+          title="COORDENAÇÃO · COMUNICAÇÃO · CONSCIÊNCIA COMPARTILHADA · RECUPERAÇÃO COLETIVA"
+          status="AMOSTRA NÃO ELEGÍVEL"
+          reason="A sessão atual é técnica e individual. Não há grupo autorizado, anonimização, cobertura coletiva ou comparabilidade temporal suficientes."
+        />
+      </div>
+    );
+  }
+
+  if (modulo === "painel") {
+    return (
+      <div className="hx-operacao">
+        {seletorContexto}
+        <Hud estado={estado} />
+        <CockpitSignalStack tracks={trilhasDoCockpit(estado)} markers={marcadores} phases={faixas} />
+        <Rastreabilidade estado={estado} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="hx-operacao">
+      {seletorContexto}
+      <Hud estado={estado} />
+      <Contexto estado={estado} />
+      <Identificacao estado={estado} />
+      {controles}
+      <CockpitSignalStack tracks={trilhasDoCockpit(estado)} markers={marcadores} phases={faixas} />
+      {telemetria}
+      {eventos}
+      <Rastreabilidade estado={estado} />
+      {erro ? <p className="hx-module__error">{erro}</p> : null}
+    </div>
+  );
+}

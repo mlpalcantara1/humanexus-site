@@ -68,8 +68,29 @@ test("autenticação provisória está funcionalmente desativada", async () => {
 test("convite usa a rota canônica", async () => {
   const panel = await source("components/painel-profissional.tsx");
   const config = await source("next.config.ts");
-  assert.match(panel, /\/anamnese\/convite\/\$\{/);
+  assert.match(panel, /\/acesso-participante\?token=\$\{/);
   assert.match(config, /destination: "\/anamnese\/convite\/:token"/);
+});
+
+test("evidência aceita pode ser citada idempotentemente na Formulação oficial", async () => {
+  const panel = await source("components/painel-profissional.tsx");
+  const route = await source("app/api/humanexus/formulacoes/route.ts");
+  assert.match(panel, /Citar na Formulação/);
+  assert.match(route, /referencias_de_origem/);
+  assert.match(route, /evidencias\.includes\(evidencia\)/);
+  assert.match(route, /CITACAO_DE_ORIGEM_SEM_INTERPRETACAO_AUTOMATICA/);
+  assert.match(route, /exigirMesmaOrigem/);
+});
+
+test("módulos operacionais usam gestão real sem ações de fachada", async () => {
+  const modules = await source("components/modulo-integrado.tsx");
+  assert.match(modules, /ESTADO FUNCIONAL/);
+  assert.match(modules, /GestaoOperacional/);
+  assert.doesNotMatch(modules, /estado: "PARCIAL"/);
+  assert.doesNotMatch(modules, />Criar organização</);
+  assert.doesNotMatch(modules, />Cadastrar cliente</);
+  assert.doesNotMatch(modules, />Criar sessão</);
+  assert.match(modules, /Gerar convite de Anamnese/);
 });
 
 test("middleware cobre todas as áreas privadas", async () => {
@@ -86,4 +107,38 @@ test("middleware cobre todas as áreas privadas", async () => {
   ]) {
     assert.match(middleware, new RegExp(`"${route.replace("/", "\\/")}`));
   }
+});
+
+test("TCLE usa aceites separados e recuperação proprietária não expõe token", async () => {
+  const consentimento = await source("components/formulario-consentimento.tsx");
+  const governanca = await source("components/governanca-operacional.tsx");
+  const recuperacao = await source(
+    "app/api/sessao/recuperacao/local-proprietario/route.ts"
+  );
+  const core = await source("lib/humanexus-core.ts");
+  const redefinicao = await source("components/formulario-redefinicao.tsx");
+
+  assert.match(consentimento, /value="ACEITO"/);
+  assert.match(consentimento, /value="RECUSADO"/);
+  assert.match(consentimento, /checked=\{decisao === "ACEITO"\}/);
+  assert.doesNotMatch(consentimento, /defaultChecked/);
+  for (const tipo of [
+    "TCLE",
+    "AVISO_PRIVACIDADE",
+    "TERMOS_USO",
+    "DADOS_SENSIVEIS",
+    "AUTORIZACAO_POLAR_H10",
+    "AUTORIZACAO_EEG",
+    "AUTORIZACAO_REPLAY_TELEMETRIA",
+    "AUTORIZACAO_PESQUISA",
+    "ASSENTIMENTO_ADOLESCENTE",
+    "AUTORIZACAO_RESPONSAVEL_LEGAL"
+  ]) {
+    assert.match(governanca, new RegExp(tipo));
+  }
+  assert.match(recuperacao, /HOSPEDES_LOCAIS/);
+  assert.match(core, /x-humanexus-local-recovery-secret/);
+  assert.match(core, /server-only/);
+  assert.match(redefinicao, /modo.*local/);
+  assert.doesNotMatch(redefinicao, /token.*modo.*local/);
 });

@@ -13,6 +13,11 @@ export async function GET(
         `/api/v1/anamnese/convite/${seguro}/estrutura`
       ),
       requisitarNucleoPublico<{
+        anamnese: {
+          estado: string;
+          ultima_secao?: string;
+          percentual_concluido: number;
+        };
         respostas: {
           identificador_da_pergunta: string;
           resposta_json: unknown;
@@ -22,6 +27,7 @@ export async function GET(
     ]);
     return NextResponse.json({
       ...estrutura,
+      progresso: progresso.anamnese,
       respostas: progresso.respostas.map((resposta) => ({
         question_id: resposta.identificador_da_pergunta,
         answer: resposta.resposta_json,
@@ -42,7 +48,8 @@ export async function POST(
 ) {
   try {
     const { token } = await params;
-    const { acao } = await request.json();
+    const corpo = await request.json();
+    const { acao } = corpo;
     const seguro = encodeURIComponent(token);
     if (acao === "INICIAR") {
       return NextResponse.json(
@@ -65,6 +72,31 @@ export async function POST(
         await requisitarNucleoPublico(
           `/api/v1/anamnese/convite/${seguro}/concluir`,
           { method: "POST" }
+        )
+      );
+    }
+    if (acao === "SELECIONAR_RAMO") {
+      return NextResponse.json(
+        await requisitarNucleoPublico(
+          `/api/v1/anamnese/convite/${seguro}/ramo`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              nicho: corpo.nicho,
+              funcao: corpo.funcao
+            })
+          }
+        )
+      );
+    }
+    if (acao === "CONFIRMAR_REVISAO_DO_RAMO") {
+      return NextResponse.json(
+        await requisitarNucleoPublico(
+          `/api/v1/anamnese/convite/${seguro}/ramo`,
+          {
+            method: "POST",
+            body: JSON.stringify({ acao: "CONFIRMAR_REVISAO" })
+          }
         )
       );
     }

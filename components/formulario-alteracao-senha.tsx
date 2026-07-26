@@ -15,7 +15,7 @@ export function FormularioAlteracaoSenha({ csrf }: { csrf: string }) {
     if (nova !== confirmacao) return setMensagem("As senhas não coincidem.");
     const resposta = await fetch("/api/sessao/alterar-senha", {
       method: "POST",
-      headers: { "content-type": "application/json", "x-csrf-token": csrf },
+      headers: { "content-type": "application/json", "x-humanexus-csrf": csrf },
       body: JSON.stringify({ senhaAtual: atual, novaSenha: nova })
     });
     const dados = await resposta.json();

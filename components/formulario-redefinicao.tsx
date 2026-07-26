@@ -15,10 +15,19 @@ export function FormularioRedefinicao() {
       setMensagem("As senhas não coincidem.");
       return;
     }
-    const resposta = await fetch("/api/sessao/recuperacao/redefinir", {
+    const local = params.get("modo") === "local";
+    const resposta = await fetch(
+      local
+        ? "/api/sessao/recuperacao/local-proprietario"
+        : "/api/sessao/recuperacao/redefinir",
+      {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token: params.get("token"), novaSenha: senha })
+      body: JSON.stringify(
+        local
+          ? { novaSenha: senha }
+          : { token: params.get("token"), novaSenha: senha }
+      )
     });
     const dados = await resposta.json();
     setMensagem(

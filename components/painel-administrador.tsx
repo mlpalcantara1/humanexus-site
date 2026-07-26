@@ -33,7 +33,7 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
     evento.preventDefault();
     const resposta = await fetch("/api/administracao", {
       method: "POST",
-      headers: { "content-type": "application/json", "x-csrf-token": csrf },
+      headers: { "content-type": "application/json", "x-humanexus-csrf": csrf },
       body: JSON.stringify({ acao: "criar_organizacao", nome: nomeOrganizacao })
     });
     setMensagem(resposta.ok ? "Organização criada." : "Operação recusada.");
@@ -43,7 +43,7 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
   async function alterarAcesso(usuario: Usuario) {
     const resposta = await fetch("/api/administracao", {
       method: "POST",
-      headers: { "content-type": "application/json", "x-csrf-token": csrf },
+      headers: { "content-type": "application/json", "x-humanexus-csrf": csrf },
       body: JSON.stringify({
         acao: "alterar_acesso",
         identificador: usuario.identificador,
@@ -58,7 +58,7 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
     evento.preventDefault();
     const resposta = await fetch("/api/administracao", {
       method: "POST",
-      headers: { "content-type": "application/json", "x-csrf-token": csrf },
+      headers: { "content-type": "application/json", "x-humanexus-csrf": csrf },
       body: JSON.stringify({
         acao: "criar_usuario",
         usuario: {
@@ -76,51 +76,54 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
   }
 
   return (
-    <div className="mt-10 space-y-8">
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="hx-admin">
+      <section className="hx-admin__metrics">
         {dados?.resumo ? Object.entries(dados.resumo).filter(([, valor]) => typeof valor === "number").map(([chave, valor]) => (
-          <article key={chave} className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
-            <p className="text-xs uppercase tracking-wider text-[#8F949C]">{chave.replaceAll("_", " ")}</p>
-            <p className="mt-2 text-3xl font-semibold text-white">{valor}</p>
+          <article key={chave} className="hx-admin__metric">
+            <p>{chave.replaceAll("_", " ")}</p>
+            <strong>{valor}</strong>
+            <small>ESTADO DO NÚCLEO</small>
           </article>
         )) : null}
       </section>
-      <section className="grid gap-6 lg:grid-cols-[.7fr_1.3fr]">
-        <div className="space-y-6">
-          <form onSubmit={criarOrganizacao} className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-6">
-            <h2 className="text-xl font-semibold text-white">Nova organização</h2>
-            <input required value={nomeOrganizacao} onChange={(e) => setNomeOrganizacao(e.target.value)} placeholder="Nome institucional" className="mt-5 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white" />
-            <button className="mt-4 w-full rounded-full bg-[#C9A34E] px-5 py-3 font-semibold text-black">Criar organização</button>
+      <section className="hx-admin__layout">
+        <div className="hx-admin__forms">
+          <form onSubmit={criarOrganizacao} className="hx-admin__form">
+            <p className="hx-admin__eyebrow">ESTRUTURA INSTITUCIONAL</p>
+            <h2>Nova organização</h2>
+            <input required value={nomeOrganizacao} onChange={(e) => setNomeOrganizacao(e.target.value)} placeholder="Nome institucional" />
+            <button className="hx-admin__primary">Criar organização <span>→</span></button>
           </form>
-          <form onSubmit={criarUsuario} className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-6">
-            <h2 className="text-xl font-semibold text-white">Novo usuário</h2>
+          <form onSubmit={criarUsuario} className="hx-admin__form">
+            <p className="hx-admin__eyebrow">ACESSO CONTROLADO</p>
+            <h2>Novo usuário</h2>
             {(["nome", "email", "senha_inicial"] as const).map((campo) => (
-              <input key={campo} required type={campo === "senha_inicial" ? "password" : campo === "email" ? "email" : "text"} minLength={campo === "senha_inicial" ? 10 : undefined} value={novoUsuario[campo]} onChange={(e) => setNovoUsuario({ ...novoUsuario, [campo]: e.target.value })} placeholder={campo.replace("_", " ")} className="mt-4 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white" />
+              <input key={campo} required type={campo === "senha_inicial" ? "password" : campo === "email" ? "email" : "text"} minLength={campo === "senha_inicial" ? 10 : undefined} value={novoUsuario[campo]} onChange={(e) => setNovoUsuario({ ...novoUsuario, [campo]: e.target.value })} placeholder={campo.replace("_", " ")} />
             ))}
-            <select value={novoUsuario.perfil} onChange={(e) => setNovoUsuario({ ...novoUsuario, perfil: e.target.value })} className="mt-4 w-full rounded-2xl border border-white/10 bg-[#111] px-4 py-3 text-white">
+            <select value={novoUsuario.perfil} onChange={(e) => setNovoUsuario({ ...novoUsuario, perfil: e.target.value })}>
               {["ADMINISTRADOR_DO_SISTEMA","GOVERNANCA_CIENTIFICA","ADMINISTRADOR_DA_ORGANIZACAO","PROFISSIONAL_HUMANEXUS","VISUALIZADOR_OPERACIONAL","AUDITOR"].map((perfil) => <option key={perfil}>{perfil}</option>)}
             </select>
-            <select value={novoUsuario.identificador_da_organizacao} onChange={(e) => setNovoUsuario({ ...novoUsuario, identificador_da_organizacao: e.target.value })} className="mt-4 w-full rounded-2xl border border-white/10 bg-[#111] px-4 py-3 text-white">
+            <select value={novoUsuario.identificador_da_organizacao} onChange={(e) => setNovoUsuario({ ...novoUsuario, identificador_da_organizacao: e.target.value })}>
               <option value="">Escopo sistêmico</option>
               {dados?.organizacoes.map((org) => <option key={org.identificador} value={org.identificador}>{org.nome}</option>)}
             </select>
-            <button className="mt-4 w-full rounded-full bg-[#C9A34E] px-5 py-3 font-semibold text-black">Criar usuário</button>
-            <p aria-live="polite" className="mt-4 text-sm text-[#AEB2B9]">{mensagem}</p>
+            <button className="hx-admin__primary">Criar usuário <span>→</span></button>
+            <p aria-live="polite" className="hx-admin__message">{mensagem}</p>
           </form>
         </div>
-        <article className="overflow-x-auto rounded-[2rem] border border-white/10 bg-white/[0.035] p-6">
-          <h2 className="text-xl font-semibold text-white">Usuários e acessos</h2>
-          <table className="mt-5 w-full min-w-[680px] text-left text-sm">
-            <thead className="text-[#8F949C]"><tr><th>Nome</th><th>Perfil</th><th>Organização</th><th>Acesso</th></tr></thead>
-            <tbody className="text-[#D5D7DB]">{dados?.usuarios.map((usuario) => (
+        <article className="hx-admin__directory">
+          <div className="hx-admin__directory-head"><div><p>GOVERNANÇA DE ACESSO</p><h2>Usuários e permissões</h2></div><span>CAMADA AUDITÁVEL</span></div>
+          <div className="hx-admin__table-wrap"><table>
+            <thead><tr><th>Identidade</th><th>Perfil</th><th>Organização</th><th>Acesso</th></tr></thead>
+            <tbody>{dados?.usuarios.map((usuario) => (
               <tr key={usuario.identificador} className="border-t border-white/10">
-                <td className="py-4"><div>{usuario.nome}</div><div className="text-xs text-[#8F949C]">{usuario.email}</div></td>
+                <td><div>{usuario.nome}</div><small>{usuario.email}</small></td>
                 <td>{usuario.perfil}</td>
                 <td>{dados.organizacoes.find((org) => org.identificador === usuario.identificador_da_organizacao)?.nome ?? "Sistema"}</td>
-                <td><button onClick={() => alterarAcesso(usuario)} className="rounded-full border border-white/15 px-3 py-2">{usuario.ativo ? "Suspender" : "Reativar"}</button></td>
+                <td><button onClick={() => alterarAcesso(usuario)}>{usuario.ativo ? "Suspender" : "Reativar"}</button></td>
               </tr>
             ))}</tbody>
-          </table>
+          </table></div>
         </article>
       </section>
     </div>

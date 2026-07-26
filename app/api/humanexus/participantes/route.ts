@@ -48,6 +48,7 @@ export async function POST(request: Request) {
           nicho: corpo.nicho,
           finalidade: "ANAMNESE_REGULATORIA",
           identificador_da_organizacao: usuario.identificador_da_organizacao,
+          funcao: corpo.funcao,
           autorizacoes: ["ANAMNESE_REGULATORIA"]
         })
       }

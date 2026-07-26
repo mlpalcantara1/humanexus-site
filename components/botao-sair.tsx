@@ -13,6 +13,12 @@ export function BotaoSair({ csrf }: { csrf: string }) {
       method: "POST",
       headers: { "x-humanexus-csrf": csrf }
     });
+    for (const key of Object.keys(localStorage)) {
+      if (/^(hx-|humanexus)/i.test(key)) localStorage.removeItem(key);
+    }
+    navigator.serviceWorker?.controller?.postMessage({
+      tipo: "HXP_LIMPAR_DADOS_LOCAIS"
+    });
     router.replace("/entrar");
     router.refresh();
   }

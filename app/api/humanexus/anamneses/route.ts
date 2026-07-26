@@ -46,7 +46,14 @@ export async function POST(request: Request) {
       await requisitarNucleoAutenticado(
         `/api/v1/anamneses/${anamnese.identificador}/convites`,
         token,
-        { method: "POST" }
+        {
+          method: "POST",
+          body: JSON.stringify({
+            validade_horas: Number(corpo.validade_horas ?? 72),
+            usos_permitidos: Number(corpo.usos_permitidos ?? 50),
+            identificador_da_sessao: corpo.identificador_da_sessao ?? null
+          })
+        }
       ),
       { status: 201 }
     );

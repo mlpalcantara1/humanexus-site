@@ -65,6 +65,28 @@ export function requisitarNucleoAutenticado<T>(
   return requisitar<T>(caminho, init, token);
 }
 
+export async function requisitarNucleoBinario(
+  caminho: string,
+  token: string
+) {
+  const resposta = await fetch(`${CORE_API}${caminho}`, {
+    headers: { authorization: `Bearer ${token}` },
+    cache: "no-store"
+  });
+  if (!resposta.ok) {
+    const dados = await resposta.json().catch(() => ({}));
+    throw new ErroDoNucleo(
+      dados?.erro?.mensagem ?? "Não foi possível obter o arquivo.",
+      resposta.status
+    );
+  }
+  return {
+    bytes: await resposta.arrayBuffer(),
+    tipo: resposta.headers.get("content-type") ?? "application/octet-stream",
+    disposicao: resposta.headers.get("content-disposition")
+  };
+}
+
 export function requisitarNucleoPublico<T>(
   caminho: string,
   init: RequestInit = {}
@@ -75,13 +97,47 @@ export function requisitarNucleoPublico<T>(
 export async function entrarNoNucleo(
   email: string,
   senha: string
+): Promise<SessaoDoNucleo | {
+  segundoFatorNecessario: true;
+  desafio: string;
+  canal: string;
+  destinoMascarado: string;
+}> {
+  const dados = await requisitar<{
+    token?: string;
+    expira_em_segundos: number;
+    segundo_fator_necessario?: boolean;
+    desafio?: string;
+    canal?: string;
+    destino_mascarado?: string;
+  }>("/api/v1/autenticacao/entrar", {
+    method: "POST",
+    body: JSON.stringify({ email, senha })
+  });
+  if (dados.segundo_fator_necessario) {
+    return {
+      segundoFatorNecessario: true,
+      desafio: String(dados.desafio),
+      canal: String(dados.canal),
+      destinoMascarado: String(dados.destino_mascarado)
+    };
+  }
+  return {
+    token: String(dados.token),
+    expiraEmSegundos: dados.expira_em_segundos
+  };
+}
+
+export async function confirmarSegundoFatorNoNucleo(
+  desafio: string,
+  codigo: string
 ): Promise<SessaoDoNucleo> {
   const dados = await requisitar<{
     token: string;
     expira_em_segundos: number;
-  }>("/api/v1/autenticacao/entrar", {
+  }>("/api/v1/autenticacao/segundo-fator", {
     method: "POST",
-    body: JSON.stringify({ email, senha })
+    body: JSON.stringify({ desafio, codigo })
   });
   return { token: dados.token, expiraEmSegundos: dados.expira_em_segundos };
 }
@@ -121,6 +177,39 @@ export function redefinirSenhaNoNucleo(token: string, novaSenha: string) {
       body: JSON.stringify({ token, nova_senha: novaSenha })
     }
   );
+}
+
+export async function recuperarProprietarioLocalmenteNoNucleo(
+  novaSenha: string
+) {
+  const segredo = process.env.HUMANEXUS_LOCAL_RECOVERY_SECRET;
+  if (!segredo) {
+    throw new ErroDoNucleo(
+      "Recuperação local segura não configurada.",
+      503
+    );
+  }
+  const resposta = await fetch(
+    `${CORE_API}/api/v1/autenticacao/recuperacao/local-proprietario`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-humanexus-local-recovery-secret": segredo
+      },
+      body: JSON.stringify({
+        email: "institutohumanexus@gmail.com",
+        nova_senha: novaSenha
+      }),
+      cache: "no-store"
+    }
+  );
+  if (!resposta.ok) {
+    throw new ErroDoNucleo(
+      "Não foi possível concluir a recuperação local segura.",
+      resposta.status
+    );
+  }
 }
 
 export function alterarSenhaNoNucleo(

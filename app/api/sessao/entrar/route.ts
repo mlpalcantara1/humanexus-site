@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { entrarNoNucleo, obterUsuarioDoNucleo } from "@/lib/humanexus-core";
+import {
+  confirmarSegundoFatorNoNucleo,
+  entrarNoNucleo,
+  obterUsuarioDoNucleo
+} from "@/lib/humanexus-core";
 import {
   COOKIE_CSRF,
   COOKIE_SESSAO,
@@ -11,8 +15,19 @@ import { exigirMesmaOrigem } from "@/lib/request-security";
 export async function POST(request: Request) {
   try {
     exigirMesmaOrigem(request);
-    const { email, senha } = await request.json();
-    const sessao = await entrarNoNucleo(String(email ?? ""), String(senha ?? ""));
+    const { email, senha, desafio, codigo } = await request.json();
+    const etapa = desafio && codigo
+      ? await confirmarSegundoFatorNoNucleo(String(desafio), String(codigo))
+      : await entrarNoNucleo(String(email ?? ""), String(senha ?? ""));
+    if ("segundoFatorNecessario" in etapa) {
+      return NextResponse.json({
+        segundo_fator_necessario: true,
+        desafio: etapa.desafio,
+        canal: etapa.canal,
+        destino_mascarado: etapa.destinoMascarado
+      });
+    }
+    const sessao = etapa;
     const usuario = await obterUsuarioDoNucleo(sessao.token);
     const csrf = randomUUID();
     const resposta = NextResponse.json({
