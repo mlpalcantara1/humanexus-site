@@ -82,8 +82,13 @@ export async function POST(
           {
             method: "POST",
             body: JSON.stringify({
+              alternativa_de_ramo: corpo.alternativa_de_ramo,
               nicho: corpo.nicho,
-              funcao: corpo.funcao
+              funcao: corpo.funcao,
+              nicho_customizado: corpo.nicho_customizado,
+              funcao_customizada: corpo.funcao_customizada,
+              contexto_profissional_declarado: corpo.contexto_profissional_declarado,
+              conflito_confirmado: corpo.conflito_confirmado
             })
           }
         )

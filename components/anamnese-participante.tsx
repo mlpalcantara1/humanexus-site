@@ -11,6 +11,19 @@ type Question = {
   orientacao?: string;
   tipo_de_resposta: string;
   opcoes_json: string[];
+  alternativas?: {
+    codigo: string;
+    texto: string;
+    ordem: number;
+    outro?: boolean;
+  }[];
+  limite_minimo_de_selecoes?: number | null;
+  limite_maximo_de_selecoes?: number | null;
+  valor_minimo?: number | null;
+  valor_maximo?: number | null;
+  rotulo_minimo?: string | null;
+  rotulo_maximo?: string | null;
+  permite_outro?: boolean;
   obrigatoria: boolean;
   blocos_json: string[];
   regra_condicional_json?: Record<string, unknown> | null;
@@ -33,13 +46,31 @@ type Structure = {
     orientacao: string;
     funcoes_e_subnichos: {
       nicho: string;
-      funcoes_observadas_historicamente: string[];
+      funcoes_oficiais?: string[];
       catalogo_completo: string;
     }[];
+    alternativas_oficiais: {
+      codigo_da_alternativa: string;
+      texto: string;
+      nicho: string;
+      funcao?: string | null;
+      exige_nicho_customizado: boolean;
+      exige_funcao_customizada: boolean;
+    }[];
+    nicho_customizado?: string | null;
+    funcao_customizada?: string | null;
   };
   respostas?: { question_id: string; answer: unknown; control_version: number }[];
 };
-type Pending = { pergunta: string; versao: string; resposta: string; controle: number };
+type Answer =
+  | string
+  | number
+  | boolean
+  | string[]
+  | { valor: string; outro?: string }
+  | { valores: string[]; outro?: string }
+  | null;
+type Pending = { pergunta: string; versao: string; resposta: Answer; controle: number };
 type SaveState = "SALVO" | "SALVANDO" | "SEM_REDE" | "SINCRONIZACAO_PENDENTE" | "CONFLITO";
 
 async function material(token: string) {
@@ -89,17 +120,95 @@ async function writeQueue(token: string, pending: Pending[]) {
   );
 }
 
+function normalizeAnswer(value: unknown): Answer {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    value === null
+  ) return value;
+  if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
+    return value;
+  }
+  if (typeof value === "object" && value) {
+    const structuredValue = value as Record<string, unknown>;
+    if (typeof structuredValue.valor === "string") {
+      return {
+        valor: structuredValue.valor,
+        outro: typeof structuredValue.outro === "string"
+          ? structuredValue.outro
+          : undefined
+      };
+    }
+    if (
+      Array.isArray(structuredValue.valores) &&
+      structuredValue.valores.every((item) => typeof item === "string")
+    ) {
+      return {
+        valores: structuredValue.valores as string[],
+        outro: typeof structuredValue.outro === "string"
+          ? structuredValue.outro
+          : undefined
+      };
+    }
+  }
+  return null;
+}
+
+function isAnswered(value: Answer | undefined) {
+  if (value == null) return false;
+  if (typeof value === "string") return Boolean(value.trim());
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object" && "valor" in value) {
+    return Boolean(value.valor.trim()) && (!value.outro || Boolean(value.outro.trim()));
+  }
+  if (typeof value === "object" && "valores" in value) {
+    return value.valores.length > 0 && (!value.outro || Boolean(value.outro.trim()));
+  }
+  return true;
+}
+
 function valueText(value: unknown) {
   if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (value == null) return "";
-  return typeof value === "object" && "valor" in value
-    ? String((value as { valor: unknown }).valor ?? "")
-    : JSON.stringify(value);
+  if (Array.isArray(value)) return value.join(" · ");
+  if (typeof value === "object" && "valor" in value) {
+    const item = value as { valor: unknown; outro?: unknown };
+    return [String(item.valor ?? ""), item.outro ? `Outro: ${item.outro}` : ""]
+      .filter(Boolean).join(" · ");
+  }
+  if (typeof value === "object" && "valores" in value) {
+    const item = value as { valores: unknown[]; outro?: unknown };
+    return [
+      item.valores.map(String).join(" · "),
+      item.outro ? `Outro: ${item.outro}` : ""
+    ].filter(Boolean).join(" · ");
+  }
+  return JSON.stringify(value);
+}
+
+function isQuestionAnswered(question: Question, value: Answer | undefined) {
+  if (!isAnswered(value)) return false;
+  const outros = new Set(
+    (question.alternativas ?? [])
+      .filter((item) => item.outro)
+      .map((item) => item.texto)
+  );
+  if (typeof value === "object" && value && "valor" in value) {
+    return !outros.has(value.valor) || Boolean(value.outro?.trim());
+  }
+  if (typeof value === "object" && value && "valores" in value) {
+    return !value.valores.some((item) => outros.has(item)) || Boolean(value.outro?.trim());
+  }
+  if (typeof value === "string") return !outros.has(value);
+  if (Array.isArray(value)) return !value.some((item) => outros.has(item));
+  return true;
 }
 
 export function AnamneseParticipante({ token }: { token: string }) {
   const [structure, setStructure] = useState<Structure | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [versions, setVersions] = useState<Record<string, number>>({});
   const [section, setSection] = useState(0);
   const [consent, setConsent] = useState(false);
@@ -111,6 +220,9 @@ export function AnamneseParticipante({ token }: { token: string }) {
   const [reviewing, setReviewing] = useState(false);
   const [selectedNiche, setSelectedNiche] = useState("");
   const [selectedFunction, setSelectedFunction] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
+  const [customNiche, setCustomNiche] = useState("");
+  const [customFunction, setCustomFunction] = useState("");
   const syncPromise = useRef<Promise<boolean> | null>(null);
   const queueLock = useRef<Promise<void>>(Promise.resolve());
 
@@ -130,13 +242,21 @@ export function AnamneseParticipante({ token }: { token: string }) {
       setSelectedFunction(data.funcao ?? "");
       setStarted(data.progresso?.estado === "EM_PREENCHIMENTO");
       setCompleted(data.progresso?.estado === "CONCLUIDA_PELO_PARTICIPANTE");
-      const restored: Record<string, string> = {};
+      const restored: Record<string, Answer> = {};
       const controls: Record<string, number> = {};
       for (const item of data.respostas ?? []) {
-        restored[item.question_id] = valueText(item.answer);
+        restored[item.question_id] = normalizeAnswer(item.answer);
         controls[item.question_id] = item.control_version;
       }
       setAnswers(restored);
+      setCustomNiche(data.selecao_de_ramo.nicho_customizado ?? "");
+      setCustomFunction(data.selecao_de_ramo.funcao_customizada ?? "");
+      const activeBranch = data.selecao_de_ramo.alternativas_oficiais.find(
+        (item) => item.nicho === data.nicho && (
+          data.nicho === "OUTROS" || !data.funcao || item.funcao === data.funcao
+        )
+      );
+      setSelectedBranch(activeBranch?.codigo_da_alternativa ?? "");
       setVersions(controls);
       const remembered = data.navegacao.findIndex((item) => item.bloco === data.progresso?.ultima_secao);
       if (remembered >= 0) setSection(remembered);
@@ -211,17 +331,21 @@ export function AnamneseParticipante({ token }: { token: string }) {
   const currentCodes = new Set(sections[section]?.perguntas ?? []);
   const questions = structure?.perguntas.filter((question) => currentCodes.has(question.codigo)) ?? [];
   const answered = (structure?.perguntas ?? []).filter(
-    (question) => answers[question.identificador]?.trim()
+    (question) => isQuestionAnswered(question, answers[question.identificador])
   ).length;
-  const percentage = structure?.perguntas.length
-    ? Math.round((answered / structure.perguntas.length) * 100)
+  const applicableTotal = (structure?.perguntas.length ?? 0) + (structure?.ramo_confirmado ? 1 : 0);
+  const applicableAnswered = answered + (structure?.ramo_confirmado ? 1 : 0);
+  const percentage = applicableTotal
+    ? Math.round((applicableAnswered / applicableTotal) * 100)
     : 0;
   const requiredPending = useMemo(
-    () => (structure?.perguntas ?? []).filter((question) => question.obrigatoria && !answers[question.identificador]?.trim()),
+    () => (structure?.perguntas ?? []).filter(
+      (question) => question.obrigatoria && !isQuestionAnswered(question, answers[question.identificador])
+    ),
     [answers, structure]
   );
 
-  const stageAnswer = useCallback(async (question: Question, value: string) => {
+  const stageAnswer = useCallback(async (question: Question, value: Answer) => {
     await withQueueLock(async () => {
       const pending = (await readQueue(token)).filter((item) => item.pergunta !== question.identificador);
       pending.push({
@@ -236,8 +360,18 @@ export function AnamneseParticipante({ token }: { token: string }) {
   }, [token, versions, withQueueLock]);
 
   async function selectBranch() {
-    if (!selectedNiche || !selectedFunction.trim()) {
-      setBranchMessage("Selecione o nicho e informe sua função para continuar.");
+    const branch = structure?.selecao_de_ramo.alternativas_oficiais.find(
+      (item) => item.codigo_da_alternativa === selectedBranch
+    );
+    if (!branch) {
+      setBranchMessage("Selecione um contexto profissional oficial para continuar.");
+      return;
+    }
+    if (
+      branch.exige_nicho_customizado &&
+      (!customNiche.trim() || !customFunction.trim())
+    ) {
+      setBranchMessage("Em Outros, informe obrigatoriamente o nicho e a função.");
       return;
     }
     try {
@@ -247,8 +381,12 @@ export function AnamneseParticipante({ token }: { token: string }) {
         method: "POST",
         body: JSON.stringify({
           acao: "SELECIONAR_RAMO",
-          nicho: selectedNiche,
-          funcao: selectedFunction
+          alternativa_de_ramo: selectedBranch,
+          nicho: branch.nicho,
+          funcao: branch.funcao ?? customFunction,
+          nicho_customizado: branch.exige_nicho_customizado ? customNiche : null,
+          funcao_customizada: branch.exige_funcao_customizada ? customFunction : null,
+          contexto_profissional_declarado: branch.texto
         })
       });
       setBranchMessage("");
@@ -342,19 +480,20 @@ export function AnamneseParticipante({ token }: { token: string }) {
           <>
             <p className="hx-anamnese-kicker">REVISÃO ANTES DA CONCLUSÃO</p>
             <h1>Confira suas respostas</h1>
-            <div className="hx-anamnese-validation-summary"><article><small>Total aplicável</small><strong>{structure.perguntas.length}</strong></article><article><small>Respondidas</small><strong>{structure.perguntas.length - requiredPending.length}</strong></article><article><small>Pendências</small><strong>{requiredPending.length}</strong></article></div>
+            <div className="hx-anamnese-validation-summary"><article><small>Total aplicável</small><strong>{applicableTotal}</strong></article><article><small>Respondidas</small><strong>{applicableAnswered}</strong></article><article><small>Pendências</small><strong>{requiredPending.length + (structure.ramo_confirmado ? 0 : 1)}</strong></article></div>
             {requiredPending.length ? <p className="hx-anamnese-alert">{requiredPending.length} pergunta(s) obrigatória(s) ainda pendente(s).</p> : null}
             {requiredPending.length ? <div className="hx-anamnese-pending">{requiredPending.map((question) => <button type="button" key={question.identificador} onClick={() => goToQuestion(question)}><small>{question.codigo} · {(question.secao || question.blocos_json[0]).replaceAll("_", " ")}</small><span>{question.texto}</span><strong>Ir para a pergunta →</strong></button>)}</div> : null}
             {structure.revisao_do_ramo_pendente ? <p className="hx-anamnese-alert">O ramo foi alterado. Respostas anteriores foram preservadas, mas as incompatíveis não entram na análise. Confirme a revisão antes de concluir.</p> : null}
             <div className="hx-anamnese-review">
-              {structure.perguntas.filter((question) => answers[question.identificador]?.trim()).map((question) => (
-                <article key={question.identificador}><small>{question.codigo}</small><strong>{question.texto}</strong><p>{answers[question.identificador]}</p></article>
+              {structure.ramo_confirmado ? <article><small>RAMO AUTORAL ATIVO</small><strong>{selectedNiche.replaceAll("_", " ")} · {selectedFunction}</strong><p>{customNiche ? `${customNiche} · ${customFunction}` : "Seleção confirmada no catálogo do Google Forms autoral."}</p></article> : null}
+              {structure.perguntas.filter((question) => isQuestionAnswered(question, answers[question.identificador])).map((question) => (
+                <article key={question.identificador}><small>{question.codigo}</small><strong>{question.texto}</strong><p>{valueText(answers[question.identificador])}</p></article>
               ))}
             </div>
             <div className="hx-anamnese-actions">
               <button type="button" onClick={() => setReviewing(false)}>Voltar ao preenchimento</button>
               {structure.revisao_do_ramo_pendente ? <button type="button" onClick={() => void confirmBranchReview()}>Confirmar revisão do ramo</button> : null}
-              <button type="button" disabled={requiredPending.length > 0 || saveState !== "SALVO" || structure.revisao_do_ramo_pendente} onClick={conclude}>Confirmar e concluir</button>
+              <button type="button" disabled={requiredPending.length > 0 || !structure.ramo_confirmado || saveState !== "SALVO" || structure.revisao_do_ramo_pendente} onClick={conclude}>Confirmar e concluir</button>
             </div>
           </>
         ) : (
@@ -364,9 +503,18 @@ export function AnamneseParticipante({ token }: { token: string }) {
             {sections[section]?.bloco === "SELECAO_DE_RAMO" ? (
               <div className="hx-anamnese-branch">
                 <p>{structure.selecao_de_ramo.orientacao}</p>
-                <label><span>Nicho profissional</span><select value={selectedNiche} onChange={(event) => setSelectedNiche(event.target.value)}>{structure.selecao_de_ramo.nichos.map((niche) => <option key={niche} value={niche}>{niche.replaceAll("_", " ")}</option>)}</select></label>
-                <label><span>Função ou subnicho</span><input value={selectedFunction} onChange={(event) => setSelectedFunction(event.target.value)} maxLength={180} /></label>
-                <small>As listas completas de funções ainda aguardam homologação autoral; por isso a função é registrada com o texto informado, sem opções inventadas.</small>
+                <label><span>Contexto profissional e função</span><select value={selectedBranch} onChange={(event) => {
+                  const value = event.target.value;
+                  const branch = structure.selecao_de_ramo.alternativas_oficiais.find((item) => item.codigo_da_alternativa === value);
+                  setSelectedBranch(value);
+                  setSelectedNiche(branch?.nicho ?? "");
+                  setSelectedFunction(branch?.funcao ?? "");
+                }}><option value="">Selecione uma alternativa</option>{structure.selecao_de_ramo.alternativas_oficiais.map((item) => <option key={item.codigo_da_alternativa} value={item.codigo_da_alternativa}>{item.texto}</option>)}</select></label>
+                {structure.selecao_de_ramo.alternativas_oficiais.find((item) => item.codigo_da_alternativa === selectedBranch)?.exige_nicho_customizado ? <>
+                  <label><span>Qual é o seu nicho?</span><input value={customNiche} onChange={(event) => setCustomNiche(event.target.value)} maxLength={180} /></label>
+                  <label><span>Qual é a sua função?</span><input value={customFunction} onChange={(event) => setCustomFunction(event.target.value)} maxLength={180} /></label>
+                  <small>O ramo Outros não ativa perguntas empresariais. O nicho e a função informados ficam registrados explicitamente.</small>
+                </> : <small>Alternativas, funções e destinos preservados do Google Forms autoral original.</small>}
                 {branchMessage ? <p className="hx-anamnese-alert">{branchMessage}</p> : null}
                 <button type="button" onClick={() => void selectBranch()}>{structure.ramo_confirmado ? "Atualizar ramo preservando respostas" : "Confirmar ramo"}</button>
               </div>
@@ -397,22 +545,82 @@ export function AnamneseParticipante({ token }: { token: string }) {
 function QuestionField({
   question, value, onChange, onBlur
 }: {
-  question: Question; value: string; onChange: (value: string) => void; onBlur: (value: string) => void;
+  question: Question; value: Answer; onChange: (value: Answer) => void; onBlur: (value: Answer) => void;
 }) {
   const label = <><span>{question.texto}{question.obrigatoria ? " *" : ""}</span>{question.orientacao ? <small>{question.orientacao}</small> : null}</>;
-  const options = Array.isArray(question.opcoes_json) ? question.opcoes_json : [];
+  const alternatives = question.alternativas?.length
+    ? question.alternativas
+    : (question.opcoes_json ?? []).map((texto, index) => ({
+        codigo: `${question.codigo}-${index + 1}`,
+        texto,
+        ordem: index + 1,
+        outro: texto.trim().toLocaleLowerCase("pt-BR") === "outro"
+      }));
+  const singleValue = typeof value === "string"
+    ? value
+    : typeof value === "object" && value && "valor" in value
+      ? value.valor
+      : "";
+  const multipleValues = Array.isArray(value)
+    ? value
+    : typeof value === "object" && value && "valores" in value
+      ? value.valores
+      : [];
+  const otherText = typeof value === "object" && value && "outro" in value
+    ? value.outro ?? ""
+    : "";
+  const selectedOther = alternatives.find(
+    (item) => item.outro && (
+      singleValue === item.texto || multipleValues.includes(item.texto)
+    )
+  );
   if (question.tipo_de_resposta === "TEXTO_LONGO") {
-    return <label>{label}<textarea value={value} onChange={(event) => onChange(event.target.value)} onBlur={() => onBlur(value)} rows={5} maxLength={12000} /></label>;
+    const text = typeof value === "string" ? value : "";
+    return <label>{label}<textarea value={text} onChange={(event) => onChange(event.target.value)} onBlur={() => onBlur(text)} rows={5} maxLength={12000} /></label>;
   }
-  if (options.length && question.tipo_de_resposta.includes("ESCOLHA_UNICA")) {
-    return <fieldset><legend>{label}</legend>{options.map((option) => <label className="hx-anamnese-option" key={option}><input type="radio" name={question.identificador} checked={value === option} onChange={() => { onChange(option); onBlur(option); }} /><span>{option}</span></label>)}</fieldset>;
+  if (
+    alternatives.length &&
+    ["ESCOLHA_UNICA", "LISTA_SUSPENSA"].includes(question.tipo_de_resposta)
+  ) {
+    return <fieldset><legend>{label}</legend>{alternatives.map((option) => <label className="hx-anamnese-option" key={option.codigo}><input type="radio" name={question.identificador} checked={singleValue === option.texto} onChange={() => {
+      const next: Answer = option.outro ? { valor: option.texto, outro: "" } : option.texto;
+      onChange(next);
+      if (!option.outro) onBlur(next);
+    }} /><span>{option.texto}</span></label>)}{selectedOther ? <label><span>Especifique “Outro” *</span><input value={otherText} maxLength={600} onChange={(event) => onChange({ valor: selectedOther.texto, outro: event.target.value })} onBlur={() => onBlur({ valor: selectedOther.texto, outro: otherText })} /></label> : null}</fieldset>;
   }
-  if (options.length && question.tipo_de_resposta === "MULTIPLA_ESCOLHA") {
-    const selected = value ? value.split("\n") : [];
-    return <fieldset><legend>{label}</legend>{options.map((option) => <label className="hx-anamnese-option" key={option}><input type="checkbox" checked={selected.includes(option)} onChange={(event) => { const next = event.target.checked ? [...selected, option] : selected.filter((item) => item !== option); const joined = next.join("\n"); onChange(joined); onBlur(joined); }} /><span>{option}</span></label>)}</fieldset>;
+  if (
+    alternatives.length &&
+    ["ESCOLHA_MULTIPLA", "ESCOLHA_MULTIPLA_LIMITADA"].includes(question.tipo_de_resposta)
+  ) {
+    const max = question.limite_maximo_de_selecoes ?? Number.POSITIVE_INFINITY;
+    return <fieldset><legend>{label}</legend>{Number.isFinite(max) ? <small>Selecione no máximo {max} alternativa(s). {multipleValues.length}/{max} selecionada(s).</small> : null}{alternatives.map((option) => {
+      const checked = multipleValues.includes(option.texto);
+      const disabled = !checked && multipleValues.length >= max;
+      return <label className="hx-anamnese-option" key={option.codigo}><input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => {
+        const nextValues = event.target.checked
+          ? [...multipleValues, option.texto]
+          : multipleValues.filter((item) => item !== option.texto);
+        const stillHasOther = alternatives.some(
+          (item) => item.outro && nextValues.includes(item.texto)
+        );
+        const next: Answer = stillHasOther
+          ? { valores: nextValues, outro: otherText }
+          : nextValues;
+        onChange(next);
+        if (!option.outro || !event.target.checked) onBlur(next);
+      }} /><span>{option.texto}</span></label>;
+    })}{selectedOther ? <label><span>Especifique “Outro” *</span><input value={otherText} maxLength={600} onChange={(event) => onChange({ valores: multipleValues, outro: event.target.value })} onBlur={() => onBlur({ valores: multipleValues, outro: otherText })} /></label> : null}</fieldset>;
   }
-  const type = question.tipo_de_resposta === "NUMERO" ? "number" : question.tipo_de_resposta === "DATA" ? "date" : question.tipo_de_resposta === "HORARIO" ? "time" : "text";
-  return <label>{label}<input type={type} value={value} onChange={(event) => onChange(event.target.value)} onBlur={() => onBlur(value)} maxLength={type === "text" ? 12000 : undefined} /></label>;
+  if (question.tipo_de_resposta === "ESCALA" && alternatives.length) {
+    const numericValue = typeof value === "number" ? value : null;
+    return <fieldset><legend>{label}</legend><div className="hx-anamnese-scale-labels"><small>{question.rotulo_minimo ?? question.valor_minimo}</small><small>{question.rotulo_maximo ?? question.valor_maximo}</small></div><div className="hx-anamnese-scale">{alternatives.map((option) => {
+      const numeric = Number(option.texto);
+      return <label className="hx-anamnese-option" key={option.codigo}><input type="radio" name={question.identificador} checked={numericValue === numeric} onChange={() => { onChange(numeric); onBlur(numeric); }} /><span>{option.texto}</span></label>;
+    })}</div></fieldset>;
+  }
+  const type = ["NUMERO", "DURACAO", "FREQUENCIA"].includes(question.tipo_de_resposta) ? "number" : question.tipo_de_resposta === "DATA" ? "date" : question.tipo_de_resposta === "HORARIO" ? "time" : "text";
+  const primitive = typeof value === "string" || typeof value === "number" ? value : "";
+  return <label>{label}<input type={type} value={primitive} min={question.valor_minimo ?? undefined} max={question.valor_maximo ?? undefined} onChange={(event) => onChange(type === "number" ? Number(event.target.value) : event.target.value)} onBlur={() => onBlur(primitive)} maxLength={type === "text" ? 600 : undefined} /></label>;
 }
 
 function StateCard({ title, text }: { title: string; text: string }) {

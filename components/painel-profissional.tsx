@@ -340,5 +340,19 @@ export function PainelProfissional() {
 
 function valueText(value: unknown) {
   if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.map(String).join("\n• ");
+  if (value && typeof value === "object" && "valor" in value) {
+    const resposta = value as { valor: unknown; outro?: unknown };
+    return [String(resposta.valor ?? ""), resposta.outro ? `Outro: ${resposta.outro}` : ""]
+      .filter(Boolean).join("\n");
+  }
+  if (value && typeof value === "object" && "valores" in value) {
+    const resposta = value as { valores: unknown[]; outro?: unknown };
+    return [
+      resposta.valores.map(String).join("\n• "),
+      resposta.outro ? `Outro: ${resposta.outro}` : ""
+    ].filter(Boolean).join("\n");
+  }
   return JSON.stringify(value, null, 2);
 }
