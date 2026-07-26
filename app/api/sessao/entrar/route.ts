@@ -18,7 +18,18 @@ export async function POST(request: Request) {
     const { email, senha, desafio, codigo } = await request.json();
     const etapa = desafio && codigo
       ? await confirmarSegundoFatorNoNucleo(String(desafio), String(codigo))
-      : await entrarNoNucleo(String(email ?? ""), String(senha ?? ""));
+      : await entrarNoNucleo(
+          String(email ?? ""),
+          String(senha ?? ""),
+          {
+            identificador: request.headers.get("x-humanexus-device-id") ?? "",
+            nome: request.headers.get("x-humanexus-device-name") ?? "Navegador",
+            sistema_operacional:
+              request.headers.get("x-humanexus-device-os") ?? "",
+            navegador: request.headers.get("x-humanexus-browser") ?? "",
+            versao_da_aplicacao: "PORTAL-1.0"
+          }
+        );
     if ("segundoFatorNecessario" in etapa) {
       return NextResponse.json({
         segundo_fator_necessario: true,

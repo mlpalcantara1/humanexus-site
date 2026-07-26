@@ -113,7 +113,8 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
     anamneses,
     evidenciasAnamnese,
     evidenciasAnamneseNoEscopo,
-    sessaoOperacional
+    sessaoOperacional,
+    gravacao
   ] = await Promise.all([
     consultar<Registro[]>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/fases`, token),
     consultar<Registro[]>("/api/v1/ctrs", token),
@@ -144,7 +145,10 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
     consultarSeDisponivel<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/anamneses`, token, []),
     consultarSeDisponivel<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/anamneses/evidencias`, token, []),
     consultarSeDisponivel<Registro[]>("/api/v1/anamneses/evidencias", token, []),
-    consultarSeDisponivel<Registro>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/operacoes`, token, {})
+    consultarSeDisponivel<Registro>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/operacoes`, token, {}),
+    consultarSeDisponivel<Registro>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/gravacao`, token, {
+      configuracoes: [], dispositivos: [], segmentos: [], eventos: [], diagnostico: {}
+    })
   ]);
   const ctr = ctrs.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
   const execucao = execucoes.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
@@ -276,6 +280,7 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
     eventos_tecnicos: eventosTecnicos,
     linhas,
     replay,
+    gravacao,
     rastreabilidade,
     relatorios: relatoriosDaSessao.map((item) => ({
       identificador: item.identificador,

@@ -22,6 +22,17 @@ type Dados = {
     bloqueios_de_coleta: Registro[];
     situacao_juridica_padrao: string;
   };
+  seguranca: {
+    versao: string;
+    autoridade_global: string;
+    organizacao_limita_proprietario: boolean;
+    sessoes: Registro[];
+    dispositivos: Registro[];
+    alertas: Registro[];
+    autorizacoes_de_programador: Registro[];
+    obrigacoes_documentais: Registro[];
+    segredos: Registro[];
+  };
 };
 
 function csrf() {
@@ -92,7 +103,82 @@ export function GovernancaOperacional() {
         <article><small>Backups registrados</small><strong>{dados.backups.length}</strong></article>
         <article><small>Modelos TCLE e autorizações</small><strong>{dados.consentimentos.modelos.length}</strong></article>
         <article><small>Coletas bloqueadas</small><strong>{dados.consentimentos.bloqueios_de_coleta.length}</strong></article>
+        <article><small>Sessões ativas do proprietário</small><strong>{dados.seguranca.sessoes.filter((item) => item.estado === "ATIVA").length}</strong></article>
+        <article><small>Alertas de segurança</small><strong>{dados.seguranca.alertas.filter((item) => item.estado === "NOVO").length}</strong></article>
       </div>
+      <section className="hx-owner-security">
+        <header><div><small>REGRA ÁUREA · {dados.seguranca.versao}</small><h4>Sessões, dispositivos e autoridade técnica</h4></div><strong>{valor(dados.seguranca.autoridade_global)}</strong></header>
+        <div className="hx-owner-security__columns">
+          <article>
+            <small>SESSÕES ATIVAS</small>
+            {dados.seguranca.sessoes.length ? dados.seguranca.sessoes.map((sessao) => (
+              <div key={String(sessao.identificador)}>
+                <span>{valor(sessao.estado)} · {valor(sessao.emitida_em)}</span>
+                <button type="button" onClick={() => void executar("revogar-sessao", {}, String(sessao.identificador))}>Encerrar remotamente</button>
+              </div>
+            )) : <p>Nenhuma sessão registrada nesta camada.</p>}
+            <button type="button" onClick={() => void executar("revogar-todas-sessoes", {})}>Encerrar todas as sessões</button>
+          </article>
+          <article>
+            <small>DISPOSITIVOS</small>
+            {dados.seguranca.dispositivos.length ? dados.seguranca.dispositivos.map((dispositivo) => (
+              <div key={String(dispositivo.identificador)}>
+                <span>{valor(dispositivo.nome)} · {valor(dispositivo.navegador)} · {dispositivo.confiavel ? "CONFIÁVEL" : "NÃO CONFIÁVEL"}</span>
+                <button type="button" onClick={() => void executar(dispositivo.confiavel ? "revogar-dispositivo" : "confiar-dispositivo", {}, String(dispositivo.identificador))}>{dispositivo.confiavel ? "Revogar" : "Confiar"}</button>
+              </div>
+            )) : <p>Nenhum dispositivo registrado.</p>}
+          </article>
+          <article>
+            <small>SEGREDO INDUSTRIAL</small>
+            {dados.seguranca.segredos.map((item) => <div key={String(item.recurso)}><span>{valor(item.recurso)}</span><b>{valor(item.classificacao)}</b></div>)}
+          </article>
+        </div>
+        <div className="hx-owner-security__columns">
+          <form onSubmit={(event: FormEvent<HTMLFormElement>) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            void executar("autorizar-programador", {
+              identidade_do_programador: form.get("identidade"),
+              tarefa: form.get("tarefa"),
+              escopo: String(form.get("escopo") ?? "").split(",").map((item) => item.trim()).filter(Boolean),
+              repositorios: String(form.get("repositorios") ?? "").split(",").map((item) => item.trim()).filter(Boolean),
+              ambientes: [form.get("ambiente")],
+              organizacoes: [],
+              inicio_em: form.get("inicio"),
+              expira_em: form.get("fim"),
+              ips: [],
+              dispositivos: [],
+              permissoes_minimas: String(form.get("permissoes") ?? "").split(",").map((item) => item.trim()).filter(Boolean),
+              acesso_a_producao: form.get("ambiente") === "PRODUCAO",
+              janela_de_producao: form.get("janela"),
+              acesso_a_dados_reais: false,
+              acesso_a_segredos_cientificos: false,
+              justificativa: form.get("justificativa")
+            });
+          }}>
+            <small>AUTORIZAÇÃO TÉCNICA TEMPORÁRIA</small>
+            <label>Identidade do programador<input name="identidade" required /></label>
+            <label>Tarefa<input name="tarefa" required /></label>
+            <label>Escopo<input name="escopo" required placeholder="arquivo, módulo, operação" /></label>
+            <label>Repositórios<input name="repositorios" required /></label>
+            <label>Ambiente<select name="ambiente"><option>DESENVOLVIMENTO</option><option>HOMOLOGACAO</option><option>PRODUCAO</option></select></label>
+            <label>Início<input name="inicio" type="datetime-local" required /></label>
+            <label>Expiração<input name="fim" type="datetime-local" required /></label>
+            <label>Permissões mínimas<input name="permissoes" required /></label>
+            <label>Janela excepcional de produção<input name="janela" /></label>
+            <label>Justificativa<textarea name="justificativa" required /></label>
+            <button disabled={ocupado}>Autorizar com prazo e escopo</button>
+          </form>
+          <article>
+            <small>ALERTAS</small>
+            {dados.seguranca.alertas.slice(-12).reverse().map((alerta) => <div key={String(alerta.identificador)}><span>{valor(alerta.titulo)}</span><b>{valor(alerta.severidade)} · {valor(alerta.estado)}</b></div>)}
+          </article>
+          <article>
+            <small>OBRIGAÇÕES DOCUMENTAIS FUTURAS</small>
+            {dados.seguranca.obrigacoes_documentais.map((item) => <div key={String(item.codigo)}><span>{valor(item.titulo)}</span><b>{valor(item.estado)} · NÃO GERAR NESTA ETAPA</b></div>)}
+          </article>
+        </div>
+      </section>
       <div className="hx-governance-ops__forms">
         <form onSubmit={(event: FormEvent<HTMLFormElement>) => {
           event.preventDefault();
@@ -148,6 +234,8 @@ export function GovernancaOperacional() {
             <option>AUTORIZACAO_POLAR_H10</option>
             <option>AUTORIZACAO_EEG</option>
             <option>AUTORIZACAO_REPLAY_TELEMETRIA</option>
+            <option>AUTORIZACAO_AUDIO</option>
+            <option>AUTORIZACAO_IMAGEM</option>
             <option>AUTORIZACAO_PESQUISA</option>
             <option>ASSENTIMENTO_ADOLESCENTE</option>
             <option>AUTORIZACAO_RESPONSAVEL_LEGAL</option>

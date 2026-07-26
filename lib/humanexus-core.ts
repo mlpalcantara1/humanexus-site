@@ -96,7 +96,8 @@ export function requisitarNucleoPublico<T>(
 
 export async function entrarNoNucleo(
   email: string,
-  senha: string
+  senha: string,
+  dispositivo: Record<string, string> = {}
 ): Promise<SessaoDoNucleo | {
   segundoFatorNecessario: true;
   desafio: string;
@@ -112,6 +113,13 @@ export async function entrarNoNucleo(
     destino_mascarado?: string;
   }>("/api/v1/autenticacao/entrar", {
     method: "POST",
+    headers: {
+      "x-humanexus-device-id": dispositivo.identificador ?? "",
+      "x-humanexus-device-name": dispositivo.nome ?? "Navegador",
+      "x-humanexus-device-os": dispositivo.sistema_operacional ?? "",
+      "x-humanexus-browser": dispositivo.navegador ?? "",
+      "x-humanexus-app-version": dispositivo.versao_da_aplicacao ?? ""
+    },
     body: JSON.stringify({ email, senha })
   });
   if (dados.segundo_fator_necessario) {

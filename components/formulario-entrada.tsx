@@ -14,6 +14,19 @@ export function FormularioEntrada() {
   const [destinoMascarado, setDestinoMascarado] = useState("");
   const router = useRouter();
 
+  function dispositivo() {
+    const nome = "humanexus_device=";
+    let identificador = document.cookie
+      .split("; ")
+      .find((item) => item.startsWith(nome))
+      ?.slice(nome.length);
+    if (!identificador) {
+      identificador = crypto.randomUUID();
+      document.cookie = `${nome}${identificador}; Path=/; Max-Age=31536000; SameSite=Strict`;
+    }
+    return identificador;
+  }
+
   async function entrar(evento: FormEvent) {
     evento.preventDefault();
     setEnviando(true);
@@ -21,7 +34,19 @@ export function FormularioEntrada() {
     try {
       const resposta = await fetch("/api/sessao/entrar", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "x-humanexus-device-id": dispositivo(),
+          "x-humanexus-device-name": navigator.platform || "Navegador",
+          "x-humanexus-device-os": (
+            navigator as Navigator & {
+              userAgentData?: { platform?: string };
+            }
+          ).userAgentData?.platform
+            ?? navigator.platform
+            ?? "",
+          "x-humanexus-browser": navigator.userAgent.slice(0, 120)
+        },
         body: JSON.stringify(
           desafio ? { desafio, codigo } : { email, senha }
         )

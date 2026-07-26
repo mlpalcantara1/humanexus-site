@@ -12,7 +12,7 @@ export async function GET() {
     return NextResponse.json({ erro: { mensagem: "Sessão ausente." } }, { status: 401 });
   }
   try {
-    const [governanca, backups, consentimentos] = await Promise.all([
+    const [governanca, backups, consentimentos, seguranca] = await Promise.all([
       requisitarNucleoAutenticado<Registro>(
         "/api/v1/governanca-operacional",
         token
@@ -24,9 +24,13 @@ export async function GET() {
       requisitarNucleoAutenticado<Registro>(
         "/api/v1/consentimentos/lab",
         token
+      ),
+      requisitarNucleoAutenticado<Registro>(
+        "/api/v1/seguranca-proprietario",
+        token
       )
     ]);
-    return NextResponse.json({ governanca, backups, consentimentos });
+    return NextResponse.json({ governanca, backups, consentimentos, seguranca });
   } catch (erro) {
     return NextResponse.json(
       { erro: { mensagem: erro instanceof Error ? erro.message : "Acesso negado." } },
@@ -54,7 +58,14 @@ export async function POST(request: Request) {
       "responsavel-legal": "/api/v1/consentimentos/responsaveis-legais",
       "apresentar-consentimento": "/api/v1/consentimentos/apresentacoes",
       "revogar-consentimento": `/api/v1/consentimentos/manifestacoes/${identificador}/revogar`,
-      "restaurar": `/api/v1/governanca-operacional/backups/${identificador}/testar-restauracao`
+      "restaurar": `/api/v1/governanca-operacional/backups/${identificador}/testar-restauracao`,
+      "confiar-dispositivo": `/api/v1/seguranca-proprietario/dispositivos/${identificador}/confiar`,
+      "revogar-dispositivo": `/api/v1/seguranca-proprietario/dispositivos/${identificador}/revogar`,
+      "revogar-sessao": `/api/v1/seguranca-proprietario/sessoes/${identificador}/revogar`,
+      "revogar-todas-sessoes": "/api/v1/seguranca-proprietario/sessoes/revogar-todas",
+      "autorizar-programador": "/api/v1/seguranca-proprietario/programadores",
+      "estado-programador": `/api/v1/seguranca-proprietario/programadores/${identificador}/estado`,
+      "aprovar-mudanca-critica": "/api/v1/seguranca-proprietario/mudancas-criticas"
     };
     const caminho = destinos[acao];
     if (!caminho) throw new Error("Ação de governança inválida.");

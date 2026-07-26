@@ -15,6 +15,7 @@ import {
   type HxTrack
 } from "@/components/hx-command-visualizations";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
+import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multimodal";
 
 type Registro = Record<string, unknown>;
 type Estado = {
@@ -36,6 +37,13 @@ type Estado = {
   eventos_tecnicos: Registro[];
   linhas: Registro[];
   replay: (Registro & { linha?: Registro; itens?: Registro[] }) | null;
+  gravacao: {
+    configuracoes: Registro[];
+    dispositivos: Registro[];
+    segmentos: Registro[];
+    eventos: Registro[];
+    diagnostico: Registro;
+  };
   rastreabilidade: Registro | null;
   relatorios: Registro[];
   formulacoes: Registro[];
@@ -1320,6 +1328,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   );
 
   const itensReplay = Array.isArray(estado.replay?.itens) ? estado.replay.itens as Registro[] : [];
+  const midiasPersistidas = (estado.gravacao?.segmentos ?? []).filter(
+    (item) => item.estado === "PERSISTIDO" && item.reproducao_autorizada
+  );
   const itensDaLinha = itensReplay.flatMap((item) => {
     const time = instante(item.timestamp_original);
     if (!time) return [];
@@ -1361,6 +1372,17 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           <label><input type="checkbox" disabled checked={false} readOnly />Resultante · indisponível</label>
         </div>
         <ReplayTimelineChart items={itensDaLinha} phases={faixas} markers={marcadores} cursorPercent={cursor} interval={intervalo} zoom={zoom} visibleTracks={trilhasVisiveis} />
+        {midiasPersistidas.length ? <div className="hx-replay-media">
+          {midiasPersistidas.map((item) => (
+            <article key={String(item.identificador)}>
+              <small>{texto(item.fase)} · {texto(item.modalidade)}</small>
+              {item.modalidade === "VIDEO"
+                ? <video controls playsInline preload="metadata" src={`/api/plataforma/midias/${encodeURIComponent(String(item.identificador))}`} />
+                : <audio controls preload="metadata" src={`/api/plataforma/midias/${encodeURIComponent(String(item.identificador))}`} />}
+              <span>{texto(item.estado)} · integridade {item.integridade_confirmada ? "confirmada" : "não confirmada"}</span>
+            </article>
+          ))}
+        </div> : <EmptySignalState title="ÁUDIO E VÍDEO" reason="Nenhum segmento de mídia persistido e autorizado nesta sessão." />}
         <div className="hx-replay-inspection"><small>INSPEÇÃO ATUAL</small><strong>{itensReplay.length} itens íntegros · {estado.linhas.length} versão(ões) preservada(s)</strong><span>Desconexões, reconexões, intervenções, lacunas e eventos permanecem visíveis.</span></div>
       </section>
       {eventos}
@@ -1393,7 +1415,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="TÉCNICO" titulo="Infraestrutura recolhível e subordinada à leitura científica." descricao="Somente falhas que comprometam qualidade, cobertura ou conexão recebem destaque na sessão." />
       <div className="hx-technical-tabs">
-        {["fontes", "conectores", "telemetria", "movel"].map((item) => <button className={painelTecnico === item ? "is-active" : ""} type="button" onClick={() => setPainelTecnico(item)} key={item}>{item}</button>)}
+        {["fontes", "conectores", "telemetria", "midia", "movel"].map((item) => <button className={painelTecnico === item ? "is-active" : ""} type="button" onClick={() => setPainelTecnico(item)} key={item}>{item}</button>)}
       </div>
       {painelTecnico === "fontes" ? (
         <div className="hx-source-health">
@@ -1404,6 +1426,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       ) : null}
       {painelTecnico === "conectores" ? conectoresTecnicos : null}
       {painelTecnico === "telemetria" ? telemetria : null}
+      {painelTecnico === "midia" ? (
+        <ControleGravacaoMultimodal sessao={String(estado.sessao.identificador)} />
+      ) : null}
       {painelTecnico === "movel" ? (
         <section className="hx-mobile-console">
           <div><p>ACESSO MÓVEL AUTENTICADO</p><h2>{texto(estado.usuario.nome)}</h2><span>Sessão única por cookie httpOnly · perfil {texto(estado.usuario.perfil)}</span></div>
