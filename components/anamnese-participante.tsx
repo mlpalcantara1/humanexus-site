@@ -28,10 +28,12 @@ type Question = {
   blocos_json: string[];
   regra_condicional_json?: Record<string, unknown> | null;
   secao?: string;
+  secao_rotulo?: string;
 };
 type Structure = {
   anamnese: string;
   nicho: string;
+  nicho_rotulo?: string;
   funcao?: string;
   ramo_confirmado: boolean;
   revisao_do_ramo_pendente: boolean;
@@ -39,8 +41,23 @@ type Structure = {
   finalidade: string;
   privacidade: { codigo: string; texto: string; vigente_desde: string };
   progresso?: { estado: string; ultima_secao?: string; percentual_concluido: number };
+  validacao: {
+    total_aplicavel: number;
+    total_respondido: number;
+    percentual: number;
+    pode_concluir: boolean;
+    fonte: string;
+    pendencias: {
+      identificador: string;
+      codigo: string;
+      secao: string;
+      secao_rotulo?: string;
+      texto: string;
+      motivo: string;
+    }[];
+  };
   perguntas: Question[];
-  navegacao: { bloco: string; perguntas: string[] }[];
+  navegacao: { bloco: string; rotulo?: string; perguntas: string[] }[];
   selecao_de_ramo: {
     nichos: string[];
     orientacao: string;
@@ -209,7 +226,6 @@ function isQuestionAnswered(question: Question, value: Answer | undefined) {
 export function AnamneseParticipante({ token }: { token: string }) {
   const [structure, setStructure] = useState<Structure | null>(null);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
-  const [versions, setVersions] = useState<Record<string, number>>({});
   const [section, setSection] = useState(0);
   const [consent, setConsent] = useState(false);
   const [started, setStarted] = useState(false);
@@ -225,6 +241,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
   const [customFunction, setCustomFunction] = useState("");
   const syncPromise = useRef<Promise<boolean> | null>(null);
   const queueLock = useRef<Promise<void>>(Promise.resolve());
+  const versionsRef = useRef<Record<string, number>>({});
 
   const withQueueLock = useCallback(<T,>(task: () => Promise<T>): Promise<T> => {
     const operation = queueLock.current.then(task, task);
@@ -232,7 +249,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
     return operation;
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (preserveCurrentSection = false) => {
     try {
       const data = await humanexusApi<Structure>(
         `/api/humanexus/convites/${encodeURIComponent(token)}`
@@ -257,9 +274,13 @@ export function AnamneseParticipante({ token }: { token: string }) {
         )
       );
       setSelectedBranch(activeBranch?.codigo_da_alternativa ?? "");
-      setVersions(controls);
-      const remembered = data.navegacao.findIndex((item) => item.bloco === data.progresso?.ultima_secao);
-      if (remembered >= 0) setSection(remembered);
+      versionsRef.current = controls;
+      if (!preserveCurrentSection) {
+        const remembered = data.navegacao.findIndex(
+          (item) => item.bloco === data.progresso?.ultima_secao
+        );
+        if (remembered >= 0) setSection(remembered);
+      }
       return data;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Convite inválido, expirado ou revogado.");
@@ -294,10 +315,11 @@ export function AnamneseParticipante({ token }: { token: string }) {
               })
             }
           );
-          setVersions((current) => ({ ...current, [item.pergunta]: saved.versao_de_controle }));
+          versionsRef.current[item.pergunta] = saved.versao_de_controle;
           remaining.shift();
           await writeQueue(token, remaining);
         }
+        await load(true);
         setSaveState("SALVO");
         return true;
       } catch {
@@ -312,7 +334,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
     } finally {
       if (syncPromise.current === operation) syncPromise.current = null;
     }
-  }, [token, withQueueLock]);
+  }, [load, token, withQueueLock]);
 
   useEffect(() => {
     const online = () => { setSaveState("SINCRONIZACAO_PENDENTE"); void syncPending(); };
@@ -330,19 +352,28 @@ export function AnamneseParticipante({ token }: { token: string }) {
   const sections = structure?.navegacao ?? [];
   const currentCodes = new Set(sections[section]?.perguntas ?? []);
   const questions = structure?.perguntas.filter((question) => currentCodes.has(question.codigo)) ?? [];
-  const answered = (structure?.perguntas ?? []).filter(
-    (question) => isQuestionAnswered(question, answers[question.identificador])
-  ).length;
-  const applicableTotal = (structure?.perguntas.length ?? 0) + (structure?.ramo_confirmado ? 1 : 0);
-  const applicableAnswered = answered + (structure?.ramo_confirmado ? 1 : 0);
-  const percentage = applicableTotal
-    ? Math.round((applicableAnswered / applicableTotal) * 100)
-    : 0;
+  const applicableTotal = structure?.validacao.total_aplicavel ?? 0;
+  const applicableAnswered = structure?.validacao.total_respondido ?? 0;
+  const percentage = Math.round(structure?.validacao.percentual ?? 0);
   const requiredPending = useMemo(
-    () => (structure?.perguntas ?? []).filter(
-      (question) => question.obrigatoria && !isQuestionAnswered(question, answers[question.identificador])
-    ),
-    [answers, structure]
+    () => (structure?.validacao.pendencias ?? []).map((pending) => {
+      const question = structure?.perguntas.find(
+        (item) => item.identificador === pending.identificador
+      );
+      return question ?? {
+        identificador: pending.identificador,
+        codigo: pending.codigo,
+        versao: structure?.versao ?? "",
+        texto: pending.texto,
+        tipo_de_resposta: "PENDENTE",
+        opcoes_json: [],
+        obrigatoria: true,
+        blocos_json: [pending.secao],
+        secao: pending.secao,
+        secao_rotulo: pending.secao_rotulo
+      };
+    }),
+    [structure]
   );
 
   const stageAnswer = useCallback(async (question: Question, value: Answer) => {
@@ -352,12 +383,12 @@ export function AnamneseParticipante({ token }: { token: string }) {
         pergunta: question.identificador,
         versao: question.versao,
         resposta: value,
-        controle: versions[question.identificador] ?? 0
+        controle: versionsRef.current[question.identificador] ?? 0
       });
       await writeQueue(token, pending);
     });
     setSaveState(navigator.onLine ? "SINCRONIZACAO_PENDENTE" : "SEM_REDE");
-  }, [token, versions, withQueueLock]);
+  }, [token, withQueueLock]);
 
   async function selectBranch() {
     const branch = structure?.selecao_de_ramo.alternativas_oficiais.find(
@@ -429,7 +460,18 @@ export function AnamneseParticipante({ token }: { token: string }) {
 
   async function conclude() {
     const synchronized = await syncPending();
-    if (!synchronized || requiredPending.length || structure?.revisao_do_ramo_pendente) return;
+    if (!synchronized) return;
+    const authoritative = await load(true);
+    if (
+      !authoritative ||
+      authoritative.validacao.pendencias.length ||
+      authoritative.revisao_do_ramo_pendente ||
+      !authoritative.validacao.pode_concluir
+    ) {
+      setMessage("");
+      setReviewing(true);
+      return;
+    }
     try {
       await humanexusApi(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
         method: "POST",
@@ -439,6 +481,17 @@ export function AnamneseParticipante({ token }: { token: string }) {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível concluir.");
     }
+  }
+
+  async function openReview() {
+    const synchronized = await syncPending();
+    if (!synchronized) {
+      setBranchMessage("Existem respostas ainda não confirmadas pelo servidor.");
+      return;
+    }
+    const authoritative = await load(true);
+    if (!authoritative) return;
+    setReviewing(true);
   }
 
   function goToQuestion(question: Question) {
@@ -480,26 +533,27 @@ export function AnamneseParticipante({ token }: { token: string }) {
           <>
             <p className="hx-anamnese-kicker">REVISÃO ANTES DA CONCLUSÃO</p>
             <h1>Confira suas respostas</h1>
-            <div className="hx-anamnese-validation-summary"><article><small>Total aplicável</small><strong>{applicableTotal}</strong></article><article><small>Respondidas</small><strong>{applicableAnswered}</strong></article><article><small>Pendências</small><strong>{requiredPending.length + (structure.ramo_confirmado ? 0 : 1)}</strong></article></div>
+            <div className="hx-anamnese-validation-summary"><article><small>Total aplicável</small><strong>{applicableTotal}</strong></article><article><small>Respondidas</small><strong>{applicableAnswered}</strong></article><article><small>Pendências</small><strong>{requiredPending.length}</strong></article></div>
             {requiredPending.length ? <p className="hx-anamnese-alert">{requiredPending.length} pergunta(s) obrigatória(s) ainda pendente(s).</p> : null}
-            {requiredPending.length ? <div className="hx-anamnese-pending">{requiredPending.map((question) => <button type="button" key={question.identificador} onClick={() => goToQuestion(question)}><small>{question.codigo} · {(question.secao || question.blocos_json[0]).replaceAll("_", " ")}</small><span>{question.texto}</span><strong>Ir para a pergunta →</strong></button>)}</div> : null}
+            {requiredPending.length ? <div className="hx-anamnese-pending">{requiredPending.map((question) => <button type="button" key={question.identificador} onClick={() => goToQuestion(question)}><small>{question.secao_rotulo ?? "Pergunta aplicável"}</small><span>{question.texto}</span><strong>Ir para a pergunta →</strong></button>)}</div> : null}
             {structure.revisao_do_ramo_pendente ? <p className="hx-anamnese-alert">O ramo foi alterado. Respostas anteriores foram preservadas, mas as incompatíveis não entram na análise. Confirme a revisão antes de concluir.</p> : null}
             <div className="hx-anamnese-review">
-              {structure.ramo_confirmado ? <article><small>RAMO AUTORAL ATIVO</small><strong>{selectedNiche.replaceAll("_", " ")} · {selectedFunction}</strong><p>{customNiche ? `${customNiche} · ${customFunction}` : "Seleção confirmada no catálogo do Google Forms autoral."}</p></article> : null}
+              {structure.ramo_confirmado ? <article><small>RAMO AUTORAL ATIVO</small><strong>{structure.nicho_rotulo ?? selectedNiche} · {selectedFunction}</strong><p>{customNiche ? `${customNiche} · ${customFunction}` : "Seleção confirmada no catálogo do Google Forms autoral."}</p></article> : null}
               {structure.perguntas.filter((question) => isQuestionAnswered(question, answers[question.identificador])).map((question) => (
-                <article key={question.identificador}><small>{question.codigo}</small><strong>{question.texto}</strong><p>{valueText(answers[question.identificador])}</p></article>
+                <article key={question.identificador}><small>{question.secao_rotulo ?? "Anamnese Regulatória"}</small><strong>{question.texto}</strong><p>{valueText(answers[question.identificador])}</p></article>
               ))}
             </div>
             <div className="hx-anamnese-actions">
               <button type="button" onClick={() => setReviewing(false)}>Voltar ao preenchimento</button>
               {structure.revisao_do_ramo_pendente ? <button type="button" onClick={() => void confirmBranchReview()}>Confirmar revisão do ramo</button> : null}
-              <button type="button" disabled={requiredPending.length > 0 || !structure.ramo_confirmado || saveState !== "SALVO" || structure.revisao_do_ramo_pendente} onClick={conclude}>Confirmar e concluir</button>
+              <button type="button" disabled={!structure.validacao.pode_concluir || saveState !== "SALVO"} onClick={conclude}>Confirmar e concluir</button>
             </div>
           </>
         ) : (
           <>
             <p className="hx-anamnese-kicker">SEÇÃO {section + 1} DE {sections.length}</p>
-            <h1>{(sections[section]?.bloco ?? "").replaceAll("_", " ")}</h1>
+            <h1>{sections[section]?.rotulo ?? "Anamnese Regulatória"}</h1>
+            {branchMessage && sections[section]?.bloco !== "SELECAO_DE_RAMO" ? <p className="hx-anamnese-alert">{branchMessage}</p> : null}
             {sections[section]?.bloco === "SELECAO_DE_RAMO" ? (
               <div className="hx-anamnese-branch">
                 <p>{structure.selecao_de_ramo.orientacao}</p>
@@ -533,7 +587,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
               <button disabled={section === 0} onClick={() => void move(section - 1)}>Anterior</button>
               {section < sections.length - 1
                 ? <button onClick={() => void move(section + 1)}>Salvar e continuar</button>
-                : <button onClick={() => { void syncPending(); setReviewing(true); }}>Revisar respostas</button>}
+                : <button onClick={() => void openReview()}>Revisar respostas</button>}
             </div>
           </>
         )}
@@ -548,7 +602,7 @@ function QuestionField({
   question: Question; value: Answer; onChange: (value: Answer) => void; onBlur: (value: Answer) => void;
 }) {
   const label = <><span>{question.texto}{question.obrigatoria ? " *" : ""}</span>{question.orientacao ? <small>{question.orientacao}</small> : null}</>;
-  const alternatives = question.alternativas?.length
+  const catalogAlternatives = question.alternativas?.length
     ? question.alternativas
     : (question.opcoes_json ?? []).map((texto, index) => ({
         codigo: `${question.codigo}-${index + 1}`,
@@ -556,6 +610,14 @@ function QuestionField({
         ordem: index + 1,
         outro: texto.trim().toLocaleLowerCase("pt-BR") === "outro"
       }));
+  const seenAlternatives = new Set<string>();
+  const alternatives = catalogAlternatives.filter((item) => {
+    const normalized = item.texto.normalize("NFD").replace(/\p{Diacritic}/gu, "")
+      .toLocaleLowerCase("pt-BR").replace(/[\W_]+/g, "");
+    if (seenAlternatives.has(normalized)) return false;
+    seenAlternatives.add(normalized);
+    return true;
+  });
   const singleValue = typeof value === "string"
     ? value
     : typeof value === "object" && value && "valor" in value
@@ -593,7 +655,8 @@ function QuestionField({
     ["ESCOLHA_MULTIPLA", "ESCOLHA_MULTIPLA_LIMITADA"].includes(question.tipo_de_resposta)
   ) {
     const max = question.limite_maximo_de_selecoes ?? Number.POSITIVE_INFINITY;
-    return <fieldset><legend>{label}</legend>{Number.isFinite(max) ? <small>Selecione no máximo {max} alternativa(s). {multipleValues.length}/{max} selecionada(s).</small> : null}{alternatives.map((option) => {
+    const limitId = `limite-${question.identificador}`;
+    return <fieldset aria-describedby={Number.isFinite(max) ? limitId : undefined}><legend>{label}</legend>{Number.isFinite(max) ? <small id={limitId}>Selecione no máximo {max} alternativa(s). {multipleValues.length}/{max} selecionada(s).</small> : null}{alternatives.map((option) => {
       const checked = multipleValues.includes(option.texto);
       const disabled = !checked && multipleValues.length >= max;
       return <label className="hx-anamnese-option" key={option.codigo}><input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => {
