@@ -8,8 +8,8 @@ export const HX_CHART_COLORS = {
   axis: "rgba(177, 196, 196, 0.28)",
   gold: "#c9aa63",
   goldSoft: "rgba(201, 170, 99, 0.18)",
-  cyan: "#68c9cf",
-  cyanSoft: "rgba(104, 201, 207, 0.16)",
+  cyan: "#6f8987",
+  cyanSoft: "rgba(78, 105, 102, 0.16)",
   green: "#82bd8b",
   red: "#c66e68",
   amber: "#c89c5a",
@@ -19,8 +19,8 @@ export const HX_CHART_COLORS = {
 export const HX_ECHARTS_THEME = {
   color: [
     HX_CHART_COLORS.gold,
+    HX_CHART_COLORS.warmWhite,
     HX_CHART_COLORS.cyan,
-    HX_CHART_COLORS.green,
     HX_CHART_COLORS.amber,
     HX_CHART_COLORS.red
   ],

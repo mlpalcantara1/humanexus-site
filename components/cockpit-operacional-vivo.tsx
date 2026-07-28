@@ -1,0 +1,721 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import {
+  CockpitSignalStack,
+  ReplayTimelineChart,
+  VectorRadarChart,
+  type HxDataPoint,
+  type HxMarker,
+  type HxPhaseRange,
+  type HxTrack,
+  type HxVectorAxis
+} from "@/components/hx-command-visualizations";
+import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
+
+type Registro = Record<string, unknown>;
+type Fonte = Registro & {
+  codigo?: string;
+  nome?: string;
+  estado?: string;
+  ao_vivo?: boolean;
+  historico?: boolean;
+  valores?: Registro;
+  metricas?: Registro;
+  metricas_de_desempenho?: Registro[];
+  series?: Record<string, Registro[]>;
+};
+
+type Props = {
+  estado: Registro;
+  ocupado: boolean;
+  erro?: string;
+  acaoPrincipal: string;
+  rotuloDaAcao: string;
+  acoesSecundarias: string[];
+  rotuloDaSecundaria: (comando: string) => string;
+  executarPrincipal: () => void;
+  executarSecundaria: (comando: string) => void;
+  registrar: (categoria: string, texto: string) => Promise<void> | void;
+  abrirAnalitico: () => void;
+};
+
+const METRICAS_DE_DESEMPENHO_VISIVEIS = [
+  "Foco e atenção",
+  "Engajamento",
+  "Interesse",
+  "Excitação",
+  "Estresse",
+  "Relaxamento"
+] as const;
+
+function metricasDeDesempenhoVisiveis(fonte: Fonte) {
+  return (Array.isArray(fonte.metricas_de_desempenho)
+    ? fonte.metricas_de_desempenho
+    : []).filter((item) =>
+      METRICAS_DE_DESEMPENHO_VISIVEIS.includes(
+        String(item.nome) as typeof METRICAS_DE_DESEMPENHO_VISIVEIS[number]
+      )
+    );
+}
+
+function objeto(valor: unknown): Registro {
+  return valor && typeof valor === "object" && !Array.isArray(valor)
+    ? valor as Registro
+    : {};
+}
+
+function lista(valor: unknown): Registro[] {
+  return Array.isArray(valor)
+    ? valor.filter((item) => item && typeof item === "object") as Registro[]
+    : [];
+}
+
+function texto(valor: unknown, padrao = "—") {
+  return valor == null || valor === ""
+    ? padrao
+    : String(valor).replaceAll("_", " ");
+}
+
+function dataLegivel(valor: unknown) {
+  if (!valor) return "Sem registro";
+  const data = new Date(String(valor));
+  if (Number.isNaN(data.getTime())) return texto(valor);
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "medium",
+    timeZone: "America/Manaus"
+  }).format(data);
+}
+
+function duracao(inicio: unknown, fim: unknown, agora: number) {
+  const inicioMs = new Date(String(inicio ?? "")).getTime();
+  if (!Number.isFinite(inicioMs)) return "00:00:00";
+  const fimMs = fim ? new Date(String(fim)).getTime() : agora;
+  const segundos = Math.max(0, Math.floor((fimMs - inicioMs) / 1000));
+  const h = Math.floor(segundos / 3600);
+  const m = Math.floor((segundos % 3600) / 60);
+  const s = segundos % 60;
+  return [h, m, s].map((item) => String(item).padStart(2, "0")).join(":");
+}
+
+function percentual(valor: unknown) {
+  if (valor == null || valor === "") return "—";
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return "—";
+  return `${(numero <= 1 ? numero * 100 : numero).toFixed(0)}%`;
+}
+
+function referenciaDeBaseline(valor: unknown) {
+  const baseline = objeto(valor);
+  const referencia = objeto(baseline.referencia);
+  const registro = objeto(baseline.registro);
+  const fontes = Array.isArray(registro.fontes_disponiveis_json)
+    ? registro.fontes_disponiveis_json.map(String)
+    : [];
+  const duracaoTotal = Number(registro.duracao_segundos);
+  const minutos = Number.isFinite(duracaoTotal)
+    ? Math.floor(duracaoTotal / 60)
+    : null;
+  const segundos = Number.isFinite(duracaoTotal)
+    ? Math.round(duracaoTotal % 60)
+    : null;
+  return {
+    estado: texto(
+      referencia.estado ?? registro.estado,
+      "SEM REFERÊNCIA DE BASELINE"
+    ),
+    realizadoEm: dataLegivel(registro.iniciado_em),
+    duracao: minutos == null || segundos == null
+      ? "Duração não registrada"
+      : `${minutos} min ${segundos} s`,
+    fontes: fontes.length
+      ? fontes.map((item) => texto(item)).join(" · ")
+      : "Fontes não registradas",
+    cobertura: percentual(registro.cobertura),
+    qualidade: texto(registro.prontidao, "Qualidade não registrada")
+  };
+}
+
+function numero(valor: unknown, casas = 0) {
+  const convertido = Number(valor);
+  return Number.isFinite(convertido) ? convertido.toFixed(casas) : "—";
+}
+
+function valorNormalizado(valor: unknown): number | null {
+  if (typeof valor === "string") {
+    try {
+      return valorNormalizado(JSON.parse(valor));
+    } catch {
+      return null;
+    }
+  }
+  if (typeof valor === "number" && Number.isFinite(valor) && valor >= 0 && valor <= 1) {
+    return valor;
+  }
+  const registro = objeto(valor);
+  for (const chave of ["valor", "magnitude", "escore", "value"]) {
+    const candidato = registro[chave];
+    if (typeof candidato === "number" && Number.isFinite(candidato) && candidato >= 0 && candidato <= 1) {
+      return candidato;
+    }
+  }
+  return null;
+}
+
+function identificadorVetorial(definicao: Registro) {
+  return String(definicao.id ?? definicao.identificador ?? "");
+}
+
+function codigoVetorial(definicao: Registro) {
+  return texto(definicao.code ?? definicao.codigo, "VETOR");
+}
+
+function nomeVetorial(definicao: Registro) {
+  return texto(definicao.name ?? definicao.nome, "Vetor regulatório");
+}
+
+function FonteEstado({ estado }: { estado: unknown }) {
+  const codigo = String(estado ?? "").toLowerCase().replaceAll(" ", "-");
+  return <span className={`hx-live-state is-${codigo}`}>{texto(estado)}</span>;
+}
+
+function Sparkline({ pontos, cor }: { pontos: Registro[]; cor: string }) {
+  const valores = pontos
+    .map((item) => Number(item.valor))
+    .filter(Number.isFinite)
+    .slice(-48);
+  if (valores.length < 2) {
+    return <div className="hx-live-sparkline is-empty">Sem série suficiente</div>;
+  }
+  const minimo = Math.min(...valores);
+  const maximo = Math.max(...valores);
+  const amplitude = maximo - minimo || 1;
+  const linha = valores.map((valor, indice) => {
+    const x = indice * 100 / (valores.length - 1);
+    const y = 31 - ((valor - minimo) / amplitude) * 26;
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join(" ");
+  return (
+    <svg className="hx-live-sparkline" viewBox="0 0 100 34" role="img" aria-label="Tendência técnica recente">
+      <polyline points={linha} fill="none" stroke={cor} strokeWidth="1.8" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+function pontosDaSerie(fonte: Fonte, serie: string, origem: string): HxDataPoint[] {
+  return lista(fonte.series?.[serie]).flatMap((item) => {
+    const tempo = new Date(String(item.timestamp ?? "")).getTime();
+    const valor = Number(item.valor);
+    if (!Number.isFinite(tempo) || !Number.isFinite(valor)) return [];
+    return [{
+      time: tempo,
+      value: valor,
+      label: texto(item.rotulo),
+      phase: texto(item.momento, "SEM FASE"),
+      source: origem,
+      quality: Number(item.qualidade ?? 0),
+      coverage: null,
+      connection: fonte.ao_vivo ? "TRANSMITINDO" : "REPLAY HISTÓRICO",
+      gap: false
+    }];
+  });
+}
+
+function trilhas(fontes: Fonte[]): HxTrack[] {
+  const polar = fontes.find((item) => item.codigo === "POLAR_H10") ?? {};
+  const epoc = fontes.find((item) => item.codigo === "EMOTIV_EPOC_X") ?? {};
+  const desempenho = metricasDeDesempenhoVisiveis(epoc);
+  const candidatas: HxTrack[] = [
+    {
+      id: "polar-hr",
+      name: "Frequência cardíaca",
+      unit: "bpm",
+      color: C.gold,
+      points: pontosDaSerie(polar, "hr", "Polar H10")
+    },
+    {
+      id: "polar-rr",
+      name: "Intervalos RR",
+      unit: "ms",
+      color: C.warmWhite,
+      points: pontosDaSerie(polar, "rr", "Polar H10")
+    },
+    {
+      id: "polar-rmssd",
+      name: "RMSSD técnico recebido",
+      unit: "ms",
+      color: C.green,
+      points: pontosDaSerie(polar, "rmssd", "Polar H10")
+    },
+    {
+      id: "qualidade-sinal-eletroencefalografico",
+      name: "Qualidade do sinal eletroencefalográfico",
+      unit: "%",
+      color: C.green,
+      points: pontosDaSerie(epoc, "qualidade", "EPOC X"),
+      min: 0,
+      max: 100,
+      area: true
+    },
+    ...desempenho.map((metrica, indice) => ({
+      id: `desempenho-${texto(metrica.identificador_de_apresentacao, String(indice))}`,
+      name: texto(metrica.nome),
+      unit: "índice do equipamento",
+      color: [C.gold, C.green, C.warmWhite, C.gold, C.red, C.green][indice % 6],
+      points: lista(metrica.historico_da_fase).flatMap((item) => {
+        const tempo = new Date(String(item.timestamp ?? "")).getTime();
+        const valor = Number(item.valor);
+        if (!Number.isFinite(tempo) || !Number.isFinite(valor)) return [];
+        return [{
+          time: tempo,
+          value: valor,
+          label: texto(metrica.nome),
+          phase: texto(item.momento, "SEM FASE"),
+          source: "Sistema EMOTIV",
+          quality: Number(item.qualidade ?? 0),
+          connection: epoc.ao_vivo ? "TRANSMITINDO" : "REPRODUÇÃO HISTÓRICA",
+          gap: false
+        } as HxDataPoint];
+      }),
+      min: 0,
+      max: 1
+    }))
+  ];
+  return candidatas.filter((item) => item.points.length);
+}
+
+function FontePolar({ fonte }: { fonte: Fonte }) {
+  const valores = objeto(fonte.valores);
+  const metricas = objeto(fonte.metricas);
+  return (
+    <article className="hx-live-source-card" data-source="polar">
+      <header><div><small>POLAR H10</small><strong>Cardíaca</strong></div><FonteEstado estado={fonte.estado} /></header>
+      <div className="hx-live-source-values">
+        <span><small>HR</small><b>{numero(valores.hr_bpm)} bpm</b></span>
+        <span><small>RMSSD</small><b>{numero(valores.rmssd_tecnico_ms, 1)} ms</b></span>
+        <span><small>Qualidade</small><b>{percentual(metricas.qualidade)}</b></span>
+        <span><small>Bateria</small><b>{percentual(valores.bateria_percentual)}</b></span>
+      </div>
+      <Sparkline pontos={lista(fonte.series?.hr)} cor={C.gold} />
+      <footer>
+        <span>Último pacote {dataLegivel(metricas.ultimo_pacote)}</span>
+        <span>Latência {numero(metricas.latencia_ms, 1)} ms · perdas {numero(metricas.perdas)}</span>
+      </footer>
+    </article>
+  );
+}
+
+function FonteEpoc({ fonte }: { fonte: Fonte }) {
+  const valores = objeto(fonte.valores);
+  const metricas = objeto(fonte.metricas);
+  const desempenho = metricasDeDesempenhoVisiveis(fonte);
+  return (
+    <article className="hx-live-source-card hx-live-source-card--epoc" data-source="epoc-x">
+      <header><div><small>EPOC X</small><strong>Desempenho e qualidade</strong></div><FonteEstado estado={fonte.estado} /></header>
+      <div className="hx-live-source-values">
+        <span><small>Qualidade do sinal</small><b>{percentual(valores.qualidade_global)}</b></span>
+        <span><small>Contato adequado</small><b>{numero(valores.canais_adequados)}/{numero(valores.canais_total)} canais</b></span>
+        <span><small>Bateria</small><b>{percentual(valores.bateria_percentual)}</b></span>
+        <span><small>Último dado</small><b>{dataLegivel(metricas.ultimo_pacote)}</b></span>
+      </div>
+      <Sparkline pontos={lista(fonte.series?.qualidade)} cor={C.green} />
+      {desempenho.length ? (
+        <div className="hx-live-performance-grid">
+          {desempenho.map((metrica) => (
+            <span key={texto(metrica.nome)}>
+              <small>{texto(metrica.nome)}</small>
+              <b>{percentual(metrica.valor_atual)}</b>
+              <em>{texto(metrica.tendencia)} · {texto(metrica.estado_da_aquisicao)}</em>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <footer>
+        <span>Latência {numero(metricas.latencia_ms, 1)} ms · perdas {numero(metricas.perdas)}</span>
+        <span>Métricas fornecidas pelo equipamento · sem interpretação HUMANEXUS automática</span>
+      </footer>
+    </article>
+  );
+}
+
+export function CockpitOperacionalVivo({
+  estado,
+  ocupado,
+  erro,
+  acaoPrincipal,
+  rotuloDaAcao,
+  acoesSecundarias,
+  rotuloDaSecundaria,
+  executarPrincipal,
+  executarSecundaria,
+  registrar,
+  abrirAnalitico
+}: Props) {
+  const [agora, setAgora] = useState(Date.now());
+  const [categoria, setCategoria] = useState("EVENTO");
+  const [registro, setRegistro] = useState("");
+  const cockpit = objeto(estado.cockpit_operacional);
+  const sessao = objeto(cockpit.sessao);
+  const contextoSessao = objeto(estado.sessao);
+  const participante = objeto(estado.participante);
+  const organizacao = objeto(estado.organizacao);
+  const profissionais = lista(objeto(estado.contextos).profissionais);
+  const profissional = profissionais[0] ?? {};
+  const ctr = objeto(estado.ctr_individual);
+  const thx = objeto(estado.thx_individual);
+  const execucao = objeto(estado.execucao);
+  const fontes = lista(cockpit.fontes) as Fonte[];
+  const replay = objeto(cockpit.replay);
+  const indicadores = lista(cockpit.indicadores_contratados);
+  const alertas = lista(cockpit.alertas_acionaveis);
+  const eventos = lista(estado.eventos);
+  const replayCompleto = objeto(estado.replay);
+  const itensReplay = lista(replayCompleto.itens);
+  const fases = objeto(sessao.estados_das_fases);
+  const modoHistorico = cockpit.modo === "REPLAY_HISTORICO";
+  const sessaoFinalizada = contextoSessao.estado === "FINALIZADA";
+  const graficos = useMemo(() => trilhas(fontes), [fontes]);
+  const baseline = referenciaDeBaseline(objeto(estado.gravacao).baseline);
+  const ciencia = objeto(estado.ciencia);
+  const leituraCientifica = objeto(cockpit.leitura_cientifica);
+  const iirh = objeto(leituraCientifica.iirh);
+  const zona = objeto(leituraCientifica.zona);
+  const resultante = objeto(leituraCientifica.resultante);
+  const trajetoria = objeto(leituraCientifica.trajetoria);
+  const definicoesVetoriais = lista(ciencia.vetores);
+  const estadosVetoriais = lista(leituraCientifica.vetores);
+  const radarVetorial: HxVectorAxis[] = definicoesVetoriais.map((definicao) => {
+    const identificador = identificadorVetorial(definicao);
+    const estadoVetorial = estadosVetoriais.find(
+      (item) => item.definicao === identificador
+    );
+    return {
+      code: codigoVetorial(definicao),
+      name: nomeVetorial(definicao),
+      value: valorNormalizado(estadoVetorial?.magnitude)
+    };
+  });
+  const radarCompleto = radarVetorial.length === 10
+    && radarVetorial.every((item) => item.value != null);
+  const iirhCalculado = iirh.estado === "CALCULADO"
+    && typeof iirh.valor === "number";
+  const resultanteCalculada = resultante.estado === "CALCULADO"
+    && typeof resultante.valor === "number";
+  const zonaCalculada = iirhCalculado && Boolean(zona.nome ?? zona.codigo);
+  const trajetoriaCalculada = trajetoria.valor != null;
+  const leituraCientificaVisivel = iirhCalculado
+    || zonaCalculada
+    || resultanteCalculada
+    || trajetoriaCalculada
+    || radarCompleto;
+
+  useEffect(() => {
+    const id = window.setInterval(() => setAgora(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const faixas: HxPhaseRange[] = (["PRE", "TREINO", "POS"] as const).flatMap((fase) => {
+    const relacionados = eventos.filter((item) => item.momento === fase);
+    const inicio = relacionados.find((item) => item.tipo === "INICIO");
+    const fim = [...relacionados].reverse().find((item) => item.tipo === "ENCERRAMENTO");
+    const start = new Date(String(inicio?.ocorrido_em ?? "")).getTime();
+    const end = new Date(String(fim?.ocorrido_em ?? "")).getTime();
+    if (!Number.isFinite(start)) return [];
+    return [{
+      name: fase === "PRE" ? "PRÉ" : fase === "POS" ? "PÓS" : "TREINO",
+      start,
+      end: Number.isFinite(end) ? end : agora
+    }];
+  });
+  const marcadores: HxMarker[] = eventos.flatMap((item) => {
+    const time = new Date(String(item.ocorrido_em ?? "")).getTime();
+    if (!Number.isFinite(time)) return [];
+    const dados = objeto(item.dados_json);
+    const tipo = texto(dados.tipo ?? item.tipo);
+    return [{
+      time,
+      label: tipo,
+      kind: String(tipo).includes("INTERVEN") ? "intervention" : "event",
+      phase: texto(item.momento)
+    }];
+  });
+  const timelineItems = itensReplay.flatMap((item) => {
+    const time = new Date(String(item.timestamp_original ?? "")).getTime();
+    if (!Number.isFinite(time)) return [];
+    return [{
+      time,
+      track: texto(item.modalidade, "EVENTO"),
+      label: texto(objeto(item.dados_de_inspecao_json).tipo, "REGISTRO"),
+      source: texto(item.origem, "NÚCLEO HUMANEXUS")
+    }];
+  });
+  const trilhasVisiveis = [...new Set(timelineItems.map((item) => item.track))];
+  const polar = fontes.find((item) => item.codigo === "POLAR_H10") ?? {};
+  const eeg = fontes.find((item) => item.codigo === "EMOTIV_EPOC_X") ?? {};
+  const fase = sessao.fase_atual
+    ? texto(sessao.fase_atual)
+    : sessaoFinalizada
+      ? "SESSÃO ENCERRADA"
+      : "SEM FASE ATIVA";
+  const inicioDaFase = eventos
+    .filter((item) => item.momento === sessao.fase_atual && item.tipo === "INICIO")
+    .at(-1)?.ocorrido_em;
+
+  const enviarRegistro = async () => {
+    if (!registro.trim()) return;
+    await registrar(categoria, registro.trim());
+    setRegistro("");
+  };
+
+  return (
+    <section className="hx-live-cockpit" data-cockpit-mode={cockpit.modo}>
+      <header className="hx-live-cockpit__masthead">
+        <div>
+          <span className="hx-live-eyebrow">
+            {modoHistorico
+              ? "MODO OPERACIONAL — REPLAY HISTÓRICO"
+              : "MODO OPERACIONAL AO VIVO"}
+          </span>
+          <h1>{texto(participante.nome ?? participante.referencia_externa, "Participante")}</h1>
+          <p>
+            Sessão {texto(contextoSessao.identificador)} · THX {texto(thx.codigo)}
+            {" · "}{texto(execucao.estado)}
+          </p>
+        </div>
+        <div className="hx-live-mode-actions">
+          <span className={modoHistorico ? "is-history" : "is-live"}>
+            {modoHistorico ? "REPLAY HISTÓRICO" : "TELEMETRIA AO VIVO"}
+          </span>
+          <button type="button" onClick={abrirAnalitico}>Abrir Inspeção TIRH</button>
+        </div>
+      </header>
+
+      {modoHistorico && !leituraCientificaVisivel ? (
+        <div className="hx-live-historical-warning" role="status">
+          <strong>REPRODUÇÃO HISTÓRICA DE SESSÃO CIENTIFICAMENTE INCOMPLETA</strong>
+          <span>Somente dados técnicos, eventos e registros realmente preservados são apresentados neste modo.</span>
+        </div>
+      ) : null}
+
+      <section className="hx-live-context-strip" aria-label="Contexto autorizado da sessão">
+        <div><small>ORGANIZAÇÃO</small><strong>{texto(organizacao.nome)}</strong></div>
+        <div><small>PROFISSIONAL</small><strong>{texto(profissional.nome)}</strong></div>
+        <div><small>CTR</small><strong>{texto(ctr.codigo)}</strong></div>
+        <div><small>PROTOCOLO</small><strong>{texto(thx.codigo)} · {texto(thx.nome)}</strong></div>
+      </section>
+
+      <section className="hx-live-hud" aria-label="HUD operacional fixo">
+        {iirhCalculado ? <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{numero(iirh.valor, 1)} {texto(iirh.unidade, "")}</strong><span>Resultado canônico</span></div> : null}
+        {zonaCalculada ? <div><small>ZONA OPERACIONAL</small><strong>{texto(zona.nome ?? zona.codigo)}</strong><span>Classificação canônica</span></div> : null}
+        <div><small>FASE</small><strong>{fase}</strong><span>{texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
+        <div><small>TEMPO DA FASE</small><strong>{duracao(inicioDaFase, sessaoFinalizada ? contextoSessao.finalizado_em : null, agora)}</strong><span>Estado canônico</span></div>
+        <div><small>TEMPO TOTAL</small><strong>{duracao(sessao.tempo_total_inicio, sessao.tempo_total_fim, agora)}</strong><span>Sessão</span></div>
+        <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
+        <div><small>HR</small><strong>{numero(objeto(polar.valores).hr_bpm)} bpm</strong><span>{modoHistorico ? "Dado histórico" : texto(polar.estado)}</span></div>
+        <div><small>RMSSD</small><strong>{numero(objeto(polar.valores).rmssd_tecnico_ms, 1)} ms</strong><span>{modoHistorico ? "Técnico histórico" : texto(polar.estado)}</span></div>
+        <div><small>SINAL ELETROENCEFALOGRÁFICO</small><strong>{percentual(objeto(eeg.valores).qualidade_global)}</strong><span>Qualidade · {texto(eeg.estado)}</span></div>
+        <div><small>POLAR</small><strong>{texto(polar.estado)}</strong><span>Última seq. {numero(objeto(polar.metricas).ultima_sequencia)}</span></div>
+        <div><small>QUALIDADE</small><strong>{percentual(cockpit.qualidade_global)}</strong><span>Coleta técnica</span></div>
+        <div><small>COBERTURA</small><strong>{percentual(cockpit.cobertura_global)}</strong><span>Registrada no núcleo</span></div>
+        <div><small>SESSÃO</small><strong>{texto(contextoSessao.estado)}</strong><span>{texto(cockpit.modo)}</span></div>
+      </section>
+
+      <div className="hx-live-command-center">
+        {radarCompleto ? (
+          <section className="hx-live-vector-stage">
+            <header><small>MATRIZ VETORIAL VIVA</small><h2>Dez vetores oficiais</h2></header>
+            <VectorRadarChart vectors={radarVetorial} />
+          </section>
+        ) : null}
+
+        <section className="hx-live-graphs">
+          <header>
+            <div><small>{modoHistorico ? "DADOS PRESERVADOS" : "ATIVIDADE AO VIVO"}</small><h2>Leitura temporal da sessão</h2></div>
+            <span>{modoHistorico ? "Dados físicos históricos · sem transmissão atual" : "Atualização contínua sem recarregar a página"}</span>
+          </header>
+          {graficos.length
+            ? (
+              <CockpitSignalStack
+                tracks={graficos}
+                markers={marcadores}
+                phases={faixas}
+                showTechnicalLegend={false}
+              />
+            )
+            : <div className="hx-live-empty">Nenhuma série física autorizada disponível.</div>}
+        </section>
+
+        <aside className="hx-live-command hx-live-command--contextual">
+          <small>PRÓXIMA AÇÃO</small>
+          {acaoPrincipal ? (
+            <button className="hx-live-command__primary" type="button" onClick={executarPrincipal} disabled={ocupado}>
+              {rotuloDaAcao}
+            </button>
+          ) : (
+            <strong className="hx-live-command__done">Sessão sem ação pendente</strong>
+          )}
+          <div>
+            {acoesSecundarias.map((comando) => (
+              <button key={comando} type="button" onClick={() => executarSecundaria(comando)} disabled={ocupado}>
+                {rotuloDaSecundaria(comando)}
+              </button>
+            ))}
+          </div>
+          <span>Comandos fornecidos exclusivamente pelo estado operacional do backend.</span>
+          <div className="hx-live-protocol-brief">
+            <small>CRITÉRIO REGULATÓRIO HUMANO</small>
+            <strong>{texto(ctr.codigo)} · {texto(ctr.nome)}</strong>
+            <small>TREINAMENTO HUMANEXUS</small>
+            <strong>{texto(thx.codigo)} · {texto(thx.nome)}</strong>
+            <span>{texto(execucao.estado)}</span>
+          </div>
+          <div className="hx-live-events-brief">
+            <small>EVENTOS RECENTES</small>
+            {[...eventos].reverse().slice(0, 4).map((item) => (
+              <span key={texto(item.identificador)}>
+                <b>{texto(objeto(item.dados_json).tipo ?? item.tipo)}</b>
+                {dataLegivel(item.ocorrido_em)}
+              </span>
+            ))}
+          </div>
+        </aside>
+      </div>
+
+      {leituraCientificaVisivel ? (
+        <section className="hx-live-science-results" aria-label="Resultados científicos canônicos da sessão">
+          {iirhCalculado ? <article><small>Índice de Inteligência Regulatória Humana</small><strong>{numero(iirh.valor, 1)} {texto(iirh.unidade, "")}</strong><span>Versão {texto(iirh.versao_do_algoritmo)}</span></article> : null}
+          {zonaCalculada ? <article><small>Zona Operacional</small><strong>{texto(zona.nome ?? zona.codigo)}</strong><span>Vinculada ao índice canônico</span></article> : null}
+          {resultanteCalculada ? <article><small>Resultante Regulatória</small><strong>{numero(resultante.valor, 2)} {texto(resultante.unidade, "")}</strong><span>Registro canônico da sessão</span></article> : null}
+          {trajetoriaCalculada ? <article><small>Trajetória Regulatória</small><strong>{texto(trajetoria.valor)}</strong><span>Estados sucessivos comparáveis</span></article> : null}
+        </section>
+      ) : null}
+
+      <section className="hx-live-sources">
+        <FontePolar fonte={polar} />
+        <FonteEpoc fonte={eeg} />
+        <article className="hx-live-source-card">
+          <header><div><small>MÍDIA</small><strong>{texto(replay.midia, "SEM GRAVAÇÃO")}</strong></div><FonteEstado estado="SINCRONIZADA" /></header>
+          <div className="hx-live-source-values">
+            <span><small>Áudio/vídeo</small><b>{texto(replay.midia, "SEM GRAVAÇÃO")}</b></span>
+            <span><small>Replay</small><b>{texto(replay.estado)}</b></span>
+            <span><small>Armazenamento</small><b>PRIVADO</b></span>
+            <span><small>Ausência de mídia</small><b>NÃO É FALHA</b></span>
+          </div>
+          <footer><span>Último evento {dataLegivel(replay.ultimo_evento)}</span><span>Fontes {Array.isArray(replay.fontes_sincronizadas) ? replay.fontes_sincronizadas.length : 0}</span></footer>
+        </article>
+        <article className="hx-live-source-card">
+          <header><div><small>SIMULADOR OU TAREFA</small><strong>NÃO APLICÁVEL</strong></div><FonteEstado estado="NÃO SELECIONADO" /></header>
+          <div className="hx-live-source-values">
+            <span><small>Selecionado</small><b>NÃO</b></span>
+            <span><small>Conectado</small><b>NÃO</b></span>
+            <span><small>Telemetria</small><b>NÃO APLICÁVEL</b></span>
+            <span><small>Eventos</small><b>{eventos.length}</b></span>
+          </div>
+          <footer><span>Nenhuma fonte artificial foi criada.</span></footer>
+        </article>
+      </section>
+
+      {indicadores.length ? (
+        <section className="hx-live-indicators">
+          <header><small>INDICADORES CONTRATADOS</small><strong>Aquisição e elegibilidade</strong></header>
+          <div>
+            {indicadores.map((item) => (
+              <article key={texto(item.identificador ?? item.codigo)}>
+                <small>{texto(item.nome ?? item.codigo)}</small>
+                <strong>{texto(item.estado, "PREPARANDO")}</strong>
+                <span>{item.validado_profissionalmente ? "VALIDADO PROFISSIONALMENTE" : "Monitoramento de requisitos ativo"}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {alertas.length ? (
+        <section className="hx-live-alerts">
+          {alertas.map((alerta, indice) => (
+            <article key={`${texto(alerta.titulo)}-${indice}`}>
+              <small>{texto(alerta.titulo, "ALERTA OPERACIONAL")}</small>
+              <strong>{texto(alerta.o_que_ocorreu)}</strong>
+              <span>Indicador afetado: {texto(alerta.indicador_afetado ?? alerta.afetado)}</span>
+              <span>Fase válida: {alerta.fase_continua_valida === false || alerta.sessao_pode_continuar === false ? "NÃO" : "VERIFICAR"}</span>
+              <b>Ação: {texto(alerta.acao)}</b>
+            </article>
+          ))}
+        </section>
+      ) : null}
+
+      <section className="hx-live-lower">
+        <div className="hx-live-register">
+          <header><small>REGISTRO PROFISSIONAL RÁPIDO</small><strong>Contexto preenchido automaticamente</strong></header>
+          <div>
+            <select value={categoria} onChange={(evento) => setCategoria(evento.target.value)} disabled={sessaoFinalizada}>
+              <option value="EVENTO">Evento</option>
+              <option value="INTERVENCAO">Intervenção</option>
+              <option value="RESPOSTA">Resposta</option>
+              <option value="OBSERVACAO">Observação curta</option>
+              <option value="DECISAO_PROFISSIONAL">Decisão profissional</option>
+            </select>
+            <input
+              value={registro}
+              onChange={(evento) => setRegistro(evento.target.value)}
+              onKeyDown={(evento) => {
+                if ((evento.metaKey || evento.ctrlKey) && evento.key === "Enter") void enviarRegistro();
+              }}
+              placeholder={sessaoFinalizada ? "Sessão finalizada — consulta somente" : "Registrar sem repetir participante, fase ou protocolo"}
+              maxLength={500}
+              disabled={sessaoFinalizada}
+            />
+            <button type="button" onClick={() => void enviarRegistro()} disabled={sessaoFinalizada || ocupado || !registro.trim()}>Registrar</button>
+          </div>
+          <span>Atalho: ⌘/Ctrl + Enter · organização, participante, sessão, fase, horário, THX, fontes e cobertura vêm do núcleo.</span>
+        </div>
+
+        <div className="hx-live-events">
+          <header><small>EVENTOS RECENTES</small><strong>{eventos.length} preservados</strong></header>
+          <ol>
+            {[...eventos].reverse().slice(0, 8).map((item) => (
+              <li key={texto(item.identificador)}>
+                <span>{texto(item.momento)}</span>
+                <b>{texto(objeto(item.dados_json).tipo ?? item.tipo)}</b>
+                <small>{dataLegivel(item.ocorrido_em)}</small>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section className="hx-live-replay">
+        <header>
+          <div><small>{texto(replay.estado, "REPLAY SINCRONIZANDO")}</small><strong>Linha do tempo operacional</strong></div>
+          <div><span>Último pacote {dataLegivel(replay.ultimo_pacote)}</span><span>Último evento {dataLegivel(replay.ultimo_evento)}</span></div>
+        </header>
+        {timelineItems.length ? (
+          <ReplayTimelineChart
+            items={timelineItems}
+            phases={faixas}
+            markers={marcadores}
+            cursorPercent={100}
+            interval={[0, 100]}
+            zoom={1}
+            visibleTracks={trilhasVisiveis}
+          />
+        ) : <div className="hx-live-empty">Replay preservado sem itens consolidados nesta versão.</div>}
+        <div className="hx-live-baseline-summary">
+          <small>REFERÊNCIA DE BASELINE</small>
+          <strong>{baseline.estado}</strong>
+          <span>{baseline.realizadoEm} · {baseline.duracao}</span>
+          <span>Fontes: {baseline.fontes}</span>
+          <span>Cobertura {baseline.cobertura} · {baseline.qualidade}</span>
+        </div>
+        <footer>
+          <span>Baseline separado das fases científicas</span>
+          <span>PRÉ → TREINO → PÓS</span>
+          <span>Mídia opcional: {texto(replay.midia, "SEM GRAVAÇÃO")}</span>
+        </footer>
+      </section>
+
+      {erro ? <p className="hx-module__error">{erro}</p> : null}
+    </section>
+  );
+}

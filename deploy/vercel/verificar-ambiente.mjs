@@ -2,9 +2,12 @@ const erros = [];
 const ambiente = process.env.HUMANEXUS_ENVIRONMENT;
 const core = process.env.HUMANEXUS_CORE_API_URL;
 const app = process.env.NEXT_PUBLIC_HUMANEXUS_APP_URL;
+const producao = ambiente === "producao" || ambiente === "production";
 
-if (ambiente !== "homologacao") {
-  erros.push("HUMANEXUS_ENVIRONMENT deve ser homologacao.");
+if (!producao && ambiente !== "homologacao") {
+  erros.push(
+    "HUMANEXUS_ENVIRONMENT deve ser homologacao, producao ou production."
+  );
 }
 
 for (const [nome, valor] of [
@@ -23,11 +26,22 @@ for (const [nome, valor] of [
     continue;
   }
   if (url.protocol !== "https:") erros.push(`${nome} deve usar HTTPS.`);
-  if (
-    url.hostname === "app.institutohumanexus.com" ||
-    url.hostname === "www.institutohumanexus.com"
+  if (producao) {
+    const hostnameEsperado =
+      nome === "HUMANEXUS_CORE_API_URL"
+        ? "api.institutohumanexus.com"
+        : "app.institutohumanexus.com";
+    if (url.hostname !== hostnameEsperado) {
+      erros.push(`${nome} deve apontar para ${hostnameEsperado} em produção.`);
+    }
+  } else if (
+    ["app.institutohumanexus.com", "www.institutohumanexus.com"].includes(
+      url.hostname
+    )
   ) {
-    erros.push(`${nome} não pode apontar para a plataforma operacional.`);
+    erros.push(
+      `${nome} não pode apontar para a plataforma operacional de produção na homologação.`
+    );
   }
 }
 
@@ -47,4 +61,4 @@ if (erros.length) {
   process.exit(1);
 }
 
-console.log("Ambiente de homologação validado sem expor segredos.");
+console.log(`Ambiente de ${producao ? "produção" : "homologação"} validado sem expor segredos.`);

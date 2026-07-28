@@ -1,2 +1,12 @@
+.git/
+.github/
+.next/
+.next-verify/
+.vercel/
+node_modules/
+.env
+.env.*
+*.tsbuildinfo
+tests/
 public/media/*.mov
 public/media/*-web.mov

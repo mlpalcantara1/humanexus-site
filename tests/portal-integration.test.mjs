@@ -28,6 +28,12 @@ test("perfis oficiais possuem destinos privados exatos", async () => {
   }
 });
 
+test("alias organizacional converge para a área privada canônica", async () => {
+  const alias = await source("app/(platform)/organizacional/page.tsx");
+  assert.match(alias, /redirect\("\/organizacao"\)/);
+  assert.doesNotMatch(alias, /preparada para evoluir/);
+});
+
 test("token de sessão não é armazenado no navegador", async () => {
   const files = [
     "app/(platform)/entrar/page.tsx",
@@ -139,6 +145,8 @@ test("TCLE usa aceites separados e recuperação proprietária não expõe token
   assert.match(recuperacao, /HOSPEDES_LOCAIS/);
   assert.match(core, /x-humanexus-local-recovery-secret/);
   assert.match(core, /server-only/);
+  assert.match(core, /Núcleo temporariamente indisponível/);
+  assert.match(core, /consultaSegura \? 3 : 1/);
   assert.match(redefinicao, /modo.*local/);
   assert.doesNotMatch(redefinicao, /token.*modo.*local/);
 });

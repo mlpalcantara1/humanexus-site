@@ -39,8 +39,20 @@ export async function POST(request: Request) {
     const acao = String(corpo.acao ?? "");
     const caminhos: Record<string, string> = {
       configurar: `/api/v1/sessoes/${sessao}/gravacao/configuracoes`,
+      preparar: `/api/v1/sessoes/${sessao}/preparar`,
       dispositivo: `/api/v1/sessoes/${sessao}/gravacao/dispositivos`,
-      revogar: `/api/v1/sessoes/${sessao}/gravacao/revogar`
+      revogar: `/api/v1/sessoes/${sessao}/gravacao/revogar`,
+      referenciaBaseline:
+        `/api/v1/sessoes/${sessao}/gravacao/baseline/referencia`,
+      baseline: `/api/v1/sessoes/${sessao}/gravacao/baseline`,
+      pausarBaseline:
+        `/api/v1/sessoes/${sessao}/gravacao/baseline/pausar`,
+      retomarBaseline:
+        `/api/v1/sessoes/${sessao}/gravacao/baseline/retomar`,
+      finalizarBaseline:
+        `/api/v1/sessoes/${sessao}/gravacao/baseline/finalizar`,
+      dispensarBaseline:
+        `/api/v1/sessoes/${sessao}/gravacao/baseline/dispensar`
     };
     const caminho = caminhos[acao];
     if (!caminho) throw new Error("Ação de gravação inválida.");

@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { ConfiguracaoEstacaoHumanexus } from
+  "@/components/configuracao-estacao-humanexus";
 
 type Registro = Record<string, unknown>;
 type Dados = {
@@ -33,6 +35,27 @@ type Dados = {
     obrigacoes_documentais: Registro[];
     segredos: Registro[];
   };
+  instrumento_integrado: {
+    instrumentos: Registro[];
+    apresentacoes: Registro[];
+    manifestacoes: Registro[];
+    revogacoes: Registro[];
+    auditoria: Registro[];
+    situacao_juridica: string;
+    aceite_global_permitido: boolean;
+    resposta_operacional_unica: boolean;
+    codigo_vigente: string;
+    opcoes_pre_marcadas: boolean;
+  };
+};
+type Gestao = {
+  organizacao: Registro | null;
+  participantes: Registro[];
+  sessoes: Registro[];
+};
+
+type EntregaDeConsentimento = Registro & {
+  link_de_manifestacao: string;
 };
 
 function csrf() {
@@ -48,6 +71,9 @@ function valor(item: unknown) {
 
 export function GovernancaOperacional() {
   const [dados, setDados] = useState<Dados | null>(null);
+  const [gestao, setGestao] = useState<Gestao | null>(null);
+  const [entregaDeConsentimento, setEntregaDeConsentimento] =
+    useState<EntregaDeConsentimento | null>(null);
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -57,15 +83,32 @@ export function GovernancaOperacional() {
       cache: "no-store"
     });
     const corpo = await resposta.json();
-    if (!resposta.ok) throw new Error(corpo?.erro?.mensagem ?? "Governança indisponível.");
+    if (!resposta.ok) {
+      throw new Error(corpo?.erro?.mensagem ?? "Governança indisponível.");
+    }
     setDados(corpo as Dados);
+    const respostaGestao = await fetch("/api/gestao-operacional", {
+      cache: "no-store"
+    });
+    const corpoGestao = await respostaGestao.json();
+    if (!respostaGestao.ok) {
+      setErro(
+        corpoGestao?.erro?.mensagem ?? "Participantes indisponíveis."
+      );
+      return;
+    }
+    setGestao(corpoGestao as Gestao);
   }
 
   useEffect(() => {
     void carregar().catch((causa) => setErro(causa.message));
   }, []);
 
-  async function executar(acao: string, payload: Registro, identificador?: string) {
+  async function executar(
+    acao: string,
+    payload: Registro,
+    identificador?: string
+  ): Promise<Registro | null> {
     setOcupado(true);
     setErro("");
     try {
@@ -81,11 +124,35 @@ export function GovernancaOperacional() {
       if (!resposta.ok) throw new Error(corpo?.erro?.mensagem ?? "Operação recusada.");
       setMensagem("Registro preservado com rastreabilidade.");
       await carregar();
+      return corpo as Registro;
     } catch (causa) {
       setErro(causa instanceof Error ? causa.message : "Operação recusada.");
+      return null;
     } finally {
       setOcupado(false);
     }
+  }
+
+  async function apresentarConsentimento(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const resultado = await executar("apresentar-consentimento", {
+      identificador_do_modelo: form.get("modelo"),
+      identificador_do_participante: form.get("participante"),
+      identificador_da_sessao: form.get("sessao") || null,
+      finalidade: form.get("finalidade"),
+      validade_em_horas: Number(form.get("validade") ?? 72),
+      publico: "PARTICIPANTE"
+    });
+    const identificador = String(resultado?.identificador ?? "");
+    const token = String(resultado?.token_de_manifestacao ?? "");
+    if (!identificador || !token) return;
+    setEntregaDeConsentimento({
+      ...resultado,
+      link_de_manifestacao:
+        `${window.location.origin}/consentimento/${encodeURIComponent(identificador)}`
+        + `?token=${encodeURIComponent(token)}`
+    });
   }
 
   if (!dados) return erro ? <p className="hx-module__error">{erro}</p> : <p>Carregando governança operacional…</p>;
@@ -105,7 +172,41 @@ export function GovernancaOperacional() {
         <article><small>Coletas bloqueadas</small><strong>{dados.consentimentos.bloqueios_de_coleta.length}</strong></article>
         <article><small>Sessões ativas do proprietário</small><strong>{dados.seguranca.sessoes.filter((item) => item.estado === "ATIVA").length}</strong></article>
         <article><small>Alertas de segurança</small><strong>{dados.seguranca.alertas.filter((item) => item.estado === "NOVO").length}</strong></article>
+        <article><small>Instrumentos integrados</small><strong>{dados.instrumento_integrado.instrumentos.length}</strong></article>
       </div>
+      <section className="hx-owner-security">
+        <header>
+          <div>
+            <small>INSTRUMENTO INTEGRADO · ADMINISTRADOR PROPRIETÁRIO</small>
+            <h4>Ciência, concordância e autorizações</h4>
+          </div>
+          <strong>{valor(dados.instrumento_integrado.situacao_juridica)}</strong>
+        </header>
+        <div className="hx-owner-security__columns">
+          <article>
+            <small>VERSÕES IMUTÁVEIS</small>
+            {dados.instrumento_integrado.instrumentos.map((instrumento) => (
+              <div key={String(instrumento.identificador)}>
+                <span>{valor(instrumento.codigo)} · {valor(instrumento.versao)}</span>
+                <b>{valor(instrumento.estado)}</b>
+              </div>
+            ))}
+          </article>
+          <article>
+            <small>APRESENTAÇÕES E CONFIRMAÇÕES</small>
+            <div><span>Apresentações</span><b>{dados.instrumento_integrado.apresentacoes.length}</b></div>
+            <div><span>Confirmações únicas</span><b>{dados.instrumento_integrado.manifestacoes.length}</b></div>
+            <div><span>Revogações granulares</span><b>{dados.instrumento_integrado.revogacoes.length}</b></div>
+          </article>
+          <article>
+            <small>GARANTIAS DO FLUXO</small>
+            <div><span>Resposta operacional única</span><b>{dados.instrumento_integrado.resposta_operacional_unica ? "ATIVA" : "INATIVA"}</b></div>
+            <div><span>Versão vigente</span><b>{valor(dados.instrumento_integrado.codigo_vigente)}</b></div>
+            <div><span>Opções pré-marcadas</span><b>{dados.instrumento_integrado.opcoes_pre_marcadas ? "SIM" : "NÃO"}</b></div>
+            <div><span>Auditorias</span><b>{dados.instrumento_integrado.auditoria.length}</b></div>
+          </article>
+        </div>
+      </section>
       <section className="hx-owner-security">
         <header><div><small>REGRA ÁUREA · {dados.seguranca.versao}</small><h4>Sessões, dispositivos e autoridade técnica</h4></div><strong>{valor(dados.seguranca.autoridade_global)}</strong></header>
         <div className="hx-owner-security__columns">
@@ -179,7 +280,88 @@ export function GovernancaOperacional() {
           </article>
         </div>
       </section>
+      {gestao?.organizacao?.identificador ? (
+        <ConfiguracaoEstacaoHumanexus
+          organizacao={String(gestao.organizacao.identificador)}
+        />
+      ) : null}
       <div className="hx-governance-ops__forms">
+        <form onSubmit={(event) => void apresentarConsentimento(event)}>
+          <small>APRESENTAÇÃO OFICIAL</small>
+          <h4>Enviar TCLE ou autorização ao participante</h4>
+          <label>Documento<select name="modelo" required defaultValue="">
+            <option value="" disabled>Selecione o documento</option>
+            {dados.consentimentos.modelos.map((modelo) => (
+              <option
+                key={String(modelo.identificador)}
+                value={String(modelo.identificador)}
+              >
+                {valor(modelo.titulo)} · {valor(modelo.versao)}
+              </option>
+            ))}
+          </select></label>
+          <label>Participante<select name="participante" required defaultValue="">
+            <option value="" disabled>Selecione o participante</option>
+            {(gestao?.participantes ?? []).map((participante) => (
+              <option
+                key={String(participante.identificador)}
+                value={String(participante.identificador)}
+              >
+                {valor(participante.referencia_externa)}
+                {" · "}
+                {String(participante.identificador)}
+              </option>
+            ))}
+          </select></label>
+          <label>Sessão<select name="sessao" defaultValue="">
+            <option value="">Sem sessão vinculada</option>
+            {(gestao?.sessoes ?? []).map((sessao) => (
+              <option
+                key={String(sessao.identificador)}
+                value={String(sessao.identificador)}
+              >
+                {valor(sessao.finalidade)}
+                {" · "}
+                {String(sessao.identificador)}
+              </option>
+            ))}
+          </select></label>
+          <label>Finalidade<input
+            name="finalidade"
+            defaultValue="HOMOLOGACAO_FISICA_AUTORIZADA"
+            required
+          /></label>
+          <label>Validade<select name="validade" defaultValue="72">
+            <option value="24">24 horas</option>
+            <option value="72">72 horas</option>
+            <option value="168">7 dias</option>
+          </select></label>
+          <button disabled={ocupado}>Apresentar separadamente</button>
+          <p>
+            O participante manifesta aceite ou recusa na rota pública.
+            Nenhuma caixa é pré-marcada.
+          </p>
+          {entregaDeConsentimento ? (
+            <aside className="hx-module__notice">
+              <strong>Link exibido uma única vez</strong>
+              <a
+                href={entregaDeConsentimento.link_de_manifestacao}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Abrir documento como participante
+              </a>
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(
+                  entregaDeConsentimento.link_de_manifestacao
+                )}
+              >
+                Copiar link
+              </button>
+            </aside>
+          ) : null}
+        </form>
         <form onSubmit={(event: FormEvent<HTMLFormElement>) => {
           event.preventDefault();
           const form = new FormData(event.currentTarget);

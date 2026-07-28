@@ -8,7 +8,7 @@ const PDF = {
   line: "#d9dfdd",
   panel: "#f4f6f5",
   gold: "#9a7533",
-  cyan: "#318b91",
+  cyan: "#466b68",
   green: "#477f55",
   red: "#a24f4b",
   white: "#ffffff"
@@ -164,7 +164,9 @@ export async function gerarPdfVisualHumanexus({
   ciclo,
   telemetria,
   eventos,
-  relatorio
+  relatorio,
+  gravacao,
+  contratoCientifico
 }: {
   usuario: Registro;
   participante: Registro;
@@ -174,6 +176,8 @@ export async function gerarPdfVisualHumanexus({
   telemetria: Registro[];
   eventos: Registro[];
   relatorio: Registro;
+  gravacao: Registro;
+  contratoCientifico: Registro;
 }) {
   const doc = new PDFDocument({
     size: "A4",
@@ -203,6 +207,14 @@ export async function gerarPdfVisualHumanexus({
   }).filter((valor): valor is number => valor != null && Number.isFinite(valor));
   const perdas = ordenada.reduce((total, item) => total + Number(item.perda_detectada ?? 0), 0);
   const foraDeOrdem = ordenada.filter((item) => Boolean(item.fora_de_ordem)).length;
+  const baseline = objeto(gravacao.baseline);
+  const referenciaBaseline = objeto(baseline.referencia);
+  const registroBaseline = objeto(baseline.registro);
+  const estadoBaseline = String(
+    referenciaBaseline.estado
+    || (registroBaseline.estado ? `BASELINE ${registroBaseline.estado}` : "")
+    || "SESSÃO SEM REFERÊNCIA DE BASELINE"
+  );
 
   tituloPagina(doc, "HUMANEXUS / RELATÓRIO GOVERNADO", String(relatorio.titulo ?? "Sessão regulatória"), "01 / 02");
   metadado(doc, 42, 106, "PARTICIPANTE", String(participante.referencia_externa ?? participante.identificador ?? "não identificado"), 245);
@@ -216,7 +228,17 @@ export async function gerarPdfVisualHumanexus({
   caixa(doc, 42, 688, 511, 87);
   doc.fillColor(PDF.gold).font("Helvetica-Bold").fontSize(7).text("LIMITES E GOVERNANÇA", 56, 702, { characterSpacing: 1.2 });
   doc.fillColor(PDF.ink).font("Helvetica").fontSize(8.2).text(
-    "SIMULAÇÃO TÉCNICA — NÃO É RESULTADO HUMANO. IIRH e Zona oficiais não foram calculados. Qualidade e cobertura pertencem aos snapshots preservados; telemetria representa somente o teste técnico do Bridge.",
+    `Referência operacional separada: ${estadoBaseline}. `
+    + "O fluxo científico deste relatório é exclusivamente PRÉ → TREINO → PÓS. "
+    + (
+      Array.isArray(contratoCientifico.indicadores)
+      && (contratoCientifico.indicadores as Registro[]).length
+        ? `Indicadores contratados: ${(contratoCientifico.indicadores as Registro[])
+            .map((item) => String(item.nome ?? item.codigo))
+            .join(", ")}.`
+        : "Nenhum indicador científico foi prometido para esta sessão."
+    )
+    + " Lacunas não são preenchidas artificialmente.",
     56,
     719,
     { width: 480, lineGap: 3 }

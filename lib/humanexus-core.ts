@@ -38,15 +38,42 @@ async function requisitar<T>(
   init: RequestInit = {},
   token?: string
 ): Promise<T> {
-  const resposta = await fetch(`${CORE_API}${caminho}`, {
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-      ...init.headers
-    },
-    cache: "no-store"
-  });
+  const metodo = String(init.method ?? "GET").toUpperCase();
+  const consultaSegura = metodo === "GET" || metodo === "HEAD";
+  const tentativas = consultaSegura ? 3 : 1;
+  let resposta: Response | null = null;
+  let falhaDeRede: unknown = null;
+  for (let tentativa = 1; tentativa <= tentativas; tentativa += 1) {
+    try {
+      resposta = await fetch(`${CORE_API}${caminho}`, {
+        ...init,
+        headers: {
+          "content-type": "application/json",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+          ...init.headers
+        },
+        cache: "no-store"
+      });
+      if (
+        !consultaSegura
+        || ![502, 503, 504].includes(resposta.status)
+        || tentativa === tentativas
+      ) {
+        break;
+      }
+    } catch (erro) {
+      falhaDeRede = erro;
+      if (!consultaSegura || tentativa === tentativas) break;
+    }
+    await new Promise((resolver) => setTimeout(resolver, 150 * tentativa));
+  }
+  if (!resposta) {
+    void falhaDeRede;
+    throw new ErroDoNucleo(
+      "Núcleo temporariamente indisponível. Aguarde alguns segundos e tente novamente.",
+      503
+    );
+  }
   const dados = await resposta.json().catch(() => ({}));
   if (!resposta.ok) {
     throw new ErroDoNucleo(

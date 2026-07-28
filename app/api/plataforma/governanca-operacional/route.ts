@@ -12,7 +12,7 @@ export async function GET() {
     return NextResponse.json({ erro: { mensagem: "Sessão ausente." } }, { status: 401 });
   }
   try {
-    const [governanca, backups, consentimentos, seguranca] = await Promise.all([
+    const [governanca, backups, consentimentos, seguranca, instrumentoIntegrado] = await Promise.all([
       requisitarNucleoAutenticado<Registro>(
         "/api/v1/governanca-operacional",
         token
@@ -28,9 +28,19 @@ export async function GET() {
       requisitarNucleoAutenticado<Registro>(
         "/api/v1/seguranca-proprietario",
         token
+      ),
+      requisitarNucleoAutenticado<Registro>(
+        "/api/v1/instrumento-integrado/lab",
+        token
       )
     ]);
-    return NextResponse.json({ governanca, backups, consentimentos, seguranca });
+    return NextResponse.json({
+      governanca,
+      backups,
+      consentimentos,
+      seguranca,
+      instrumento_integrado: instrumentoIntegrado
+    });
   } catch (erro) {
     return NextResponse.json(
       { erro: { mensagem: erro instanceof Error ? erro.message : "Acesso negado." } },

@@ -116,6 +116,8 @@ function descricaoErro(erro: unknown) {
 export function CapturaMultimodal({ token }: { token: string }) {
   const [contexto, setContexto] = useState<Contexto | null>(null);
   const [fase, setFase] = useState("");
+  const [modoEfetivo, setModoEfetivo] =
+    useState<Configuracao["modo"]>("NENHUM");
   const [estado, setEstado] = useState("NÃO_CONFIGURADO");
   const [mensagem, setMensagem] = useState("Validando acesso limitado…");
   const [dispositivos, setDispositivos] = useState<MediaDeviceInfo[]>([]);
@@ -192,6 +194,7 @@ export function CapturaMultimodal({ token }: { token: string }) {
         setContexto(recebido);
         const primeira = recebido.configuracoes.find((item) => item.modo !== "NENHUM");
         faseAtual.current = primeira?.fase ?? "";
+        setModoEfetivo(primeira?.modo ?? "NENHUM");
         estadoAtual.current = recebido.estado;
         setFase(primeira?.fase ?? "");
         setEstado(recebido.estado);
@@ -278,47 +281,117 @@ export function CapturaMultimodal({ token }: { token: string }) {
     return () => window.clearInterval(temporizador);
   }, [estado]);
 
-  async function preparar() {
+  async function preparar(modoSolicitado?: Configuracao["modo"]) {
     if (!contexto || !fase) return;
     const configuracao = contexto.configuracoes.find((item) => item.fase === fase);
     if (!configuracao || configuracao.modo === "NENHUM") return;
+    const modalidade = modoSolicitado ?? modoEfetivo ?? configuracao.modo;
+    if (modalidade === "NENHUM") return;
+    const trilhasAdquiridas: MediaStreamTrack[] = [];
     try {
-      await evento("AGUARDANDO_PERMISSÃO", "SOLICITACAO_DE_PERMISSAO");
-      const audio = configuracao.modo.includes("AUDIO");
-      const imagem = configuracao.modo.includes("VIDEO");
-      const media = await navigator.mediaDevices.getUserMedia({
-        audio: audio
-          ? { deviceId: microfone ? { exact: microfone } : undefined }
-          : false,
-        video: imagem
-          ? {
+      await evento("AGUARDANDO_PERMISSÃO", "SOLICITACAO_DE_PERMISSAO", {
+        modalidade
+      });
+      const audio = modalidade.includes("AUDIO");
+      const imagem = modalidade.includes("VIDEO");
+      if (audio) {
+        try {
+          const fluxoDeAudio = await navigator.mediaDevices.getUserMedia({
+            audio: { deviceId: microfone ? { exact: microfone } : undefined },
+            video: false
+          });
+          trilhasAdquiridas.push(...fluxoDeAudio.getAudioTracks());
+        } catch (erro) {
+          throw new Error(`MICROFONE — ${descricaoErro(erro)}`);
+        }
+      }
+      if (imagem) {
+        try {
+          const fluxoDeVideo = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: {
               deviceId: camera ? { exact: camera } : undefined,
               facingMode: camera ? undefined : "user",
               width: { ideal: 1280 },
               height: { ideal: 720 }
             }
-          : false
-      });
+          });
+          trilhasAdquiridas.push(...fluxoDeVideo.getVideoTracks());
+        } catch (erro) {
+          throw new Error(`CÂMERA — ${descricaoErro(erro)}`);
+        }
+      }
+      const media = new MediaStream(trilhasAdquiridas);
       fluxo.current?.getTracks().forEach((trilha) => trilha.stop());
       fluxo.current = media;
       if (video.current) video.current.srcObject = media;
       const encontrados = await navigator.mediaDevices.enumerateDevices();
       setDispositivos(encontrados);
       iniciarMedidor(media);
+      setModoEfetivo(modalidade);
+      await evento("DISPOSITIVO_AUTORIZADO", "DISPOSITIVO_AUTORIZADO", {
+        modalidade,
+        permissao_camera: imagem,
+        permissao_microfone: audio
+      });
       await evento("PRONTO", "PERMISSOES_CONFIRMADAS", {
+        modalidade,
         permissao_camera: imagem,
         permissao_microfone: audio
       });
       setMensagem("Dispositivos prontos. A mídia ainda não está sendo gravada.");
     } catch (erro) {
+      trilhasAdquiridas.forEach((trilha) => trilha.stop());
       setMensagem(descricaoErro(erro));
       try {
-        await evento("FALHA", "PERMISSAO_OU_DISPOSITIVO_INDISPONIVEL", {
+        await evento(
+          "FALHA_TÉCNICA_RECUPERÁVEL",
+          "PERMISSAO_OU_DISPOSITIVO_INDISPONIVEL",
+          {
+          modalidade,
           motivo: descricaoErro(erro)
-        });
+          }
+        );
       } catch {
         // A falha original permanece visível sem mascaramento.
       }
+    }
+  }
+
+  async function continuarSemAudio() {
+    setMensagem("Áudio desativado. Tentando continuar somente com vídeo.");
+    setModoEfetivo("VIDEO");
+    await preparar("VIDEO");
+  }
+
+  async function continuarSemVideo() {
+    setMensagem("Vídeo desativado. Tentando continuar somente com áudio.");
+    setModoEfetivo("AUDIO");
+    await preparar("AUDIO");
+  }
+
+  async function continuarSemMidia() {
+    fluxo.current?.getTracks().forEach((trilha) => trilha.stop());
+    setModoEfetivo("NENHUM");
+    await evento("DESCARTADO", "CONTINUAR_SEM_MIDIA", {
+      modalidade: "NENHUM",
+      motivo:
+        "Fonte de mídia opcional desativada; sessão profissional permanece operacional."
+    });
+    setMensagem(
+      "Mídia opcional desativada. A sessão pode continuar com sensores, eventos e cobertura disponível."
+    );
+  }
+
+  async function trocarDispositivo() {
+    try {
+      const encontrados = await navigator.mediaDevices.enumerateDevices();
+      setDispositivos(encontrados);
+      setMensagem(
+        "Lista de dispositivos atualizada. Selecione outra câmera ou outro microfone e tente novamente."
+      );
+    } catch (erro) {
+      setMensagem(descricaoErro(erro));
     }
   }
 
@@ -468,6 +541,10 @@ export function CapturaMultimodal({ token }: { token: string }) {
   const cameras = dispositivos.filter((item) => item.kind === "videoinput");
   const microfones = dispositivos.filter((item) => item.kind === "audioinput");
   const configuracao = contexto?.configuracoes.find((item) => item.fase === fase);
+  const falhaRecuperavel = [
+    "FALHA",
+    "FALHA_TÉCNICA_RECUPERÁVEL"
+  ].includes(estado);
 
   return (
     <main className="hx-capture">
@@ -494,6 +571,11 @@ export function CapturaMultimodal({ token }: { token: string }) {
         <label>Fase<select value={fase} onChange={(eventoDeSelecao) => {
           faseAtual.current = eventoDeSelecao.target.value;
           setFase(eventoDeSelecao.target.value);
+          setModoEfetivo(
+            contexto?.configuracoes.find(
+              (item) => item.fase === eventoDeSelecao.target.value
+            )?.modo ?? "NENHUM"
+          );
         }} disabled={estado === "GRAVANDO"}>
           {contexto?.configuracoes.filter((item) => item.modo !== "NENHUM").map((item) => <option key={item.fase}>{item.fase}</option>)}
         </select></label>
@@ -514,6 +596,30 @@ export function CapturaMultimodal({ token }: { token: string }) {
           <button onClick={() => void sincronizarPendentes()} disabled={!pendentes}>Sincronizar fila</button>
         </div>
       </section>
+      {falhaRecuperavel ? (
+        <section className="hx-capture__recovery" aria-label="Ações de recuperação">
+          <strong>FALHA TÉCNICA RECUPERÁVEL</strong>
+          <button onClick={() => void preparar(modoEfetivo)}>
+            TENTAR NOVAMENTE
+          </button>
+          {configuracao?.modo === "AUDIO_E_VIDEO" ? (
+            <button onClick={() => void continuarSemAudio()}>
+              CONTINUAR SEM ÁUDIO
+            </button>
+          ) : null}
+          {configuracao?.modo === "AUDIO_E_VIDEO" ? (
+            <button onClick={() => void continuarSemVideo()}>
+              CONTINUAR SEM VÍDEO
+            </button>
+          ) : null}
+          <button onClick={() => void continuarSemMidia()}>
+            CONTINUAR SEM MÍDIA
+          </button>
+          <button onClick={() => void trocarDispositivo()}>
+            TROCAR DISPOSITIVO
+          </button>
+        </section>
+      ) : null}
       <p className="hx-capture__message" role="status">{mensagem}</p>
       <details>
         <summary>Limitações reais do dispositivo</summary>

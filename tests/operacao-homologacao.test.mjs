@@ -29,8 +29,8 @@ test("simulação técnica não produz IIRH, zona ou evidência humana", async (
   for (const content of [route, client]) assert.match(content, /SIMULAÇÃO TÉCNICA — NÃO É RESULTADO HUMANO/);
   assert.match(route, /interpretacao_cientifica_executada: false/);
   assert.match(route, /dados_humanos_reais: false/);
-  assert.match(client, /IIRH.*NÃO CALCULADO/);
-  assert.match(client, /ZONA.*NÃO CALCULADA/);
+  assert.match(client, /NENHUM INDICADOR PROMETIDO/);
+  assert.match(client, /contrato_cientifico/);
 });
 
 test("gráficos e Replay usam registros do núcleo e expõem controles exigidos", async () => {
@@ -58,15 +58,39 @@ test("conclusão formal, relatório PDF e módulo móvel permanecem integrados",
   const client = await source("components/operacao-homologacao.tsx");
   const pdf = await source("app/api/operacao-homologacao/pdf/route.ts");
   const pdfVisual = await source("lib/humanexus-report-pdf.ts");
-  assert.match(route, /execucoes-thx.*concluir/);
-  assert.match(route, /sessoes.*operacoes/);
-  assert.match(client, /Concluir formalmente a sessão/);
+  assert.match(route, /comandos-operacionais/);
+  assert.match(route, /acao-principal/);
+  assert.match(client, /CONCLUIR_SESSAO: "Concluir sessão"/);
   assert.match(client, /ACESSO MÓVEL AUTENTICADO/);
   assert.match(pdf, /gerarPdfVisualHumanexus/);
   assert.match(pdf, /cache-control.*private, no-store/s);
   assert.match(pdfVisual, /graficoFases/);
   assert.match(pdfVisual, /graficoLinha/);
   assert.match(pdfVisual, /Versão clara para impressão A4/);
+});
+
+test("encerramento operacional permanece distinto de completude científica", async () => {
+  const route = await source("app/api/operacao-homologacao/route.ts");
+  const client = await source("components/operacao-homologacao.tsx");
+
+  assert.match(route, /estado_operacional/);
+  assert.match(route, /estado-operacional/);
+  assert.match(route, /comandos-operacionais/);
+  assert.match(client, /ENCERRAMENTO OPERACIONAL ≠ COMPLETUDE CIENTÍFICA/);
+  assert.match(client, /completude_cientifica/);
+});
+
+test("frontend não reconstrói a máquina de estados e exibe uma ação principal", async () => {
+  const route = await source("app/api/operacao-homologacao/route.ts");
+  const client = await source("components/operacao-homologacao.tsx");
+  assert.match(route, /estadoOperacional/);
+  assert.match(route, /chaveDeIdempotencia/);
+  assert.match(route, /ultima_atualizacao/);
+  assert.match(client, /proxima_acao_principal/);
+  assert.match(client, /acoes_secundarias_permitidas/);
+  assert.match(client, /COMANDO CONTEXTUAL/);
+  assert.doesNotMatch(route, /async function assegurarFase/);
+  assert.doesNotMatch(route, /async function preservarSnapshot/);
 });
 
 test("visualizações premium diferenciam dado, simulação, lacuna e bloqueio", async () => {
@@ -76,8 +100,23 @@ test("visualizações premium diferenciam dado, simulação, lacuna e bloqueio",
     assert.match(`${chart}\n${client}`, new RegExp(estado, "i"));
   }
   assert.match(client, /SIMULAÇÃO TÉCNICA — NÃO É RESULTADO HUMANO/);
-  assert.match(client, /NÃO CALCULADO/);
-  assert.match(client, /NÃO CALCULADA/);
+  assert.match(client, /NÃO CALCULÁVEL/);
+  assert.match(client, /NÃO INFERÍVEL/);
+});
+
+test("Cockpit exibe somente indicadores contratados e prontidão acionável", async () => {
+  const route = await source("app/api/operacao-homologacao/route.ts");
+  const client = await source("components/operacao-homologacao.tsx");
+  const pdf = await source("lib/humanexus-report-pdf.ts");
+
+  assert.match(route, /contrato_cientifico/);
+  assert.match(client, /CONTRATO DE ENTREGA CIENTÍFICA DA SESSÃO/);
+  assert.match(client, /contratoCientifico\.indicadores/);
+  assert.match(client, /NÃO PRONTO —/);
+  assert.match(client, /REQUISITO:/);
+  assert.match(client, /AÇÃO:/);
+  assert.match(pdf, /contratoCientifico\.indicadores/);
+  assert.doesNotMatch(client, /rotulo="RMSSD".*NÃO CONECTADO/s);
 });
 
 test("há um único Cockpit com quinze visões internas e contexto persistente", async () => {
@@ -147,7 +186,7 @@ test("produtos científicos e infraestrutura estão integrados sem virar módulo
     "RELATÓRIO E PDF GOVERNADOS", "MODO COLETIVO DO COCKPIT"
   ]) assert.match(client, new RegExp(item));
   assert.match(client, /<details className="hx-technical-details">/);
-  assert.match(client, /Saúde do Bridge, frequência, latência, perda, buffer/);
+  assert.match(client, /Diagnóstico técnico protegido/);
 });
 
 test("Painel de Comando é operacional e não duplica análise científica", async () => {
@@ -160,9 +199,72 @@ test("Painel de Comando é operacional e não duplica análise científica", asy
   assert.doesNotMatch(panel, /function Painel[\\s\\S]*Matriz Vetorial Viva/);
 });
 
-test("encerramento e limitação técnica aparecem uma única vez no Cockpit", async () => {
+test("encerramento e limitação científica permanecem distintos no Cockpit", async () => {
   const client = await source("components/operacao-homologacao.tsx");
-  assert.equal((client.match(/SESSÃO FINALIZADA/g) ?? []).length, 1);
-  assert.equal((client.match(/Esta sessão contém somente dados técnicos de homologação e não produz resultados humanos\./g) ?? []).length, 1);
+  const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  assert.match(operacional, /SESSÃO ENCERRADA/);
+  assert.match(client, /ENCERRAMENTO OPERACIONAL ≠ COMPLETUDE CIENTÍFICA/);
+  assert.match(client, /DADO FÍSICO ≠ RESULTADO CIENTÍFICO AUTOMÁTICO/);
   assert.match(client, /NENHUMA FASE ATIVA/);
+});
+
+test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", async () => {
+  const client = await source("components/operacao-homologacao.tsx");
+  const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  for (const item of [
+    "MODO OPERACIONAL AO VIVO",
+    "Inspeção TIRH",
+    "FASE",
+    "TEMPO DA FASE",
+    "TEMPO TOTAL",
+    "THX",
+    "HR",
+    "RMSSD",
+    "SINAL ELETROENCEFALOGRÁFICO",
+    "POLAR",
+    "QUALIDADE",
+    "COBERTURA",
+    "SESSÃO"
+  ]) assert.match(`${client}\n${operacional}`, new RegExp(item));
+  assert.match(operacional, /acaoPrincipal/);
+  assert.match(operacional, /Comandos fornecidos exclusivamente pelo estado operacional do backend/);
+  assert.match(client, /proxima_acao_principal/);
+});
+
+test("telemetria real é contínua, histórica quando encerrada e não cria simulação", async () => {
+  const client = await source("components/operacao-homologacao.tsx");
+  const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  const rota = await source("app/api/operacao-homologacao/route.ts");
+  assert.match(rota, /cockpit-operacional/);
+  assert.match(rota, /telemetria\/sessoes\/.*limite=1200/);
+  assert.match(rota, /eventos\?limite=240/);
+  assert.match(rota, /linhas-temporais\/.*limite=1200/);
+  assert.match(operacional, /REPLAY HISTÓRICO/);
+  assert.match(operacional, /MODO OPERACIONAL — REPLAY HISTÓRICO/);
+  assert.match(operacional, /referenciaDeBaseline/);
+  assert.match(operacional, /showTechnicalLegend=\{false\}/);
+  assert.match(operacional, /Dados físicos históricos · sem transmissão atual/);
+  for (const item of [
+    "Foco e atenção", "Engajamento", "Interesse", "Excitação", "Estresse", "Relaxamento"
+  ]) assert.match(operacional, new RegExp(item));
+  assert.doesNotMatch(operacional, /theta|alpha|betaL|betaH|gamma|fluxos_ativos|metricas_cortex_autorizadas/i);
+  assert.match(operacional, /REPRODUÇÃO HISTÓRICA DE SESSÃO CIENTIFICAMENTE INCOMPLETA/);
+  assert.match(client, /window\.setInterval/);
+  assert.doesNotMatch(rota, /gerarTelemetriaTecnica|BRIDGE_TESTE/);
+  assert.doesNotMatch(client, /comandos\.telemetria/);
+});
+
+test("registro profissional rápido herda o contexto e Replay segue sem mídia", async () => {
+  const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  const rota = await source("app/api/operacao-homologacao/route.ts");
+  for (const categoria of [
+    "EVENTO",
+    "INTERVENCAO",
+    "RESPOSTA",
+    "OBSERVACAO",
+    "DECISAO_PROFISSIONAL"
+  ]) assert.match(`${operacional}\n${rota}`, new RegExp(categoria));
+  assert.match(rota, /REGISTRO_PROFISSIONAL_RAPIDO/);
+  assert.match(operacional, /A ausência de mídia|NÃO É FALHA/);
+  assert.match(operacional, /REPLAY SINCRONIZANDO/);
 });

@@ -72,12 +72,36 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
   const organizacaoId = String(organizacao?.identificador ?? "");
   if (!organizacaoId) throw new Error("Nenhuma organização autorizada está disponível para o contexto.");
   const participantes = await consultar<Registro[]>(`/api/v1/organizacoes/${encodeURIComponent(organizacaoId)}/participantes`, token);
-  const participante = participantes.find(
+  const participanteSolicitado = participantes.find(
     (item) => item.identificador === selecao.identificador_do_participante
-  ) ?? encontrar(participantes, "PARTICIPANTE FICTÍCIO") ?? participantes[0];
-  if (!participante) throw new Error("Nenhum participante autorizado está disponível para o contexto.");
+  );
+  const candidatos = participanteSolicitado
+    ? [participanteSolicitado]
+    : [
+        encontrar(participantes, "PARTICIPANTE FICTÍCIO"),
+        ...participantes
+      ].filter(
+        (item, indice, itens): item is Registro =>
+          Boolean(item)
+          && itens.findIndex(
+            (candidato) => candidato?.identificador === item?.identificador
+          ) === indice
+      );
+  let participante: Registro | undefined;
+  let sessoes: Registro[] = [];
+  for (const candidato of candidatos) {
+    const candidatas = await consultar<Registro[]>(
+      `/api/v1/participantes/${encodeURIComponent(String(candidato.identificador))}/sessoes`,
+      token
+    );
+    if (candidatas.length) {
+      participante = candidato;
+      sessoes = candidatas;
+      break;
+    }
+  }
+  if (!participante) throw new Error("Nenhuma sessão autorizada está disponível para os participantes.");
   const participanteId = String(participante.identificador);
-  const sessoes = await consultar<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/sessoes`, token);
   const sessao = sessoes.find(
     (item) => item.identificador === selecao.identificador_da_sessao
   ) ?? sessoes[0];
@@ -114,7 +138,10 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
     evidenciasAnamnese,
     evidenciasAnamneseNoEscopo,
     sessaoOperacional,
-    gravacao
+    gravacao,
+    configuracaoCortex,
+    estadoOperacional,
+    cockpitOperacional
   ] = await Promise.all([
     consultar<Registro[]>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/fases`, token),
     consultar<Registro[]>("/api/v1/ctrs", token),
@@ -122,8 +149,8 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
     consultar<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/execucoes-thx`, token),
     consultar<Registro[]>(`/api/v1/conectores?identificador_da_sessao=${encodeURIComponent(sessaoId)}`, token),
     consultar<Registro[]>("/api/v1/fontes-telemetria", token),
-    consultar<Registro[]>(`/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}`, token),
-    consultar<Registro[]>(`/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}/eventos`, token),
+    consultar<Registro[]>(`/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}?limite=1200`, token),
+    consultar<Registro[]>(`/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}/eventos?limite=240`, token),
     consultar<Registro[]>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/linhas-temporais`, token),
     consultar<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/relatorios`, token),
     consultar<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/formulacoes`, token),
@@ -148,7 +175,20 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
     consultarSeDisponivel<Registro>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/operacoes`, token, {}),
     consultarSeDisponivel<Registro>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/gravacao`, token, {
       configuracoes: [], dispositivos: [], segmentos: [], eventos: [], diagnostico: {}
-    })
+    }),
+    consultarSeDisponivel<Registro>(
+      "/api/v1/pontes-fisicas/cortex/configuracao-local",
+      token,
+      { permitido: false, configurado: false, segredo_retornado: false }
+    ),
+    consultar<Registro>(
+      `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/estado-operacional`,
+      token
+    ),
+    consultar<Registro>(
+      `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional`,
+      token
+    )
   ]);
   const ctr = ctrs.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
   const execucao = execucoes.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
@@ -156,6 +196,9 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
     consultarSeDisponivel<Registro[]>("/api/v1/usuarios", token, []),
     consultarSeDisponivel<Registro[]>("/api/v1/ctr-thx/vinculos-validados-operacionais", token, [])
   ]);
+  const nomeDoParticipante = anamneses
+    .map((item) => item.nome_do_participante)
+    .find((item) => typeof item === "string" && item.trim());
   const detalhesOperacionais = registro(sessaoOperacional.detalhes);
   const relatoriosDaSessao = relatorios.filter(
     (item) => registro(item.contexto_json).sessao === sessaoId
@@ -188,7 +231,7 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
     execucao ? consultar<Registro>(`/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/ciclo`, token) : null,
     execucao ? consultar<Registro[]>(`/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/ciclo/eventos`, token) : [],
     execucao ? consultar<Registro>(`/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/historico`, token) : null,
-    linhas.length ? consultar<Registro>(`/api/v1/linhas-temporais/${encodeURIComponent(String(linhas.at(-1)?.identificador))}`, token) : null,
+    linhas.length ? consultar<Registro>(`/api/v1/linhas-temporais/${encodeURIComponent(String(linhas.at(-1)?.identificador))}?limite=1200`, token) : null,
     Promise.all(conectores.map(async (conector) => ({
       identificador: conector.identificador,
       eventos: await consultar<Registro[]>(`/api/v1/conectores/${encodeURIComponent(String(conector.identificador))}/historico`, token)
@@ -207,8 +250,16 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
     aviso: MARCACAO,
     usuario,
     organizacao,
-    participante,
+    participante: {
+      ...participante,
+      nome: nomeDoParticipante ?? participante.referencia_externa
+    } as Registro,
     sessao,
+    estado_operacional: estadoOperacional,
+    cockpit_operacional: cockpitOperacional,
+    contrato_cientifico: registro(
+      estadoOperacional.contrato_cientifico
+    ),
     sessao_operacional: sessaoOperacional,
     contextos: {
       organizacoes: organizacoes.map((item) => ({
@@ -219,6 +270,9 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
       participantes: participantes.map((item) => ({
         identificador: item.identificador,
         referencia_externa: item.referencia_externa,
+        rotulo: item.identificador === participanteId
+          ? nomeDoParticipante ?? item.referencia_externa
+          : item.referencia_externa,
         ativo: Boolean(item.ativo)
       })),
       sessoes: sessoes.map((item) => ({
@@ -281,6 +335,7 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
     linhas,
     replay,
     gravacao,
+    configuracao_cortex: configuracaoCortex,
     rastreabilidade,
     relatorios: relatoriosDaSessao.map((item) => ({
       identificador: item.identificador,
@@ -313,7 +368,11 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
     },
     governanca: {
       interpretacao_cientifica_executada: false,
-      dados_humanos_reais: false,
+      dados_fisicos_reais_preservados: Array.isArray(cockpitOperacional.fontes)
+        && (cockpitOperacional.fontes as Registro[]).some(
+          (fonte) => Number(registro(fonte.metricas).amostras ?? 0) > 0
+        ),
+      dados_fisicos_convertidos_automaticamente_em_evidencia: false,
       iirh_oficial: null,
       zona_oficial: null
     }
@@ -324,11 +383,17 @@ export async function GET(request: Request) {
   try {
     const { token } = await tokenAtual();
     const url = new URL(request.url);
-    return NextResponse.json(await estado(token, {
-      identificador_da_organizacao: url.searchParams.get("organizacao") ?? undefined,
-      identificador_do_participante: url.searchParams.get("participante") ?? undefined,
-      identificador_da_sessao: url.searchParams.get("sessao") ?? undefined
-    }));
+    return NextResponse.json(
+      await estado(token, {
+        identificador_da_organizacao:
+          url.searchParams.get("organizacao") ?? undefined,
+        identificador_do_participante:
+          url.searchParams.get("participante") ?? undefined,
+        identificador_da_sessao:
+          url.searchParams.get("sessao") ?? undefined
+      }),
+      { headers: { "cache-control": "private, no-store" } }
+    );
   } catch (erro) {
     return NextResponse.json({ erro: { mensagem: erro instanceof Error ? erro.message : "Consulta operacional indisponível." } }, { status: 403 });
   }
@@ -351,85 +416,6 @@ async function registrarEvento(token: string, contexto: Contexto, dados: Registr
   });
 }
 
-async function preservarSnapshot(token: string, contexto: Contexto, momento: "PRE" | "TREINO" | "POS") {
-  const execucao = contexto.execucao;
-  const fase = contexto.fases.find((item) => item.fase === momento);
-  const momentos = Array.isArray(contexto.ciclo?.momentos) ? contexto.ciclo.momentos as Registro[] : [];
-  if (momentos.some((item) => item.momento === momento)) return;
-  if (!execucao || !fase) throw new Error("Execução ou fase de homologação indisponível.");
-  const fim = new Date();
-  const inicio = new Date(fim.getTime() - 60_000);
-  await consultar(`/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/ciclo/momentos`, token, {
-    method: "POST",
-    body: JSON.stringify({
-      identificador_da_fase: fase.identificador,
-      momento,
-      coletado_em: fim.toISOString(),
-      inicio_da_janela: inicio.toISOString(),
-      fim_da_janela: fim.toISOString(),
-      cobertura: null,
-      confiabilidade: null,
-      identificadores_das_evidencias: [],
-      sensores_utilizados: [],
-      identificadores_dos_calculos: [],
-      contexto: { marcacao: MARCACAO, dados_humanos_reais: false },
-      ausencias: [
-        "DADOS_HUMANOS_AUSENTES_NESTA_HOMOLOGACAO_OPERACIONAL",
-        "SENSORES_NAO_UTILIZADOS",
-        "IIRH_ZONA_RESULTANTE_E_TRAJETORIA_NAO_CALCULADOS"
-      ]
-    })
-  });
-}
-
-async function assegurarFase(token: string, contexto: Contexto, momento: "PRE" | "TREINO" | "POS") {
-  const existente = contexto.fases.find((item) => item.fase === momento);
-  if (existente) return existente;
-  return consultar<Registro>(`/api/v1/sessoes/${encodeURIComponent(String(contexto.sessao.identificador))}/fases`, token, {
-    method: "POST",
-    body: JSON.stringify({ fase: momento })
-  });
-}
-
-function hashPayload(payload: Registro) {
-  return createHash("sha256").update(JSON.stringify(payload, Object.keys(payload).sort())).digest("hex");
-}
-
-async function gerarTelemetriaTecnica(token: string, contexto: Contexto) {
-  const fonte = contexto.fontes[0];
-  const segredo = process.env.HXP_HOMOLOGACAO_TELEMETRIA_SEGREDO;
-  if (!fonte || !segredo) throw new Error("Fonte ou segredo local de telemetria de homologação indisponível.");
-  if (contexto.telemetria.length) return;
-  const sessaoId = String(contexto.sessao.identificador);
-  const base = Date.now() - 12_000;
-  const sequencias = [1, 2, 4, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
-  const pacotes = sequencias.map((sequencia, indice) => {
-    const payload = { amostra_tecnica: indice + 1, buffer: (indice * 3) % 11, dados_humanos_reais: false };
-    return {
-      identificador_da_sessao: sessaoId,
-      identificador_da_fonte: fonte.identificador,
-      tipo: "TECNICO",
-      canal: "BRIDGE_TESTE",
-      versao: "1.0",
-      timestamp_de_origem: new Date(base + indice * 500).toISOString(),
-      sequencia,
-      unidade: "pacote",
-      qualidade: 1,
-      integridade: hashPayload(payload),
-      payload,
-      metadados: { marcacao: MARCACAO }
-    };
-  });
-  await consultar("/api/v1/telemetria/pacotes", token, {
-    method: "POST",
-    body: JSON.stringify({ identificador_da_fonte: fonte.identificador, segredo_da_fonte: segredo, pacotes })
-  });
-  await consultar("/api/v1/telemetria/pacotes", token, {
-    method: "POST",
-    body: JSON.stringify({ identificador_da_fonte: fonte.identificador, segredo_da_fonte: segredo, pacotes: [pacotes[4]] })
-  });
-}
-
 async function gerarRelatorio(token: string, contexto: Contexto) {
   if (contexto.relatorios.length) return;
   await consultar(`/api/v1/participantes/${encodeURIComponent(String(contexto.participante.identificador))}/relatorios`, token, {
@@ -442,7 +428,12 @@ async function gerarRelatorio(token: string, contexto: Contexto) {
       contexto: {
         sessao: contexto.sessao.identificador,
         natureza: MARCACAO,
-        fases: "PRE, TREINO e POS"
+        fases: "PRE, TREINO e POS",
+        referencia_de_baseline: contexto.gravacao?.baseline ?? {
+          referencia: {
+            estado: "SESSÃO SEM REFERÊNCIA DE BASELINE"
+          }
+        }
       },
       qualidade_dos_dados: {
         cobertura: "registrada separadamente por fase",
@@ -473,6 +464,12 @@ export async function POST(request: Request) {
       identificador_da_organizacao?: string;
       identificador_do_participante?: string;
       identificador_da_sessao?: string;
+      comando?: string;
+      justificativa?: string;
+      categoria?: string;
+      texto?: string;
+      client_id?: string;
+      client_secret?: string;
     };
     const selecao = {
       identificador_da_organizacao: corpo.identificador_da_organizacao,
@@ -480,33 +477,85 @@ export async function POST(request: Request) {
       identificador_da_sessao: corpo.identificador_da_sessao
     };
     const contexto = await estado(token, selecao);
-    if (corpo.acao === "iniciar-execucao") {
-      if (!contexto.execucao) throw new Error("Execução técnica não localizada.");
-      if (contexto.execucao.estado === "AUTORIZADA") {
-        await consultar(`/api/v1/execucoes-thx/${encodeURIComponent(String(contexto.execucao.identificador))}/iniciar`, token, { method: "POST", body: JSON.stringify({}) });
-      }
+    if (corpo.acao === "configurar-cortex") {
+      await consultar("/api/v1/pontes-fisicas/cortex/configuracao-local", token, {
+        method: "POST",
+        body: JSON.stringify({
+          client_id: corpo.client_id,
+          client_secret: corpo.client_secret
+        })
+      });
     } else if (corpo.acao === "evento") {
       await registrarEvento(token, contexto, { momento: corpo.momento, tipo: "MARCADOR", dados: { tipo: "MARCADOR_PROFISSIONAL" } });
     } else if (corpo.acao === "intervencao") {
       await registrarEvento(token, contexto, { momento: "TREINO", tipo: "MARCADOR", dados: { tipo: "INTERVENCAO_PROFISSIONAL", intervencao: true } });
-    } else if (corpo.acao === "fase") {
-      const mapa: Record<string, string> = { iniciar: "INICIO", pausar: "PAUSA", retomar: "RETOMADA", encerrar: "ENCERRAMENTO" };
-      if (!corpo.momento || !mapa[String(corpo.conector)]) throw new Error("Comando de fase inválido.");
-      if (corpo.conector === "iniciar") await assegurarFase(token, contexto, corpo.momento);
-      const atualizado = await estado(token, selecao);
-      const jaExiste = atualizado.eventos.some((item) => item.momento === corpo.momento && item.tipo === mapa[String(corpo.conector)]);
-      if (!jaExiste) await registrarEvento(token, atualizado, { momento: corpo.momento, tipo: mapa[String(corpo.conector)] });
-      if (corpo.conector === "encerrar") await preservarSnapshot(token, await estado(token, selecao), corpo.momento);
-    } else if (corpo.acao === "concluir-execucao-thx") {
-      if (contexto.execucao?.estado !== "INICIADA") throw new Error("Execução THX não está iniciada.");
-      await consultar(`/api/v1/execucoes-thx/${encodeURIComponent(String(contexto.execucao.identificador))}/concluir`, token, {
-        method: "POST",
-        body: JSON.stringify({
-          etapas: ["TREINO_OPERACIONAL_CONCLUIDO"],
-          resposta_observada: null,
-          justificativa: "Conclusão operacional sem dado humano, sem eficácia e sem produto científico."
-        })
+    } else if (corpo.acao === "registro-profissional") {
+      const estadoCanonico = registro(contexto.estado_operacional);
+      const momento = String(estadoCanonico.fase_cientifica_atual ?? "");
+      const categoria = String(corpo.categoria ?? "").trim().toUpperCase();
+      const texto = String(corpo.texto ?? "").trim();
+      const categoriasPermitidas = new Set([
+        "EVENTO",
+        "INTERVENCAO",
+        "RESPOSTA",
+        "OBSERVACAO",
+        "DECISAO_PROFISSIONAL"
+      ]);
+      if (!["PRE", "TREINO", "POS"].includes(momento)) {
+        throw new Error("Registro profissional exige uma fase científica ativa.");
+      }
+      if (!categoriasPermitidas.has(categoria) || !texto || texto.length > 500) {
+        throw new Error("Registro profissional inválido.");
+      }
+      await registrarEvento(token, contexto, {
+        momento,
+        tipo: "MARCADOR",
+        dados: {
+          tipo: categoria,
+          texto,
+          origem: "REGISTRO_PROFISSIONAL_RAPIDO",
+          participante: contexto.participante.identificador,
+          organizacao: contexto.organizacao.identificador,
+          sessao: contexto.sessao.identificador,
+          fase: momento,
+          protocolo: contexto.ctr_individual?.codigo,
+          thx: contexto.thx_individual?.codigo,
+          fontes: contexto.cockpit_operacional?.fontes,
+          cobertura: registro(contexto.estado_operacional).cobertura
+        }
       });
+    } else if (
+      corpo.acao === "acao-operacional"
+      || corpo.acao === "acao-principal"
+    ) {
+      const comando = String(
+        corpo.comando
+        ?? registro(contexto.estado_operacional).proxima_acao_principal
+        ?? ""
+      ).toUpperCase();
+      if (!comando) {
+        throw new Error("O estado canônico não possui ação operacional disponível.");
+      }
+      const estadoCanonico = registro(contexto.estado_operacional);
+      const chaveDeIdempotencia = createHash("sha256")
+        .update([
+          String(contexto.sessao.identificador),
+          comando,
+          String(estadoCanonico.ultima_atualizacao ?? "SEM_ATUALIZACAO")
+        ].join("|"))
+        .digest("hex");
+      await consultar(
+        `/api/v1/sessoes/${encodeURIComponent(String(contexto.sessao.identificador))}/comandos-operacionais`,
+        token,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            comando,
+            chave_de_idempotencia: chaveDeIdempotencia,
+            justificativa: corpo.justificativa
+          })
+        }
+      );
     } else if (corpo.acao === "desconectar" || corpo.acao === "reconectar") {
       const conector = contexto.conectores[0];
       if (!conector) throw new Error("Conector técnico não localizado.");
@@ -518,8 +567,6 @@ export async function POST(request: Request) {
       if (!contexto.ciclo?.comparacao) {
         await consultar(`/api/v1/execucoes-thx/${encodeURIComponent(String(contexto.execucao.identificador))}/ciclo/comparar`, token, { method: "POST", body: JSON.stringify({}) });
       }
-    } else if (corpo.acao === "telemetria") {
-      await gerarTelemetriaTecnica(token, contexto);
     } else if (corpo.acao === "replay") {
       await consultar(`/api/v1/sessoes/${encodeURIComponent(String(contexto.sessao.identificador))}/linha-temporal`, token, { method: "POST", body: JSON.stringify({}) });
     } else if (corpo.acao === "exportar-replay") {
@@ -544,24 +591,15 @@ export async function POST(request: Request) {
           finalidade: "RELATORIO_AUTORIZADO"
         })
       });
-    } else if (corpo.acao === "concluir") {
-      const momentos = Array.isArray(contexto.ciclo?.momentos) ? contexto.ciclo.momentos as Registro[] : [];
-      if (!["PRE", "TREINO", "POS"].every((momento) => momentos.some((item) => item.momento === momento))) {
-        throw new Error("A conclusão exige snapshots preservados de PRÉ, TREINO e PÓS.");
-      }
-      if (contexto.execucao?.estado !== "CONCLUIDA") {
-        throw new Error("A sessão exige conclusão operacional prévia da execução THX.");
-      }
-      await consultar(`/api/v1/sessoes/${encodeURIComponent(String(contexto.sessao.identificador))}/operacoes`, token, {
-        method: "POST",
-        body: JSON.stringify({ acao: "ENCERRAR", justificativa: "Homologação operacional concluída sem dados humanos reais." })
-      });
     } else if (corpo.acao === "relatorio") {
       await gerarRelatorio(token, contexto);
     } else {
       throw new Error("Ação operacional inválida.");
     }
-    return NextResponse.json(await estado(token, selecao));
+    return NextResponse.json(
+      await estado(token, selecao),
+      { headers: { "cache-control": "private, no-store" } }
+    );
   } catch (erro) {
     return NextResponse.json({ erro: { mensagem: erro instanceof Error ? erro.message : "Comando operacional recusado." } }, { status: 400 });
   }

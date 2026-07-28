@@ -16,6 +16,7 @@ import {
 } from "@/components/hx-command-visualizations";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multimodal";
+import { CockpitOperacionalVivo } from "@/components/cockpit-operacional-vivo";
 
 type Registro = Record<string, unknown>;
 type Estado = {
@@ -24,6 +25,9 @@ type Estado = {
   organizacao: Registro;
   participante: Registro;
   sessao: Registro;
+  estado_operacional: Registro;
+  cockpit_operacional: Registro;
+  contrato_cientifico: Registro;
   fases: Registro[];
   ctr_individual: (Registro & { criterios?: Registro[] }) | null;
   thx_individual: Registro | null;
@@ -37,7 +41,16 @@ type Estado = {
   eventos_tecnicos: Registro[];
   linhas: Registro[];
   replay: (Registro & { linha?: Registro; itens?: Registro[] }) | null;
+  configuracao_cortex: Registro;
   gravacao: {
+    baseline?: {
+      registro?: Registro | null;
+      fluxo_cientifico?: string[];
+      referencia?: {
+        estado?: string;
+        pode_iniciar_pre?: boolean;
+      };
+    };
     configuracoes: Registro[];
     dispositivos: Registro[];
     segmentos: Registro[];
@@ -171,12 +184,48 @@ function dataLegivel(valor: unknown) {
 }
 
 function faseAtual(estado: Estado | null) {
-  if (estado?.sessao.estado === "FINALIZADA") return "NENHUMA FASE ATIVA";
-  const atual = [...(estado?.eventos ?? [])]
-    .reverse()
-    .find((evento) => !["ENCERRAMENTO", "INTERRUPCAO", "INVALIDACAO"].includes(String(evento.tipo)));
-  return texto(atual?.momento, "AGUARDANDO PRÉ");
+  const canonico = objeto(estado?.estado_operacional);
+  if (canonico.fase_cientifica_atual) {
+    return texto(canonico.fase_cientifica_atual);
+  }
+  if (canonico.estado_da_sessao === "FINALIZADA") {
+    return "NENHUMA FASE ATIVA";
+  }
+  return "NENHUMA FASE ATIVA";
 }
+
+function comandoPermitido(estado: Estado, comando: string) {
+  const canonico = objeto(estado.estado_operacional);
+  const secundarias = Array.isArray(canonico.acoes_secundarias_permitidas)
+    ? canonico.acoes_secundarias_permitidas.map(String)
+    : [];
+  return canonico.proxima_acao_principal === comando
+    || secundarias.includes(comando);
+}
+
+const ROTULOS_DOS_COMANDOS: Record<string, string> = {
+  PREPARAR_SESSAO: "Preparar sessão",
+  DEFINIR_REFERENCIA_BASELINE: "Definir referência de baseline",
+  INICIAR_PRE: "Iniciar PRÉ",
+  PAUSAR_PRE: "Pausar PRÉ",
+  RETOMAR_PRE: "Retomar PRÉ",
+  ENCERRAR_PRE: "Encerrar PRÉ",
+  INICIAR_TREINO: "Iniciar TREINO",
+  PAUSAR_TREINO: "Pausar TREINO",
+  RETOMAR_TREINO: "Retomar TREINO",
+  ENCERRAR_TREINO: "Encerrar TREINO",
+  INICIAR_POS: "Iniciar PÓS",
+  PAUSAR_POS: "Pausar PÓS",
+  RETOMAR_POS: "Retomar PÓS",
+  ENCERRAR_POS: "Encerrar PÓS",
+  CONCLUIR_SESSAO: "Concluir sessão",
+  ENCERRAR_TECNICAMENTE_POR_INCIDENTE:
+    "Encerrar tecnicamente por incidente",
+  REGISTRAR_EVENTO: "Registrar evento",
+  REGISTRAR_INTERVENCAO: "Registrar intervenção",
+  ABRIR_REPLAY: "Abrir Replay",
+  GERAR_RELATORIO: "Gerar relatório"
+};
 
 function Botao({
   onClick,
@@ -215,8 +264,27 @@ function Metadado({
   return <div className="hx-hud-cell"><small>{rotulo}</small><strong>{valor}</strong><span>{situacao}</span><em>{fonte}</em></div>;
 }
 
-function AvisoTecnico() {
-  return <div className="hx-op-hud__warning"><span>Esta sessão contém somente dados técnicos de homologação e não produz resultados humanos.</span><b>{AVISO}</b></div>;
+function AvisoTecnico({ estado }: { estado?: Estado }) {
+  const fontes = Array.isArray(estado?.cockpit_operacional?.fontes)
+    ? estado?.cockpit_operacional?.fontes as Registro[]
+    : [];
+  const possuiDadosFisicos = fontes.some(
+    (fonte) => Number(objeto(fonte.metricas).amostras ?? 0) > 0
+  );
+  return (
+    <div className="hx-op-hud__warning">
+      <span>
+        {possuiDadosFisicos
+          ? "Dados físicos preservados permanecem separados de interpretação e validação científica."
+          : "Esta sessão não possui sinal físico atual e não produz resultados humanos automaticamente."}
+      </span>
+      <b>
+        {possuiDadosFisicos
+          ? "DADO FÍSICO ≠ RESULTADO CIENTÍFICO AUTOMÁTICO"
+          : AVISO}
+      </b>
+    </div>
+  );
 }
 
 function telemetriaOrdenada(telemetria: Registro[]) {
@@ -227,12 +295,17 @@ function telemetriaOrdenada(telemetria: Registro[]) {
 }
 
 function pontoTecnico(item: Registro, valor: number | null, rotulo: string): HxDataPoint {
+  const dispositivo = String(item.tipo_de_dispositivo ?? "");
   return {
     time: instante(item.timestamp_de_origem),
     value: valor,
     label: rotulo,
-    phase: "SIMULAÇÃO TÉCNICA",
-    source: texto(item.canal, "BRIDGE"),
+    phase: texto(item.momento, "DADO TÉCNICO"),
+    source: dispositivo.includes("EMOTIV")
+      ? "EPOC X"
+      : dispositivo.includes("POLAR")
+        ? "Polar H10"
+        : "Ponte de telemetria",
     quality: Number(item.qualidade ?? 0),
     coverage: null,
     connection: Number(item.perda_detectada ?? 0) > 0
@@ -451,18 +524,42 @@ function Rastreabilidade({ estado }: { estado: Estado }) {
 
 function Hud({ estado }: { estado: Estado }) {
   const fase = faseAtual(estado);
+  const contrato = objeto(estado.contrato_cientifico);
+  const indicadores = Array.isArray(contrato.indicadores)
+    ? contrato.indicadores as Registro[]
+    : [];
   return (
     <section className="hx-op-hud">
       <div className="hx-op-hud__grid">
-        <Metadado rotulo="IIRH" valor="NÃO CALCULADO" situacao="BLOQUEADO" fonte="Sem evidência humana" />
-        <Metadado rotulo="ZONA" valor="NÃO CALCULADA" situacao="BLOQUEADA" fonte="Sem IIRH oficial" />
+        {indicadores.map((indicador) => {
+          const valor = objeto(indicador.valor);
+          return (
+            <Metadado
+              key={texto(indicador.identificador ?? indicador.codigo)}
+              rotulo={texto(indicador.nome ?? indicador.codigo)}
+              valor={valor.valor == null
+                ? texto(indicador.estado, "PREPARANDO")
+                : texto(valor.valor)}
+              situacao={texto(
+                indicador.validado_profissionalmente
+                  ? "VALIDADO PROFISSIONALMENTE"
+                  : indicador.estado
+              )}
+              fonte={`Contrato científico ${texto(contrato.versao_do_catalogo)}`}
+            />
+          );
+        })}
+        {!indicadores.length ? (
+          <Metadado
+            rotulo="CONTRATO CIENTÍFICO"
+            valor="NÃO GERADO"
+            situacao="NENHUM INDICADOR PROMETIDO"
+            fonte="A sessão histórica permanece cientificamente incompleta"
+          />
+        ) : null}
         <Metadado rotulo="THX" valor={texto(estado.thx_individual?.codigo)} situacao={texto(estado.execucao?.estado)} fonte="Execução individual" />
         <Metadado rotulo="FASE" valor={fase} situacao={texto(estado.sessao.estado)} fonte="Eventos da sessão" />
         <Metadado rotulo="TEMPO" valor={estado.execucao?.iniciado_em ? dataLegivel(estado.execucao.iniciado_em) : "NÃO INICIADO"} situacao="HORÁRIO LOCAL" fonte="Auditoria UTC preservada" />
-        <Metadado rotulo="HR" valor="NÃO CONECTADO" situacao="SEM VALOR" fonte="Polar / cardíaco" />
-        <Metadado rotulo="RMSSD" valor="NÃO CONECTADO" situacao="SEM VALOR" fonte="Polar / cardíaco" />
-        <Metadado rotulo="EEG" valor="NÃO CONECTADO" situacao="SEM VALOR" fonte="Headset EEG" />
-        <Metadado rotulo="POLAR" valor="NÃO CONECTADO" situacao="HARDWARE AUSENTE" fonte="Conector real" />
       </div>
     </section>
   );
@@ -472,7 +569,7 @@ function Contexto({ estado }: { estado: Estado }) {
   return (
     <section className="hx-op-context">
       <div><small>ORGANIZAÇÃO</small><strong>{texto(estado.organizacao.nome)}</strong></div>
-      <div><small>PARTICIPANTE</small><strong>{texto(estado.participante.referencia_externa)}</strong></div>
+      <div><small>PARTICIPANTE</small><strong>{texto(estado.participante.nome ?? estado.participante.referencia_externa)}</strong></div>
       <div><small>SESSÃO</small><strong>{texto(estado.sessao.estado)}</strong><span>{dataLegivel(estado.sessao.finalizado_em ?? estado.sessao.iniciado_em)}</span></div>
       <div><small>CTR INDIVIDUAL</small><strong>{texto(estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador)}</strong><span>{texto(estado.ctr_individual?.nome)} · {texto(estado.ctr_individual?.situacao)}</span></div>
       <div><small>THX INDIVIDUAL</small><strong>{texto(estado.thx_individual?.codigo)}</strong><span>{texto(estado.execucao?.estado)}</span></div>
@@ -586,14 +683,12 @@ function ContextoPersistente({ estado, visao }: { estado: Estado; visao: VisaoCo
   return (
     <>
       <section className="hx-cockpit-context" aria-label="Contexto preservado do Cockpit">
+        <div><small>Participante</small><strong>{texto(estado.participante.nome ?? estado.participante.referencia_externa)}</strong></div>
         <div><small>Organização</small><strong>{texto(estado.organizacao.nome)}</strong></div>
-        <div><small>Participante</small><strong>{texto(estado.participante.referencia_externa)}</strong></div>
-        <div><small>Profissional</small><strong>{texto(estado.contextos.profissionais[0]?.nome ?? estado.usuario.nome)}</strong></div>
         <div><small>Sessão</small><strong>{texto(estado.sessao.identificador)}</strong></div>
-        <div><small>Contexto</small><strong>Homologação técnica isolada</strong></div>
-        <div><small>CTR</small><strong>{texto(estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador)}</strong></div>
-        <div><small>THX</small><strong>{texto(estado.thx_individual?.codigo)}</strong></div>
+        <div><small>CTR / THX</small><strong>{texto(estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador)} · {texto(estado.thx_individual?.codigo)}</strong></div>
         <div><small>Fase atual</small><strong>{faseAtual(estado)}</strong></div>
+        <div><small>Próxima ação</small><strong>{texto(objeto(estado.estado_operacional).proxima_acao_principal, "SEM AÇÃO PENDENTE")}</strong></div>
         <div><small>Versão científica</small><strong>{texto(valorDoRegistro(estado.ciencia.versao, "code", "codigo"))}</strong></div>
         <div><small>Visão interna</small><strong>{VISOES_COCKPIT.find((item) => item.id === visao)?.nome}</strong></div>
       </section>
@@ -653,7 +748,7 @@ function SeletorDeContexto({
           >
             {estado.contextos.participantes.map((item) => (
               <option key={String(item.identificador)} value={String(item.identificador)}>
-                {texto(item.referencia_externa)}
+                {texto(item.rotulo ?? item.referencia_externa)}
               </option>
             ))}
           </select>
@@ -718,6 +813,23 @@ function TituloDaVisao({ kicker, titulo, descricao }: { kicker: string; titulo: 
       <h2>{titulo}</h2>
       <span>{descricao}</span>
     </header>
+  );
+}
+
+function ReferenciaBaselineResumo({ estado }: { estado: Estado }) {
+  const referencia = estado.gravacao?.baseline?.referencia;
+  const registro = estado.gravacao?.baseline?.registro;
+  return (
+    <div className="hx-limit-consolidated">
+      <strong>REFERÊNCIA DE BASELINE · REGISTRO OPERACIONAL SEPARADO</strong>
+      <span>
+        {texto(referencia?.estado, "AGUARDANDO DECISÃO PROFISSIONAL")}
+        {registro?.finalizado_em
+          ? ` · encerrado em ${dataLegivel(registro.finalizado_em)}`
+          : ""}
+        {" · "}fluxo científico padrão: PRÉ → TREINO → PÓS.
+      </span>
+    </div>
   );
 }
 
@@ -1002,6 +1114,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const [vetorSelecionado, setVetorSelecionado] = useState<string | null>(null);
   const [painelTecnico, setPainelTecnico] = useState("fontes");
   const [selecaoInicial, setSelecaoInicial] = useState<Record<string, string>>({});
+  const [cortexClientId, setCortexClientId] = useState("");
+  const [cortexClientSecret, setCortexClientSecret] = useState("");
 
   useEffect(() => {
     const parametros = new URLSearchParams(window.location.search);
@@ -1050,6 +1164,56 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     url.searchParams.set("sessao", atual.sessao);
     window.history.replaceState(window.history.state, "", url);
   };
+
+  useEffect(() => {
+    const atualizarBaseline = () => {
+      void carregar().catch((causa) => {
+        setErro(
+          causa instanceof Error
+            ? causa.message
+            : "Não foi possível atualizar o estado do baseline."
+        );
+      });
+    };
+    window.addEventListener(
+      "humanexus:baseline-atualizado",
+      atualizarBaseline
+    );
+    return () => {
+      window.removeEventListener(
+        "humanexus:baseline-atualizado",
+        atualizarBaseline
+      );
+    };
+  }, [selecaoInicial]);
+
+  useEffect(() => {
+    if (
+      visao !== "visao-geral"
+      || !estado
+      || estado.sessao.estado === "FINALIZADA"
+    ) {
+      return;
+    }
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== "visible" || ocupado) return;
+      void carregar(selecaoInicial).catch((causa) => {
+        setErro(
+          causa instanceof Error
+            ? causa.message
+            : "Não foi possível atualizar a telemetria operacional."
+        );
+      });
+    }, 2500);
+    return () => window.clearInterval(id);
+  }, [
+    visao,
+    estado?.sessao.estado,
+    ocupado,
+    selecaoInicial.organizacao,
+    selecaoInicial.participante,
+    selecaoInicial.sessao
+  ]);
 
   const selecionarContexto = async (
     campo: "organizacao" | "participante" | "sessao",
@@ -1131,20 +1295,38 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   };
 
   const comandos = useMemo(() => ({
-    iniciar: () => enviar("iniciar-execucao"),
-    fase: (momento: "PRE" | "TREINO" | "POS", comando: string) => enviar("fase", { momento, conector: comando }),
+    principal: () => enviar("acao-principal"),
+    operacional: (comando: string, justificativa?: string) =>
+      enviar("acao-operacional", { comando, justificativa }),
     evento: () => enviar("evento", { momento: "TREINO" }),
     intervencao: () => enviar("intervencao"),
     desconectar: () => enviar("desconectar"),
     reconectar: () => enviar("reconectar"),
     comparar: () => enviar("comparar"),
-    telemetria: () => enviar("telemetria"),
+    registro: (categoria: string, textoDoRegistro: string) =>
+      enviar("registro-profissional", {
+        categoria,
+        texto: textoDoRegistro
+      }),
     replay: () => enviar("replay"),
     exportarReplay: () => enviar("exportar-replay", { inicio_percentual: intervalo[0], fim_percentual: intervalo[1] }),
-    concluirExecucaoThx: () => enviar("concluir-execucao-thx"),
-    concluir: () => enviar("concluir"),
     relatorio: () => enviar("relatorio")
   }), [intervalo]);
+
+  const configurarCortex = async () => {
+    const clientId = cortexClientId.trim();
+    const clientSecret = cortexClientSecret.trim();
+    if (!clientId || !clientSecret) {
+      setErro("Informe o identificador e o segredo do cliente Cortex no formulário local protegido.");
+      return;
+    }
+    setCortexClientId("");
+    setCortexClientSecret("");
+    await enviar("configurar-cortex", {
+      client_id: clientId,
+      client_secret: clientSecret
+    });
+  };
 
   if (erro && !estado) return <p className="hx-module__error">{erro}</p>;
   if (!estado) return <p className="hx-module__loading">Carregando a sessão técnica preservada…</p>;
@@ -1171,33 +1353,141 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     sessao: estado.contextos.selecao.identificador_da_sessao
   });
   const pdfHref = `/api/operacao-homologacao/pdf?${parametrosDoContexto}`;
+  const pode = (comando: string) => comandoPermitido(estado, comando);
+  const fluxoOperacional = objeto(estado.estado_operacional);
+  const contratoCientifico = objeto(estado.contrato_cientifico);
+  const prontidaoCientifica = objeto(contratoCientifico.prontidao);
+  const barreirasCientificas = Array.isArray(prontidaoCientifica.bloqueios)
+    ? prontidaoCientifica.bloqueios as Registro[]
+    : [];
+  const integridadeOperacional = objeto(fluxoOperacional.integridade);
+  const inconsistenciasDoFluxo = Array.isArray(
+    integridadeOperacional.inconsistencias
+  )
+    ? integridadeOperacional.inconsistencias as Registro[]
+    : [];
+  const acaoPrincipal = String(
+    fluxoOperacional.proxima_acao_principal ?? ""
+  ).trim().toUpperCase().replace(/\s+/g, "_");
+  const acoesSecundarias = Array.isArray(
+    fluxoOperacional.acoes_secundarias_permitidas
+  )
+    ? fluxoOperacional.acoes_secundarias_permitidas.map(String)
+    : [];
+  const executarPrincipal = () => {
+    if ([
+      "DEFINIR_REFERENCIA_BASELINE",
+      "INICIAR_BASELINE",
+      "PAUSAR_BASELINE",
+      "RETOMAR_BASELINE",
+      "ENCERRAR_BASELINE"
+    ].includes(acaoPrincipal)) {
+      document
+        .getElementById("referencia-baseline")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (acaoPrincipal === "ENCERRAR_TECNICAMENTE_POR_INCIDENTE") {
+      const justificativa = window.prompt(
+        "Descreva o incidente operacional. Os dados serão preservados e a sessão não será declarada cientificamente completa."
+      );
+      if (!justificativa?.trim()) return;
+      void comandos.operacional(acaoPrincipal, justificativa.trim());
+      return;
+    }
+    void comandos.principal();
+  };
+  const executarSecundaria = (comando: string) => {
+    if (comando === "REGISTRAR_EVENTO") return void comandos.evento();
+    if (comando === "REGISTRAR_INTERVENCAO") {
+      return void comandos.intervencao();
+    }
+    if (comando === "ABRIR_REPLAY") {
+      return selecionarVisao("replay");
+    }
+    if (comando === "GERAR_RELATORIO") return void comandos.relatorio();
+    void comandos.operacional(comando);
+  };
 
   const controles = (
     <section className="hx-op-controls">
-      <div className="hx-op-controls__head"><p>COMANDOS PROFISSIONAIS</p><span>Sessão httpOnly, CSRF e rastreabilidade do núcleo.</span></div>
-      <div className="hx-op-controls__grid">
-        <Botao onClick={() => comandos.fase("PRE", "iniciar")} disabled={ocupado !== "" || estado.execucao?.estado !== "AUTORIZADA"}>Iniciar PRÉ</Botao>
-        <Botao onClick={() => comandos.fase("PRE", "pausar")} disabled={ocupado !== "" || estado.execucao?.estado !== "AUTORIZADA"}>Pausar PRÉ</Botao>
-        <Botao onClick={() => comandos.fase("PRE", "retomar")} disabled={ocupado !== "" || estado.execucao?.estado !== "AUTORIZADA"}>Retomar PRÉ</Botao>
-        <Botao onClick={() => comandos.fase("PRE", "encerrar")} disabled={ocupado !== "" || estado.execucao?.estado !== "AUTORIZADA"}>Encerrar PRÉ</Botao>
-        <Botao onClick={() => comandos.fase("TREINO", "iniciar")} disabled={ocupado !== "" || estado.execucao?.estado !== "AUTORIZADA"}>Iniciar TREINO</Botao>
-        <Botao forte onClick={comandos.iniciar} disabled={ocupado !== "" || estado.execucao?.estado !== "AUTORIZADA"}>Iniciar execução THX</Botao>
-        <Botao onClick={() => comandos.fase("TREINO", "pausar")} disabled={ocupado !== "" || estado.execucao?.estado !== "INICIADA"}>Pausar TREINO</Botao>
-        <Botao onClick={() => comandos.fase("TREINO", "retomar")} disabled={ocupado !== "" || estado.execucao?.estado !== "INICIADA"}>Retomar TREINO</Botao>
-        <Botao onClick={comandos.evento} disabled={ocupado !== "" || estado.execucao?.estado !== "INICIADA"}>Registrar evento</Botao>
-        <Botao onClick={comandos.intervencao} disabled={ocupado !== "" || estado.execucao?.estado !== "INICIADA"}>Registrar intervenção</Botao>
-        <Botao onClick={() => comandos.fase("TREINO", "encerrar")} disabled={ocupado !== "" || estado.execucao?.estado !== "INICIADA"}>Encerrar TREINO</Botao>
-        <Botao forte onClick={comandos.concluirExecucaoThx} disabled={ocupado !== "" || estado.execucao?.estado !== "INICIADA"}>Concluir execução THX</Botao>
-        <Botao onClick={() => comandos.fase("POS", "iniciar")} disabled={ocupado !== "" || estado.execucao?.estado !== "CONCLUIDA"}>Iniciar PÓS</Botao>
-        <Botao onClick={() => comandos.fase("POS", "encerrar")} disabled={ocupado !== "" || estado.execucao?.estado !== "CONCLUIDA"}>Encerrar PÓS</Botao>
-        <Botao onClick={comandos.desconectar} disabled={ocupado !== ""}>Simular desconexão</Botao>
-        <Botao onClick={comandos.reconectar} disabled={ocupado !== ""}>Reconectar</Botao>
-        <Botao onClick={comandos.telemetria} disabled={ocupado !== "" || estado.telemetria.length > 0}>Gerar telemetria técnica</Botao>
-        <Botao forte onClick={comandos.comparar} disabled={true}>Comparação científica bloqueada</Botao>
-        <Botao forte onClick={comandos.replay} disabled={ocupado !== ""}>Atualizar Replay</Botao>
-        <Botao forte onClick={comandos.concluir} disabled={ocupado !== "" || estado.execucao?.estado !== "CONCLUIDA" || estado.sessao.estado === "FINALIZADA"}>Concluir formalmente a sessão</Botao>
-        <Botao onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>
+      <div className="hx-op-controls__head"><p>COMANDO CONTEXTUAL</p><span>Estado único do backend, sessão httpOnly, CSRF e rastreabilidade do núcleo.</span></div>
+      <div className="hx-limit-consolidated">
+        <strong>ENCERRAMENTO OPERACIONAL ≠ COMPLETUDE CIENTÍFICA</strong>
+        <span>
+          {texto(
+            fluxoOperacional.completude_cientifica,
+            "CIENTIFICAMENTE INCOMPLETA"
+          )}
+          {inconsistenciasDoFluxo.length
+            ? ` · ${inconsistenciasDoFluxo
+                .map((item) => texto(item.codigo))
+                .join(" · ")}`
+            : ""}
+        </span>
       </div>
+      <div className="hx-scientific-contract">
+        <div>
+          <p>CONTRATO DE ENTREGA CIENTÍFICA DA SESSÃO</p>
+          <strong>{texto(
+            prontidaoCientifica.mensagem,
+            "NÃO PRONTO — CONTRATO CIENTÍFICO AUSENTE"
+          )}</strong>
+        </div>
+        {Array.isArray(contratoCientifico.indicadores)
+          && (contratoCientifico.indicadores as Registro[]).length ? (
+          <ul>
+            {(contratoCientifico.indicadores as Registro[]).map((item) => (
+              <li key={texto(item.identificador ?? item.codigo)}>
+                <b>{texto(item.nome ?? item.codigo)}</b>
+                <span>{texto(item.estado)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <span>
+            Nenhum indicador foi prometido para esta sessão histórica.
+          </span>
+        )}
+        {barreirasCientificas.length ? (
+          <ol>
+            {barreirasCientificas.map((item, indice) => (
+              <li key={`${texto(item.indicador)}-${indice}`}>
+                <b>NÃO PRONTO — {texto(item.indicador)}</b>
+                <span>REQUISITO: {texto(item.requisito)}</span>
+                <span>AÇÃO: {texto(item.acao)}</span>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+      </div>
+      <div className="hx-op-controls__primary">
+        {acaoPrincipal ? (
+          <Botao forte onClick={executarPrincipal} disabled={ocupado !== ""}>
+            {ROTULOS_DOS_COMANDOS[acaoPrincipal] ?? texto(acaoPrincipal)}
+          </Botao>
+        ) : (
+          <strong>SESSÃO SEM AÇÃO OPERACIONAL PENDENTE</strong>
+        )}
+        {fluxoOperacional.motivo_de_bloqueio ? (
+          <span>
+            {texto(fluxoOperacional.motivo_de_bloqueio)}
+          </span>
+        ) : null}
+      </div>
+      {acoesSecundarias.length ? (
+        <div className="hx-op-controls__secondary">
+          {acoesSecundarias.map((comando) => (
+            <Botao
+              key={comando}
+              onClick={() => executarSecundaria(comando)}
+              disabled={ocupado !== "" || !pode(comando)}
+            >
+              {ROTULOS_DOS_COMANDOS[comando] ?? texto(comando)}
+            </Botao>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 
@@ -1227,7 +1517,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       <div className="hx-telemetry__grid">
         {[
           ["FONTE", estado.fontes.length ? "ATIVA" : "INDISPONÍVEL"],
-          ["CANAL", texto(ultimoPacote?.canal, "SEM PACOTES")],
+          ["EQUIPAMENTO", String(ultimoPacote?.tipo_de_dispositivo ?? "").includes("EMOTIV") ? "EPOC X" : String(ultimoPacote?.tipo_de_dispositivo ?? "").includes("POLAR") ? "POLAR H10" : "SEM PACOTES"],
           ["SEQUÊNCIA", texto(ultimoPacote?.sequencia)],
           ["ORIGEM", dataLegivel(ultimoPacote?.timestamp_de_origem)],
           ["RECEBIMENTO", dataLegivel(ultimoPacote?.timestamp_de_recebimento)],
@@ -1239,7 +1529,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           ["BUFFER", texto(objeto(objeto(ultimoPacote?.dado_normalizado_json).valor).buffer)],
           ["INTEGRIDADE", ultimoPacote?.hash_do_dado_bruto ? "PRESERVADA" : "SEM PACOTES"]
         ].map(([rotulo, valor]) => (
-          <div key={rotulo}><small>{rotulo}</small><strong>{valor}</strong><span>SIMULAÇÃO TÉCNICA</span></div>
+          <div key={rotulo}><small>{rotulo}</small><strong>{valor}</strong><span>DADO TÉCNICO PRESERVADO</span></div>
         ))}
       </div>
       <TelemetryCommandChart
@@ -1253,6 +1543,57 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
 
   const conectoresTecnicos = (
     <section className="hx-technical-stack">
+      {estado.configuracao_cortex?.permitido ? (
+        <form
+          className="hx-cortex-config"
+          onSubmit={(evento) => {
+            evento.preventDefault();
+            void configurarCortex();
+          }}
+        >
+          <header>
+            <div>
+              <small>CONFIGURAÇÃO LOCAL PROTEGIDA · ADMINISTRADOR PROPRIETÁRIO</small>
+              <strong>Cortex / EMOTIV EPOC X</strong>
+              <span>
+                {estado.configuracao_cortex.configurado
+                  ? "CREDENCIAL CONFIGURADA NO RUNTIME LOCAL"
+                  : "CREDENCIAL CORTEX AINDA NÃO CONFIGURADA"}
+              </span>
+            </div>
+            <p>Os valores são enviados ao backend local autenticado, armazenados fora do Git com permissão privada e nunca retornam ao navegador.</p>
+          </header>
+          <div className="hx-cortex-config__fields">
+            <label>
+              <span>Identificador do cliente Cortex</span>
+              <input
+                type="password"
+                value={cortexClientId}
+                onChange={(evento) => setCortexClientId(evento.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <label>
+              <span>Segredo do cliente Cortex</span>
+              <input
+                type="password"
+                value={cortexClientSecret}
+                onChange={(evento) => setCortexClientSecret(evento.target.value)}
+                autoComplete="new-password"
+                spellCheck={false}
+              />
+            </label>
+            <button
+              className="hx-op-button hx-op-button--gold"
+              type="submit"
+              disabled={ocupado !== "" || !cortexClientId.trim() || !cortexClientSecret.trim()}
+            >
+              {estado.configuracao_cortex.configurado ? "Substituir configuração local" : "Salvar no runtime local"}
+            </button>
+          </div>
+        </form>
+      ) : null}
       {estado.conectores.length === 0 ? (
         <EmptySignalState
           title="EPOC X E POLAR H10"
@@ -1261,12 +1602,22 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         />
       ) : estado.conectores.map((conector) => {
         const historico = estado.historicos_conectores.find((item) => item.identificador === conector.identificador)?.eventos ?? [];
+        const emotiv = String(conector.nome_da_fonte ?? "").includes("EMOTIV");
         return (
           <article className="hx-connector" key={String(conector.identificador)}>
             <div><p>{texto(conector.nome_da_fonte)}</p><strong>{texto(conector.estado)}</strong><span>{texto(conector.modo)}</span></div>
             <div>
               <dl>
-                <div><dt>SDK / LICENÇA</dt><dd>REQUISITO AUSENTE PARA HARDWARE REAL</dd></div>
+                <div>
+                  <dt>SDK / LICENÇA</dt>
+                  <dd>
+                    {emotiv
+                      ? estado.configuracao_cortex.configurado
+                        ? "CORTEX CONFIGURADO · SEGREDO NÃO EXPOSTO"
+                        : "CORTEX AGUARDANDO CONFIGURAÇÃO LOCAL"
+                      : "BLE NATIVO · LICENÇA EXTERNA NÃO APLICÁVEL"}
+                  </dd>
+                </div>
                 <div><dt>FIRMWARE</dt><dd>{texto(conector.firmware)}</dd></div>
                 <div><dt>QUALIDADE</dt><dd>{texto(conector.confiabilidade)}</dd></div>
                 <div><dt>LATÊNCIA</dt><dd>{texto(conector.latencia_ms)}</dd></div>
@@ -1288,6 +1639,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const visaoPreTreinoPos = (
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="PRÉ / TREINO / PÓS" titulo="Fases independentes, comparáveis somente sob governança." descricao="Preparação, comandos, snapshots, fontes, eventos e comparação permanecem no contexto da sessão." />
+      <ReferenciaBaselineResumo estado={estado} />
       {controles}
       <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
       <div className="hx-phase-vector-grid">
@@ -1305,6 +1657,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   );
 
   const historicoLongitudinal = Array.isArray(estado.longitudinal?.historico) ? estado.longitudinal.historico as Registro[] : [];
+  const referenciaBaseline = estado.gravacao?.baseline?.referencia;
   const pontosLongitudinais = historicoLongitudinal.map((item) => ({
     time: instante(item.ocorrido_em ?? item.criado_em ?? item.iniciado_em),
     value: typeof item.iirh === "number" && item.iirh_valido !== false ? item.iirh : null,
@@ -1323,6 +1676,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="LONGITUDINAL" titulo="Histórico do participante sem recálculo silencioso." descricao="Sessões, ciclos, versões, lacunas e comparabilidade metodológica permanecem preservados." />
       <LongitudinalEvolutionChart points={pontosLongitudinais} />
+      <ReferenciaBaselineResumo estado={estado} />
       <Rastreabilidade estado={estado} />
     </section>
   );
@@ -1331,7 +1685,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const midiasPersistidas = (estado.gravacao?.segmentos ?? []).filter(
     (item) => item.estado === "PERSISTIDO" && item.reproducao_autorizada
   );
-  const itensDaLinha = itensReplay.flatMap((item) => {
+  const itensDaLinhaCientifica = itensReplay.flatMap((item) => {
     const time = instante(item.timestamp_original);
     if (!time) return [];
     const detalhes = objeto(item.dados_de_inspecao_json);
@@ -1343,11 +1697,40 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       source: texto(item.origem, "NÚCLEO OFICIAL")
     }];
   });
+  const registroBaseline = estado.gravacao?.baseline?.registro;
+  const itensDoBaseline = registroBaseline?.iniciado_em
+    ? [
+        {
+          time: instante(registroBaseline.iniciado_em),
+          track: "REFERÊNCIA DE BASELINE",
+          label: "BASELINE INICIADO",
+          event: "BASELINE_INICIADO",
+          source: "REGISTRO OPERACIONAL SEPARADO"
+        },
+        ...(registroBaseline.finalizado_em
+          ? [{
+              time: instante(registroBaseline.finalizado_em),
+              track: "REFERÊNCIA DE BASELINE",
+              label: "BASELINE ENCERRADO",
+              event: "BASELINE_ENCERRADO",
+              source: "REGISTRO OPERACIONAL SEPARADO"
+            }]
+          : [])
+      ]
+    : [];
+  const itensDaLinha = [...itensDaLinhaCientifica, ...itensDoBaseline];
   const modalidadesReplay = [...new Set(itensDaLinha.map((item) => item.track))];
   const trilhasVisiveis = modalidadesReplay.filter((item) => trilhas[item] !== false);
   const visaoReplay = (
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="REPLAY" titulo="Linha multimodal da sessão ativa." descricao="Participante, CTR, THX, fases, eventos, fontes e contexto permanecem sincronizados." />
+      <div className="hx-limit-consolidated">
+        <strong>FLUXO CIENTÍFICO · PRÉ → TREINO → PÓS</strong>
+        <span>
+          {texto(referenciaBaseline?.estado, "SESSÃO SEM REFERÊNCIA DE BASELINE")}
+          {" · "}baseline exibido em trilha operacional própria, fora das fases científicas.
+        </span>
+      </div>
       <section className="hx-replay hx-replay--operational">
         <div className="hx-replay__toolbar">
           <div><p>REPLAY MULTIMODAL SINCRONIZADO</p><strong>{texto(estado.replay?.linha?.identificador, "LINHA NÃO GERADA")}</strong></div>
@@ -1392,6 +1775,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const visaoRelatorio = (
     <section className="hx-cockpit-panel hx-report-view">
       <TituloDaVisao kicker="RELATÓRIO" titulo="Documento gerado a partir do contexto já carregado." descricao="Sessão, evidências, vetores, Resultante, Trajetória, fases, decisões e limitações permanecem vinculados." />
+      <ReferenciaBaselineResumo estado={estado} />
       <section className="hx-report-operation">
         <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
         <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>{estado.relatorios.length ? <a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a> : null}</div>
@@ -1414,8 +1798,15 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const visaoTecnica = (
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="TÉCNICO" titulo="Infraestrutura recolhível e subordinada à leitura científica." descricao="Somente falhas que comprometam qualidade, cobertura ou conexão recebem destaque na sessão." />
+      <ReferenciaBaselineResumo estado={estado} />
       <div className="hx-technical-tabs">
-        {["fontes", "conectores", "telemetria", "midia", "movel"].map((item) => <button className={painelTecnico === item ? "is-active" : ""} type="button" onClick={() => setPainelTecnico(item)} key={item}>{item}</button>)}
+        {[
+          ["fontes", "Fontes"],
+          ["conectores", "Conectores"],
+          ["telemetria", "Telemetria"],
+          ["midia", "Mídia"],
+          ["movel", "Móvel"]
+        ].map(([item, rotulo]) => <button className={painelTecnico === item ? "is-active" : ""} type="button" onClick={() => setPainelTecnico(item)} key={item}>{rotulo}</button>)}
       </div>
       {painelTecnico === "fontes" ? (
         <div className="hx-source-health">
@@ -1433,7 +1824,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <section className="hx-mobile-console">
           <div><p>ACESSO MÓVEL AUTENTICADO</p><h2>{texto(estado.usuario.nome)}</h2><span>Sessão única por cookie httpOnly · perfil {texto(estado.usuario.perfil)}</span></div>
           <div className="hx-mobile-console__status">
-            <article><small>Participante</small><strong>{texto(estado.participante.referencia_externa)}</strong></article>
+            <article><small>Participante</small><strong>{texto(estado.participante.nome ?? estado.participante.referencia_externa)}</strong></article>
             <article><small>Fase / tempo</small><strong>{faseAtual(estado)} · {dataLegivel(estado.execucao?.iniciado_em)}</strong></article>
             <article><small>Conectores</small><strong>{estado.conectores.filter((item) => item.estado === "TRANSMITINDO").length}/{estado.conectores.length} transmitindo</strong></article>
             <article><small>Alertas</small><strong>{perdas + foraDeOrdem} técnico(s)</strong></article>
@@ -1442,7 +1833,14 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           </div>
         </section>
       ) : null}
-      <details className="hx-technical-details"><summary>Saúde do Bridge, frequência, latência, perda, buffer, duplicados, sequência, firmware, SDK, licença e logs</summary><pre>{JSON.stringify({ fontes: estado.fontes, conectores: estado.conectores, telemetria: estado.telemetria, eventos_tecnicos: estado.eventos_tecnicos }, null, 2)}</pre></details>
+      <details className="hx-technical-details">
+        <summary>Diagnóstico técnico protegido</summary>
+        <div className="hx-source-health">
+          <article><small>Frequência</small><strong>{frequencia.at(-1)?.value != null ? `${frequencia.at(-1)?.value?.toFixed(2)} Hz` : "SEM LEITURA"}</strong><span>Janela técnica observada</span></article>
+          <article><small>Latência</small><strong>{ultimoPacote ? `${Number(ultimoPacote.latencia_ms).toFixed(2)} ms` : "SEM LEITURA"}</strong><span>Último dado recebido</span></article>
+          <article><small>Integridade</small><strong>{ultimoPacote?.hash_do_dado_bruto ? "PRESERVADA" : "SEM PACOTES"}</strong><span>{perdas} perda(s) · {duplicados} duplicado(s) · {foraDeOrdem} fora de ordem</span></article>
+        </div>
+      </details>
     </section>
   );
 
@@ -1462,27 +1860,74 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   else if (visao === "coletivo") conteudoDaVisao = visaoColetiva;
   else if (visao === "tecnico") conteudoDaVisao = visaoTecnica;
   else conteudoDaVisao = (
-    <div className="hx-cockpit-overview">
-      <MatrizVetorial estado={estado} selecionado={vetorSelecionado} selecionar={(codigo) => { setVetorSelecionado(codigo); selecionarVisao("matriz-vetorial"); }} resumida />
-      <ResultanteRegulatoria estado={estado} resumida />
-      <TrajetoriaRegulatoria estado={estado} resumida />
-      <EvidenciasDoCockpit estado={estado} />
-      <section className="hx-professional-decision"><small>DECISÃO PROFISSIONAL</small><strong>Nenhuma decisão científica automática disponível</strong><span>A sessão técnica pode ser inspecionada, mas não autoriza interpretação humana, gatilho ou rota.</span></section>
-      <Hud estado={estado} />
-      {controles}
-      <details className="hx-technical-details"><summary>Detalhes técnicos da sessão</summary>{visaoTecnica}</details>
-    </div>
+    <CockpitOperacionalVivo
+      estado={estado as unknown as Registro}
+      ocupado={ocupado !== ""}
+      erro={erro}
+      acaoPrincipal={acaoPrincipal}
+      rotuloDaAcao={ROTULOS_DOS_COMANDOS[acaoPrincipal] ?? texto(acaoPrincipal)}
+      acoesSecundarias={acoesSecundarias}
+      rotuloDaSecundaria={(comando) =>
+        ROTULOS_DOS_COMANDOS[comando] ?? texto(comando)}
+      executarPrincipal={executarPrincipal}
+      executarSecundaria={executarSecundaria}
+      registrar={(categoria, textoDoRegistro) =>
+        comandos.registro(categoria, textoDoRegistro)}
+      abrirAnalitico={() => selecionarVisao("evidencias")}
+    />
   );
+  const controleDeBaseline = [
+    "DEFINIR_REFERENCIA_BASELINE",
+    "INICIAR_BASELINE",
+    "PAUSAR_BASELINE",
+    "RETOMAR_BASELINE",
+    "ENCERRAR_BASELINE"
+  ].includes(acaoPrincipal) ? (
+    <ControleGravacaoMultimodal
+      sessao={String(estado.sessao.identificador)}
+    />
+  ) : null;
 
   if (modulo === "cockpit-vivo") {
+    const operacional = visao === "visao-geral";
     return (
       <div className="hx-operacao hx-cockpit-workspace">
-        {seletorContexto}
-        <ContextoPersistente estado={estado} visao={visao} />
-        <AvisoTecnico />
-        <NavegacaoInterna visao={visao} selecionar={selecionarVisao} />
-        <main className="hx-cockpit-view" data-cockpit-view={visao}>{conteudoDaVisao}</main>
-        {erro ? <p className="hx-module__error">{erro}</p> : null}
+        <div className="hx-cockpit-mode-switch" aria-label="Modo do Cockpit">
+          <button
+            className={operacional ? "is-active" : ""}
+            type="button"
+            onClick={() => selecionarVisao("visao-geral")}
+          >
+            <small>EXECUÇÃO</small>
+            <strong>Modo operacional ao vivo</strong>
+          </button>
+          <button
+            className={!operacional ? "is-active" : ""}
+            type="button"
+            onClick={() => selecionarVisao("evidencias")}
+          >
+            <small>INSPEÇÃO</small>
+            <strong>Inspeção TIRH</strong>
+          </button>
+        </div>
+        {operacional ? (
+          <details className="hx-live-context-picker">
+            <summary>Alterar organização, participante ou sessão</summary>
+            {seletorContexto}
+          </details>
+        ) : (
+          <>
+            {seletorContexto}
+            <ContextoPersistente estado={estado} visao={visao} />
+            <AvisoTecnico estado={estado} />
+            <NavegacaoInterna visao={visao} selecionar={selecionarVisao} />
+          </>
+        )}
+        <main className="hx-cockpit-view" data-cockpit-view={visao}>
+          {conteudoDaVisao}
+          {operacional ? controleDeBaseline : null}
+        </main>
+        {!operacional && erro ? <p className="hx-module__error">{erro}</p> : null}
       </div>
     );
   }
@@ -1493,29 +1938,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         {seletorContexto}
         <section className="hx-op-title"><p>CONECTORES / OPERAÇÃO TÉCNICA</p><h2>Histórico real de conexão, desconexão e retomada do ambiente isolado.</h2></section>
         <AvisoTecnico />
-        {estado.conectores.map((conector) => {
-          const historico = estado.historicos_conectores.find((item) => item.identificador === conector.identificador)?.eventos ?? [];
-          return (
-            <article className="hx-connector" key={String(conector.identificador)}>
-              <div><p>{texto(conector.nome_da_fonte)}</p><strong>{texto(conector.estado)}</strong><span>{texto(conector.modo)}</span></div>
-              <div>
-                <dl>
-                  <div><dt>SDK / LICENÇA</dt><dd>REQUISITO AUSENTE PARA HARDWARE REAL</dd></div>
-                  <div><dt>FIRMWARE</dt><dd>{texto(conector.firmware)}</dd></div>
-                  <div><dt>QUALIDADE</dt><dd>{texto(conector.confiabilidade)}</dd></div>
-                  <div><dt>LATÊNCIA</dt><dd>{texto(conector.latencia_ms)}</dd></div>
-                </dl>
-                <div className="hx-connector-timeline">
-                  {historico.length ? historico.map((item, indice) => (
-                    <span className={`is-${String(item.estado_destino ?? item.estado).toLowerCase()}`} key={`${texto(item.ocorrido_em ?? item.criado_em)}-${indice}`}>
-                      <i />{texto(item.estado_destino ?? item.estado)}<small>{dataLegivel(item.ocorrido_em ?? item.criado_em)}</small>
-                    </span>
-                  )) : <EmptySignalState title="HISTÓRICO DE CONEXÃO" reason="Nenhuma transição foi registrada." />}
-                </div>
-              </div>
-            </article>
-          );
-        })}
+        {conectoresTecnicos}
       </div>
     );
   }
@@ -1528,6 +1951,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         {seletorContexto}
         <Contexto estado={estado} />
         {controles}
+        {controleDeBaseline}
         <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
         <p className="hx-comparison-limit">Diferenças são exibidas apenas como aumento, redução, estabilidade observada ou comparação indisponível. Nenhuma causalidade é inferida.</p>
         {eventos}
@@ -1608,7 +2032,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <section className="hx-mobile-console">
           <div><p>ACESSO MÓVEL AUTENTICADO</p><h2>{texto(estado.usuario.nome)}</h2><span>Sessão única por cookie httpOnly · perfil {texto(estado.usuario.perfil)}</span></div>
           <div className="hx-mobile-console__status">
-            <article><small>Participante</small><strong>{texto(estado.participante.referencia_externa)}</strong></article>
+            <article><small>Participante</small><strong>{texto(estado.participante.nome ?? estado.participante.referencia_externa)}</strong></article>
             <article><small>Fase / tempo</small><strong>{faseAtual(estado)} · {dataLegivel(estado.execucao?.iniciado_em)}</strong></article>
             <article><small>Conectores</small><strong>{estado.conectores.filter((item) => item.estado === "TRANSMITINDO").length}/{estado.conectores.length} transmitindo</strong></article>
             <article><small>Alertas</small><strong>{perdas + foraDeOrdem} técnico(s)</strong></article>
@@ -1704,6 +2128,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       <Contexto estado={estado} />
       <Identificacao estado={estado} />
       {controles}
+      {controleDeBaseline}
       <CockpitSignalStack tracks={trilhasDoCockpit(estado)} markers={marcadores} phases={faixas} />
       {telemetria}
       {eventos}

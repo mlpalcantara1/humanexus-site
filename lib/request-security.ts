@@ -1,7 +1,10 @@
 export function exigirMesmaOrigem(request: Request) {
   const origem = request.headers.get("origin");
-  const destino = new URL(request.url);
-  if (!origem || new URL(origem).host !== destino.host) {
+  const destino =
+    request.headers.get("x-forwarded-host")?.split(",", 1)[0]?.trim() ||
+    request.headers.get("host") ||
+    new URL(request.url).host;
+  if (!origem || new URL(origem).host !== destino) {
     throw new Error("Origem da requisição não autorizada.");
   }
 }

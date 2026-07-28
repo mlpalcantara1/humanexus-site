@@ -15,6 +15,7 @@ type Dados = {
   contratos: Registro[];
   profissionais: Registro[];
   vinculos_ctr_thx_validados: Registro[];
+  modelos_consentimento: Registro[];
 };
 
 function csrf() {
@@ -68,6 +69,7 @@ export function GestaoOperacional({
     data_programada: "",
     duracao_planejada_minutos: "60",
     identificador_do_profissional: "",
+    identificador_da_anamnese: "",
     codigo_do_ctr: "",
     codigo_do_thx: "",
     justificativa: ""
@@ -89,6 +91,24 @@ export function GestaoOperacional({
     numero_de_participantes: "",
     marcacao: ""
   });
+  const [consentimento, setConsentimento] = useState({
+    identificador_do_participante: "",
+    identificador_da_sessao: "",
+    finalidade: "HOMOLOGACAO_FISICA_AUTORIZADA",
+    validade_em_horas: "72",
+    polar: false,
+    eeg: false,
+    telemetria: false,
+    audio: false,
+    video: false,
+    replay: true,
+    relatorio: true,
+    longitudinal: true,
+    coletivo: false,
+    pesquisa: false
+  });
+  const [entregaDeConsentimento, setEntregaDeConsentimento] =
+    useState<Registro | null>(null);
 
   async function carregar(organizacaoId = organizacaoSelecionada) {
     const parametros = new URLSearchParams();
@@ -116,12 +136,28 @@ export function GestaoOperacional({
       identificador_do_profissional:
         estado.identificador_do_profissional
         || String(corpo.profissionais?.[0]?.identificador ?? ""),
+      identificador_da_anamnese:
+        estado.identificador_da_anamnese
+        || String(
+          corpo.participantes?.[0]?.anamneses
+            ?.find((item: Registro) =>
+              item.estado === "CONCLUIDA_PELO_PARTICIPANTE"
+              && Number(item.percentual_concluido) === 100
+              && item.validade_cientifica === "VALIDA"
+            )?.identificador ?? ""
+        ),
       codigo_do_ctr:
         estado.codigo_do_ctr
         || String(corpo.vinculos_ctr_thx_validados?.[0]?.codigo_do_ctr ?? ""),
       codigo_do_thx:
         estado.codigo_do_thx
         || String(corpo.vinculos_ctr_thx_validados?.[0]?.codigo_do_thx ?? "")
+    }));
+    setConsentimento((estado) => ({
+      ...estado,
+      identificador_do_participante:
+        estado.identificador_do_participante
+        || String(corpo.participantes?.[0]?.identificador ?? "")
     }));
   }
 
@@ -133,7 +169,7 @@ export function GestaoOperacional({
     acao: string,
     payload: Registro,
     identificador?: unknown
-  ) {
+  ): Promise<Registro | null> {
     setOcupado(true);
     setErro("");
     setMensagem("");
@@ -156,11 +192,55 @@ export function GestaoOperacional({
       }
       setMensagem("Operação concluída e auditada.");
       await carregar();
+      return corpo as Registro;
     } catch (causa) {
       setErro(causa instanceof Error ? causa.message : "Operação recusada.");
+      return null;
     } finally {
       setOcupado(false);
     }
+  }
+
+  async function apresentarConsentimento(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    const resultado = await executar("apresentar-instrumento-integrado", {
+      identificador_da_organizacao: String(dados?.organizacao?.identificador ?? ""),
+      identificador_do_participante:
+        consentimento.identificador_do_participante,
+      identificador_da_sessao:
+        consentimento.identificador_da_sessao || null,
+      finalidade: consentimento.finalidade,
+      validade_em_horas: Number(consentimento.validade_em_horas),
+      recursos: {
+        dados_sensiveis: true,
+        polar: consentimento.polar,
+        eeg: consentimento.eeg,
+        telemetria: consentimento.telemetria,
+        audio: consentimento.audio,
+        video: consentimento.video,
+        multimodal: false,
+        replay: consentimento.replay,
+        relatorio: consentimento.relatorio,
+        longitudinal: consentimento.longitudinal,
+        coletivo: consentimento.coletivo,
+        pesquisa: consentimento.pesquisa,
+        modalidade_de_midia: consentimento.audio && consentimento.video
+          ? "AUDIO_E_VIDEO"
+          : consentimento.audio ? "AUDIO"
+          : consentimento.video ? "VIDEO"
+          : "NENHUM",
+        politica_de_retencao: "NAO_ARMAZENAR"
+      }
+    });
+    const identificador = String(resultado?.identificador ?? "");
+    const token = String(resultado?.token_de_entrega_unica ?? "");
+    if (!identificador || !token) return;
+    setEntregaDeConsentimento({
+      ...resultado,
+      link_de_manifestacao:
+        `${window.location.origin}/instrumento-integrado/${encodeURIComponent(identificador)}`
+        + `?token=${encodeURIComponent(token)}`
+    });
   }
 
   const organizacaoAtual = dados?.organizacao;
@@ -170,6 +250,17 @@ export function GestaoOperacional({
   ].includes(String(dados?.usuario.perfil));
   const podeConduzir = String(dados?.usuario.perfil) === "PROFISSIONAL_HUMANEXUS"
     || String(dados?.usuario.perfil) === "ADMINISTRADOR_DO_SISTEMA";
+  const participanteDaSessao = dados?.participantes.find(
+    (item) => item.identificador === sessao.identificador_do_participante
+  );
+  const anamnesesConcluidas = (
+    participanteDaSessao?.anamneses as Registro[] | undefined
+  )?.filter(
+    (item) =>
+      item.estado === "CONCLUIDA_PELO_PARTICIPANTE"
+      && Number(item.percentual_concluido) === 100
+      && item.validade_cientifica === "VALIDA"
+  ) ?? [];
 
   const cabecalho = (
     <section className="hx-management-context">
@@ -330,6 +421,7 @@ export function GestaoOperacional({
           <form onSubmit={(evento: FormEvent) => {
             evento.preventDefault();
             void executar("criar-participante", {
+              identificador_da_organizacao: organizacaoAtual?.identificador,
               referencia_externa: participante.referencia_externa,
               tipo_de_vinculo: participante.tipo_de_vinculo,
               dados_minimizados: {
@@ -342,6 +434,123 @@ export function GestaoOperacional({
             <label>Referência operacional<input required value={participante.referencia_externa} onChange={(evento) => setParticipante({ ...participante, referencia_externa: evento.target.value })} /></label>
             <label>Tipo de vínculo<select value={participante.tipo_de_vinculo} onChange={(evento) => setParticipante({ ...participante, tipo_de_vinculo: evento.target.value })}><option>ORGANIZACIONAL</option><option>PARTICULAR</option><option>MISTO</option></select></label>
             <button disabled={ocupado}>Cadastrar participante</button>
+          </form>
+          <form onSubmit={(evento) => void apresentarConsentimento(evento)}>
+            <small>IICCA-HXP-1.1 · RESPOSTA ÚNICA</small>
+            <h2>Instrumento integrado único</h2>
+            <label>Participante<select
+              required
+              value={consentimento.identificador_do_participante}
+              onChange={(evento) => setConsentimento({
+                ...consentimento,
+                identificador_do_participante: evento.target.value,
+                identificador_da_sessao: ""
+              })}
+            >
+              {dados.participantes.map((item) => (
+                <option
+                  key={String(item.identificador)}
+                  value={String(item.identificador)}
+                >
+                  {texto(item.referencia_externa)} · {String(item.identificador)}
+                </option>
+              ))}
+            </select></label>
+            <label>Sessão<select
+              value={consentimento.identificador_da_sessao}
+              onChange={(evento) => setConsentimento({
+                ...consentimento,
+                identificador_da_sessao: evento.target.value
+              })}
+            >
+              <option value="">Sem sessão vinculada</option>
+              {dados.sessoes
+                .filter((item) =>
+                  item.identificador_do_participante
+                    === consentimento.identificador_do_participante
+                )
+                .map((item) => (
+                  <option
+                    key={String(item.identificador)}
+                    value={String(item.identificador)}
+                  >
+                    {texto(item.finalidade)} · {String(item.identificador)}
+                  </option>
+                ))}
+            </select></label>
+            <label>Finalidade<input
+              required
+              value={consentimento.finalidade}
+              onChange={(evento) => setConsentimento({
+                ...consentimento,
+                finalidade: evento.target.value
+              })}
+            /></label>
+            <fieldset className="hx-integrated-resources">
+              <legend>Recursos planejados para esta atividade</legend>
+              {([
+                ["polar", "Polar H10"],
+                ["eeg", "EPOC X ou EEG homologado"],
+                ["telemetria", "Telemetria de tarefa"],
+                ["audio", "Áudio"],
+                ["video", "Imagem e vídeo"],
+                ["replay", "Replay"],
+                ["relatorio", "Relatório individual"],
+                ["longitudinal", "Acompanhamento longitudinal"],
+                ["coletivo", "Indicador coletivo anonimizado"],
+                ["pesquisa", "Pesquisa científica"]
+              ] as const).map(([campo, rotulo]) => (
+                <label key={campo}>
+                  <input
+                    type="checkbox"
+                    checked={consentimento[campo]}
+                    onChange={(evento) => setConsentimento({
+                      ...consentimento,
+                      [campo]: evento.target.checked
+                    })}
+                  />
+                  {rotulo}
+                </label>
+              ))}
+            </fieldset>
+            <label>Validade<select
+              value={consentimento.validade_em_horas}
+              onChange={(evento) => setConsentimento({
+                ...consentimento,
+                validade_em_horas: evento.target.value
+              })}
+            >
+              <option value="24">24 horas</option>
+              <option value="72">72 horas</option>
+              <option value="168">7 dias</option>
+            </select></label>
+            <button disabled={ocupado || !podeConduzir}>
+              Gerar instrumento único
+            </button>
+            <p>
+              Uma única tela, decisões granulares e uma única confirmação final.
+              Nenhuma opção é pré-marcada.
+            </p>
+            {entregaDeConsentimento ? (
+              <aside className="hx-module__notice">
+                <strong>Link exibido uma única vez</strong>
+                <a
+                  href={String(entregaDeConsentimento.link_de_manifestacao)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Abrir instrumento como participante
+                </a>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard.writeText(
+                    String(entregaDeConsentimento.link_de_manifestacao)
+                  )}
+                >
+                  Copiar link
+                </button>
+              </aside>
+            ) : null}
           </form>
           {tabelaParticipantes}
         </div>
@@ -358,8 +567,27 @@ export function GestaoOperacional({
           }}>
             <small>CONTEXTO CIENTÍFICO PRESERVADO</small>
             <h2>Programar sessão</h2>
-            <label>Participante<select required value={sessao.identificador_do_participante} onChange={(evento) => setSessao({ ...sessao, identificador_do_participante: evento.target.value })}>{dados.participantes.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.referencia_externa)}</option>)}</select></label>
+            <label>Participante<select required value={sessao.identificador_do_participante} onChange={(evento) => {
+              const participanteId = evento.target.value;
+              const participanteSelecionado = dados.participantes.find(
+                (item) => item.identificador === participanteId
+              );
+              const anamnese = (
+                participanteSelecionado?.anamneses as Registro[] | undefined
+              )?.find(
+                (item) =>
+                  item.estado === "CONCLUIDA_PELO_PARTICIPANTE"
+                  && Number(item.percentual_concluido) === 100
+                  && item.validade_cientifica === "VALIDA"
+              );
+              setSessao({
+                ...sessao,
+                identificador_do_participante: participanteId,
+                identificador_da_anamnese: String(anamnese?.identificador ?? "")
+              });
+            }}>{dados.participantes.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.referencia_externa)}</option>)}</select></label>
             <label>Profissional responsável<select required value={sessao.identificador_do_profissional} onChange={(evento) => setSessao({ ...sessao, identificador_do_profissional: evento.target.value })}>{dados.profissionais.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.nome)}</option>)}</select></label>
+            <label>Anamnese concluída<select required value={sessao.identificador_da_anamnese} onChange={(evento) => setSessao({ ...sessao, identificador_da_anamnese: evento.target.value })}><option value="">Selecione</option>{anamnesesConcluidas.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.identificador_da_versao_do_formulario)} · {dataLegivel(item.concluido_em)}</option>)}</select></label>
             <label>Finalidade<input required value={sessao.finalidade} onChange={(evento) => setSessao({ ...sessao, finalidade: evento.target.value })} /></label>
             <label>Modalidade<select value={sessao.modalidade} onChange={(evento) => setSessao({ ...sessao, modalidade: evento.target.value })}><option>INDIVIDUAL</option><option>GRUPO</option><option>TREINAMENTO</option><option>AVALIAÇÃO</option></select></label>
             <label>CTR oficial<select required value={sessao.codigo_do_ctr} onChange={(evento) => {

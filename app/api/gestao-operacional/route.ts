@@ -33,9 +33,18 @@ async function contexto(token: string, organizacaoSolicitada?: string) {
     };
   }
   const organizacaoId = String(organizacao.identificador);
-  const participantes = await requisitarNucleoAutenticado<Registro[]>(
+  const participantesBasicos = await requisitarNucleoAutenticado<Registro[]>(
     `/api/v1/organizacoes/${encodeURIComponent(organizacaoId)}/participantes`,
     token
+  );
+  const participantes = await Promise.all(
+    participantesBasicos.map(async (participante) => {
+      const detalhes = await requisitarNucleoAutenticado<Registro>(
+        `/api/v1/participantes/${encodeURIComponent(String(participante.identificador))}`,
+        token
+      ).catch(() => ({}));
+      return { ...participante, ...detalhes };
+    })
   );
   const sessoesBasicas = (
     await Promise.all(
@@ -77,14 +86,25 @@ async function contexto(token: string, organizacaoSolicitada?: string) {
       token
     ).catch(() => [])
   ]);
-  const [usuarios, vinculosValidados] = await Promise.all([
+  const [usuariosConsultados, vinculosValidados, modelosConsentimento] = await Promise.all([
     requisitarNucleoAutenticado<Registro[]>("/api/v1/usuarios", token)
       .catch(() => []),
     requisitarNucleoAutenticado<Registro[]>(
       "/api/v1/ctr-thx/vinculos-validados-operacionais",
       token
+    ).catch(() => []),
+    requisitarNucleoAutenticado<Registro[]>(
+      "/api/v1/consentimentos/modelos",
+      token
     ).catch(() => [])
   ]);
+  const usuarios = (
+    usuario.perfil === "PROFISSIONAL_HUMANEXUS"
+    && usuario.identificador_da_organizacao === organizacaoId
+    && !usuariosConsultados.some((item) => item.identificador === usuario.identificador)
+  )
+    ? [{ ...usuario, ativo: true }, ...usuariosConsultados]
+    : usuariosConsultados;
   return {
     usuario,
     organizacoes,
@@ -95,11 +115,18 @@ async function contexto(token: string, organizacaoSolicitada?: string) {
     programacoes,
     contratos
     ,profissionais: usuarios.filter(
-      (item) => item.perfil === "PROFISSIONAL_HUMANEXUS"
+      (item) => (
+        item.perfil === "PROFISSIONAL_HUMANEXUS"
         && item.ativo
         && item.identificador_da_organizacao === organizacaoId
+      ) || (
+        item.identificador === usuario.identificador
+        && item.perfil === "ADMINISTRADOR_DO_SISTEMA"
+        && item.ativo
+      )
     )
     ,vinculos_ctr_thx_validados: vinculosValidados
+    ,modelos_consentimento: modelosConsentimento
   };
 }
 
@@ -147,6 +174,17 @@ export async function POST(request: Request) {
       caminho = `/api/v1/organizacoes/${encodeURIComponent(String(corpo.identificador))}`;
       metodo = "PUT";
     } else if (acao === "criar-participante") {
+      const escopo = await contexto(
+        token,
+        String((dados as Registro).identificador_da_organizacao ?? "")
+      );
+      if (!escopo.organizacao?.identificador) {
+        throw new Error("Organização autorizada é obrigatória.");
+      }
+      dados = {
+        ...(dados as Registro),
+        identificador_da_organizacao: escopo.organizacao.identificador
+      };
       caminho = "/api/v1/participantes";
     } else if (acao === "atualizar-participante") {
       caminho = `/api/v1/participantes/${encodeURIComponent(String(corpo.identificador))}`;
@@ -155,21 +193,42 @@ export async function POST(request: Request) {
       caminho = `/api/v1/participantes/${encodeURIComponent(String(corpo.identificador))}/contextos`;
     } else if (acao === "criar-sessao-com-vinculo") {
       const payload = dados as Registro;
-      const sessao = await requisitarNucleoAutenticado<Registro>(
-        "/api/v1/sessoes-operacionais",
-        token,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            identificador_do_participante: payload.identificador_do_participante,
-            finalidade: payload.finalidade,
-            modalidade: payload.modalidade,
-            data_programada: payload.data_programada,
-            duracao_planejada_minutos: payload.duracao_planejada_minutos,
-            identificador_do_profissional: payload.identificador_do_profissional
-          })
-        }
-      );
+      const contextoOperacional = await contexto(token);
+      const sessaoPendente = (
+        Array.isArray(contextoOperacional.sessoes)
+          ? contextoOperacional.sessoes
+          : []
+      )
+        .find((item) => {
+          const sessao = item as Registro;
+          const detalhes = (sessao.detalhes_operacionais ?? {}) as Registro;
+          return (
+            String(sessao.identificador_do_participante ?? "") ===
+              String(payload.identificador_do_participante ?? "") &&
+            String(detalhes.identificador_da_anamnese ?? "") ===
+              String(payload.identificador_da_anamnese ?? "") &&
+            String(detalhes.finalidade ?? "") === String(payload.finalidade ?? "") &&
+            String(detalhes.estado_operacional ?? "") === "CRIADA" &&
+            !detalhes.identificador_do_ctr &&
+            !detalhes.identificador_do_thx
+          );
+        }) as Registro | undefined;
+      const sessao = sessaoPendente ?? await requisitarNucleoAutenticado<Registro>(
+          "/api/v1/sessoes-operacionais",
+          token,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              identificador_do_participante: payload.identificador_do_participante,
+              finalidade: payload.finalidade,
+              modalidade: payload.modalidade,
+              data_programada: payload.data_programada,
+              duracao_planejada_minutos: payload.duracao_planejada_minutos,
+              identificador_do_profissional: payload.identificador_do_profissional,
+              identificador_da_anamnese: payload.identificador_da_anamnese
+            })
+          }
+        );
       const vinculo = await requisitarNucleoAutenticado(
         `/api/v1/sessoes/${encodeURIComponent(String(sessao.identificador))}/vinculo-operacional-ctr-thx`,
         token,
@@ -188,6 +247,10 @@ export async function POST(request: Request) {
       caminho = "/api/v1/sessoes-operacionais";
     } else if (acao === "operar-sessao") {
       caminho = `/api/v1/sessoes/${encodeURIComponent(String(corpo.identificador))}/operacoes`;
+    } else if (acao === "apresentar-consentimento") {
+      caminho = "/api/v1/consentimentos/apresentacoes";
+    } else if (acao === "apresentar-instrumento-integrado") {
+      caminho = "/api/v1/instrumento-integrado/apresentacoes";
     } else if (acao === "criar-treinamento") {
       caminho = "/api/v1/treinamentos/catalogo";
     } else if (acao === "programar-treinamento") {

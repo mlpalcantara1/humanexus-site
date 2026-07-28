@@ -55,14 +55,28 @@ export async function GET(request: Request) {
     if (!relatorio) throw new Error("Relatório da sessão não localizado.");
     const execucao = execucoes.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
     const sessaoId = String(sessao.identificador);
-    const [telemetria, ciclo, eventos] = await Promise.all([
+    const [telemetria, ciclo, eventos, gravacao, contratoCientifico] = await Promise.all([
       requisitarNucleoAutenticado<Registro[]>(`/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}`, token),
       execucao
         ? requisitarNucleoAutenticado<Registro>(`/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/ciclo`, token)
         : Promise.resolve(null),
       execucao
         ? requisitarNucleoAutenticado<Registro[]>(`/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/ciclo/eventos`, token)
-        : Promise.resolve([])
+        : Promise.resolve([]),
+      requisitarNucleoAutenticado<Registro>(
+        `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/gravacao`,
+        token
+      ).catch(() => ({
+        baseline: {
+          referencia: {
+            estado: "SESSÃO SEM REFERÊNCIA DE BASELINE"
+          }
+        }
+      })),
+      requisitarNucleoAutenticado<Registro>(
+        `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/contrato-cientifico`,
+        token
+      )
     ]);
     const pdf = await gerarPdfVisualHumanexus({
       usuario,
@@ -72,7 +86,9 @@ export async function GET(request: Request) {
       ciclo,
       telemetria,
       eventos,
-      relatorio
+      relatorio,
+      gravacao,
+      contratoCientifico
     });
     return new NextResponse(new Uint8Array(pdf), {
       headers: {

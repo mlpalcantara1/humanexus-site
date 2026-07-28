@@ -85,14 +85,19 @@ export function FormularioConsentimento() {
         <p className="hx-module__notice">
           {dados.documento.situacao_juridica.replaceAll("_", " ")}
         </p>
-        <form onSubmit={manifestar}>
+        <form
+          key={params.id}
+          autoComplete="off"
+          onSubmit={manifestar}
+        >
           <fieldset>
             <legend>Registre uma decisão específica para este documento</legend>
             <label>
               <input
                 type="radio"
-                name="decisao"
+                name={`decisao-${params.id}`}
                 value="ACEITO"
+                autoComplete="off"
                 checked={decisao === "ACEITO"}
                 onChange={(evento) => setDecisao(evento.target.value)}
               />
@@ -101,8 +106,9 @@ export function FormularioConsentimento() {
             <label>
               <input
                 type="radio"
-                name="decisao"
+                name={`decisao-${params.id}`}
                 value="RECUSADO"
+                autoComplete="off"
                 checked={decisao === "RECUSADO"}
                 onChange={(evento) => setDecisao(evento.target.value)}
               />
@@ -112,8 +118,9 @@ export function FormularioConsentimento() {
               <label>
                 <input
                   type="radio"
-                  name="decisao"
+                  name={`decisao-${params.id}`}
                   value="REVOGADO"
+                  autoComplete="off"
                   checked={decisao === "REVOGADO"}
                   onChange={(evento) => setDecisao(evento.target.value)}
                 />
