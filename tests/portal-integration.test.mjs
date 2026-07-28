@@ -124,12 +124,22 @@ test("organização e participante usam ficha completa, versionada e reabrível"
   assert.match(management, /reativar-participante/);
   assert.doesNotMatch(management, /CADASTRO MINIMIZADO/);
 
-  assert.match(route, /participantes\.flatMap/);
-  assert.doesNotMatch(route, /participantesBasicos\.map/);
-  assert.doesNotMatch(
-    route,
-    /\/participantes\/\$\{encodeURIComponent\(String\(participante\.identificador\)\)\}"/
-  );
+  assert.match(route, /\/api\/v1\/gestao\/contexto/);
+  assert.match(route, /new URLSearchParams\(\{ modulo \}\)/);
+  assert.doesNotMatch(route, /participantes\.flatMap/);
+  assert.doesNotMatch(route, /\/api\/v1\/usuarios/);
+});
+
+test("painel e gestão evitam waterfall e carga global duplicada", async () => {
+  const modules = await source("components/modulo-integrado.tsx");
+  const summary = await source("app/api/plataforma/resumo/route.ts");
+  const management = await source("app/api/gestao-operacional/route.ts");
+
+  assert.match(summary, /\/api\/v1\/painel\/inicial/);
+  assert.doesNotMatch(summary, /FONTES_GERAIS/);
+  assert.match(modules, /exigeConsultaGlobal/);
+  assert.match(modules, /"painel",\s*"formulacao",\s*"humanexus-lab"/);
+  assert.match(management, /\/api\/v1\/gestao\/contexto/);
 });
 
 test("admin converge para a ficha canônica e usuários são editáveis", async () => {

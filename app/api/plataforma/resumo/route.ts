@@ -5,17 +5,15 @@ import { COOKIE_SESSAO } from "@/lib/portal-session";
 
 type Fonte = { nome: string; caminho: string };
 
-const FONTES_GERAIS: Fonte[] = [
-  { nome: "painel", caminho: "/api/v1/painel/resumo" },
-  { nome: "organizacoes", caminho: "/api/v1/organizacoes" },
-  { nome: "ctr", caminho: "/api/v1/ctr/catalogo" },
-  { nome: "thx", caminho: "/api/v1/thx/catalogo" },
-  { nome: "conectores", caminho: "/api/v1/conectores" },
-  { nome: "telemetria", caminho: "/api/v1/fontes-telemetria" },
-  { nome: "movel", caminho: "/api/v1/movel/perfil" },
-  { nome: "versao_cientifica", caminho: "/api/v1/cientifico/versoes/ativa" },
-  { nome: "postulados", caminho: "/api/v1/cientifico/postulados" }
-];
+const FONTES_POR_MODULO: Record<string, Fonte[]> = {
+  formulacao: [
+    {
+      nome: "versao_cientifica",
+      caminho: "/api/v1/cientifico/versoes/ativa"
+    },
+    { nome: "postulados", caminho: "/api/v1/cientifico/postulados" }
+  ]
+};
 
 async function consultar(nome: string, caminho: string, token: string) {
   try {
@@ -31,28 +29,42 @@ async function consultar(nome: string, caminho: string, token: string) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const token = (await cookies()).get(COOKIE_SESSAO)?.value;
   if (!token) {
     return NextResponse.json({ erro: { mensagem: "Sessão ausente." } }, { status: 401 });
   }
 
   try {
-    const usuario = await requisitarNucleoAutenticado<{
+    const modulo = new URL(request.url).searchParams.get("modulo") ?? "painel";
+    if (modulo === "painel") {
+      const painel = await requisitarNucleoAutenticado<{
+        usuario: {
+          identificador_da_organizacao: string | null;
+          perfil: string;
+          permissoes: string[];
+        };
+        recursos: Array<{
+          nome: string;
+          disponivel: boolean;
+          dados: unknown;
+        }>;
+      }>("/api/v1/painel/inicial", token);
+      return NextResponse.json(painel);
+    }
+    const fontes = FONTES_POR_MODULO[modulo] ?? [];
+    const [usuario, recursos] = await Promise.all([
+      requisitarNucleoAutenticado<{
       identificador_da_organizacao: string | null;
       perfil: string;
       permissoes: string[];
-    }>("/api/v1/autenticacao/usuario-atual", token);
-    const fontes = [...FONTES_GERAIS];
-    if (usuario.identificador_da_organizacao) {
-      fontes.push({
-        nome: "clientes",
-        caminho: `/api/v1/organizacoes/${encodeURIComponent(usuario.identificador_da_organizacao)}/participantes`
-      });
-    }
-    const recursos = await Promise.all(
-      fontes.map((fonte) => consultar(fonte.nome, fonte.caminho, token))
-    );
+      }>("/api/v1/autenticacao/usuario-atual", token),
+      Promise.all(
+        fontes.map((fonte) =>
+          consultar(fonte.nome, fonte.caminho, token)
+        )
+      )
+    ]);
     return NextResponse.json({ usuario, recursos });
   } catch {
     return NextResponse.json(

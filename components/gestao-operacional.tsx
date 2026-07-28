@@ -259,7 +259,7 @@ export function GestaoOperacional({
   }
 
   async function carregar(organizacaoId = organizacaoSelecionada) {
-    const parametros = new URLSearchParams();
+    const parametros = new URLSearchParams({ modulo });
     if (organizacaoId) parametros.set("organizacao", organizacaoId);
     const resposta = await fetch(
       `/api/gestao-operacional${parametros.size ? `?${parametros}` : ""}`,
@@ -697,10 +697,16 @@ export function GestaoOperacional({
                 </article>
               );
             })}</div>
-            {lista(organizacaoAtual?.historico).length ? (
+            {Number(
+              objeto(organizacaoAtual?.perfil_operacional).numero_da_versao
+            ) > 0 ? (
               <p>
-                Histórico preservado: {lista(organizacaoAtual?.historico).length}
-                {" "}versão(ões).
+                Histórico preservado: {
+                  Number(
+                    objeto(organizacaoAtual?.perfil_operacional)
+                      .numero_da_versao
+                  )
+                } versão(ões).
               </p>
             ) : null}
           </section>
@@ -831,11 +837,14 @@ export function GestaoOperacional({
             {participanteSelecionado ? (
               <p>
                 Histórico preservado: {
-                  lista(
-                    dados.participantes.find(
-                      (item) => item.identificador === participanteSelecionado
-                    )?.historico
-                  ).length
+                  Number(
+                    objeto(
+                      dados.participantes.find(
+                        (item) =>
+                          item.identificador === participanteSelecionado
+                      )?.perfil_operacional
+                    ).numero_da_versao ?? 0
+                  )
                 } versão(ões).
               </p>
             ) : null}

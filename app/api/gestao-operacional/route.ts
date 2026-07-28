@@ -6,104 +6,19 @@ import { exigirCsrf } from "@/lib/request-security";
 
 type Registro = Record<string, unknown>;
 
-async function contexto(token: string, organizacaoSolicitada?: string) {
-  const usuario = await requisitarNucleoAutenticado<Registro>(
-    "/api/v1/autenticacao/usuario-atual",
-    token
-  );
-  const organizacoes = usuario.identificador_da_organizacao
-    ? [await requisitarNucleoAutenticado<Registro>(
-        `/api/v1/organizacoes/${encodeURIComponent(String(usuario.identificador_da_organizacao))}`,
-        token
-      )]
-    : await requisitarNucleoAutenticado<Registro[]>("/api/v1/organizacoes", token);
-  const organizacaoBasica = organizacoes.find(
-    (item) => item.identificador === organizacaoSolicitada
-  ) ?? organizacoes[0];
-  if (!organizacaoBasica?.identificador) {
-    return {
-      usuario,
-      organizacoes,
-      organizacao: null,
-      participantes: [],
-      sessoes: [],
-      catalogo_treinamentos: [],
-      programacoes: [],
-      contratos: []
-    };
+async function contexto(
+  token: string,
+  organizacaoSolicitada?: string,
+  modulo = "governanca"
+) {
+  const parametros = new URLSearchParams({ modulo });
+  if (organizacaoSolicitada) {
+    parametros.set("organizacao", organizacaoSolicitada);
   }
-  const organizacaoId = String(organizacaoBasica.identificador);
-  const organizacao = Array.isArray(organizacaoBasica.historico)
-    ? organizacaoBasica
-    : await requisitarNucleoAutenticado<Registro>(
-        `/api/v1/organizacoes/${encodeURIComponent(organizacaoId)}`,
-        token
-      );
-  const participantes = await requisitarNucleoAutenticado<Registro[]>(
-    `/api/v1/organizacoes/${encodeURIComponent(organizacaoId)}/participantes`,
+  return requisitarNucleoAutenticado<Registro>(
+    `/api/v1/gestao/contexto?${parametros}`,
     token
   );
-  const sessoes = participantes.flatMap((participante) =>
-    Array.isArray(participante.sessoes)
-      ? participante.sessoes as Registro[]
-      : []
-  );
-  const [catalogoTreinamentos, programacoes, contratos] = await Promise.all([
-    requisitarNucleoAutenticado<Registro[]>(
-      "/api/v1/treinamentos/catalogo",
-      token
-    ).catch(() => []),
-    requisitarNucleoAutenticado<Registro[]>(
-      "/api/v1/treinamentos/programacoes",
-      token
-    ).catch(() => []),
-    requisitarNucleoAutenticado<Registro[]>(
-      "/api/v1/contratos",
-      token
-    ).catch(() => [])
-  ]);
-  const [usuariosConsultados, vinculosValidados, modelosConsentimento] = await Promise.all([
-    requisitarNucleoAutenticado<Registro[]>("/api/v1/usuarios", token)
-      .catch(() => []),
-    requisitarNucleoAutenticado<Registro[]>(
-      "/api/v1/ctr-thx/vinculos-validados-operacionais",
-      token
-    ).catch(() => []),
-    requisitarNucleoAutenticado<Registro[]>(
-      "/api/v1/consentimentos/modelos",
-      token
-    ).catch(() => [])
-  ]);
-  const usuarios = (
-    usuario.perfil === "PROFISSIONAL_HUMANEXUS"
-    && usuario.identificador_da_organizacao === organizacaoId
-    && !usuariosConsultados.some((item) => item.identificador === usuario.identificador)
-  )
-    ? [{ ...usuario, ativo: true }, ...usuariosConsultados]
-    : usuariosConsultados;
-  return {
-    usuario,
-    organizacoes,
-    organizacao,
-    participantes,
-    sessoes,
-    catalogo_treinamentos: catalogoTreinamentos,
-    programacoes,
-    contratos
-    ,profissionais: usuarios.filter(
-      (item) => (
-        item.perfil === "PROFISSIONAL_HUMANEXUS"
-        && item.ativo
-        && item.identificador_da_organizacao === organizacaoId
-      ) || (
-        item.identificador === usuario.identificador
-        && item.perfil === "ADMINISTRADOR_DO_SISTEMA"
-        && item.ativo
-      )
-    )
-    ,vinculos_ctr_thx_validados: vinculosValidados
-    ,modelos_consentimento: modelosConsentimento
-  };
 }
 
 export async function GET(request: Request) {
@@ -117,7 +32,11 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     return NextResponse.json(
-      await contexto(token, url.searchParams.get("organizacao") ?? undefined)
+      await contexto(
+        token,
+        url.searchParams.get("organizacao") ?? undefined,
+        url.searchParams.get("modulo") ?? "governanca"
+      )
     );
   } catch (erro) {
     return NextResponse.json(
@@ -150,17 +69,9 @@ export async function POST(request: Request) {
       caminho = `/api/v1/organizacoes/${encodeURIComponent(String(corpo.identificador))}`;
       metodo = "PUT";
     } else if (acao === "criar-participante") {
-      const escopo = await contexto(
-        token,
-        String((dados as Registro).identificador_da_organizacao ?? "")
-      );
-      if (!escopo.organizacao?.identificador) {
+      if (!(dados as Registro).identificador_da_organizacao) {
         throw new Error("Organização autorizada é obrigatória.");
       }
-      dados = {
-        ...(dados as Registro),
-        identificador_da_organizacao: escopo.organizacao.identificador
-      };
       caminho = "/api/v1/participantes";
     } else if (acao === "atualizar-participante") {
       caminho = `/api/v1/participantes/${encodeURIComponent(String(corpo.identificador))}`;
@@ -174,7 +85,11 @@ export async function POST(request: Request) {
       caminho = `/api/v1/participantes/${encodeURIComponent(String(corpo.identificador))}/contextos`;
     } else if (acao === "criar-sessao-com-vinculo") {
       const payload = dados as Registro;
-      const contextoOperacional = await contexto(token);
+      const contextoOperacional = await contexto(
+        token,
+        undefined,
+        "sessoes"
+      );
       const sessaoPendente = (
         Array.isArray(contextoOperacional.sessoes)
           ? contextoOperacional.sessoes

@@ -1140,8 +1140,16 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     window.history.replaceState(window.history.state, "", url);
   };
 
-  const carregar = async (selecao: Record<string, string> = selecaoInicial) => {
-    const parametros = new URLSearchParams();
+  const carregar = async (
+    selecao: Record<string, string> = selecaoInicial,
+    leve = false
+  ) => {
+    const parametros = new URLSearchParams({ modulo });
+    const visaoSolicitada = new URLSearchParams(
+      window.location.search
+    ).get("visao");
+    if (visaoSolicitada) parametros.set("visao", visaoSolicitada);
+    if (leve) parametros.set("leve", "1");
     for (const campo of ["organizacao", "participante", "sessao"]) {
       if (selecao[campo]) parametros.set(campo, selecao[campo]);
     }
@@ -1151,6 +1159,18 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     );
     const dados = await resposta.json();
     if (!resposta.ok) throw new Error(dados?.erro?.mensagem ?? "Consulta operacional indisponível.");
+    if (dados.atualizacao_parcial) {
+      setEstado((atual) => atual ? {
+        ...atual,
+        conectores: dados.conectores,
+        fontes: dados.fontes,
+        telemetria: dados.telemetria,
+        eventos_tecnicos: dados.eventos_tecnicos,
+        estado_operacional: dados.estado_operacional,
+        cockpit_operacional: dados.cockpit_operacional
+      } : atual);
+      return;
+    }
     setEstado(dados);
     const atual = {
       organizacao: String(dados.contextos.selecao.identificador_da_organizacao),
@@ -1197,7 +1217,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     }
     const id = window.setInterval(() => {
       if (document.visibilityState !== "visible" || ocupado) return;
-      void carregar(selecaoInicial).catch((causa) => {
+      void carregar(selecaoInicial, true).catch((causa) => {
         setErro(
           causa instanceof Error
             ? causa.message

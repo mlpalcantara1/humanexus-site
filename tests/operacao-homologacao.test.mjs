@@ -14,6 +14,17 @@ test("operação usa sessão httpOnly e proteção CSRF sem expor token", async 
   assert.doesNotMatch(client, /authorization|Bearer|localStorage|sessionStorage/);
 });
 
+test("Cockpit agrega leituras e atualiza telemetria sem recarregar o contexto inteiro", async () => {
+  const route = await source("app/api/operacao-homologacao/route.ts");
+  const client = await source("components/operacao-homologacao.tsx");
+
+  assert.match(route, /\/api\/v1\/consultas-em-lote/);
+  assert.match(route, /atualizacaoLeve/);
+  assert.match(route, /limite=120/);
+  assert.match(client, /atualizacao_parcial/);
+  assert.match(client, /carregar\(selecaoInicial, true\)/);
+});
+
 test("CTR e THX individuais não usam a versão do catálogo como identificador", async () => {
   const route = await source("app/api/operacao-homologacao/route.ts");
   const client = await source("components/operacao-homologacao.tsx");

@@ -173,21 +173,33 @@ function Lab({ dados, php, anamnese }: { dados: unknown; php: DadosPHP | null; a
 
 export function ModuloIntegrado({ modulo }: { modulo: ModuloDaPlataforma }) {
   const definicao = DEFINICOES[modulo];
+  const exigeConsultaGlobal = [
+    "painel",
+    "formulacao",
+    "humanexus-lab"
+  ].includes(modulo);
   const [resposta, setResposta] = useState<Resposta | null>(null);
   const [php, setPhp] = useState<DadosPHP | null>(null);
   const [anamneseLab, setAnamneseLab] = useState<DadosAnamneseLab | null>(null);
   const [erro, setErro] = useState("");
 
   useEffect(() => {
+    if (!exigeConsultaGlobal) {
+      setResposta(null);
+      setErro("");
+      return;
+    }
     let ativo = true;
-    const destino = modulo === "humanexus-lab" ? "/api/plataforma/lab" : "/api/plataforma/resumo";
+    const destino = modulo === "humanexus-lab"
+      ? "/api/plataforma/lab"
+      : `/api/plataforma/resumo?modulo=${encodeURIComponent(modulo)}`;
     fetch(destino, { cache: "no-store" }).then(async (resultado) => {
       const dados = await resultado.json();
       if (!resultado.ok) throw new Error(dados?.erro?.mensagem ?? "Consulta indisponível.");
       if (ativo) setResposta(modulo === "humanexus-lab" ? { recursos: [{ nome: "humanexus-lab", disponivel: true, dados: dados.dados }], usuario: { perfil: "ADMINISTRADOR_PROPRIETARIO", permissoes: [] } } : dados as Resposta);
     }).catch((causa) => ativo && setErro(causa instanceof Error ? causa.message : "Consulta indisponível."));
     return () => { ativo = false; };
-  }, [modulo]);
+  }, [exigeConsultaGlobal, modulo]);
 
   useEffect(() => {
     if (modulo !== "humanexus-lab") return;
@@ -239,7 +251,7 @@ export function ModuloIntegrado({ modulo }: { modulo: ModuloDaPlataforma }) {
       {definicao.observacao ? <p className="hx-module__notice">{definicao.observacao}</p> : null}
       {moduloOperacional ? <p className="hx-module__notice"><strong>CONTEXTO OPERACIONAL PROTEGIDO.</strong> Organização, participante e sessão são selecionados entre registros autorizados do núcleo e permanecem sincronizados entre as visões. Dados técnicos simulados continuam separados de evidência humana.</p> : null}
       {erro ? <p className="hx-module__error" role="status">{erro}</p> : null}
-      {!resposta && !erro ? <p className="hx-module__loading">Consultando o núcleo oficial…</p> : null}
+      {exigeConsultaGlobal && !resposta && !erro ? <p className="hx-module__loading">Consultando o núcleo oficial…</p> : null}
       {moduloOperacional ? <OperacaoHomologacao modulo={modulo} /> : null}
       {moduloDeGestao ? <GestaoOperacional modulo={modulo} /> : null}
       {modulo === "anamnese-regulatoria" ? <PainelProfissional /> : null}

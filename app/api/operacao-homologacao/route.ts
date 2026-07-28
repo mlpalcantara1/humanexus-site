@@ -26,8 +26,57 @@ function consultar<T>(caminho: string, token: string, init: RequestInit = {}) {
   return requisitarNucleoAutenticado<T>(caminho, token, init);
 }
 
-function consultarSeDisponivel<T>(caminho: string, token: string, padrao: T) {
-  return consultar<T>(caminho, token).catch(() => padrao);
+type ConsultaEmLote = {
+  chave: string;
+  caminho: string;
+  opcional?: boolean;
+  padrao?: unknown;
+};
+
+async function consultarLote(
+  token: string,
+  consultas: ConsultaEmLote[]
+) {
+  const resultados: Array<{
+    chave: string;
+    disponivel: boolean;
+    dados: unknown;
+  }> = [];
+  for (let inicio = 0; inicio < consultas.length; inicio += 64) {
+    const grupo = consultas.slice(inicio, inicio + 64);
+    const resposta = await consultar<{
+      resultados: Array<{
+        chave: string;
+        disponivel: boolean;
+        dados: unknown;
+      }>;
+    }>("/api/v1/consultas-em-lote", token, {
+      method: "POST",
+      body: JSON.stringify({
+        consultas: grupo.map(({ chave, caminho, opcional }) => ({
+          chave,
+          caminho,
+          opcional: Boolean(opcional)
+        }))
+      })
+    });
+    resultados.push(...resposta.resultados);
+  }
+  const porChave = new Map(
+    resultados.map((item) => [item.chave, item])
+  );
+  return Object.fromEntries(
+    consultas.map((consulta) => {
+      const resultado = porChave.get(consulta.chave);
+      if (!resultado?.disponivel && !consulta.opcional) {
+        throw new Error(`Consulta obrigatória indisponível: ${consulta.chave}.`);
+      }
+      return [
+        consulta.chave,
+        resultado?.disponivel ? resultado.dados : consulta.padrao
+      ];
+    })
+  );
 }
 
 function encontrar<T extends Registro>(itens: T[], termo: string) {
@@ -58,20 +107,82 @@ function registro(valor: unknown): Registro {
   }
 }
 
-async function estado(token: string, selecao: SelecaoDeContexto = {}) {
-  const usuario = await consultar<Registro>("/api/v1/autenticacao/usuario-atual", token);
-  const organizacoes = usuario.identificador_da_organizacao
-    ? [await consultar<Registro>(
-        `/api/v1/organizacoes/${encodeURIComponent(String(usuario.identificador_da_organizacao))}`,
-        token
-      )]
-    : await consultar<Registro[]>("/api/v1/organizacoes", token);
-  const organizacao = organizacoes.find(
-    (item) => item.identificador === selecao.identificador_da_organizacao
-  ) ?? organizacoes[0];
-  const organizacaoId = String(organizacao?.identificador ?? "");
-  if (!organizacaoId) throw new Error("Nenhuma organização autorizada está disponível para o contexto.");
-  const participantes = await consultar<Registro[]>(`/api/v1/organizacoes/${encodeURIComponent(organizacaoId)}/participantes`, token);
+async function atualizacaoLeve(
+  token: string,
+  selecao: SelecaoDeContexto
+) {
+  const sessaoId = String(selecao.identificador_da_sessao ?? "");
+  if (!sessaoId) {
+    throw new Error("Sessão é obrigatória para atualização operacional.");
+  }
+  const dados = await consultarLote(token, [
+    {
+      chave: "conectores",
+      caminho: `/api/v1/conectores?identificador_da_sessao=${encodeURIComponent(sessaoId)}`
+    },
+    { chave: "fontes", caminho: "/api/v1/fontes-telemetria" },
+    {
+      chave: "telemetria",
+      caminho: `/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}?limite=120`
+    },
+    {
+      chave: "eventos_tecnicos",
+      caminho: `/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}/eventos?limite=60`
+    },
+    {
+      chave: "estado_operacional",
+      caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/estado-operacional`
+    },
+    {
+      chave: "cockpit_operacional",
+      caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional`
+    }
+  ]);
+  return {
+    atualizacao_parcial: true,
+    conectores: dados.conectores,
+    fontes: dados.fontes,
+    telemetria: dados.telemetria,
+    eventos_tecnicos: dados.eventos_tecnicos,
+    estado_operacional: dados.estado_operacional,
+    cockpit_operacional: dados.cockpit_operacional
+  };
+}
+
+async function estado(
+  token: string,
+  selecao: SelecaoDeContexto = {},
+  opcoes: { incluirFormulacoesNoEscopo?: boolean } = {}
+) {
+  const parametrosDoContexto = new URLSearchParams({ modulo: "sessoes" });
+  if (selecao.identificador_da_organizacao) {
+    parametrosDoContexto.set(
+      "organizacao",
+      selecao.identificador_da_organizacao
+    );
+  }
+  const contextoBase = await consultar<{
+    usuario: Registro;
+    organizacoes: Registro[];
+    organizacao: Registro | null;
+    participantes: Registro[];
+    sessoes: Registro[];
+    profissionais: Registro[];
+    vinculos_ctr_thx_validados: Registro[];
+  }>(
+    `/api/v1/gestao/contexto?${parametrosDoContexto}`,
+    token
+  );
+  const usuario = contextoBase.usuario;
+  const organizacoes = contextoBase.organizacoes;
+  const organizacao = contextoBase.organizacao;
+  if (!organizacao?.identificador) {
+    throw new Error(
+      "Nenhuma organização autorizada está disponível para o contexto."
+    );
+  }
+  const organizacaoId = String(organizacao.identificador);
+  const participantes = contextoBase.participantes;
   const participanteSolicitado = participantes.find(
     (item) => item.identificador === selecao.identificador_do_participante
   );
@@ -87,19 +198,15 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
             (candidato) => candidato?.identificador === item?.identificador
           ) === indice
       );
-  let participante: Registro | undefined;
-  let sessoes: Registro[] = [];
-  for (const candidato of candidatos) {
-    const candidatas = await consultar<Registro[]>(
-      `/api/v1/participantes/${encodeURIComponent(String(candidato.identificador))}/sessoes`,
-      token
-    );
-    if (candidatas.length) {
-      participante = candidato;
-      sessoes = candidatas;
-      break;
-    }
-  }
+  const participante = candidatos.find(
+    (candidato) => Array.isArray(candidato.sessoes)
+      && candidato.sessoes.length > 0
+  );
+  const sessoes = (
+    Array.isArray(participante?.sessoes)
+      ? participante.sessoes
+      : []
+  ) as Registro[];
   if (!participante) throw new Error("Nenhuma sessão autorizada está disponível para os participantes.");
   const participanteId = String(participante.identificador);
   const sessao = sessoes.find(
@@ -107,95 +214,107 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
   ) ?? sessoes[0];
   if (!sessao) throw new Error("Nenhuma sessão autorizada está disponível para o participante.");
   const sessaoId = String(sessao.identificador);
-  const [
-    fases,
-    ctrs,
-    catalogoCtr,
-    execucoes,
-    conectores,
-    fontes,
-    telemetria,
-    eventosTecnicos,
-    linhas,
-    relatorios,
-    formulacoes,
-    longitudinal,
-    perfilMovel,
-    comandosMoveis,
-    postulados,
-    macrocampos,
-    definicoesVetoriais,
-    versaoCientifica,
-    evidencias,
-    estadosVetoriais,
-    configuracoesRegulatorias,
-    avaliacoesRegulatorias,
-    decisoesProfissionais,
-    trajetorias,
-    analisesArr,
-    registrosRro,
-    anamneses,
-    evidenciasAnamnese,
-    evidenciasAnamneseNoEscopo,
-    sessaoOperacional,
-    gravacao,
-    configuracaoCortex,
-    estadoOperacional,
-    cockpitOperacional
-  ] = await Promise.all([
-    consultar<Registro[]>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/fases`, token),
-    consultar<Registro[]>("/api/v1/ctrs", token),
-    consultar<Registro>("/api/v1/ctr/catalogo", token),
-    consultar<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/execucoes-thx`, token),
-    consultar<Registro[]>(`/api/v1/conectores?identificador_da_sessao=${encodeURIComponent(sessaoId)}`, token),
-    consultar<Registro[]>("/api/v1/fontes-telemetria", token),
-    consultar<Registro[]>(`/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}?limite=1200`, token),
-    consultar<Registro[]>(`/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}/eventos?limite=240`, token),
-    consultar<Registro[]>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/linhas-temporais`, token),
-    consultar<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/relatorios`, token),
-    consultar<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/formulacoes`, token),
-    consultar<Registro>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/longitudinal`, token).catch(() => ({ historico: [] })),
-    consultar<Registro>("/api/v1/movel/perfil", token),
-    consultar<Registro[]>("/api/v1/movel/comandos", token),
-    consultarSeDisponivel<Registro>("/api/v1/cientifico/postulados", token, { quantidade: 0, regras: [] }),
-    consultarSeDisponivel<Registro[]>("/api/v1/cientifico/macrocampos", token, []),
-    consultarSeDisponivel<Registro[]>("/api/v1/cientifico/vetores", token, []),
-    consultarSeDisponivel<Registro>("/api/v1/cientifico/versoes/ativa", token, {}),
-    consultarSeDisponivel<Registro[]>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/evidencias`, token, []),
-    consultarSeDisponivel<Registro[]>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/estados-vetoriais`, token, []),
-    consultarSeDisponivel<Registro[]>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/configuracoes-regulatorias`, token, []),
-    consultarSeDisponivel<Registro[]>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/avaliacao-regulatoria`, token, []),
-    consultarSeDisponivel<Registro[]>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/decisoes-profissionais`, token, []),
-    consultarSeDisponivel<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/trajetorias`, token, []),
-    consultarSeDisponivel<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/arr`, token, []),
-    consultarSeDisponivel<Registro[]>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/rro`, token, []),
-    consultarSeDisponivel<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/anamneses`, token, []),
-    consultarSeDisponivel<Registro[]>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/anamneses/evidencias`, token, []),
-    consultarSeDisponivel<Registro[]>("/api/v1/anamneses/evidencias", token, []),
-    consultarSeDisponivel<Registro>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/operacoes`, token, {}),
-    consultarSeDisponivel<Registro>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/gravacao`, token, {
-      configuracoes: [], dispositivos: [], segmentos: [], eventos: [], diagnostico: {}
-    }),
-    consultarSeDisponivel<Registro>(
-      "/api/v1/pontes-fisicas/cortex/configuracao-local",
-      token,
-      { permitido: false, configurado: false, segredo_retornado: false }
-    ),
-    consultar<Registro>(
-      `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/estado-operacional`,
-      token
-    ),
-    consultar<Registro>(
-      `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional`,
-      token
-    )
-  ]);
+  const consultasPrincipais: ConsultaEmLote[] = [
+    { chave: "fases", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/fases` },
+    { chave: "ctrs", caminho: "/api/v1/ctrs" },
+    { chave: "catalogoCtr", caminho: "/api/v1/ctr/catalogo" },
+    { chave: "execucoes", caminho: `/api/v1/participantes/${encodeURIComponent(participanteId)}/execucoes-thx` },
+    { chave: "conectores", caminho: `/api/v1/conectores?identificador_da_sessao=${encodeURIComponent(sessaoId)}` },
+    { chave: "fontes", caminho: "/api/v1/fontes-telemetria" },
+    { chave: "telemetria", caminho: `/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}?limite=1200` },
+    { chave: "eventosTecnicos", caminho: `/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}/eventos?limite=240` },
+    { chave: "linhas", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/linhas-temporais` },
+    { chave: "relatorios", caminho: `/api/v1/participantes/${encodeURIComponent(participanteId)}/relatorios` },
+    { chave: "formulacoes", caminho: `/api/v1/participantes/${encodeURIComponent(participanteId)}/formulacoes` },
+    { chave: "longitudinal", caminho: `/api/v1/participantes/${encodeURIComponent(participanteId)}/longitudinal`, opcional: true, padrao: { historico: [] } },
+    { chave: "perfilMovel", caminho: "/api/v1/movel/perfil" },
+    { chave: "comandosMoveis", caminho: "/api/v1/movel/comandos" },
+    { chave: "postulados", caminho: "/api/v1/cientifico/postulados", opcional: true, padrao: { quantidade: 0, regras: [] } },
+    { chave: "macrocampos", caminho: "/api/v1/cientifico/macrocampos", opcional: true, padrao: [] },
+    { chave: "definicoesVetoriais", caminho: "/api/v1/cientifico/vetores", opcional: true, padrao: [] },
+    { chave: "versaoCientifica", caminho: "/api/v1/cientifico/versoes/ativa", opcional: true, padrao: {} },
+    { chave: "evidencias", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/evidencias`, opcional: true, padrao: [] },
+    { chave: "estadosVetoriais", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/estados-vetoriais`, opcional: true, padrao: [] },
+    { chave: "configuracoesRegulatorias", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/configuracoes-regulatorias`, opcional: true, padrao: [] },
+    { chave: "avaliacoesRegulatorias", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/avaliacao-regulatoria`, opcional: true, padrao: [] },
+    { chave: "decisoesProfissionais", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/decisoes-profissionais`, opcional: true, padrao: [] },
+    { chave: "trajetorias", caminho: `/api/v1/participantes/${encodeURIComponent(participanteId)}/trajetorias`, opcional: true, padrao: [] },
+    { chave: "analisesArr", caminho: `/api/v1/participantes/${encodeURIComponent(participanteId)}/arr`, opcional: true, padrao: [] },
+    { chave: "registrosRro", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/rro`, opcional: true, padrao: [] },
+    { chave: "anamneses", caminho: `/api/v1/participantes/${encodeURIComponent(participanteId)}/anamneses`, opcional: true, padrao: [] },
+    { chave: "evidenciasAnamnese", caminho: `/api/v1/participantes/${encodeURIComponent(participanteId)}/anamneses/evidencias`, opcional: true, padrao: [] },
+    { chave: "evidenciasAnamneseNoEscopo", caminho: "/api/v1/anamneses/evidencias", opcional: true, padrao: [] },
+    { chave: "sessaoOperacional", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/operacoes`, opcional: true, padrao: {} },
+    {
+      chave: "gravacao",
+      caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/gravacao`,
+      opcional: true,
+      padrao: {
+        configuracoes: [],
+        dispositivos: [],
+        segmentos: [],
+        eventos: [],
+        diagnostico: {}
+      }
+    },
+    {
+      chave: "configuracaoCortex",
+      caminho: "/api/v1/pontes-fisicas/cortex/configuracao-local",
+      opcional: true,
+      padrao: {
+        permitido: false,
+        configurado: false,
+        segredo_retornado: false
+      }
+    },
+    { chave: "estadoOperacional", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/estado-operacional` },
+    { chave: "cockpitOperacional", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional` },
+    ...(opcoes.incluirFormulacoesNoEscopo ? participantes : []).map((item) => ({
+      chave: `formulacoes:${String(item.identificador)}`,
+      caminho: `/api/v1/participantes/${encodeURIComponent(String(item.identificador))}/formulacoes`,
+      opcional: true,
+      padrao: []
+    }))
+  ];
+  const principais = await consultarLote(token, consultasPrincipais);
+  const fases = principais.fases as Registro[];
+  const ctrs = principais.ctrs as Registro[];
+  const catalogoCtr = principais.catalogoCtr as Registro;
+  const execucoes = principais.execucoes as Registro[];
+  const conectores = principais.conectores as Registro[];
+  const fontes = principais.fontes as Registro[];
+  const telemetria = principais.telemetria as Registro[];
+  const eventosTecnicos = principais.eventosTecnicos as Registro[];
+  const linhas = principais.linhas as Registro[];
+  const relatorios = principais.relatorios as Registro[];
+  const formulacoes = principais.formulacoes as Registro[];
+  const longitudinal = principais.longitudinal as Registro;
+  const perfilMovel = principais.perfilMovel as Registro;
+  const comandosMoveis = principais.comandosMoveis as Registro[];
+  const postulados = principais.postulados as Registro;
+  const macrocampos = principais.macrocampos as Registro[];
+  const definicoesVetoriais = principais.definicoesVetoriais as Registro[];
+  const versaoCientifica = principais.versaoCientifica as Registro;
+  const evidencias = principais.evidencias as Registro[];
+  const estadosVetoriais = principais.estadosVetoriais as Registro[];
+  const configuracoesRegulatorias = principais.configuracoesRegulatorias as Registro[];
+  const avaliacoesRegulatorias = principais.avaliacoesRegulatorias as Registro[];
+  const decisoesProfissionais = principais.decisoesProfissionais as Registro[];
+  const trajetorias = principais.trajetorias as Registro[];
+  const analisesArr = principais.analisesArr as Registro[];
+  const registrosRro = principais.registrosRro as Registro[];
+  const anamneses = principais.anamneses as Registro[];
+  const evidenciasAnamnese = principais.evidenciasAnamnese as Registro[];
+  const evidenciasAnamneseNoEscopo = principais.evidenciasAnamneseNoEscopo as Registro[];
+  const sessaoOperacional = principais.sessaoOperacional as Registro;
+  const gravacao = principais.gravacao as Registro;
+  const configuracaoCortex = principais.configuracaoCortex as Registro;
+  const estadoOperacional = principais.estadoOperacional as Registro;
+  const cockpitOperacional = principais.cockpitOperacional as Registro;
   const ctr = ctrs.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
   const execucao = execucoes.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
-  const [usuariosDisponiveis, vinculosOficiais] = await Promise.all([
-    consultarSeDisponivel<Registro[]>("/api/v1/usuarios", token, []),
-    consultarSeDisponivel<Registro[]>("/api/v1/ctr-thx/vinculos-validados-operacionais", token, [])
-  ]);
+  const usuariosDisponiveis = contextoBase.profissionais;
+  const vinculosOficiais = contextoBase.vinculos_ctr_thx_validados;
   const nomeDoParticipante = anamneses
     .map((item) => item.nome_do_participante)
     .find((item) => typeof item === "string" && item.trim());
@@ -220,32 +339,63 @@ async function estado(token: string, selecao: SelecaoDeContexto = {}) {
       estado: ctr?.estado_da_recomendacao ?? criterio?.estado ?? "INDISPONÍVEL"
     };
   });
-  const protocolo = execucao
-    ? await consultar<Registro>(`/api/v1/thx/protocolos/${encodeURIComponent(String(execucao.identificador_do_protocolo))}`, token)
-    : null;
   const recomendacaoId = execucao ? String(execucao.identificador_da_recomendacao ?? "") : "";
-  const rastreabilidade = recomendacaoId
-    ? await consultar<Registro>(`/api/v1/recomendacoes-thx/${encodeURIComponent(recomendacaoId)}/rastreabilidade`, token)
-    : null;
-  const [ciclo, eventos, historicoExecucao, replay, historicosConectores] = await Promise.all([
-    execucao ? consultar<Registro>(`/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/ciclo`, token) : null,
-    execucao ? consultar<Registro[]>(`/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/ciclo/eventos`, token) : [],
-    execucao ? consultar<Registro>(`/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/historico`, token) : null,
-    linhas.length ? consultar<Registro>(`/api/v1/linhas-temporais/${encodeURIComponent(String(linhas.at(-1)?.identificador))}?limite=1200`, token) : null,
-    Promise.all(conectores.map(async (conector) => ({
-      identificador: conector.identificador,
-      eventos: await consultar<Registro[]>(`/api/v1/conectores/${encodeURIComponent(String(conector.identificador))}/historico`, token)
-    })))
-  ]);
-  const formulacoesNoEscopo = (
-    await Promise.all(
-      participantes.map((item) => consultarSeDisponivel<Registro[]>(
-        `/api/v1/participantes/${encodeURIComponent(String(item.identificador))}/formulacoes`,
-        token,
-        []
-      ))
-    )
-  ).flat();
+  const consultasDependentes: ConsultaEmLote[] = [
+    ...(execucao ? [
+      {
+        chave: "protocolo",
+        caminho: `/api/v1/thx/protocolos/${encodeURIComponent(String(execucao.identificador_do_protocolo))}`
+      },
+      {
+        chave: "ciclo",
+        caminho: `/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/ciclo`
+      },
+      {
+        chave: "eventos",
+        caminho: `/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/ciclo/eventos`
+      },
+      {
+        chave: "historicoExecucao",
+        caminho: `/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/historico`
+      }
+    ] : []),
+    ...(recomendacaoId ? [{
+      chave: "rastreabilidade",
+      caminho: `/api/v1/recomendacoes-thx/${encodeURIComponent(recomendacaoId)}/rastreabilidade`
+    }] : []),
+    ...(linhas.length ? [{
+      chave: "replay",
+      caminho: `/api/v1/linhas-temporais/${encodeURIComponent(String(linhas.at(-1)?.identificador))}?limite=1200`
+    }] : []),
+    ...conectores.map((conector) => ({
+      chave: `historicoConector:${String(conector.identificador)}`,
+      caminho: `/api/v1/conectores/${encodeURIComponent(String(conector.identificador))}/historico`
+    }))
+  ];
+  const dependentes = consultasDependentes.length
+    ? await consultarLote(token, consultasDependentes)
+    : {};
+  const protocolo = (dependentes.protocolo ?? null) as Registro | null;
+  const rastreabilidade = (dependentes.rastreabilidade ?? null) as Registro | null;
+  const ciclo = (dependentes.ciclo ?? null) as Registro | null;
+  const eventos = (dependentes.eventos ?? []) as Registro[];
+  const historicoExecucao = (
+    dependentes.historicoExecucao ?? null
+  ) as Registro | null;
+  const replay = (dependentes.replay ?? null) as Registro | null;
+  const historicosConectores = conectores.map((conector) => ({
+    identificador: conector.identificador,
+    eventos: (
+      dependentes[`historicoConector:${String(conector.identificador)}`] ?? []
+    ) as Registro[]
+  }));
+  const formulacoesNoEscopo = opcoes.incluirFormulacoesNoEscopo
+    ? participantes.flatMap(
+        (item) => (
+          principais[`formulacoes:${String(item.identificador)}`] ?? []
+        ) as Registro[]
+      )
+    : formulacoes;
   return {
     aviso: MARCACAO,
     usuario,
@@ -383,15 +533,21 @@ export async function GET(request: Request) {
   try {
     const { token } = await tokenAtual();
     const url = new URL(request.url);
+    const selecao = {
+      identificador_da_organizacao:
+        url.searchParams.get("organizacao") ?? undefined,
+      identificador_do_participante:
+        url.searchParams.get("participante") ?? undefined,
+      identificador_da_sessao:
+        url.searchParams.get("sessao") ?? undefined
+    };
     return NextResponse.json(
-      await estado(token, {
-        identificador_da_organizacao:
-          url.searchParams.get("organizacao") ?? undefined,
-        identificador_do_participante:
-          url.searchParams.get("participante") ?? undefined,
-        identificador_da_sessao:
-          url.searchParams.get("sessao") ?? undefined
-      }),
+      url.searchParams.get("leve") === "1"
+        ? await atualizacaoLeve(token, selecao)
+        : await estado(token, selecao, {
+            incluirFormulacoesNoEscopo:
+              url.searchParams.get("visao") === "formulacao"
+          }),
       { headers: { "cache-control": "private, no-store" } }
     );
   } catch (erro) {
