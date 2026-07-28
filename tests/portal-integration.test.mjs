@@ -99,6 +99,71 @@ test("módulos operacionais usam gestão real sem ações de fachada", async () 
   assert.match(modules, /Gerar convite de Anamnese/);
 });
 
+test("organização e participante usam ficha completa, versionada e reabrível", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  const route = await source("app/api/gestao-operacional/route.ts");
+
+  for (const field of [
+    "razao_social",
+    "nome_fantasia",
+    "cnpj",
+    "inscricao_estadual",
+    "responsavel_nome",
+    "nome_completo",
+    "data_de_nascimento",
+    "dados_profissionais",
+    "documentos",
+    "elegibilidade",
+    "justificativa_da_elegibilidade"
+  ]) {
+    assert.match(management, new RegExp(field));
+  }
+  assert.match(management, /Abrir ficha/);
+  assert.match(management, /Salvar nova versão/);
+  assert.match(management, /inativar-participante/);
+  assert.match(management, /reativar-participante/);
+  assert.doesNotMatch(management, /CADASTRO MINIMIZADO/);
+
+  assert.match(route, /participantes\.flatMap/);
+  assert.doesNotMatch(route, /participantesBasicos\.map/);
+  assert.doesNotMatch(
+    route,
+    /\/participantes\/\$\{encodeURIComponent\(String\(participante\.identificador\)\)\}"/
+  );
+});
+
+test("admin converge para a ficha canônica e usuários são editáveis", async () => {
+  const panel = await source("components/painel-administrador.tsx");
+  const route = await source("app/api/administracao/route.ts");
+
+  assert.match(panel, /href="\/plataforma\/organizacoes"/);
+  assert.doesNotMatch(panel, /nomeOrganizacao|criarOrganizacao/);
+  assert.match(panel, /Ficha do usuário/);
+  assert.match(panel, /Abrir ficha/);
+  assert.match(panel, /registro_profissional/);
+  assert.match(panel, /Salvar nova versão/);
+  assert.match(route, /atualizar_usuario/);
+  assert.match(route, /method: "PUT"/);
+});
+
+test("treinamentos, programações e contratos fecham o ciclo operacional", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  const route = await source("app/api/gestao-operacional/route.ts");
+
+  for (const action of [
+    "inativar-treinamento",
+    "reativar-treinamento",
+    "operar-programacao",
+    "atualizar-contrato"
+  ]) {
+    assert.match(management, new RegExp(action));
+    assert.match(route, new RegExp(action));
+  }
+  assert.match(management, /Abrir como nova versão/);
+  assert.match(management, /Ficha contratual/);
+  assert.match(management, /Histórico/);
+});
+
 test("middleware cobre todas as áreas privadas", async () => {
   const middleware = await source("middleware.ts");
   for (const route of [

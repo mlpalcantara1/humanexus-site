@@ -51,6 +51,18 @@ export async function POST(request: Request) {
         { status: 201 }
       );
     }
+    if (corpo.acao === "atualizar_usuario") {
+      return NextResponse.json(
+        await requisitarNucleoAutenticado(
+          `/api/v1/usuarios/${encodeURIComponent(corpo.identificador)}`,
+          token,
+          {
+            method: "PUT",
+            body: JSON.stringify(corpo.usuario)
+          }
+        )
+      );
+    }
     if (corpo.acao === "alterar_acesso") {
       const destino = corpo.ativo ? "reativar" : "suspender";
       return NextResponse.json(

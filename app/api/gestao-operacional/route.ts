@@ -17,10 +17,10 @@ async function contexto(token: string, organizacaoSolicitada?: string) {
         token
       )]
     : await requisitarNucleoAutenticado<Registro[]>("/api/v1/organizacoes", token);
-  const organizacao = organizacoes.find(
+  const organizacaoBasica = organizacoes.find(
     (item) => item.identificador === organizacaoSolicitada
   ) ?? organizacoes[0];
-  if (!organizacao?.identificador) {
+  if (!organizacaoBasica?.identificador) {
     return {
       usuario,
       organizacoes,
@@ -32,45 +32,21 @@ async function contexto(token: string, organizacaoSolicitada?: string) {
       contratos: []
     };
   }
-  const organizacaoId = String(organizacao.identificador);
-  const participantesBasicos = await requisitarNucleoAutenticado<Registro[]>(
+  const organizacaoId = String(organizacaoBasica.identificador);
+  const organizacao = Array.isArray(organizacaoBasica.historico)
+    ? organizacaoBasica
+    : await requisitarNucleoAutenticado<Registro>(
+        `/api/v1/organizacoes/${encodeURIComponent(organizacaoId)}`,
+        token
+      );
+  const participantes = await requisitarNucleoAutenticado<Registro[]>(
     `/api/v1/organizacoes/${encodeURIComponent(organizacaoId)}/participantes`,
     token
   );
-  const participantes = await Promise.all(
-    participantesBasicos.map(async (participante) => {
-      const detalhes = await requisitarNucleoAutenticado<Registro>(
-        `/api/v1/participantes/${encodeURIComponent(String(participante.identificador))}`,
-        token
-      ).catch(() => ({}));
-      return { ...participante, ...detalhes };
-    })
-  );
-  const sessoesBasicas = (
-    await Promise.all(
-      participantes.map((participante) =>
-        requisitarNucleoAutenticado<Registro[]>(
-          `/api/v1/participantes/${encodeURIComponent(String(participante.identificador))}/sessoes`,
-          token
-        ).catch(() => [])
-      )
-    )
-  ).flat();
-  const sessoes = await Promise.all(
-    sessoesBasicas.map(async (sessao) => {
-      const operacional = await requisitarNucleoAutenticado<{
-        detalhes?: Registro;
-        eventos?: Registro[];
-      }>(
-        `/api/v1/sessoes/${encodeURIComponent(String(sessao.identificador))}/operacoes`,
-        token
-      ).catch(() => ({ detalhes: undefined, eventos: [] }));
-      return {
-        ...sessao,
-        detalhes_operacionais: operacional.detalhes,
-        eventos_operacionais: operacional.eventos
-      };
-    })
+  const sessoes = participantes.flatMap((participante) =>
+    Array.isArray(participante.sessoes)
+      ? participante.sessoes as Registro[]
+      : []
   );
   const [catalogoTreinamentos, programacoes, contratos] = await Promise.all([
     requisitarNucleoAutenticado<Registro[]>(
@@ -189,6 +165,11 @@ export async function POST(request: Request) {
     } else if (acao === "atualizar-participante") {
       caminho = `/api/v1/participantes/${encodeURIComponent(String(corpo.identificador))}`;
       metodo = "PUT";
+    } else if (
+      acao === "inativar-participante"
+      || acao === "reativar-participante"
+    ) {
+      caminho = `/api/v1/participantes/${encodeURIComponent(String(corpo.identificador))}/${acao.startsWith("inativar") ? "inativar" : "reativar"}`;
     } else if (acao === "criar-contexto-participante") {
       caminho = `/api/v1/participantes/${encodeURIComponent(String(corpo.identificador))}/contextos`;
     } else if (acao === "criar-sessao-com-vinculo") {
@@ -253,10 +234,20 @@ export async function POST(request: Request) {
       caminho = "/api/v1/instrumento-integrado/apresentacoes";
     } else if (acao === "criar-treinamento") {
       caminho = "/api/v1/treinamentos/catalogo";
+    } else if (
+      acao === "inativar-treinamento"
+      || acao === "reativar-treinamento"
+    ) {
+      caminho = `/api/v1/treinamentos/catalogo/${encodeURIComponent(String(corpo.identificador))}/${acao.startsWith("inativar") ? "inativar" : "reativar"}`;
     } else if (acao === "programar-treinamento") {
       caminho = "/api/v1/treinamentos/programacoes";
+    } else if (acao === "operar-programacao") {
+      caminho = `/api/v1/treinamentos/programacoes/${encodeURIComponent(String(corpo.identificador))}/operacoes`;
     } else if (acao === "criar-contrato") {
       caminho = "/api/v1/contratos";
+    } else if (acao === "atualizar-contrato") {
+      caminho = `/api/v1/contratos/${encodeURIComponent(String(corpo.identificador))}`;
+      metodo = "PUT";
     } else {
       throw new Error("Ação operacional inválida.");
     }
