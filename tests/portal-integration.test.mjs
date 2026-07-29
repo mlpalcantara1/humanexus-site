@@ -217,6 +217,35 @@ test("organização e participante usam ficha completa, versionada e reabrível"
   assert.doesNotMatch(route, /\/api\/v1\/usuarios/);
 });
 
+test("novos cadastros preservam escopo e proprietário reautentica ações críticas", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  const route = await source("app/api/gestao-operacional/route.ts");
+
+  assert.match(management, /const organizacaoDoCadastro/);
+  assert.match(management, /identificador_do_participante: identificador/);
+  assert.match(management, /await carregar\(organizacaoDoCadastro\)/);
+  assert.match(management, /administrador_proprietario === true/);
+  assert.match(management, /Autonomia exclusiva do proprietário/);
+  assert.match(management, /Confirmação da edição proprietária/);
+  assert.match(management, /autoComplete="current-password"/);
+  assert.match(management, /senha_do_proprietario/);
+  assert.match(management, /confirmacao_do_proprietario/);
+  assert.match(management, /Verificar impacto da exclusão/);
+  assert.match(management, /transferirParticipanteSelecionado/);
+  assert.match(management, /EXCLUSAO_CONTROLADA/);
+  assert.doesNotMatch(management, /localStorage.*senha/i);
+
+  for (const action of [
+    "impacto-exclusao-organizacao",
+    "excluir-organizacao",
+    "impacto-exclusao-participante",
+    "transferir-participante",
+    "excluir-participante"
+  ]) {
+    assert.match(route, new RegExp(action));
+  }
+});
+
 test("painel e gestão evitam waterfall e carga global duplicada", async () => {
   const modules = await source("components/modulo-integrado.tsx");
   const summary = await source("app/api/plataforma/resumo/route.ts");

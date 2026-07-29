@@ -68,6 +68,10 @@ export async function POST(request: Request) {
     } else if (acao === "atualizar-organizacao") {
       caminho = `/api/v1/organizacoes/${encodeURIComponent(String(corpo.identificador))}`;
       metodo = "PUT";
+    } else if (acao === "impacto-exclusao-organizacao") {
+      caminho = `/api/v1/organizacoes/${encodeURIComponent(String(corpo.identificador))}/exclusao/impacto`;
+    } else if (acao === "excluir-organizacao") {
+      caminho = `/api/v1/organizacoes/${encodeURIComponent(String(corpo.identificador))}/excluir`;
     } else if (acao === "criar-participante") {
       if (!(dados as Registro).identificador_da_organizacao) {
         throw new Error("Organização autorizada é obrigatória.");
@@ -76,6 +80,12 @@ export async function POST(request: Request) {
     } else if (acao === "atualizar-participante") {
       caminho = `/api/v1/participantes/${encodeURIComponent(String(corpo.identificador))}`;
       metodo = "PUT";
+    } else if (acao === "impacto-exclusao-participante") {
+      caminho = `/api/v1/participantes/${encodeURIComponent(String(corpo.identificador))}/exclusao/impacto`;
+    } else if (acao === "transferir-participante") {
+      caminho = `/api/v1/participantes/${encodeURIComponent(String(corpo.identificador))}/transferir`;
+    } else if (acao === "excluir-participante") {
+      caminho = `/api/v1/participantes/${encodeURIComponent(String(corpo.identificador))}/excluir`;
     } else if (
       acao === "inativar-participante"
       || acao === "reativar-participante"

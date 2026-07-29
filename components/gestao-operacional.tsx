@@ -236,6 +236,12 @@ export function GestaoOperacional({
   });
   const [entregaDeConsentimento, setEntregaDeConsentimento] =
     useState<Registro | null>(null);
+  const [impactoCritico, setImpactoCritico] = useState<Registro | null>(null);
+  const [operacaoCritica, setOperacaoCritica] = useState({
+    senha: "",
+    confirmacao: "",
+    organizacao_destino: ""
+  });
 
   function preencherOrganizacao(registro: Registro | null) {
     const perfil = objeto(registro?.perfil_operacional);
@@ -527,6 +533,92 @@ export function GestaoOperacional({
     });
   }
 
+  async function analisarExclusao(
+    tipo: "participante" | "organizacao",
+    identificador: string
+  ) {
+    const impacto = await executar(
+      tipo === "participante"
+        ? "impacto-exclusao-participante"
+        : "impacto-exclusao-organizacao",
+      {},
+      identificador,
+      false
+    );
+    setImpactoCritico(impacto);
+    setOperacaoCritica({
+      senha: "",
+      confirmacao: "",
+      organizacao_destino: ""
+    });
+  }
+
+  async function confirmarExclusao(
+    tipo: "participante" | "organizacao",
+    identificador: string
+  ) {
+    const dependencias = Number(
+      impactoCritico?.quantidade_de_dependencias ?? 0
+    );
+    const resultado = await executar(
+      tipo === "participante"
+        ? "excluir-participante"
+        : "excluir-organizacao",
+      {
+        senha: operacaoCritica.senha,
+        confirmacao: operacaoCritica.confirmacao,
+        modo: dependencias > 0 ? "EXCLUSAO_CONTROLADA" : "IMEDIATO"
+      },
+      identificador,
+      false
+    );
+    if (!resultado) return;
+    setImpactoCritico(null);
+    setOperacaoCritica({
+      senha: "",
+      confirmacao: "",
+      organizacao_destino: ""
+    });
+    if (tipo === "participante") {
+      setParticipanteSelecionado("");
+      preencherParticipante(null);
+      setConsentimento((estado) => ({
+        ...estado,
+        identificador_do_participante: "",
+        identificador_da_sessao: ""
+      }));
+      await carregar();
+    } else {
+      setOrganizacaoSelecionada("");
+      await carregar("");
+    }
+  }
+
+  async function transferirParticipanteSelecionado() {
+    if (!participanteSelecionado) return;
+    const resultado = await executar(
+      "transferir-participante",
+      {
+        senha: operacaoCritica.senha,
+        confirmacao: operacaoCritica.confirmacao,
+        identificador_da_organizacao_destino:
+          operacaoCritica.organizacao_destino
+      },
+      participanteSelecionado,
+      false
+    );
+    if (!resultado) return;
+    setImpactoCritico(null);
+    setParticipanteSelecionado("");
+    preencherParticipante(null);
+    setOperacaoCritica({
+      senha: "",
+      confirmacao: "",
+      organizacao_destino: ""
+    });
+    await carregar(String(resultado.identificador_da_organizacao ?? ""));
+  }
+
   async function iniciarSessaoDiretamente(
     identificadorDaSessao: string,
     identificadorDoParticipante: string
@@ -562,6 +654,20 @@ export function GestaoOperacional({
   ].includes(String(dados?.usuario.perfil));
   const podeConduzir = String(dados?.usuario.perfil) === "PROFISSIONAL_HUMANEXUS"
     || String(dados?.usuario.perfil) === "ADMINISTRADOR_DO_SISTEMA";
+  const administradorProprietario =
+    dados?.usuario.administrador_proprietario === true;
+  const participanteAtualSelecionado = dados?.participantes.find(
+    (item) => String(item.identificador) === participanteSelecionado
+  );
+  const perfilDoParticipanteSelecionado = objeto(
+    participanteAtualSelecionado?.perfil_operacional
+  );
+  const nomeDoParticipanteSelecionado = texto(
+    objeto(
+      perfilDoParticipanteSelecionado.dados_cadastrais
+    ).nome_completo,
+    texto(participanteAtualSelecionado?.referencia_externa)
+  );
   const participanteDaSessao = dados?.participantes.find(
     (item) => item.identificador === sessao.identificador_do_participante
   );
@@ -679,19 +785,21 @@ export function GestaoOperacional({
                 >
                   Abrir ficha
                 </button>
-                <button
-                  type="button"
-                  disabled={ocupado}
-                  onClick={() => void executar(
-                    item.ativo
-                      ? "inativar-participante"
-                      : "reativar-participante",
-                    {},
-                    item.identificador
-                  )}
-                >
-                  {item.ativo ? "Inativar" : "Reativar"}
-                </button>
+                {!administradorProprietario ? (
+                  <button
+                    type="button"
+                    disabled={ocupado}
+                    onClick={() => void executar(
+                      item.ativo
+                        ? "inativar-participante"
+                        : "reativar-participante",
+                      {},
+                      item.identificador
+                    )}
+                  >
+                    {item.ativo ? "Inativar" : "Reativar"}
+                  </button>
+                ) : null}
               </div>
             </article>
           );
@@ -950,7 +1058,15 @@ export function GestaoOperacional({
                   email: organizacao.responsavel_email,
                   telefone: organizacao.responsavel_telefone
                 }],
-                justificativa: organizacao.justificativa
+                justificativa: organizacao.justificativa,
+                senha_do_proprietario:
+                  administradorProprietario && !novaOrganizacao
+                    ? operacaoCritica.senha
+                    : undefined,
+                confirmacao_do_proprietario:
+                  administradorProprietario && !novaOrganizacao
+                    ? operacaoCritica.confirmacao
+                    : undefined
               },
               novaOrganizacao
                 ? undefined
@@ -959,6 +1075,12 @@ export function GestaoOperacional({
             );
             if (novaOrganizacao && resultado?.identificador) {
               await carregar(String(resultado.identificador));
+            } else if (resultado) {
+              setOperacaoCritica({
+                senha: "",
+                confirmacao: "",
+                organizacao_destino: ""
+              });
             }
           }}>
             <small>FICHA INSTITUCIONAL · EDIÇÃO VERSIONADA</small>
@@ -1022,9 +1144,94 @@ export function GestaoOperacional({
               <label className="hx-checkbox"><input type="checkbox" checked={organizacao.ativa} onChange={(evento) => setOrganizacao({ ...organizacao, ativa: evento.target.checked })} />Cadastro ativo</label>
             </div>
             <label>Justificativa da versão<textarea required value={organizacao.justificativa} onChange={(evento) => setOrganizacao({ ...organizacao, justificativa: evento.target.value })} /></label>
-            <button disabled={ocupado || !podeAdministrar}>
+            {administradorProprietario
+              && organizacaoAtual
+              && !novaOrganizacao ? (
+              <fieldset className="hx-record-section">
+                <legend>Confirmação da edição proprietária</legend>
+                <label>
+                  Senha do Administrador Proprietário
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    value={operacaoCritica.senha}
+                    onChange={(evento) => setOperacaoCritica({
+                      ...operacaoCritica,
+                      senha: evento.target.value
+                    })}
+                  />
+                </label>
+                <label>
+                  Digite exatamente “{texto(organizacaoAtual.nome)}”
+                  <input
+                    value={operacaoCritica.confirmacao}
+                    onChange={(evento) => setOperacaoCritica({
+                      ...operacaoCritica,
+                      confirmacao: evento.target.value
+                    })}
+                  />
+                </label>
+              </fieldset>
+            ) : null}
+            <button disabled={
+              ocupado
+              || !podeAdministrar
+              || (
+                administradorProprietario
+                && !novaOrganizacao
+                && (
+                  !operacaoCritica.senha
+                  || !operacaoCritica.confirmacao
+                )
+              )
+            }>
               {novaOrganizacao ? "Criar organização" : "Salvar nova versão"}
             </button>
+            {administradorProprietario
+              && organizacaoAtual
+              && !novaOrganizacao ? (
+              <fieldset className="hx-record-section">
+                <legend>Autonomia exclusiva do proprietário</legend>
+                <button
+                  type="button"
+                  disabled={ocupado}
+                  onClick={() => void analisarExclusao(
+                    "organizacao",
+                    String(organizacaoAtual.identificador)
+                  )}
+                >
+                  Verificar impacto da exclusão
+                </button>
+                {impactoCritico?.tipo === "ORGANIZACAO"
+                  && impactoCritico.identificador
+                    === organizacaoAtual.identificador ? (
+                  <>
+                    <p>
+                      Dependências encontradas: {
+                        Number(
+                          impactoCritico.quantidade_de_dependencias ?? 0
+                        )
+                      }. Transfira previamente os registros necessários ou
+                      confirme a exclusão controlada.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={
+                        ocupado
+                        || !operacaoCritica.senha
+                        || !operacaoCritica.confirmacao
+                      }
+                      onClick={() => void confirmarExclusao(
+                        "organizacao",
+                        String(organizacaoAtual.identificador)
+                      )}
+                    >
+                      Excluir organização
+                    </button>
+                  </>
+                ) : null}
+              </fieldset>
+            ) : null}
           </form>
           <section className="hx-management-table">
             <header><div><small>ORGANIZAÇÕES</small><h2>Diretório autorizado</h2></div></header>
@@ -1114,13 +1321,52 @@ export function GestaoOperacional({
               justificativa_da_elegibilidade:
                 participante.justificativa_da_elegibilidade || null,
               ativo: participante.ativo,
-              justificativa: participante.justificativa
+              justificativa: participante.justificativa,
+              senha_do_proprietario:
+                administradorProprietario && participanteSelecionado
+                  ? operacaoCritica.senha
+                  : undefined,
+              confirmacao_do_proprietario:
+                administradorProprietario && participanteSelecionado
+                  ? operacaoCritica.confirmacao
+                  : undefined
             },
-              participanteSelecionado || undefined
+              participanteSelecionado || undefined,
+              false
             );
             if (resultado?.identificador) {
-              setParticipanteSelecionado(String(resultado.identificador));
+              const identificador = String(resultado.identificador);
+              const organizacaoDoCadastro = String(
+                resultado.identificador_da_organizacao
+                ?? organizacaoAtual?.identificador
+                ?? ""
+              );
+              setParticipanteSelecionado(identificador);
               preencherParticipante(resultado);
+              setConsentimento((estado) => ({
+                ...estado,
+                identificador_do_participante: identificador,
+                identificador_da_sessao: ""
+              }));
+              setSessao((estado) => ({
+                ...estado,
+                identificador_do_participante: identificador,
+                identificador_da_anamnese: "",
+                chave_de_idempotencia: ""
+              }));
+              atualizarContextoNaUrl({
+                organizacao: organizacaoDoCadastro,
+                participante: identificador,
+                sessao: ""
+              });
+              await carregar(organizacaoDoCadastro);
+              if (administradorProprietario && participanteSelecionado) {
+                setOperacaoCritica({
+                  senha: "",
+                  confirmacao: "",
+                  organizacao_destino: ""
+                });
+              }
             }
           }}>
             <small>FICHA ÚNICA · HISTÓRICO VERSIONADO</small>
@@ -1185,7 +1431,45 @@ export function GestaoOperacional({
             <label>Observações cadastrais<textarea value={participante.observacoes} onChange={(evento) => setParticipante({ ...participante, observacoes: evento.target.value })} /></label>
             <label className="hx-checkbox"><input type="checkbox" checked={participante.ativo} onChange={(evento) => setParticipante({ ...participante, ativo: evento.target.checked })} />Cadastro ativo</label>
             <label>Justificativa da versão<textarea required value={participante.justificativa} onChange={(evento) => setParticipante({ ...participante, justificativa: evento.target.value })} /></label>
-            <button disabled={ocupado || !podeGerenciarParticipantes}>
+            {administradorProprietario && participanteSelecionado ? (
+              <fieldset className="hx-record-section">
+                <legend>Confirmação da edição proprietária</legend>
+                <label>
+                  Senha do Administrador Proprietário
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    value={operacaoCritica.senha}
+                    onChange={(evento) => setOperacaoCritica({
+                      ...operacaoCritica,
+                      senha: evento.target.value
+                    })}
+                  />
+                </label>
+                <label>
+                  Digite exatamente “{nomeDoParticipanteSelecionado}”
+                  <input
+                    value={operacaoCritica.confirmacao}
+                    onChange={(evento) => setOperacaoCritica({
+                      ...operacaoCritica,
+                      confirmacao: evento.target.value
+                    })}
+                  />
+                </label>
+              </fieldset>
+            ) : null}
+            <button disabled={
+              ocupado
+              || !podeGerenciarParticipantes
+              || (
+                administradorProprietario
+                && Boolean(participanteSelecionado)
+                && (
+                  !operacaoCritica.senha
+                  || !operacaoCritica.confirmacao
+                )
+              )
+            }>
               {participanteSelecionado ? "Salvar nova versão" : "Cadastrar participante"}
             </button>
             {participanteSelecionado ? (
@@ -1201,6 +1485,93 @@ export function GestaoOperacional({
                   )
                 } versão(ões).
               </p>
+            ) : null}
+            {administradorProprietario && participanteSelecionado ? (
+              <fieldset className="hx-record-section">
+                <legend>Autonomia exclusiva do proprietário</legend>
+                <button
+                  type="button"
+                  disabled={ocupado}
+                  onClick={() => void analisarExclusao(
+                    "participante",
+                    participanteSelecionado
+                  )}
+                >
+                  Verificar impacto da exclusão ou transferência
+                </button>
+                {impactoCritico?.tipo === "PARTICIPANTE"
+                  && impactoCritico.identificador
+                    === participanteSelecionado ? (
+                  <>
+                    <p>
+                      Dependências encontradas: {
+                        Number(
+                          impactoCritico.quantidade_de_dependencias ?? 0
+                        )
+                      }. A exclusão controlada preserva somente autoria,
+                      evidências e rastreabilidade indispensáveis.
+                    </p>
+                    <label>
+                      Organização de destino
+                      <select
+                        value={operacaoCritica.organizacao_destino}
+                        onChange={(evento) => setOperacaoCritica({
+                          ...operacaoCritica,
+                          organizacao_destino: evento.target.value
+                        })}
+                      >
+                        <option value="">Selecione para transferir</option>
+                        {dados.organizacoes
+                          .filter((item) =>
+                            item.identificador
+                              !== organizacaoAtual?.identificador
+                          )
+                          .map((item) => (
+                            <option
+                              key={String(item.identificador)}
+                              value={String(item.identificador)}
+                            >
+                              {texto(item.nome)}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <div className="hx-management-actions">
+                      <button
+                        type="button"
+                        disabled={
+                          ocupado
+                          || !operacaoCritica.senha
+                          || !operacaoCritica.confirmacao
+                          || !operacaoCritica.organizacao_destino
+                          || Number(
+                            impactoCritico.quantidade_de_dependencias ?? 0
+                          ) > 0
+                        }
+                        onClick={() =>
+                          void transferirParticipanteSelecionado()
+                        }
+                      >
+                        Transferir participante
+                      </button>
+                      <button
+                        type="button"
+                        disabled={
+                          ocupado
+                          || !operacaoCritica.senha
+                          || !operacaoCritica.confirmacao
+                        }
+                        onClick={() => void confirmarExclusao(
+                          "participante",
+                          participanteSelecionado
+                        )}
+                      >
+                        Excluir participante
+                      </button>
+                    </div>
+                  </>
+                ) : null}
+              </fieldset>
             ) : null}
           </form>
           <form onSubmit={(evento) => void apresentarConsentimento(evento)}>
