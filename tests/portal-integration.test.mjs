@@ -114,7 +114,13 @@ test("treinamentos usam somente a biblioteca oficial e evidência persistida", a
   assert.match(management, /evidencias_regulatorias_treinamento/);
   assert.match(management, /Recomendados/);
   assert.match(management, /Compatíveis/);
-  assert.match(management, /Demais protocolos oficiais/);
+  assert.match(management, /Biblioteca completa/);
+  assert.match(management, /Ver detalhes operacionais/);
+  assert.match(management, /duracao_operacional/);
+  assert.match(management, /gatilhos_relacionados/);
+  assert.match(management, /rotas_regulatorias_relacionadas/);
+  assert.match(management, /conteudo_oficial_confirmado/);
+  assert.match(management, /Mostrar mais 24 protocolos/);
   assert.doesNotMatch(management, /Novo treinamento/);
   assert.doesNotMatch(management, /Adicionar ao catálogo/);
   assert.match(liveCockpit, /Baseline como modalidade independente/);

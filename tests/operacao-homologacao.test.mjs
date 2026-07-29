@@ -256,6 +256,20 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
   assert.match(client, /proxima_acao_principal/);
 });
 
+test("Cockpit abre progressivamente e preserva os dez vetores visíveis", async () => {
+  const client = await source("components/operacao-homologacao.tsx");
+  const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  const rota = await source("app/api/operacao-homologacao/route.ts");
+  assert.match(client, /carregar\(selecao, false, true\)/);
+  assert.match(client, /carregamento_progressivo/);
+  assert.match(rota, /limite_de_amostras=120/);
+  assert.match(rota, /carregamentoInicial/);
+  assert.match(operacional, /VETORES VIVOS · MATRIZ VETORIAL/);
+  assert.match(operacional, /AGUARDANDO EVIDÊNCIA/);
+  assert.match(operacional, /INTERVENÇÃO SELECIONADA/);
+  assert.match(operacional, /RESPOSTA OBSERVADA/);
+});
+
 test("telemetria real é contínua, histórica quando encerrada e não cria simulação", async () => {
   const client = await source("components/operacao-homologacao.tsx");
   const operacional = await source("components/cockpit-operacional-vivo.tsx");

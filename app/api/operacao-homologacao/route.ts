@@ -166,7 +166,11 @@ async function atualizacaoLeve(
 async function estado(
   token: string,
   selecao: SelecaoDeContexto = {},
-  opcoes: { incluirFormulacoesNoEscopo?: boolean } = {}
+  opcoes: {
+    incluirFormulacoesNoEscopo?: boolean;
+    carregamentoInicial?: boolean;
+    prepararComando?: boolean;
+  } = {}
 ) {
   const parametrosDoContexto = new URLSearchParams({ modulo: "sessoes" });
   if (selecao.identificador_da_organizacao) {
@@ -221,7 +225,7 @@ async function estado(
   ) ?? sessoes[0];
   if (!sessao) throw new Error("Nenhuma sessão autorizada está disponível para o participante.");
   const sessaoId = String(sessao.identificador);
-  const consultasPrincipais: ConsultaEmLote[] = [
+  const consultasPrincipaisCompletas: ConsultaEmLote[] = [
     { chave: "fases", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/fases` },
     { chave: "ctrs", caminho: "/api/v1/ctrs" },
     { chave: "catalogoCtr", caminho: "/api/v1/ctr/catalogo" },
@@ -283,11 +287,89 @@ async function estado(
       padrao: []
     }))
   ];
-  const principais = await consultarLote(
+  const consultasPrincipaisIniciais: ConsultaEmLote[] = [
+    { chave: "ctrs", caminho: "/api/v1/ctrs" },
+    { chave: "catalogoCtr", caminho: "/api/v1/ctr/catalogo" },
+    {
+      chave: "execucoes",
+      caminho: `/api/v1/participantes/${encodeURIComponent(participanteId)}/execucoes-thx`
+    },
+    {
+      chave: "definicoesVetoriais",
+      caminho: "/api/v1/cientifico/vetores",
+      opcional: true,
+      padrao: []
+    },
+    {
+      chave: "cockpitOperacional",
+      caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional?limite_de_amostras=120`
+    },
+    ...(opcoes.prepararComando ? [
+      {
+        chave: "fases",
+        caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/fases`
+      },
+      {
+        chave: "conectores",
+        caminho: `/api/v1/conectores?identificador_da_sessao=${encodeURIComponent(sessaoId)}`
+      }
+    ] : [])
+  ];
+  const consultasPrincipais = opcoes.carregamentoInicial
+    ? consultasPrincipaisIniciais
+    : consultasPrincipaisCompletas;
+  const principaisConsultados = await consultarLote(
     token,
     consultasPrincipais,
     organizacaoId
   );
+  const principais: Record<string, unknown> = {
+    fases: [],
+    ctrs: [],
+    catalogoCtr: { criterios: [] },
+    execucoes: [],
+    conectores: [],
+    fontes: [],
+    telemetria: [],
+    eventosTecnicos: [],
+    linhas: [],
+    relatorios: [],
+    formulacoes: [],
+    longitudinal: { historico: [] },
+    perfilMovel: {},
+    comandosMoveis: [],
+    postulados: { quantidade: 0, regras: [] },
+    macrocampos: [],
+    definicoesVetoriais: [],
+    versaoCientifica: {},
+    evidencias: [],
+    estadosVetoriais: [],
+    configuracoesRegulatorias: [],
+    avaliacoesRegulatorias: [],
+    decisoesProfissionais: [],
+    trajetorias: [],
+    analisesArr: [],
+    registrosRro: [],
+    anamneses: [],
+    evidenciasAnamnese: [],
+    evidenciasAnamneseNoEscopo: [],
+    sessaoOperacional: {},
+    gravacao: {
+      configuracoes: [],
+      dispositivos: [],
+      segmentos: [],
+      eventos: [],
+      diagnostico: {}
+    },
+    configuracaoCortex: {
+      permitido: false,
+      configurado: false,
+      segredo_retornado: false
+    },
+    estadoOperacional: {},
+    cockpitOperacional: {},
+    ...principaisConsultados
+  };
   const fases = principais.fases as Registro[];
   const ctrs = principais.ctrs as Registro[];
   const catalogoCtr = principais.catalogoCtr as Registro;
@@ -320,8 +402,12 @@ async function estado(
   const sessaoOperacional = principais.sessaoOperacional as Registro;
   const gravacao = principais.gravacao as Registro;
   const configuracaoCortex = principais.configuracaoCortex as Registro;
-  const estadoOperacional = principais.estadoOperacional as Registro;
   const cockpitOperacional = principais.cockpitOperacional as Registro;
+  const estadoOperacional = (
+    Object.keys(principais.estadoOperacional as Registro).length
+      ? principais.estadoOperacional
+      : registro(cockpitOperacional.estado_operacional)
+  ) as Registro;
   const ctr = ctrs.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
   const execucao = execucoes.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
   const usuariosDisponiveis = contextoBase.profissionais;
@@ -351,7 +437,7 @@ async function estado(
     };
   });
   const recomendacaoId = execucao ? String(execucao.identificador_da_recomendacao ?? "") : "";
-  const consultasDependentes: ConsultaEmLote[] = [
+  const consultasDependentesCompletas: ConsultaEmLote[] = [
     ...(execucao ? [
       {
         chave: "protocolo",
@@ -383,6 +469,16 @@ async function estado(
       caminho: `/api/v1/conectores/${encodeURIComponent(String(conector.identificador))}/historico`
     }))
   ];
+  const consultasDependentes = opcoes.carregamentoInicial
+    ? (
+        execucao
+          ? [{
+              chave: "protocolo",
+              caminho: `/api/v1/thx/protocolos/${encodeURIComponent(String(execucao.identificador_do_protocolo))}`
+            }]
+          : []
+      )
+    : consultasDependentesCompletas;
   const dependentes = consultasDependentes.length
     ? await consultarLote(token, consultasDependentes, organizacaoId)
     : {};
@@ -408,6 +504,7 @@ async function estado(
       )
     : formulacoes;
   return {
+    carregamento_progressivo: Boolean(opcoes.carregamentoInicial),
     aviso: MARCACAO,
     usuario,
     organizacao,
@@ -556,6 +653,8 @@ export async function GET(request: Request) {
       url.searchParams.get("leve") === "1"
         ? await atualizacaoLeve(token, selecao)
         : await estado(token, selecao, {
+            carregamentoInicial:
+              url.searchParams.get("inicial") === "1",
             incluirFormulacoesNoEscopo:
               url.searchParams.get("visao") === "formulacao"
           }),
@@ -643,7 +742,16 @@ export async function POST(request: Request) {
       identificador_do_participante: corpo.identificador_do_participante,
       identificador_da_sessao: corpo.identificador_da_sessao
     };
-    const contexto = await estado(token, selecao);
+    const exigeEstadoCompleto = [
+      "comparar",
+      "replay",
+      "exportar-replay",
+      "relatorio"
+    ].includes(String(corpo.acao ?? ""));
+    const contexto = await estado(token, selecao, {
+      carregamentoInicial: !exigeEstadoCompleto,
+      prepararComando: !exigeEstadoCompleto
+    });
     const organizacaoId = String(contexto.organizacao.identificador);
     if (corpo.acao === "configurar-cortex") {
       await consultar("/api/v1/pontes-fisicas/cortex/configuracao-local", token, {
@@ -766,7 +874,7 @@ export async function POST(request: Request) {
       throw new Error("Ação operacional inválida.");
     }
     return NextResponse.json(
-      await estado(token, selecao),
+      await estado(token, selecao, { carregamentoInicial: true }),
       { headers: { "cache-control": "private, no-store" } }
     );
   } catch (erro) {

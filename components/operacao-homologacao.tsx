@@ -20,6 +20,7 @@ import { CockpitOperacionalVivo } from "@/components/cockpit-operacional-vivo";
 
 type Registro = Record<string, unknown>;
 type Estado = {
+  carregamento_progressivo?: boolean;
   aviso: string;
   usuario: Registro;
   organizacao: Registro;
@@ -1136,7 +1137,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       sessao: parametros.get("sessao") ?? ""
     };
     setSelecaoInicial(selecao);
-    carregar(selecao).catch((causa) => setErro(causa.message));
+    void (async () => {
+      const contexto = await carregar(selecao, false, true);
+      await carregar(contexto);
+    })().catch((causa) => setErro(causa.message));
   }, []);
 
   const selecionarVisao = (destino: VisaoCockpit) => {
@@ -1150,7 +1154,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
 
   const carregar = async (
     selecao: Record<string, string> = selecaoInicial,
-    leve = false
+    leve = false,
+    inicial = false
   ) => {
     const parametros = new URLSearchParams({ modulo });
     const visaoSolicitada = new URLSearchParams(
@@ -1158,6 +1163,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     ).get("visao");
     if (visaoSolicitada) parametros.set("visao", visaoSolicitada);
     if (leve) parametros.set("leve", "1");
+    if (inicial) parametros.set("inicial", "1");
     for (const campo of ["organizacao", "participante", "sessao"]) {
       if (selecao[campo]) parametros.set(campo, selecao[campo]);
     }
@@ -1177,7 +1183,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         estado_operacional: dados.estado_operacional,
         cockpit_operacional: dados.cockpit_operacional
       } : atual);
-      return;
+      return selecao;
     }
     setEstado(dados);
     const atual = {
@@ -1191,6 +1197,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     url.searchParams.set("participante", atual.participante);
     url.searchParams.set("sessao", atual.sessao);
     window.history.replaceState(window.history.state, "", url);
+    return atual;
   };
 
   useEffect(() => {
@@ -1219,6 +1226,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     if (
       visao !== "visao-geral"
       || !estado
+      || estado.carregamento_progressivo
       || estado.sessao.estado === "FINALIZADA"
     ) {
       return;
@@ -1315,6 +1323,25 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       const retorno = await resposta.json();
       if (!resposta.ok) throw new Error(retorno?.erro?.mensagem ?? "Comando recusado.");
       setEstado(retorno);
+      if (retorno.carregamento_progressivo) {
+        void carregar({
+          organizacao: String(
+            retorno.contextos?.selecao?.identificador_da_organizacao ?? ""
+          ),
+          participante: String(
+            retorno.contextos?.selecao?.identificador_do_participante ?? ""
+          ),
+          sessao: String(
+            retorno.contextos?.selecao?.identificador_da_sessao ?? ""
+          )
+        }).catch((causa) => {
+          setErro(
+            causa instanceof Error
+              ? causa.message
+              : "Não foi possível completar a atualização operacional."
+          );
+        });
+      }
     } catch (causa) {
       setErro(causa instanceof Error ? causa.message : "Comando recusado.");
     } finally {

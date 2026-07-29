@@ -141,6 +141,11 @@ export function GestaoOperacional({
     useState<"TODOS" | "PARTICULAR" | "ORGANIZACIONAL">("TODOS");
   const [buscaParticipante, setBuscaParticipante] = useState("");
   const [buscaThx, setBuscaThx] = useState("");
+  const [limitesThx, setLimitesThx] = useState<Record<string, number>>({
+    RECOMENDADO: 12,
+    COMPATIVEL: 12,
+    OUTRO_OFICIAL: 12
+  });
   const [participante, setParticipante] = useState({
     referencia_externa: "",
     tipo_de_vinculo: "ORGANIZACIONAL",
@@ -719,6 +724,10 @@ export function GestaoOperacional({
       OUTRO_OFICIAL: 2
     };
     return lista(biblioteca.protocolos)
+      .filter((protocolo) => (
+        Boolean(protocolo.conteudo_oficial_confirmado)
+        && ["THX", "THX-AER"].includes(String(protocolo.familia ?? ""))
+      ))
       .map<ProtocoloClassificado>((protocolo) => {
         const codigo = String(protocolo.codigo ?? "");
         const vinculos = lista(protocolo.vinculos_documentados);
@@ -757,6 +766,7 @@ export function GestaoOperacional({
             protocolo.nome,
             protocolo.dominio,
             protocolo.objetivo_regulatorio,
+            protocolo.finalidade_resumida,
             protocolo.dor_operacional
           ].join(" ")).includes(busca)
         )
@@ -1428,7 +1438,7 @@ export function GestaoOperacional({
             [
               "RECOMENDADO",
               "Recomendados",
-              "Sugestões existentes, ainda sujeitas à validação profissional."
+              "Recomendações persistidas, sempre sujeitas à validação profissional."
             ],
             [
               "COMPATIVEL",
@@ -1437,11 +1447,13 @@ export function GestaoOperacional({
             ],
             [
               "OUTRO_OFICIAL",
-              "Demais protocolos oficiais",
-              "Biblioteca preservada sem correspondência individual suficiente."
+              "Biblioteca completa",
+              "Protocolos oficiais ainda não priorizados para este participante."
             ]
           ] as const).map(([classificacao, titulo, descricao]) => {
             const protocolos = protocolosPorClassificacao[classificacao];
+            const limite = limitesThx[classificacao] ?? 12;
+            const visiveis = protocolos.slice(0, limite);
             return (
               <section
                 className="hx-training-group"
@@ -1456,78 +1468,163 @@ export function GestaoOperacional({
                   <span>{protocolos.length} protocolo(s)</span>
                 </header>
                 <div className="hx-training-group__items">
-                  {protocolos.map((protocolo) => {
+                  {visiveis.map((protocolo) => {
                     const recomendacao = objeto(
                       protocolo.recomendacao_operacional
                     );
-                    const vinculos = lista(
+                    const vinculosCompativeis = lista(
                       protocolo.vinculos_compativeis
                     );
-                    const ctrs = vinculos
+                    const vinculosDocumentados = lista(
+                      protocolo.vinculos_documentados
+                    );
+                    const ctrsCompativeis = vinculosCompativeis
                       .map((item) => String(item.codigo_do_ctr ?? ""))
                       .filter(Boolean);
-                    const rota = objeto(
-                      arrDoCatalogo?.rota_observada_json
+                    const ctrsDocumentados = Array.from(new Set([
+                      ...listaDeTextos(protocolo.ctrs_relacionados),
+                      ...vinculosDocumentados.map(
+                        (item) => String(item.codigo_do_ctr ?? "")
+                      )
+                    ].filter(Boolean)));
+                    const gatilhosDocumentados = listaDeTextos(
+                      protocolo.gatilhos_relacionados
                     );
+                    const rotasDocumentadas = listaDeTextos(
+                      protocolo.rotas_regulatorias_relacionadas
+                    );
+                    const justificativas = lista(
+                      protocolo.justificativas_de_compatibilidade
+                    ).map((item) => [
+                      item.codigo_do_ctr,
+                      item.papel,
+                      item.versao_mmftr
+                    ].filter(Boolean).join(" · "));
+                    const duracao = protocolo.duracao_operacional
+                      ?? (
+                        protocolo.duracao_em_minutos == null
+                          ? null
+                          : `${protocolo.duracao_em_minutos} min`
+                      );
+                    const estadoDaRecomendacao = classificacao === "RECOMENDADO"
+                      ? texto(recomendacao.estado, "RECOMENDADO")
+                      : classificacao === "COMPATIVEL"
+                        ? "COMPATÍVEL"
+                        : "NÃO PRIORIZADO";
                     return (
                       <article key={String(protocolo.identificador)}>
                         <div className="hx-training-card__heading">
                           <span>{texto(protocolo.codigo)}</span>
                           <span>{texto(protocolo.familia)}</span>
-                          <span>{texto(protocolo.dominio)}</span>
+                          <span>{estadoDaRecomendacao}</span>
                         </div>
                         <h3>{texto(protocolo.nome)}</h3>
                         <p>{texto(
-                          protocolo.dor_operacional,
-                          "Dor operacional não informada na fonte oficial"
+                          protocolo.finalidade_resumida
+                            ?? protocolo.objetivo_regulatorio,
+                          "Finalidade não documentada na fonte oficial"
                         )}</p>
-                        <dl>
+                        <div className="hx-training-card__summary">
                           <div>
-                            <dt>Finalidade</dt>
+                            <small>Duração</small>
+                            <strong>{texto(duracao, "—")}</strong>
+                          </div>
+                          <div>
+                            <small>CTR documentado</small>
+                            <strong>{ctrsDocumentados.join(", ") || "—"}</strong>
+                          </div>
+                          <div>
+                            <small>Estado</small>
+                            <strong>{estadoDaRecomendacao}</strong>
+                          </div>
+                        </div>
+                        <details className="hx-training-card__details">
+                          <summary>Ver detalhes operacionais</summary>
+                          <dl>
+                          <div>
+                            <dt>Domínio / família / tipo</dt>
+                            <dd>{[
+                              protocolo.dominio,
+                              protocolo.familia,
+                              protocolo.tipo
+                            ].filter(Boolean).join(" · ")}</dd>
+                          </div>
+                          <div>
+                            <dt>Dor ou demanda operacional</dt>
                             <dd>{texto(
-                              protocolo.objetivo_regulatorio,
-                              "Não informada na fonte oficial"
+                              protocolo.dor_operacional,
+                              "Não documentada na fonte oficial"
                             )}</dd>
                           </div>
                           <div>
-                            <dt>Razão da classificação</dt>
+                            <dt>Contexto de aplicação</dt>
+                            <dd>{texto(
+                              protocolo.contexto_de_aplicacao,
+                              "Não documentado na fonte oficial"
+                            )}</dd>
+                          </div>
+                          <div>
+                            <dt>Indicação operacional</dt>
+                            <dd>{texto(
+                              protocolo.indicacao_operacional,
+                              "Não documentada na fonte oficial"
+                            )}</dd>
+                          </div>
+                          <div>
+                            <dt>Gatilhos relacionados · MMFTR</dt>
+                            <dd>{gatilhosDocumentados.join("; ")
+                              || "Não documentados na MMFTR"}</dd>
+                          </div>
+                          <div>
+                            <dt>Rotas regulatórias relacionadas · MMFTR</dt>
+                            <dd>{rotasDocumentadas.join("; ")
+                              || "Não documentadas na MMFTR"}</dd>
+                          </div>
+                          <div>
+                            <dt>CTR compatível com evidência individual</dt>
+                            <dd>{ctrsCompativeis.join(", ")
+                              || "Não demonstrado para este participante"}</dd>
+                          </div>
+                          <div>
+                            <dt>Justificativa da classificação</dt>
                             <dd>{texto(
                               recomendacao.justificativa,
-                              ctrs.length
-                                ? `Vínculo oficial com ${ctrs.join(", ")}`
-                                : "Sem evidência individual suficiente para recomendação"
-                            )}</dd>
-                          </div>
-                          <div>
-                            <dt>Gatilho considerado</dt>
-                            <dd>{texto(
-                              gatilhoDoCatalogo?.descricao
-                                ?? gatilhoDoCatalogo?.nome,
-                              "Não registrado"
-                            )}</dd>
-                          </div>
-                          <div>
-                            <dt>CTR</dt>
-                            <dd>{ctrs.length
-                              ? ctrs.join(", ")
-                              : "Nenhum CTR compatível demonstrado"}</dd>
-                          </div>
-                          <div>
-                            <dt>Rota regulatória</dt>
-                            <dd>{texto(
-                              arrDoCatalogo?.padrao_dominante
-                                ?? rota.nome
-                                ?? rota.codigo,
-                              "Não registrada"
+                              ctrsCompativeis.length
+                                ? `Evidência persistida compatível com ${ctrsCompativeis.join(", ")}`
+                                : justificativas.join("; ")
+                                  || "Sem vínculo MMFTR documentado"
                             )}</dd>
                           </div>
                           <div>
                             <dt>Critério de progressão</dt>
                             <dd>{listaDeTextos(
                               protocolo.criterios_de_progressao
-                            ).join("; ") || "Não informado na fonte oficial"}</dd>
+                            ).join("; ") || "Não documentado na fonte oficial"}</dd>
                           </div>
-                        </dl>
+                          <div>
+                            <dt>Plano de progressão</dt>
+                            <dd>{texto(
+                              protocolo.plano_de_progressao,
+                              "Não documentado na fonte oficial"
+                            )}</dd>
+                          </div>
+                          <div>
+                            <dt>Alavanca de desenvolvimento</dt>
+                            <dd>{texto(
+                              protocolo.alavanca_de_desenvolvimento,
+                              "Não documentada na fonte oficial"
+                            )}</dd>
+                          </div>
+                          <div>
+                            <dt>Versão / status</dt>
+                            <dd>{[
+                              protocolo.versao,
+                              protocolo.status ?? protocolo.estado
+                            ].filter(Boolean).map((item) =>
+                              texto(item)).join(" · ")}</dd>
+                          </div>
+                          </dl>
+                        </details>
                       </article>
                     );
                   })}
@@ -1537,6 +1634,18 @@ export function GestaoOperacional({
                     </p>
                   ) : null}
                 </div>
+                {protocolos.length > visiveis.length ? (
+                  <button
+                    className="hx-training-group__more"
+                    type="button"
+                    onClick={() => setLimitesThx((atuais) => ({
+                      ...atuais,
+                      [classificacao]: (atuais[classificacao] ?? 12) + 24
+                    }))}
+                  >
+                    Mostrar mais 24 protocolos
+                  </button>
+                ) : null}
               </section>
             );
           })}

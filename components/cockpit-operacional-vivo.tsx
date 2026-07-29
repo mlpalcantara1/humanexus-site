@@ -397,11 +397,12 @@ export function CockpitOperacionalVivo({
   const trajetoria = objeto(leituraCientifica.trajetoria);
   const definicoesVetoriais = lista(ciencia.vetores);
   const estadosVetoriais = lista(leituraCientifica.vetores);
+  const estadosVetoriaisPorDefinicao = new Map(
+    estadosVetoriais.map((item) => [String(item.definicao ?? ""), item])
+  );
   const radarVetorial: HxVectorAxis[] = definicoesVetoriais.map((definicao) => {
     const identificador = identificadorVetorial(definicao);
-    const estadoVetorial = estadosVetoriais.find(
-      (item) => item.definicao === identificador
-    );
+    const estadoVetorial = estadosVetoriaisPorDefinicao.get(identificador);
     return {
       code: codigoVetorial(definicao),
       name: nomeVetorial(definicao),
@@ -472,6 +473,16 @@ export function CockpitOperacionalVivo({
     : sessaoFinalizada
       ? "SESSÃO ENCERRADA"
       : "SEM FASE ATIVA";
+  const respostaObservada = objeto(execucao.resposta_observada_json);
+  const resumoDaResposta = respostaObservada.descricao
+    ?? respostaObservada.resposta
+    ?? respostaObservada.resultado
+    ?? (
+      typeof execucao.resposta_observada_json === "string"
+      && !String(execucao.resposta_observada_json).trim().startsWith("{")
+        ? execucao.resposta_observada_json
+        : null
+    );
 
   const enviarRegistro = async () => {
     if (!registro.trim()) return;
@@ -538,10 +549,36 @@ export function CockpitOperacionalVivo({
       </section>
 
       <div className="hx-live-command-center">
-        {radarCompleto ? (
+        {radarVetorial.length ? (
           <section className="hx-live-vector-stage">
-            <header><small>MATRIZ VETORIAL VIVA</small><h2>Dez vetores oficiais</h2></header>
+            <header>
+              <small>VETORES VIVOS · MATRIZ VETORIAL</small>
+              <h2>Dez vetores oficiais</h2>
+            </header>
             <VectorRadarChart vectors={radarVetorial} />
+            <div className="hx-live-vector-list" aria-label="Estado dos dez vetores oficiais">
+              {radarVetorial.map((vetor) => {
+                const definicao = definicoesVetoriais.find(
+                  (item) => codigoVetorial(item) === vetor.code
+                );
+                const estadoVetorial = estadosVetoriaisPorDefinicao.get(
+                  identificadorVetorial(definicao ?? {})
+                );
+                return (
+                  <div key={vetor.code}>
+                    <span><b>{vetor.code}</b>{vetor.name}</span>
+                    <strong>
+                      {vetor.value == null
+                        ? texto(
+                            estadoVetorial?.estado,
+                            "AGUARDANDO EVIDÊNCIA"
+                          )
+                        : `${(vetor.value * 100).toFixed(1)}%`}
+                    </strong>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         ) : null}
 
@@ -582,9 +619,14 @@ export function CockpitOperacionalVivo({
           {!sessaoBaseline ? <div className="hx-live-protocol-brief">
             <small>CRITÉRIO REGULATÓRIO HUMANO</small>
             <strong>{texto(ctr.codigo)} · {texto(ctr.nome)}</strong>
-            <small>TREINAMENTO HUMANEXUS</small>
+            <small>INTERVENÇÃO SELECIONADA · TREINAMENTO HUMANEXUS</small>
             <strong>{texto(thx.codigo)} · {texto(thx.nome)}</strong>
             <span>{texto(execucao.estado)}</span>
+            <small>RESPOSTA OBSERVADA</small>
+            <strong>{texto(
+              resumoDaResposta,
+              "AGUARDANDO REGISTRO PROFISSIONAL"
+            )}</strong>
           </div> : null}
           <div className="hx-live-events-brief">
             <small>EVENTOS RECENTES</small>
