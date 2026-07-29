@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CockpitSignalStack,
   ReplayTimelineChart,
@@ -142,6 +142,46 @@ function numero(valor: unknown, casas = 0) {
   return Number.isFinite(convertido) ? convertido.toFixed(casas) : "—";
 }
 
+function LeituraNumerica({
+  valor,
+  casas = 0,
+  sufixo = ""
+}: {
+  valor: unknown;
+  casas?: number;
+  sufixo?: string;
+}) {
+  const alvo = Number(valor);
+  const valido = Number.isFinite(alvo);
+  const anterior = useRef(valido ? alvo : 0);
+  const [exibido, setExibido] = useState<number | null>(valido ? alvo : null);
+
+  useEffect(() => {
+    if (!valido) {
+      setExibido(null);
+      return;
+    }
+    const origem = anterior.current;
+    anterior.current = alvo;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setExibido(alvo);
+      return;
+    }
+    const inicio = window.performance.now();
+    let quadro = 0;
+    const atualizar = (agora: number) => {
+      const progresso = Math.min(1, (agora - inicio) / 620);
+      const suavizado = 1 - Math.pow(1 - progresso, 3);
+      setExibido(origem + (alvo - origem) * suavizado);
+      if (progresso < 1) quadro = window.requestAnimationFrame(atualizar);
+    };
+    quadro = window.requestAnimationFrame(atualizar);
+    return () => window.cancelAnimationFrame(quadro);
+  }, [alvo, valido]);
+
+  return <>{exibido == null ? "—" : exibido.toFixed(casas)}{sufixo}</>;
+}
+
 function valorNormalizado(valor: unknown): number | null {
   if (typeof valor === "string") {
     try {
@@ -181,7 +221,12 @@ function FonteEstado({ estado }: { estado: unknown }) {
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
     .replaceAll(" ", "-");
-  return <span className={`hx-live-state is-${codigo}`}>{texto(estado)}</span>;
+  return (
+    <span className={`hx-live-state is-${codigo}`}>
+      <i aria-hidden="true" />
+      {texto(estado)}
+    </span>
+  );
 }
 
 function Sparkline({ pontos, cor }: { pontos: Registro[]; cor: string }) {
@@ -569,8 +614,8 @@ export function CockpitOperacionalVivo({
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
         <div><small>TEMPO</small><strong>{duracao(sessao.tempo_total_inicio, sessao.tempo_total_fim, agora)}</strong><span>Sessão</span></div>
-        <div><small>FREQUÊNCIA CARDÍACA</small><strong>{numero(objeto(polar.valores).hr_bpm)} bpm</strong><span>{modoHistorico ? "Dado histórico" : texto(polar.estado)}</span></div>
-        <div><small>RMSSD</small><strong>{numero(objeto(polar.valores).rmssd_tecnico_ms, 1)} ms</strong><span>{modoHistorico ? "Técnico histórico" : texto(polar.estado)}</span></div>
+        <div><small>FREQUÊNCIA CARDÍACA</small><strong><LeituraNumerica valor={objeto(polar.valores).hr_bpm} sufixo=" bpm" /></strong><span>{modoHistorico ? "Dado histórico" : texto(polar.estado)}</span></div>
+        <div><small>RMSSD</small><strong><LeituraNumerica valor={objeto(polar.valores).rmssd_tecnico_ms} casas={1} sufixo=" ms" /></strong><span>{modoHistorico ? "Técnico histórico" : texto(polar.estado)}</span></div>
         <div><small>ESTADO DO EEG</small><strong>{texto(eeg.estado)}</strong><span>Qualidade {percentual(objeto(eeg.valores).qualidade_global)}</span></div>
         <div><small>ESTADO DO POLAR</small><strong>{texto(polar.estado)}</strong><span>Última sequência {numero(objeto(polar.metricas).ultima_sequencia)}</span></div>
       </section>
@@ -633,16 +678,23 @@ export function CockpitOperacionalVivo({
                   identificadorVetorial(definicao ?? {})
                 );
                 return (
-                  <div key={vetor.code}>
-                    <span><b>{vetor.code}</b>{vetor.name}</span>
-                    <strong>
+                  <div className={vetor.value == null ? "is-missing" : "has-value"} key={vetor.code}>
+                    <div>
+                      <span><b>{vetor.code}</b>{vetor.name}</span>
+                      <strong>
+                        {vetor.value == null
+                          ? texto(
+                              estadoVetorial?.estado,
+                              "AGUARDANDO EVIDÊNCIA"
+                            )
+                          : `${(vetor.value * 100).toFixed(1)}%`}
+                      </strong>
+                    </div>
+                    <span className="hx-live-vector-meter" aria-hidden="true">
                       {vetor.value == null
-                        ? texto(
-                            estadoVetorial?.estado,
-                            "AGUARDANDO EVIDÊNCIA"
-                          )
-                        : `${(vetor.value * 100).toFixed(1)}%`}
-                    </strong>
+                        ? <em />
+                        : <i style={{ width: `${vetor.value * 100}%` }} />}
+                    </span>
                   </div>
                 );
               })}
@@ -650,7 +702,10 @@ export function CockpitOperacionalVivo({
           </section>
         ) : null}
 
-        <section className="hx-live-graphs">
+        <section
+          className="hx-live-graphs"
+          data-signal-state={modoHistorico ? "HISTORICO" : modoAguardando ? "AGUARDANDO" : "ATIVO"}
+        >
           <header>
             <div><small>{modoHistorico ? "DADOS PRESERVADOS" : modoAguardando ? "AGUARDANDO FONTES" : "ATIVIDADE AO VIVO"}</small><h2>Leitura temporal da sessão</h2></div>
             <span>{modoHistorico ? "Dados físicos históricos · sem transmissão atual" : modoAguardando ? "Nenhum dado é simulado enquanto os sensores não conectam" : "Atualização contínua sem recarregar a página"}</span>

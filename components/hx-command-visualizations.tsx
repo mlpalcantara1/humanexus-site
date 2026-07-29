@@ -185,19 +185,25 @@ export type HxVectorAxis = {
 
 export function VectorRadarChart({
   vectors,
-  ariaLabel = "Radar dos dez vetores oficiais da TIRH"
+  ariaLabel = "Radar dos dez vetores oficiais da TIRH",
+  reducedMotion = false
 }: {
   vectors: HxVectorAxis[];
   ariaLabel?: string;
+  reducedMotion?: boolean;
 }) {
   const completos = vectors.length === 10
     && vectors.every((item) => item.value != null && Number.isFinite(item.value));
   const option = useMemo(() => ({
-    animationDuration: 420,
+    animation: true,
+    animationDuration: 680,
+    animationDurationUpdate: 760,
+    animationEasing: "cubicOut",
+    animationEasingUpdate: "cubicOut",
     radar: {
       center: ["50%", "51%"],
-      radius: "66%",
-      splitNumber: 4,
+      radius: "64%",
+      splitNumber: 5,
       shape: "polygon",
       indicator: vectors.map((item) => ({
         name: `${item.code}\n${item.name}`,
@@ -207,13 +213,36 @@ export function VectorRadarChart({
         color: C.warmWhite,
         fontFamily: MONO,
         fontSize: 8,
-        lineHeight: 13
+        lineHeight: 13,
+        textShadowBlur: 8,
+        textShadowColor: "rgba(0,0,0,.72)"
       },
-      axisLine: { lineStyle: { color: "rgba(201,170,99,.23)" } },
-      splitLine: { lineStyle: { color: "rgba(183,194,190,.12)" } },
+      axisLine: {
+        lineStyle: {
+          color: "rgba(201,170,99,.26)",
+          width: 1,
+          shadowBlur: 5,
+          shadowColor: "rgba(201,170,99,.12)"
+        }
+      },
+      splitLine: {
+        lineStyle: {
+          color: [
+            "rgba(183,194,190,.075)",
+            "rgba(183,194,190,.09)",
+            "rgba(201,170,99,.11)",
+            "rgba(183,194,190,.12)",
+            "rgba(201,170,99,.17)"
+          ]
+        }
+      },
       splitArea: {
         areaStyle: {
-          color: ["rgba(255,255,255,.012)", "rgba(201,170,99,.018)"]
+          color: [
+            "rgba(255,255,255,.008)",
+            "rgba(69,109,112,.018)",
+            "rgba(201,170,99,.018)"
+          ]
         }
       }
     },
@@ -228,16 +257,35 @@ export function VectorRadarChart({
       type: "radar",
       data: [{ value: vectors.map((item) => item.value), name: "Estado vetorial" }],
       symbol: "circle",
-      symbolSize: 5,
-      lineStyle: { color: C.gold, width: 2 },
-      itemStyle: { color: C.gold },
-      areaStyle: { color: "rgba(201,170,99,.16)" }
+      symbolSize: 6,
+      lineStyle: {
+        color: C.gold,
+        width: 2,
+        shadowBlur: 12,
+        shadowColor: "rgba(201,170,99,.45)"
+      },
+      itemStyle: {
+        color: C.gold,
+        borderColor: C.warmWhite,
+        borderWidth: 1,
+        shadowBlur: 8,
+        shadowColor: "rgba(201,170,99,.45)"
+      },
+      areaStyle: {
+        color: "rgba(201,170,99,.19)",
+        shadowBlur: 18,
+        shadowColor: "rgba(201,170,99,.16)"
+      },
+      emphasis: {
+        lineStyle: { width: 2.5 },
+        areaStyle: { color: "rgba(201,170,99,.25)" }
+      }
     }] : []
   }) as EChartsOption, [completos, vectors]);
 
   return (
     <div className="hx-vector-radar-live" data-vector-coverage={completos ? "complete" : "insufficient"}>
-      <HumanexusChart option={option} height={390} ariaLabel={ariaLabel} />
+      <HumanexusChart option={option} height={390} ariaLabel={ariaLabel} reducedMotion={reducedMotion} />
       {!completos ? (
         <div className="hx-vector-radar-live__block">
           <strong>CONFIGURAÇÃO VETORIAL NÃO CALCULÁVEL</strong>
@@ -252,12 +300,16 @@ export function CockpitSignalStack({
   tracks,
   markers,
   phases,
-  showTechnicalLegend = true
+  showTechnicalLegend = true,
+  reducedMotion = false,
+  primaryDataLabel = "Dado humano"
 }: {
   tracks: HxTrack[];
   markers: HxMarker[];
   phases: HxPhaseRange[];
   showTechnicalLegend?: boolean;
+  reducedMotion?: boolean;
+  primaryDataLabel?: string;
 }) {
   const ativas = tracks.filter((trilha) => trilha.points.some((ponto) => ponto.value != null));
   const alturaDoGrafico = Math.max(520, Math.min(1100, ativas.length * 105 + 100));
@@ -318,9 +370,22 @@ export function CockpitSignalStack({
       sampling: trilha.points.length > 800 ? "lttb" : undefined,
       large: trilha.points.length > 2000,
       progressive: 500,
-      animationDuration: 360,
-      lineStyle: { color: trilha.color, width: 2 },
-      itemStyle: { color: trilha.color, borderColor: C.carbon, borderWidth: 2 },
+      animationDuration: 520,
+      animationDurationUpdate: 620,
+      animationEasingUpdate: "cubicOut",
+      lineStyle: {
+        color: trilha.color,
+        width: 2,
+        shadowBlur: 7,
+        shadowColor: `${trilha.color}50`
+      },
+      itemStyle: {
+        color: trilha.color,
+        borderColor: C.carbon,
+        borderWidth: 2,
+        shadowBlur: 7,
+        shadowColor: `${trilha.color}55`
+      },
       areaStyle: trilha.area ? {
         color: {
           type: "linear",
@@ -394,7 +459,7 @@ export function CockpitSignalStack({
           <h2>Sinais, integridade e eventos no mesmo instante.</h2>
         </div>
         <div className="hx-chart-legend">
-          <span><i className="is-human" />Dado humano</span>
+          <span><i className="is-human" />{primaryDataLabel}</span>
           {showTechnicalLegend
             ? <span><i className="is-technical" />Simulação técnica</span>
             : null}
@@ -406,6 +471,7 @@ export function CockpitSignalStack({
           option={option}
           height={alturaDoGrafico}
           ariaLabel="Cockpit Vivo com múltiplas trilhas, eixo temporal compartilhado, zoom e cursor sincronizado"
+          reducedMotion={reducedMotion}
         />
       ) : null}
       <div className="hx-data-empty-grid">
@@ -720,7 +786,9 @@ export function ReplayTimelineChart({
       } : undefined
     }));
     return {
-      animationDurationUpdate: 120,
+      animationDuration: 360,
+      animationDurationUpdate: 440,
+      animationEasingUpdate: "cubicOut",
       legend: { show: false },
       tooltip: {
         trigger: "item",

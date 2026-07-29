@@ -340,3 +340,40 @@ test("registro profissional rápido herda o contexto e Replay segue sem mídia",
   assert.match(operacional, /A ausência de mídia|NÃO É FALHA/);
   assert.match(operacional, /REPLAY SINCRONIZANDO/);
 });
+
+test("Cockpit Vivo Premium anima instrumentos sem fabricar dado operacional", async () => {
+  const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  const graficos = await source("components/hx-command-visualizations.tsx");
+  const runtime = await source("components/hx-echarts.tsx");
+  const estilos = await source("app/globals.css");
+
+  assert.match(operacional, /LeituraNumerica/);
+  assert.match(operacional, /hx-live-vector-meter/);
+  assert.match(operacional, /vetor\.value == null[\s\S]*<em \/>/);
+  assert.match(graficos, /animationDurationUpdate: 760/);
+  assert.match(graficos, /animationEasingUpdate: "cubicOut"/);
+  assert.match(runtime, /prefers-reduced-motion: reduce/);
+  assert.match(runtime, /animationDurationUpdate: 0/);
+  assert.match(estilos, /Cockpit Vivo Premium — instrumentação, movimento e demonstração visual isolada/);
+  assert.match(estilos, /@keyframes hx-phase-progress/);
+  assert.match(estilos, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
+test("demonstração visual é local, sintética e estruturalmente isolada", async () => {
+  const demonstracao = await source("components/cockpit-demonstracao-visual.tsx");
+  const pagina = await source("app/cockpit-visual-demo/page.tsx");
+
+  assert.match(pagina, /process\.env\.NODE_ENV !== "development"/);
+  assert.match(pagina, /notFound\(\)/);
+  assert.match(demonstracao, /DEMONSTRAÇÃO VISUAL ISOLADA/);
+  assert.match(demonstracao, /DADOS SINTÉTICOS · SEM API · SEM BANCO · SEM RELATÓRIOS/);
+  assert.match(demonstracao, /primaryDataLabel="Dado sintético identificado"/);
+  assert.match(demonstracao, /HUD demonstrativo com nove itens/);
+  assert.match(demonstracao, /VETORES\.map/);
+  assert.match(demonstracao, /AGUARDANDO CONEXÃO/);
+  assert.match(demonstracao, /CAPTURA ATIVA/);
+  assert.match(demonstracao, /QUALIDADE INSUFICIENTE/);
+  assert.match(demonstracao, /RECONECTANDO/);
+  assert.match(demonstracao, /"PRÉ", "TREINO", "PÓS", "BASELINE"/);
+  assert.doesNotMatch(demonstracao, /fetch\(|localStorage|sessionStorage|indexedDB|\/api\//);
+});

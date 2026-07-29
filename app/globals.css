@@ -1823,3 +1823,447 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
     grid-template-columns: 1fr;
   }
 }
+
+/* Cockpit Vivo Premium — instrumentação, movimento e demonstração visual isolada. */
+.hx-live-cockpit {
+  --live-reflection: linear-gradient(
+    116deg,
+    transparent 0 58%,
+    rgba(240, 237, 228, .022) 58.2%,
+    transparent 69%
+  );
+}
+
+.hx-live-cockpit__masthead,
+.hx-live-vector-stage,
+.hx-live-graphs,
+.hx-live-regulatory-readout article,
+.hx-live-conduction > *,
+.hx-live-technical-drawer {
+  position: relative;
+  isolation: isolate;
+}
+
+.hx-live-vector-stage::before,
+.hx-live-graphs::before,
+.hx-live-regulatory-readout article::after,
+.hx-live-conduction > *::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background: var(--live-reflection);
+}
+
+.hx-live-vector-stage::after,
+.hx-live-graphs::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(205, 178, 116, .34) 28%,
+    rgba(240, 237, 228, .12) 55%,
+    transparent 88%
+  );
+}
+
+.hx-live-hud {
+  overflow: hidden;
+}
+
+.hx-live-hud::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -22%;
+  width: 18%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(240, 237, 228, .035), transparent);
+  animation: hx-instrument-scan 9s ease-in-out infinite;
+}
+
+.hx-live-hud > div {
+  position: relative;
+}
+
+.hx-live-hud > div::after {
+  content: "";
+  position: absolute;
+  inset: auto 9px 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(205, 178, 116, .28), transparent);
+  transform: scaleX(.25);
+  transform-origin: left;
+  transition: transform .5s ease;
+}
+
+.hx-live-hud > div:hover::after {
+  transform: scaleX(1);
+}
+
+.hx-live-hud strong,
+.hx-live-source-values b {
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 7px 20px rgba(0, 0, 0, .62);
+}
+
+.hx-live-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.hx-live-state > i {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 0 currentColor;
+}
+
+.hx-live-state.is-capturando > i,
+.hx-live-state.is-conectado > i,
+.hx-live-state.is-sincronizada > i {
+  animation: hx-signal-breathe 2.4s ease-in-out infinite;
+}
+
+.hx-live-state.is-reconectando > i {
+  background: transparent;
+  animation: hx-signal-orbit 1.25s linear infinite;
+}
+
+.hx-live-state.is-qualidade-insuficiente > i {
+  animation: hx-signal-attention 2s ease-in-out infinite;
+}
+
+.hx-vector-radar-live {
+  overflow: hidden;
+  border-radius: 2px;
+  background:
+    radial-gradient(circle at 50% 49%, rgba(205, 178, 116, .075), transparent 37%),
+    radial-gradient(circle at 50% 50%, rgba(69, 109, 112, .055), transparent 65%);
+}
+
+.hx-vector-radar-live::before,
+.hx-vector-radar-live::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+  border: 1px solid rgba(205, 178, 116, .065);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.hx-vector-radar-live::before {
+  width: 74%;
+  aspect-ratio: 1;
+}
+
+.hx-vector-radar-live::after {
+  width: 46%;
+  aspect-ratio: 1;
+  border-color: rgba(69, 109, 112, .1);
+}
+
+.hx-vector-radar-live .hx-echart,
+.hx-vector-radar-live__block {
+  position: relative;
+  z-index: 1;
+}
+
+.hx-echart {
+  position: relative;
+  filter: saturate(.94) contrast(1.03);
+}
+
+.hx-live-vector-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 5px;
+  min-height: 37px;
+}
+
+.hx-live-vector-list > div > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.hx-live-vector-meter {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 2px;
+  overflow: hidden;
+  background: rgba(230, 225, 211, .06);
+}
+
+.hx-live-vector-meter i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #456d70, #cdb274);
+  box-shadow: 0 0 12px rgba(205, 178, 116, .24);
+  transition: width .72s cubic-bezier(.2, .8, .2, 1);
+}
+
+.hx-live-vector-meter em {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(126, 138, 136, .13) 0 7px,
+    transparent 7px 12px
+  );
+}
+
+.hx-live-vector-list > div.has-value strong {
+  color: #d8c58f;
+}
+
+.hx-live-vector-list > div.is-missing strong {
+  color: #76817f;
+}
+
+.hx-live-temporal-rail {
+  overflow: hidden;
+}
+
+.hx-live-temporal-rail span::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: transparent;
+}
+
+.hx-live-temporal-rail .is-current::after {
+  background: linear-gradient(90deg, transparent, #cdb274, transparent);
+  transform: translateX(-100%);
+  animation: hx-phase-progress 2.8s ease-in-out infinite;
+}
+
+.hx-live-temporal-rail .is-current i {
+  animation: hx-signal-breathe 2.2s ease-in-out infinite;
+}
+
+.hx-live-graphs[data-signal-state="ATIVO"]::after {
+  box-shadow: 0 7px 28px rgba(205, 178, 116, .08);
+}
+
+.hx-live-graphs[data-signal-state="AGUARDANDO"] .hx-live-temporal-pulse i:nth-child(2) {
+  animation: hx-signal-ring 2.8s ease-out infinite;
+}
+
+.hx-live-graphs[data-signal-state="AGUARDANDO"] .hx-live-temporal-pulse i:nth-child(3) {
+  animation: hx-signal-ring 2.8s 1.1s ease-out infinite;
+}
+
+.hx-live-loading-hud i,
+.hx-live-loading-command span {
+  background-size: 240% 100%;
+  animation: hx-loading-sheen 2.4s ease-in-out infinite;
+}
+
+.hx-demo-page {
+  min-height: 100vh;
+  background: #03070a;
+  color: #eef2f1;
+}
+
+.hx-demo-safety {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 42px;
+  padding: 9px 13px;
+  border: 1px solid rgba(205, 178, 116, .34);
+  background:
+    linear-gradient(90deg, rgba(205, 178, 116, .11), transparent 42%),
+    rgba(7, 9, 10, .97);
+}
+
+.hx-demo-safety strong,
+.hx-demo-safety span {
+  color: #d6bd78;
+  letter-spacing: .14em;
+  font: 7px/1.5 var(--font-geist-mono), monospace;
+}
+
+.hx-demo-safety span {
+  color: #899391;
+  text-align: right;
+}
+
+.hx-demo-controls {
+  display: grid;
+  grid-template-columns: minmax(0, .7fr) minmax(0, 1.45fr) auto auto;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid rgba(230, 225, 211, .1);
+  background: rgba(8, 10, 11, .94);
+}
+
+.hx-demo-controls > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.hx-demo-controls small {
+  flex-basis: 100%;
+  color: #7e8987;
+  letter-spacing: .14em;
+  font: 6px var(--font-geist-mono), monospace;
+}
+
+.hx-demo-controls button {
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid rgba(205, 178, 116, .17);
+  background: rgba(4, 6, 7, .8);
+  color: #929b98;
+  cursor: pointer;
+  letter-spacing: .09em;
+  font: 6px/1.35 var(--font-geist-mono), monospace;
+  text-transform: uppercase;
+}
+
+.hx-demo-controls button:hover,
+.hx-demo-controls button.is-active {
+  border-color: rgba(205, 178, 116, .62);
+  background: rgba(205, 178, 116, .1);
+  color: #e0cd97;
+}
+
+.hx-demo-controls .hx-demo-motion {
+  align-self: stretch;
+  min-width: 152px;
+}
+
+.hx-live-cockpit--demo .hx-live-cockpit__masthead {
+  margin-top: 0;
+}
+
+.hx-live-cockpit--demo[data-demo-sensor="QUALIDADE INSUFICIENTE"] {
+  --live-gold: #c89c5a;
+}
+
+.hx-live-cockpit--demo[data-demo-sensor="RECONECTANDO"] .hx-live-cockpit__masthead {
+  box-shadow: inset 0 0 0 1px rgba(200, 156, 90, .12), 0 28px 74px rgba(0, 0, 0, .3);
+}
+
+@keyframes hx-instrument-scan {
+  0%, 72% { transform: translateX(0); opacity: 0; }
+  78% { opacity: 1; }
+  100% { transform: translateX(680%); opacity: 0; }
+}
+
+@keyframes hx-signal-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: .7; }
+  50% { box-shadow: 0 0 0 5px transparent; opacity: 1; }
+}
+
+@keyframes hx-signal-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes hx-signal-attention {
+  0%, 100% { opacity: .5; }
+  50% { opacity: 1; }
+}
+
+@keyframes hx-signal-ring {
+  0% { opacity: .55; transform: scale(.72); }
+  75%, 100% { opacity: 0; transform: scale(1.12); }
+}
+
+@keyframes hx-phase-progress {
+  0% { transform: translateX(-100%); opacity: 0; }
+  18% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes hx-loading-sheen {
+  0%, 100% { background-position: 100% 0; }
+  50% { background-position: 0 0; }
+}
+
+@media (max-width: 900px) {
+  .hx-demo-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .hx-demo-controls .hx-demo-motion {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hx-demo-safety {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hx-demo-safety span {
+    text-align: left;
+  }
+
+  .hx-demo-controls button {
+    min-height: 44px;
+  }
+
+  .hx-live-vector-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hx-live-hud::after,
+  .hx-live-state > i,
+  .hx-live-temporal-rail .is-current::after,
+  .hx-live-temporal-rail .is-current i,
+  .hx-live-temporal-pulse i,
+  .hx-live-loading-hud i,
+  .hx-live-loading-command span {
+    animation: none !important;
+  }
+
+  .hx-live-vector-meter i,
+  .hx-live-command__primary,
+  .hx-live-hud > div::after {
+    transition-duration: .01ms !important;
+  }
+}
+
+.hx-live-cockpit[data-motion-reduced="true"] .hx-live-hud::after,
+.hx-live-cockpit[data-motion-reduced="true"] .hx-live-state > i,
+.hx-live-cockpit[data-motion-reduced="true"] .hx-live-temporal-rail .is-current::after,
+.hx-live-cockpit[data-motion-reduced="true"] .hx-live-temporal-rail .is-current i,
+.hx-live-cockpit[data-motion-reduced="true"] .hx-live-temporal-pulse i,
+.hx-live-cockpit[data-motion-reduced="true"] .hx-live-loading-hud i,
+.hx-live-cockpit[data-motion-reduced="true"] .hx-live-loading-command span {
+  animation: none !important;
+}
+
+.hx-live-cockpit[data-motion-reduced="true"] .hx-live-vector-meter i,
+.hx-live-cockpit[data-motion-reduced="true"] .hx-live-command__primary,
+.hx-live-cockpit[data-motion-reduced="true"] .hx-live-hud > div::after {
+  transition-duration: .01ms !important;
+}
