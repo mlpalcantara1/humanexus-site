@@ -680,12 +680,18 @@ function valorVetorial(valor: unknown, indisponivel: string) {
 
 function ContextoPersistente({ estado, visao }: { estado: Estado; visao: VisaoCockpit }) {
   const finalizada = estado.sessao.estado === "FINALIZADA";
+  const tipoDaSessao = String(
+    objeto(estado.sessao.detalhes_operacionais).tipo_de_sessao
+    ?? objeto(estado.estado_operacional).tipo_de_sessao
+    ?? "PRE_TREINO_POS"
+  );
   return (
     <>
       <section className="hx-cockpit-context" aria-label="Contexto preservado do Cockpit">
         <div><small>Participante</small><strong>{texto(estado.participante.nome ?? estado.participante.referencia_externa)}</strong></div>
         <div><small>Organização</small><strong>{texto(estado.organizacao.nome)}</strong></div>
         <div><small>Sessão</small><strong>{texto(estado.sessao.identificador)}</strong></div>
+        <div><small>Tipo da sessão</small><strong>{tipoDaSessao === "BASELINE" ? "Baseline" : "PRÉ → TREINO → PÓS"}</strong></div>
         <div><small>CTR / THX</small><strong>{texto(estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador)} · {texto(estado.thx_individual?.codigo)}</strong></div>
         <div><small>Fase atual</small><strong>{faseAtual(estado)}</strong></div>
         <div><small>Próxima ação</small><strong>{texto(objeto(estado.estado_operacional).proxima_acao_principal, "SEM AÇÃO PENDENTE")}</strong></div>
@@ -695,7 +701,9 @@ function ContextoPersistente({ estado, visao }: { estado: Estado; visao: VisaoCo
       {finalizada ? (
         <section className="hx-session-final">
           <strong>SESSÃO FINALIZADA</strong>
-          <span>PRÉ preservado · TREINO preservado · PÓS preservado · snapshots congelados · Replay disponível · relatório disponível</span>
+          <span>{tipoDaSessao === "BASELINE"
+            ? "Baseline preservado · dados congelados · Replay disponível"
+            : "PRÉ preservado · TREINO preservado · PÓS preservado · snapshots congelados · Replay disponível · relatório disponível"}</span>
         </section>
       ) : null}
     </>

@@ -95,10 +95,29 @@ test("sessão e convites preservam o escopo organizacional selecionado", async (
   const panel = await source("components/painel-profissional.tsx");
   assert.match(management, /identificador_da_organizacao:/);
   assert.match(management, /chave_de_idempotencia/);
+  assert.match(management, /tipo_de_sessao/);
+  assert.match(management, /Baseline/);
+  assert.match(management, /PRÉ → TREINO → PÓS/);
+  assert.match(management, /INICIAR SESSÃO/);
+  assert.match(management, /\/plataforma\/cockpit-vivo\?/);
   assert.match(managementRoute, /x-humanexus-organization-id/);
   assert.match(invitationRoute, /x-humanexus-organization-id/);
   assert.match(panel, /Particulares/);
   assert.match(panel, /Organizacionais/);
+});
+
+test("treinamentos usam somente a biblioteca oficial e evidência persistida", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  const liveCockpit = await source("components/cockpit-operacional-vivo.tsx");
+  assert.match(management, /BIBLIOTECA OFICIAL HUMANEXUS/);
+  assert.match(management, /biblioteca_thx_oficial/);
+  assert.match(management, /evidencias_regulatorias_treinamento/);
+  assert.match(management, /Recomendados/);
+  assert.match(management, /Compatíveis/);
+  assert.match(management, /Demais protocolos oficiais/);
+  assert.doesNotMatch(management, /Novo treinamento/);
+  assert.doesNotMatch(management, /Adicionar ao catálogo/);
+  assert.match(liveCockpit, /Baseline como modalidade independente/);
 });
 
 test("participantes possuem grupos e busca operacional completa", async () => {
@@ -208,20 +227,23 @@ test("admin converge para a ficha canônica e usuários são editáveis", async 
   assert.match(route, /method: "PUT"/);
 });
 
-test("treinamentos, programações e contratos fecham o ciclo operacional", async () => {
+test("operações legadas permanecem compatíveis sem reabrir cadastro oficial", async () => {
   const management = await source("components/gestao-operacional.tsx");
   const route = await source("app/api/gestao-operacional/route.ts");
 
   for (const action of [
+    "criar-treinamento",
     "inativar-treinamento",
     "reativar-treinamento",
     "operar-programacao",
-    "atualizar-contrato"
+    "programar-treinamento"
   ]) {
-    assert.match(management, new RegExp(action));
     assert.match(route, new RegExp(action));
   }
-  assert.match(management, /Abrir como nova versão/);
+  assert.doesNotMatch(management, /criar-treinamento/);
+  assert.doesNotMatch(management, /inativar-treinamento/);
+  assert.match(management, /Programações existentes/);
+  assert.match(management, /atualizar-contrato/);
   assert.match(management, /Ficha contratual/);
   assert.match(management, /Histórico/);
 });

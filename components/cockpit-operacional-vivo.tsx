@@ -362,6 +362,13 @@ export function CockpitOperacionalVivo({
   const cockpit = objeto(estado.cockpit_operacional);
   const sessao = objeto(cockpit.sessao);
   const contextoSessao = objeto(estado.sessao);
+  const estadoOperacional = objeto(estado.estado_operacional);
+  const tipoDaSessao = String(
+    estadoOperacional.tipo_de_sessao
+    ?? objeto(contextoSessao.detalhes_operacionais).tipo_de_sessao
+    ?? "PRE_TREINO_POS"
+  );
+  const sessaoBaseline = tipoDaSessao === "BASELINE";
   const participante = objeto(estado.participante);
   const organizacao = objeto(estado.organizacao);
   const profissionais = lista(objeto(estado.contextos).profissionais);
@@ -458,7 +465,9 @@ export function CockpitOperacionalVivo({
   const trilhasVisiveis = [...new Set(timelineItems.map((item) => item.track))];
   const polar = fontes.find((item) => item.codigo === "POLAR_H10") ?? {};
   const eeg = fontes.find((item) => item.codigo === "EMOTIV_EPOC_X") ?? {};
-  const fase = sessao.fase_atual
+  const fase = sessaoBaseline
+    ? `BASELINE · ${baseline.estado}`
+    : sessao.fase_atual
     ? texto(sessao.fase_atual)
     : sessaoFinalizada
       ? "SESSÃO ENCERRADA"
@@ -483,8 +492,11 @@ export function CockpitOperacionalVivo({
           </span>
           <h1>{texto(participante.nome ?? participante.referencia_externa, "Participante")}</h1>
           <p>
-            Sessão {texto(contextoSessao.identificador)} · THX {texto(thx.codigo)}
-            {" · "}{texto(execucao.estado)}
+            Sessão {texto(contextoSessao.identificador)} · {
+              sessaoBaseline
+                ? "Baseline"
+                : `THX ${texto(thx.codigo)} · ${texto(execucao.estado)}`
+            }
           </p>
         </div>
         <div className="hx-live-mode-actions">
@@ -509,8 +521,8 @@ export function CockpitOperacionalVivo({
       <section className="hx-live-context-strip" aria-label="Contexto autorizado da sessão">
         <div><small>ORGANIZAÇÃO</small><strong>{texto(organizacao.nome)}</strong></div>
         <div><small>PROFISSIONAL</small><strong>{texto(profissional.nome)}</strong></div>
-        <div><small>CTR</small><strong>{texto(ctr.codigo)}</strong></div>
-        <div><small>PROTOCOLO</small><strong>{texto(thx.codigo)} · {texto(thx.nome)}</strong></div>
+        <div><small>TIPO DA SESSÃO</small><strong>{sessaoBaseline ? "BASELINE" : "PRÉ → TREINO → PÓS"}</strong></div>
+        <div><small>{sessaoBaseline ? "FLUXO" : "CTR / PROTOCOLO"}</small><strong>{sessaoBaseline ? "INDEPENDENTE" : `${texto(ctr.codigo)} · ${texto(thx.codigo)}`}</strong></div>
       </section>
 
       <section className="hx-live-hud" aria-label="HUD operacional fixo">
@@ -567,13 +579,13 @@ export function CockpitOperacionalVivo({
             ))}
           </div>
           <span>Comandos fornecidos exclusivamente pelo estado operacional do backend.</span>
-          <div className="hx-live-protocol-brief">
+          {!sessaoBaseline ? <div className="hx-live-protocol-brief">
             <small>CRITÉRIO REGULATÓRIO HUMANO</small>
             <strong>{texto(ctr.codigo)} · {texto(ctr.nome)}</strong>
             <small>TREINAMENTO HUMANEXUS</small>
             <strong>{texto(thx.codigo)} · {texto(thx.nome)}</strong>
             <span>{texto(execucao.estado)}</span>
-          </div>
+          </div> : null}
           <div className="hx-live-events-brief">
             <small>EVENTOS RECENTES</small>
             {[...eventos].reverse().slice(0, 4).map((item) => (
@@ -713,8 +725,10 @@ export function CockpitOperacionalVivo({
           <span>Cobertura {baseline.cobertura} · {baseline.qualidade}</span>
         </div>
         <footer>
-          <span>Baseline separado das fases científicas</span>
-          <span>PRÉ → TREINO → PÓS</span>
+          <span>{sessaoBaseline
+            ? "Baseline como modalidade independente"
+            : "Baseline não integra este ciclo"}</span>
+          <span>{sessaoBaseline ? "BASELINE" : "PRÉ → TREINO → PÓS"}</span>
           <span>Mídia opcional: {texto(replay.midia, "SEM GRAVAÇÃO")}</span>
         </footer>
       </section>

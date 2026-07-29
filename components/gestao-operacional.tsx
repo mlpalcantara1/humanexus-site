@@ -4,6 +4,11 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { ModuloDaPlataforma } from "@/components/modulo-integrado";
 
 type Registro = Record<string, unknown>;
+type ProtocoloClassificado = Registro & {
+  classificacao_operacional: "RECOMENDADO" | "COMPATIVEL" | "OUTRO_OFICIAL";
+  recomendacao_operacional: Registro | null;
+  vinculos_compativeis: Registro[];
+};
 type Dados = {
   usuario: Registro;
   organizacoes: Registro[];
@@ -16,6 +21,7 @@ type Dados = {
   contratos: Registro[];
   profissionais: Registro[];
   vinculos_ctr_thx_validados: Registro[];
+  evidencias_regulatorias_treinamento: Registro;
   modelos_consentimento: Registro[];
 };
 
@@ -62,7 +68,25 @@ function objeto(valor: unknown): Registro {
 }
 
 function lista(valor: unknown): Registro[] {
-  return Array.isArray(valor) ? valor as Registro[] : [];
+  if (Array.isArray(valor)) return valor as Registro[];
+  if (typeof valor !== "string" || !valor) return [];
+  try {
+    const convertido = JSON.parse(valor);
+    return Array.isArray(convertido) ? convertido as Registro[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function listaDeTextos(valor: unknown): string[] {
+  if (Array.isArray(valor)) return valor.map(String);
+  if (typeof valor !== "string" || !valor) return [];
+  try {
+    const convertido = JSON.parse(valor);
+    return Array.isArray(convertido) ? convertido.map(String) : [];
+  } catch {
+    return [valor];
+  }
 }
 
 function normalizar(valor: unknown) {
@@ -150,6 +174,7 @@ export function GestaoOperacional({
     identificador_do_participante: "",
     finalidade: "HOMOLOGAÇÃO FÍSICA FINAL — DADOS REAIS AUTORIZADOS",
     modalidade: "INDIVIDUAL",
+    tipo_de_sessao: "PRE_TREINO_POS",
     data_programada: "",
     duracao_planejada_minutos: "60",
     identificador_do_profissional: "",
@@ -159,19 +184,8 @@ export function GestaoOperacional({
     justificativa: "",
     chave_de_idempotencia: ""
   });
-  const [treinamento, setTreinamento] = useState({
-    codigo: "",
-    nome: "",
-    descricao: "",
-    versao: "1.0"
-  });
-  const [treinamentoBase, setTreinamentoBase] = useState("");
-  const [programacao, setProgramacao] = useState({
-    identificador_do_catalogo: "",
-    identificador_do_participante: "",
-    data_programada: "",
-    justificativa: ""
-  });
+  const [participanteDoCatalogo, setParticipanteDoCatalogo] = useState("");
+  const [familiaThx, setFamiliaThx] = useState("");
   const [contratoSelecionado, setContratoSelecionado] = useState("");
   const [contrato, setContrato] = useState({
     tipo: "ORGANIZACIONAL",
@@ -361,6 +375,13 @@ export function GestaoOperacional({
         estado.identificador_do_participante
         || String(corpo.participantes?.[0]?.identificador ?? "")
     }));
+    setParticipanteDoCatalogo((atual) => (
+      corpo.participantes?.some(
+        (item: Registro) => String(item.identificador) === atual
+      )
+        ? atual
+        : String(corpo.participantes?.[0]?.identificador ?? "")
+    ));
   }
 
   useEffect(() => {
@@ -614,13 +635,28 @@ export function GestaoOperacional({
                 <button
                   type="button"
                   disabled={ocupado}
-                  onClick={() => void executar(
-                    "operar-sessao",
-                    { acao },
-                    item.identificador
-                  )}
+                  onClick={() => void (async () => {
+                    const resultado = await executar(
+                      "operar-sessao",
+                      { acao },
+                      item.identificador
+                    );
+                    if (!resultado || acao !== "ABRIR") return;
+                    const parametros = new URLSearchParams({
+                      organizacao: String(
+                        dados?.organizacao?.identificador ?? ""
+                      ),
+                      participante: String(
+                        item.identificador_do_participante ?? ""
+                      ),
+                      sessao: String(item.identificador ?? "")
+                    });
+                    window.location.assign(
+                      `/plataforma/cockpit-vivo?${parametros}`
+                    );
+                  })()}
                 >
-                  {texto(acao)}
+                  {acao === "ABRIR" ? "INICIAR SESSÃO" : texto(acao)}
                 </button>
               ) : <span>Histórico preservado</span>}
             </article>
@@ -643,6 +679,125 @@ export function GestaoOperacional({
   const thxValidadosDoCtr = useMemo(() => (
     dados?.vinculos_ctr_thx_validados ?? []
   ).filter((item) => item.codigo_do_ctr === sessao.codigo_do_ctr), [dados, sessao.codigo_do_ctr]);
+  const evidenciaDoCatalogo = useMemo(() => {
+    const porParticipante = objeto(
+      dados?.evidencias_regulatorias_treinamento
+    );
+    return objeto(porParticipante[participanteDoCatalogo]);
+  }, [dados, participanteDoCatalogo]);
+  const protocolosOficiais = useMemo<ProtocoloClassificado[]>(() => {
+    const biblioteca = objeto(dados?.biblioteca_thx_oficial);
+    const recomendacoes = lista(evidenciaDoCatalogo.recomendacoes_thx)
+      .filter((item) => !["REJEITADA", "EXPIRADA"].includes(
+        String(item.estado ?? "")
+      ));
+    const idsRecomendados = new Set(
+      recomendacoes.map((item) => String(
+        item.identificador_do_protocolo ?? ""
+      ))
+    );
+    const avaliacoesCtr = lista(evidenciaDoCatalogo.avaliacoes_ctr);
+    const ctrsComEvidencia = new Set<string>();
+    const thxExplicitamenteCompativeis = new Set<string>();
+    for (const avaliacao of avaliacoesCtr) {
+      for (const codigo of listaDeTextos(
+        avaliacao.criterios_atendidos_json
+      )) {
+        ctrsComEvidencia.add(codigo);
+      }
+      for (const item of lista(avaliacao.thx_compativeis_json)) {
+        const codigo = String(
+          item.codigo_do_thx ?? item.codigo ?? item.identificador ?? ""
+        );
+        if (codigo) thxExplicitamenteCompativeis.add(codigo);
+      }
+    }
+    const busca = normalizar(buscaThx.trim());
+    const ordenacao: Record<string, number> = {
+      RECOMENDADO: 0,
+      COMPATIVEL: 1,
+      OUTRO_OFICIAL: 2
+    };
+    return lista(biblioteca.protocolos)
+      .map<ProtocoloClassificado>((protocolo) => {
+        const codigo = String(protocolo.codigo ?? "");
+        const vinculos = lista(protocolo.vinculos_documentados);
+        const recomendacao = recomendacoes.find(
+          (item) => String(item.identificador_do_protocolo ?? "")
+            === String(protocolo.identificador ?? "")
+        );
+        const vinculosCompativeis = vinculos.filter((item) =>
+          ctrsComEvidencia.has(String(item.codigo_do_ctr ?? ""))
+        );
+        const classificacao: ProtocoloClassificado[
+          "classificacao_operacional"
+        ] = (
+          recomendacao || idsRecomendados.has(String(protocolo.identificador))
+        )
+          ? "RECOMENDADO"
+          : (
+              thxExplicitamenteCompativeis.has(codigo)
+              || vinculosCompativeis.length > 0
+            )
+            ? "COMPATIVEL"
+            : "OUTRO_OFICIAL";
+        return {
+          ...protocolo,
+          classificacao_operacional: classificacao,
+          recomendacao_operacional: recomendacao ?? null,
+          vinculos_compativeis: vinculosCompativeis
+        };
+      })
+      .filter((protocolo) => (
+        (!familiaThx || protocolo.familia === familiaThx)
+        && (
+          !busca
+          || normalizar([
+            protocolo.codigo,
+            protocolo.nome,
+            protocolo.dominio,
+            protocolo.objetivo_regulatorio,
+            protocolo.dor_operacional
+          ].join(" ")).includes(busca)
+        )
+      ))
+      .sort((a, b) => (
+        ordenacao[String(a.classificacao_operacional)]
+        - ordenacao[String(b.classificacao_operacional)]
+        || String(a.codigo).localeCompare(String(b.codigo), "pt-BR")
+      ));
+  }, [
+    buscaThx,
+    dados,
+    evidenciaDoCatalogo,
+    familiaThx
+  ]);
+  const gatilhoDoCatalogo = lista(
+    evidenciaDoCatalogo.gatilhos
+  ).at(-1);
+  const arrDoCatalogo = lista(
+    evidenciaDoCatalogo.analises_arr
+  ).at(-1);
+  const rroDoCatalogo = lista(
+    evidenciaDoCatalogo.resultados_rro
+  ).at(-1);
+  const nraDoCatalogo = lista(
+    evidenciaDoCatalogo.registros_nra
+  ).at(-1);
+  const ganhoDoCatalogo = lista(
+    evidenciaDoCatalogo.ganhos_regulatorios
+  ).at(-1);
+  const protocolosPorClassificacao = {
+    RECOMENDADO: protocolosOficiais.filter(
+      (item) => item.classificacao_operacional === "RECOMENDADO"
+    ),
+    COMPATIVEL: protocolosOficiais.filter(
+      (item) => item.classificacao_operacional === "COMPATIVEL"
+    ),
+    OUTRO_OFICIAL: protocolosOficiais.filter(
+      (item) => item.classificacao_operacional === "OUTRO_OFICIAL"
+    )
+  };
 
   if (erro && !dados) return <p className="hx-module__error">{erro}</p>;
   if (!dados) return <p className="hx-module__loading">Carregando gestão operacional…</p>;
@@ -1084,6 +1239,15 @@ export function GestaoOperacional({
             }));
             const resultado = await executar("criar-sessao-com-vinculo", {
               ...sessao,
+              codigo_do_ctr: sessao.tipo_de_sessao === "BASELINE"
+                ? ""
+                : sessao.codigo_do_ctr,
+              codigo_do_thx: sessao.tipo_de_sessao === "BASELINE"
+                ? ""
+                : sessao.codigo_do_thx,
+              justificativa: sessao.tipo_de_sessao === "BASELINE"
+                ? ""
+                : sessao.justificativa,
               chave_de_idempotencia: chave,
               duracao_planejada_minutos: Number(sessao.duracao_planejada_minutos)
             });
@@ -1095,7 +1259,36 @@ export function GestaoOperacional({
             }
           }}>
             <small>CONTEXTO CIENTÍFICO PRESERVADO</small>
-            <h2>Programar sessão</h2>
+            <h2>Criar sessão</h2>
+            <fieldset className="hx-session-type">
+              <legend>Tipo da sessão</legend>
+              <label>
+                <input
+                  type="radio"
+                  name="tipo-da-sessao"
+                  value="BASELINE"
+                  checked={sessao.tipo_de_sessao === "BASELINE"}
+                  onChange={(evento) => setSessao({
+                    ...sessao,
+                    tipo_de_sessao: evento.target.value
+                  })}
+                />
+                Baseline
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="tipo-da-sessao"
+                  value="PRE_TREINO_POS"
+                  checked={sessao.tipo_de_sessao === "PRE_TREINO_POS"}
+                  onChange={(evento) => setSessao({
+                    ...sessao,
+                    tipo_de_sessao: evento.target.value
+                  })}
+                />
+                PRÉ → TREINO → PÓS
+              </label>
+            </fieldset>
             <label>Participante<select required value={sessao.identificador_do_participante} onChange={(evento) => {
               const participanteId = evento.target.value;
               const participanteSelecionado = dados.participantes.find(
@@ -1121,128 +1314,250 @@ export function GestaoOperacional({
               <option value="HOMOLOGAÇÃO FÍSICA FINAL — DADOS REAIS AUTORIZADOS">Homologação física final — dados reais autorizados</option>
               <option value="HOMOLOGAÇÃO FÍSICA AUTORIZADA — DR. MARCOS ALCÂNTARA">Homologação física autorizada — Dr. Marcos Alcântara</option>
             </select></label>
-            <label>Modalidade<select value={sessao.modalidade} onChange={(evento) => setSessao({ ...sessao, modalidade: evento.target.value })}><option>INDIVIDUAL</option><option>GRUPO</option><option>TREINAMENTO</option><option>AVALIAÇÃO</option></select></label>
-            <label>CTR oficial<select required value={sessao.codigo_do_ctr} onChange={(evento) => {
-              const codigo = evento.target.value;
-              const primeiroThx = dados.vinculos_ctr_thx_validados.find((item) => item.codigo_do_ctr === codigo);
-              setSessao({ ...sessao, codigo_do_ctr: codigo, codigo_do_thx: String(primeiroThx?.codigo_do_thx ?? "") });
-            }}>{ctrsValidados.map((item) => <option key={String(item.codigo_do_ctr)} value={String(item.codigo_do_ctr)}>{texto(item.codigo_do_ctr)} · {texto(item.nome_do_ctr)}</option>)}</select></label>
-            <label>THX oficial validado<select required value={sessao.codigo_do_thx} onChange={(evento) => setSessao({ ...sessao, codigo_do_thx: evento.target.value })}>{thxValidadosDoCtr.map((item) => <option key={String(item.identificador)} value={String(item.codigo_do_thx)}>{texto(item.codigo_do_thx)} · {texto(item.nome_do_thx)} · {texto(item.papel)}</option>)}</select></label>
-            <label>Justificativa da seleção profissional<textarea required value={sessao.justificativa} onChange={(evento) => setSessao({ ...sessao, justificativa: evento.target.value })} /></label>
+            {sessao.tipo_de_sessao === "PRE_TREINO_POS" ? (
+              <>
+                <label>CTR oficial<select required value={sessao.codigo_do_ctr} onChange={(evento) => {
+                  const codigo = evento.target.value;
+                  const primeiroThx = dados.vinculos_ctr_thx_validados.find((item) => item.codigo_do_ctr === codigo);
+                  setSessao({ ...sessao, codigo_do_ctr: codigo, codigo_do_thx: String(primeiroThx?.codigo_do_thx ?? "") });
+                }}>{ctrsValidados.map((item) => <option key={String(item.codigo_do_ctr)} value={String(item.codigo_do_ctr)}>{texto(item.codigo_do_ctr)} · {texto(item.nome_do_ctr)}</option>)}</select></label>
+                <label>THX oficial validado<select required value={sessao.codigo_do_thx} onChange={(evento) => setSessao({ ...sessao, codigo_do_thx: evento.target.value })}>{thxValidadosDoCtr.map((item) => <option key={String(item.identificador)} value={String(item.codigo_do_thx)}>{texto(item.codigo_do_thx)} · {texto(item.nome_do_thx)} · {texto(item.papel)}</option>)}</select></label>
+                <label>Justificativa da seleção profissional<textarea required value={sessao.justificativa} onChange={(evento) => setSessao({ ...sessao, justificativa: evento.target.value })} /></label>
+              </>
+            ) : (
+              <p>
+                Baseline é uma modalidade independente e não exige seleção de
+                CTR ou THX.
+              </p>
+            )}
             <label>Data programada<input type="datetime-local" value={sessao.data_programada} onChange={(evento) => setSessao({ ...sessao, data_programada: evento.target.value })} /></label>
             <label>Duração planejada<input type="number" min="1" max="1440" value={sessao.duracao_planejada_minutos} onChange={(evento) => setSessao({ ...sessao, duracao_planejada_minutos: evento.target.value })} /></label>
-            <button disabled={ocupado || !podeConduzir}>Criar sessão</button>
+            <button disabled={ocupado || !podeConduzir}>Salvar sessão</button>
           </form>
           {tabelaSessoes}
         </div>
       ) : null}
 
       {modulo === "treinamentos" ? (
-        <div className="hx-management-grid">
-          <form onSubmit={(evento: FormEvent) => {
-            evento.preventDefault();
-            void executar("criar-treinamento", treinamento);
-          }}>
-            <small>CATÁLOGO OPERACIONAL VERSIONADO</small>
-            <h2>{treinamentoBase ? "Nova versão do treinamento" : "Novo treinamento"}</h2>
-            <label>Código<input required value={treinamento.codigo} onChange={(evento) => setTreinamento({ ...treinamento, codigo: evento.target.value })} /></label>
-            <label>Nome<input required value={treinamento.nome} onChange={(evento) => setTreinamento({ ...treinamento, nome: evento.target.value })} /></label>
-            <label>Descrição<textarea required value={treinamento.descricao} onChange={(evento) => setTreinamento({ ...treinamento, descricao: evento.target.value })} /></label>
-            <label>Versão<input required value={treinamento.versao} onChange={(evento) => setTreinamento({ ...treinamento, versao: evento.target.value })} /></label>
-            <button disabled={ocupado || !podeAdministrar}>
-              {treinamentoBase ? "Salvar nova versão" : "Adicionar ao catálogo"}
-            </button>
-            {treinamentoBase ? (
-              <button type="button" onClick={() => {
-                setTreinamentoBase("");
-                setTreinamento({ codigo: "", nome: "", descricao: "", versao: "1.0" });
-              }}>Novo item</button>
-            ) : null}
-          </form>
-          <form onSubmit={(evento: FormEvent) => {
-            evento.preventDefault();
-            void executar("programar-treinamento", {
-              identificador_do_catalogo: programacao.identificador_do_catalogo,
-              identificador_do_participante:
-                programacao.identificador_do_participante,
-              cronograma: programacao.data_programada
-                ? [{ inicio: programacao.data_programada }]
-                : []
-            });
-          }}>
-            <small>PROGRAMAÇÃO</small>
-            <h2>Vincular treinamento</h2>
-            <label>Treinamento<select required value={programacao.identificador_do_catalogo} onChange={(evento) => setProgramacao({ ...programacao, identificador_do_catalogo: evento.target.value })}><option value="">Selecione</option>{dados.catalogo_treinamentos.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.nome)}</option>)}</select></label>
-            <label>Participante<select required value={programacao.identificador_do_participante} onChange={(evento) => setProgramacao({ ...programacao, identificador_do_participante: evento.target.value })}><option value="">Selecione</option>{dados.participantes.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.referencia_externa)}</option>)}</select></label>
-            <label>Data programada<input type="datetime-local" value={programacao.data_programada} onChange={(evento) => setProgramacao({ ...programacao, data_programada: evento.target.value })} /></label>
-            <label>Justificativa para cancelar ou reabrir<textarea value={programacao.justificativa} onChange={(evento) => setProgramacao({ ...programacao, justificativa: evento.target.value })} /></label>
-            <button disabled={ocupado || !podeConduzir}>Programar</button>
-          </form>
-          <section className="hx-management-table">
-            <header><div><small>CATÁLOGO</small><h2>Versões disponíveis</h2></div></header>
-            <div>{dados.catalogo_treinamentos.map((item) => (
-              <article key={String(item.identificador)}>
-                <div><small>Treinamento</small><strong>{texto(item.nome)}</strong></div>
-                <div><small>Versão</small><strong>{texto(item.versao)}</strong></div>
-                <div><small>Estado</small><strong>{texto(item.estado)}</strong></div>
-                <div className="hx-management-actions">
-                  <button type="button" onClick={() => {
-                    setTreinamentoBase(String(item.identificador));
-                    setTreinamento({
-                      codigo: String(item.codigo ?? ""),
-                      nome: String(item.nome ?? ""),
-                      descricao: String(item.descricao ?? ""),
-                      versao: String(item.versao ?? "")
-                    });
-                  }}>Abrir como nova versão</button>
-                  <button type="button" onClick={() => void executar(
-                    item.estado === "ATIVO"
-                      ? "inativar-treinamento"
-                      : "reativar-treinamento",
-                    {},
-                    item.identificador
-                  )}>{item.estado === "ATIVO" ? "Inativar" : "Reativar"}</button>
-                </div>
-              </article>
-            ))}</div>
+        <div className="hx-training-library">
+          <section className="hx-training-library__controls">
+            <div>
+              <small>BIBLIOTECA OFICIAL HUMANEXUS</small>
+              <h2>THX e THX-AER preservados</h2>
+              <p>
+                A classificação utiliza exclusivamente evidências persistidas.
+                A decisão final permanece do profissional.
+              </p>
+            </div>
+            <label>
+              Participante
+              <select
+                value={participanteDoCatalogo}
+                onChange={(evento) =>
+                  setParticipanteDoCatalogo(evento.target.value)}
+              >
+                {dados.participantes.map((item) => (
+                  <option
+                    key={String(item.identificador)}
+                    value={String(item.identificador)}
+                  >
+                    {texto(item.referencia_externa)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Família
+              <select
+                value={familiaThx}
+                onChange={(evento) => setFamiliaThx(evento.target.value)}
+              >
+                <option value="">THX e THX-AER</option>
+                <option value="THX">THX</option>
+                <option value="THX-AER">THX-AER</option>
+              </select>
+            </label>
+            <label>
+              Buscar
+              <input
+                value={buscaThx}
+                onChange={(evento) => setBuscaThx(evento.target.value)}
+                placeholder="Código, nome, domínio ou finalidade"
+              />
+            </label>
           </section>
-          <section className="hx-management-table">
-            <header><div><small>PROGRAMAÇÕES</small><h2>Execuções previstas</h2></div></header>
-            <div>{dados.programacoes.map((item) => {
-              const estado = String(item.estado);
-              const acao = estado === "PROGRAMADA" || estado === "REABERTA"
-                ? "INICIAR"
-                : estado === "EM_ANDAMENTO"
-                  ? "CONCLUIR"
-                  : estado === "CONCLUIDA" || estado === "CANCELADA"
-                    ? "REABRIR"
-                    : "";
-              return (
+
+          <section className="hx-regulatory-evidence">
+            <article>
+              <small>Gatilho</small>
+              <strong>{texto(
+                gatilhoDoCatalogo?.nome,
+                "Nenhum gatilho persistido"
+              )}</strong>
+            </article>
+            <article>
+              <small>ARR / rota dominante</small>
+              <strong>{texto(
+                arrDoCatalogo?.padrao_dominante,
+                "Não registrada"
+              )}</strong>
+            </article>
+            <article>
+              <small>RRO</small>
+              <strong>{texto(
+                rroDoCatalogo?.categoria,
+                "Não registrado"
+              )}</strong>
+            </article>
+            <article>
+              <small>NRA</small>
+              <strong>{texto(
+                nraDoCatalogo?.estado,
+                "Não registrada"
+              )}</strong>
+            </article>
+            <article>
+              <small>Ganho regulatório</small>
+              <strong>{ganhoDoCatalogo?.ganho_relativo == null
+                ? "Não calculado"
+                : texto(ganhoDoCatalogo.ganho_relativo)}</strong>
+            </article>
+          </section>
+
+          {([
+            [
+              "RECOMENDADO",
+              "Recomendados",
+              "Sugestões existentes, ainda sujeitas à validação profissional."
+            ],
+            [
+              "COMPATIVEL",
+              "Compatíveis",
+              "Vínculo oficial compatível com CTR apoiado por evidência persistida."
+            ],
+            [
+              "OUTRO_OFICIAL",
+              "Demais protocolos oficiais",
+              "Biblioteca preservada sem correspondência individual suficiente."
+            ]
+          ] as const).map(([classificacao, titulo, descricao]) => {
+            const protocolos = protocolosPorClassificacao[classificacao];
+            return (
+              <section
+                className="hx-training-group"
+                key={classificacao}
+              >
+                <header>
+                  <div>
+                    <small>{classificacao}</small>
+                    <h2>{titulo}</h2>
+                    <p>{descricao}</p>
+                  </div>
+                  <span>{protocolos.length} protocolo(s)</span>
+                </header>
+                <div className="hx-training-group__items">
+                  {protocolos.map((protocolo) => {
+                    const recomendacao = objeto(
+                      protocolo.recomendacao_operacional
+                    );
+                    const vinculos = lista(
+                      protocolo.vinculos_compativeis
+                    );
+                    const ctrs = vinculos
+                      .map((item) => String(item.codigo_do_ctr ?? ""))
+                      .filter(Boolean);
+                    const rota = objeto(
+                      arrDoCatalogo?.rota_observada_json
+                    );
+                    return (
+                      <article key={String(protocolo.identificador)}>
+                        <div className="hx-training-card__heading">
+                          <span>{texto(protocolo.codigo)}</span>
+                          <span>{texto(protocolo.familia)}</span>
+                          <span>{texto(protocolo.dominio)}</span>
+                        </div>
+                        <h3>{texto(protocolo.nome)}</h3>
+                        <p>{texto(
+                          protocolo.dor_operacional,
+                          "Dor operacional não informada na fonte oficial"
+                        )}</p>
+                        <dl>
+                          <div>
+                            <dt>Finalidade</dt>
+                            <dd>{texto(
+                              protocolo.objetivo_regulatorio,
+                              "Não informada na fonte oficial"
+                            )}</dd>
+                          </div>
+                          <div>
+                            <dt>Razão da classificação</dt>
+                            <dd>{texto(
+                              recomendacao.justificativa,
+                              ctrs.length
+                                ? `Vínculo oficial com ${ctrs.join(", ")}`
+                                : "Sem evidência individual suficiente para recomendação"
+                            )}</dd>
+                          </div>
+                          <div>
+                            <dt>Gatilho considerado</dt>
+                            <dd>{texto(
+                              gatilhoDoCatalogo?.descricao
+                                ?? gatilhoDoCatalogo?.nome,
+                              "Não registrado"
+                            )}</dd>
+                          </div>
+                          <div>
+                            <dt>CTR</dt>
+                            <dd>{ctrs.length
+                              ? ctrs.join(", ")
+                              : "Nenhum CTR compatível demonstrado"}</dd>
+                          </div>
+                          <div>
+                            <dt>Rota regulatória</dt>
+                            <dd>{texto(
+                              arrDoCatalogo?.padrao_dominante
+                                ?? rota.nome
+                                ?? rota.codigo,
+                              "Não registrada"
+                            )}</dd>
+                          </div>
+                          <div>
+                            <dt>Critério de progressão</dt>
+                            <dd>{listaDeTextos(
+                              protocolo.criterios_de_progressao
+                            ).join("; ") || "Não informado na fonte oficial"}</dd>
+                          </div>
+                        </dl>
+                      </article>
+                    );
+                  })}
+                  {!protocolos.length ? (
+                    <p className="hx-module__notice">
+                      Nenhum protocolo nesta classificação para os filtros atuais.
+                    </p>
+                  ) : null}
+                </div>
+              </section>
+            );
+          })}
+
+          {dados.programacoes.length ? (
+            <section className="hx-management-table">
+              <header>
+                <div>
+                  <small>HISTÓRICO PRESERVADO</small>
+                  <h2>Programações existentes</h2>
+                </div>
+              </header>
+              <div>{dados.programacoes.map((item) => (
                 <article key={String(item.identificador)}>
                   <div><small>Estado</small><strong>{texto(item.estado)}</strong></div>
                   <div><small>Participante</small><strong>{texto(item.identificador_do_participante)}</strong></div>
                   <div><small>Histórico</small><strong>{lista(item.historico).length} evento(s)</strong></div>
-                  <div className="hx-management-actions">
-                    {acao ? <button type="button" onClick={() => void executar(
-                      "operar-programacao",
-                      { acao, justificativa: programacao.justificativa || null },
-                      item.identificador
-                    )}>{texto(acao)}</button> : null}
-                    {!["CONCLUIDA", "CANCELADA"].includes(estado) ? (
-                      <button type="button" onClick={() => void executar(
-                        "operar-programacao",
-                        {
-                          acao: "CANCELAR",
-                          justificativa: programacao.justificativa
-                        },
-                        item.identificador
-                      )}>Cancelar</button>
-                    ) : null}
-                  </div>
                 </article>
-              );
-            })}</div>
-          </section>
+              ))}</div>
+            </section>
+          ) : null}
         </div>
       ) : null}
 
