@@ -324,6 +324,7 @@ export function GestaoOperacional({
   }
 
   async function carregar(organizacaoId = organizacaoSelecionada) {
+    setEntregaDeConsentimento(null);
     const parametros = new URLSearchParams({ modulo });
     if (organizacaoId) parametros.set("organizacao", organizacaoId);
     const resposta = await fetch(

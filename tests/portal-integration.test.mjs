@@ -224,6 +224,10 @@ test("novos cadastros preservam escopo e proprietário reautentica ações crít
   assert.match(management, /const organizacaoDoCadastro/);
   assert.match(management, /identificador_do_participante: identificador/);
   assert.match(management, /await carregar\(organizacaoDoCadastro\)/);
+  assert.match(
+    management,
+    /async function carregar[\s\S]*?setEntregaDeConsentimento\(null\)/
+  );
   assert.match(management, /administrador_proprietario === true/);
   assert.match(management, /Autonomia exclusiva do proprietário/);
   assert.match(management, /Confirmação da edição proprietária/);
