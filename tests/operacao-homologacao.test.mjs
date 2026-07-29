@@ -78,6 +78,7 @@ test("conclusão formal, relatório PDF e módulo móvel permanecem integrados",
   assert.match(pdfVisual, /graficoFases/);
   assert.match(pdfVisual, /graficoLinha/);
   assert.match(pdfVisual, /Versão clara para impressão A4/);
+  assert.doesNotMatch(pdf, /PARTICIPANTE FICTÍCIO/);
 });
 
 test("encerramento operacional permanece distinto de completude científica", async () => {
@@ -222,21 +223,27 @@ test("encerramento e limitação científica permanecem distintos no Cockpit", a
 test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", async () => {
   const client = await source("components/operacao-homologacao.tsx");
   const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  const hud = operacional.match(
+    /<section className="hx-live-hud"[\s\S]*?<\/section>/
+  )?.[0] ?? "";
   for (const item of [
     "MODO OPERACIONAL AO VIVO",
     "Inspeção TIRH",
-    "FASE",
-    "TEMPO DA FASE",
-    "TEMPO TOTAL",
-    "THX",
-    "HR",
-    "RMSSD",
-    "SINAL ELETROENCEFALOGRÁFICO",
-    "POLAR",
-    "QUALIDADE",
-    "COBERTURA",
-    "SESSÃO"
   ]) assert.match(`${client}\n${operacional}`, new RegExp(item));
+  for (const item of [
+    "ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA",
+    "ZONA OPERACIONAL",
+    "THX",
+    "FASE",
+    "TEMPO",
+    "FREQUÊNCIA CARDÍACA",
+    "RMSSD",
+    "ESTADO DO EEG",
+    "ESTADO DO POLAR"
+  ]) assert.match(hud, new RegExp(item));
+  for (const item of ["TEMPO TOTAL", "QUALIDADE", "COBERTURA", "SESSÃO"]) {
+    assert.doesNotMatch(hud, new RegExp(`<small>${item}</small>`));
+  }
   assert.match(operacional, /acaoPrincipal/);
   assert.match(operacional, /Comandos fornecidos exclusivamente pelo estado operacional do backend/);
   assert.match(client, /proxima_acao_principal/);
@@ -252,6 +259,8 @@ test("telemetria real é contínua, histórica quando encerrada e não cria simu
   assert.match(rota, /linhas-temporais\/.*limite=1200/);
   assert.match(operacional, /REPLAY HISTÓRICO/);
   assert.match(operacional, /MODO OPERACIONAL — REPLAY HISTÓRICO/);
+  assert.match(operacional, /MODO OPERACIONAL — AGUARDANDO CONEXÃO/);
+  assert.match(operacional, /Nenhum dado é simulado enquanto os sensores não conectam/);
   assert.match(operacional, /referenciaDeBaseline/);
   assert.match(operacional, /showTechnicalLegend=\{false\}/);
   assert.match(operacional, /Dados físicos históricos · sem transmissão atual/);

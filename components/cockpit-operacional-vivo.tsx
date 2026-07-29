@@ -176,7 +176,11 @@ function nomeVetorial(definicao: Registro) {
 }
 
 function FonteEstado({ estado }: { estado: unknown }) {
-  const codigo = String(estado ?? "").toLowerCase().replaceAll(" ", "-");
+  const codigo = String(estado ?? "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replaceAll(" ", "-");
   return <span className={`hx-live-state is-${codigo}`}>{texto(estado)}</span>;
 }
 
@@ -290,9 +294,9 @@ function FontePolar({ fonte }: { fonte: Fonte }) {
   const metricas = objeto(fonte.metricas);
   return (
     <article className="hx-live-source-card" data-source="polar">
-      <header><div><small>POLAR H10</small><strong>Cardíaca</strong></div><FonteEstado estado={fonte.estado} /></header>
+      <header><div><small>POLAR H10</small><strong>Sinal cardiovascular</strong></div><FonteEstado estado={fonte.estado} /></header>
       <div className="hx-live-source-values">
-        <span><small>HR</small><b>{numero(valores.hr_bpm)} bpm</b></span>
+        <span><small>Frequência cardíaca</small><b>{numero(valores.hr_bpm)} bpm</b></span>
         <span><small>RMSSD</small><b>{numero(valores.rmssd_tecnico_ms, 1)} ms</b></span>
         <span><small>Qualidade</small><b>{percentual(metricas.qualidade)}</b></span>
         <span><small>Bateria</small><b>{percentual(valores.bateria_percentual)}</b></span>
@@ -374,6 +378,7 @@ export function CockpitOperacionalVivo({
   const itensReplay = lista(replayCompleto.itens);
   const fases = objeto(sessao.estados_das_fases);
   const modoHistorico = cockpit.modo === "REPLAY_HISTORICO";
+  const modoAguardando = cockpit.modo === "MODO_OPERACIONAL_AGUARDANDO_CONEXAO";
   const sessaoFinalizada = contextoSessao.estado === "FINALIZADA";
   const graficos = useMemo(() => trilhas(fontes), [fontes]);
   const baseline = referenciaDeBaseline(objeto(estado.gravacao).baseline);
@@ -458,9 +463,6 @@ export function CockpitOperacionalVivo({
     : sessaoFinalizada
       ? "SESSÃO ENCERRADA"
       : "SEM FASE ATIVA";
-  const inicioDaFase = eventos
-    .filter((item) => item.momento === sessao.fase_atual && item.tipo === "INICIO")
-    .at(-1)?.ocorrido_em;
 
   const enviarRegistro = async () => {
     if (!registro.trim()) return;
@@ -475,7 +477,9 @@ export function CockpitOperacionalVivo({
           <span className="hx-live-eyebrow">
             {modoHistorico
               ? "MODO OPERACIONAL — REPLAY HISTÓRICO"
-              : "MODO OPERACIONAL AO VIVO"}
+              : modoAguardando
+                ? "MODO OPERACIONAL — AGUARDANDO CONEXÃO"
+                : "MODO OPERACIONAL AO VIVO"}
           </span>
           <h1>{texto(participante.nome ?? participante.referencia_externa, "Participante")}</h1>
           <p>
@@ -484,8 +488,12 @@ export function CockpitOperacionalVivo({
           </p>
         </div>
         <div className="hx-live-mode-actions">
-          <span className={modoHistorico ? "is-history" : "is-live"}>
-            {modoHistorico ? "REPLAY HISTÓRICO" : "TELEMETRIA AO VIVO"}
+          <span className={modoHistorico ? "is-history" : modoAguardando ? "is-waiting" : "is-live"}>
+            {modoHistorico
+              ? "REPLAY HISTÓRICO"
+              : modoAguardando
+                ? "AGUARDANDO CONEXÃO"
+                : "TELEMETRIA AO VIVO"}
           </span>
           <button type="button" onClick={abrirAnalitico}>Abrir Inspeção TIRH</button>
         </div>
@@ -506,19 +514,15 @@ export function CockpitOperacionalVivo({
       </section>
 
       <section className="hx-live-hud" aria-label="HUD operacional fixo">
-        {iirhCalculado ? <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{numero(iirh.valor, 1)} {texto(iirh.unidade, "")}</strong><span>Resultado canônico</span></div> : null}
-        {zonaCalculada ? <div><small>ZONA OPERACIONAL</small><strong>{texto(zona.nome ?? zona.codigo)}</strong><span>Classificação canônica</span></div> : null}
-        <div><small>FASE</small><strong>{fase}</strong><span>{texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
-        <div><small>TEMPO DA FASE</small><strong>{duracao(inicioDaFase, sessaoFinalizada ? contextoSessao.finalizado_em : null, agora)}</strong><span>Estado canônico</span></div>
-        <div><small>TEMPO TOTAL</small><strong>{duracao(sessao.tempo_total_inicio, sessao.tempo_total_fim, agora)}</strong><span>Sessão</span></div>
+        <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{iirhCalculado ? `${numero(iirh.valor, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong><span>{iirhCalculado ? "Resultado canônico" : texto(iirh.motivo, "Evidência insuficiente")}</span></div>
+        <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? texto(zona.nome ?? zona.codigo) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? "Classificação canônica" : texto(zona.motivo, "IIRH oficial indisponível")}</span></div>
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
-        <div><small>HR</small><strong>{numero(objeto(polar.valores).hr_bpm)} bpm</strong><span>{modoHistorico ? "Dado histórico" : texto(polar.estado)}</span></div>
+        <div><small>FASE</small><strong>{fase}</strong><span>{texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
+        <div><small>TEMPO</small><strong>{duracao(sessao.tempo_total_inicio, sessao.tempo_total_fim, agora)}</strong><span>Sessão</span></div>
+        <div><small>FREQUÊNCIA CARDÍACA</small><strong>{numero(objeto(polar.valores).hr_bpm)} bpm</strong><span>{modoHistorico ? "Dado histórico" : texto(polar.estado)}</span></div>
         <div><small>RMSSD</small><strong>{numero(objeto(polar.valores).rmssd_tecnico_ms, 1)} ms</strong><span>{modoHistorico ? "Técnico histórico" : texto(polar.estado)}</span></div>
-        <div><small>SINAL ELETROENCEFALOGRÁFICO</small><strong>{percentual(objeto(eeg.valores).qualidade_global)}</strong><span>Qualidade · {texto(eeg.estado)}</span></div>
-        <div><small>POLAR</small><strong>{texto(polar.estado)}</strong><span>Última seq. {numero(objeto(polar.metricas).ultima_sequencia)}</span></div>
-        <div><small>QUALIDADE</small><strong>{percentual(cockpit.qualidade_global)}</strong><span>Coleta técnica</span></div>
-        <div><small>COBERTURA</small><strong>{percentual(cockpit.cobertura_global)}</strong><span>Registrada no núcleo</span></div>
-        <div><small>SESSÃO</small><strong>{texto(contextoSessao.estado)}</strong><span>{texto(cockpit.modo)}</span></div>
+        <div><small>ESTADO DO EEG</small><strong>{texto(eeg.estado)}</strong><span>Qualidade {percentual(objeto(eeg.valores).qualidade_global)}</span></div>
+        <div><small>ESTADO DO POLAR</small><strong>{texto(polar.estado)}</strong><span>Última sequência {numero(objeto(polar.metricas).ultima_sequencia)}</span></div>
       </section>
 
       <div className="hx-live-command-center">
@@ -531,8 +535,8 @@ export function CockpitOperacionalVivo({
 
         <section className="hx-live-graphs">
           <header>
-            <div><small>{modoHistorico ? "DADOS PRESERVADOS" : "ATIVIDADE AO VIVO"}</small><h2>Leitura temporal da sessão</h2></div>
-            <span>{modoHistorico ? "Dados físicos históricos · sem transmissão atual" : "Atualização contínua sem recarregar a página"}</span>
+            <div><small>{modoHistorico ? "DADOS PRESERVADOS" : modoAguardando ? "AGUARDANDO FONTES" : "ATIVIDADE AO VIVO"}</small><h2>Leitura temporal da sessão</h2></div>
+            <span>{modoHistorico ? "Dados físicos históricos · sem transmissão atual" : modoAguardando ? "Nenhum dado é simulado enquanto os sensores não conectam" : "Atualização contínua sem recarregar a página"}</span>
           </header>
           {graficos.length
             ? (

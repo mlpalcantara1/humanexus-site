@@ -20,11 +20,12 @@ export async function GET(request: Request) {
     );
     if (!organizacaoId) throw new Error("Organização não selecionada.");
     const participantes = await requisitarNucleoAutenticado<Registro[]>(`/api/v1/organizacoes/${encodeURIComponent(organizacaoId)}/participantes`, token);
-    const participante = participantes.find(
-      (item) => item.identificador === url.searchParams.get("participante")
-    ) ?? participantes.find(
-      (item) => String(item.referencia_externa ?? "").includes("PARTICIPANTE FICTÍCIO")
-    ) ?? participantes[0];
+    const participanteSolicitado = url.searchParams.get("participante");
+    const participante = participanteSolicitado
+      ? participantes.find(
+          (item) => item.identificador === participanteSolicitado
+        )
+      : participantes[0];
     if (!participante) throw new Error("Participante não localizado.");
     const participanteId = String(participante.identificador);
     const [relatorios, sessoes, execucoes] = await Promise.all([
