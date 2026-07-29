@@ -70,6 +70,7 @@ function NavigationItems({ podeVerLab, podeAdministrar, close }: { podeVerLab: b
 
 export function PlatformNavigation({ podeVerLab, podeAdministrar }: { podeVerLab: boolean; podeAdministrar: boolean }) {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
   useEffect(() => {
     setOpen(false);
@@ -77,12 +78,28 @@ export function PlatformNavigation({ podeVerLab, podeAdministrar }: { podeVerLab
   }, [pathname]);
   return (
     <>
-      <aside className="hx-nav" aria-label="Navegação principal da plataforma">
+      <aside
+        className={collapsed ? "hx-nav hx-nav--collapsed" : "hx-nav"}
+        aria-label="Navegação principal da plataforma"
+        data-collapsed={collapsed ? "true" : "false"}
+      >
         <div className="hx-nav__rail">
-          <p className="hx-nav__caption">Navegação operacional</p>
+          <div className="hx-nav__head">
+            <p className="hx-nav__caption">Navegação operacional</p>
+            <button
+              className="hx-nav__collapse"
+              type="button"
+              aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
+              aria-pressed={collapsed}
+              onClick={() => setCollapsed((valor) => !valor)}
+            >
+              <span aria-hidden="true"><i /><i /></span>
+              <b>{collapsed ? "Expandir" : "Recolher"}</b>
+            </button>
+          </div>
           <NavigationItems podeVerLab={podeVerLab} podeAdministrar={podeAdministrar} />
         </div>
-        <div className="hx-nav__foot"><span />Núcleo protegido</div>
+        <div className="hx-nav__foot"><span /><b>Núcleo protegido</b></div>
       </aside>
       <button className="hx-nav-toggle" type="button" aria-expanded={open} aria-controls="hx-mobile-nav" onClick={() => setOpen(true)}>
         <span aria-hidden="true">☰</span> Módulos

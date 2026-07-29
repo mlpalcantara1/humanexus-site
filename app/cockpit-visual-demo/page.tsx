@@ -7,7 +7,7 @@ export default function CockpitVisualDemoPage() {
   if (process.env.NODE_ENV !== "development") notFound();
 
   return (
-    <main className="hx-demo-page">
+    <main className="hx-demo-page hx-app hx-app--executive">
       <div className="hx-module hx-module--cockpit">
         <div className="hx-module__grid" />
         <div className="hx-module__inner">

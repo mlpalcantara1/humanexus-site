@@ -8,7 +8,7 @@ export async function PlatformShell({ children }: { children: React.ReactNode })
   const podeVerLab = sessao?.usuario.permissoes.includes("acessar_humanexus_lab") ?? false;
   const podeAdministrar = sessao?.usuario.perfil === "ADMINISTRADOR_DO_SISTEMA";
   return (
-    <div className="hx-app">
+    <div className="hx-app hx-app--executive">
       <div className="hx-app__atmosphere" aria-hidden="true" />
       <header className="hx-app__header">
         <Link className="hx-app__brand" href="/area-humanexus" aria-label="HUMANEXUS">

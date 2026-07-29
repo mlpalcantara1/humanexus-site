@@ -8,7 +8,7 @@ export default async function AdminPage() {
     <>
       <PainelSeguro perfilExigido="ADMINISTRADOR_DO_SISTEMA" />
       {sessao ? (
-        <section className="mx-auto max-w-6xl px-5 pb-20">
+        <section className="hx-admin-stage">
           <PainelAdministrador csrf={sessao.csrf} />
         </section>
       ) : null}

@@ -601,13 +601,6 @@ export function CockpitOperacionalVivo({
         </div>
       ) : null}
 
-      <section className="hx-live-context-strip" aria-label="Contexto autorizado da sessão">
-        <div><small>ORGANIZAÇÃO</small><strong>{texto(organizacao.nome)}</strong></div>
-        <div><small>PROFISSIONAL</small><strong>{texto(profissional.nome)}</strong></div>
-        <div><small>TIPO DA SESSÃO</small><strong>{sessaoBaseline ? "BASELINE" : "PRÉ → TREINO → PÓS"}</strong></div>
-        <div><small>{sessaoBaseline ? "FLUXO" : "CTR / PROTOCOLO"}</small><strong>{sessaoBaseline ? "INDEPENDENTE" : `${texto(ctr.codigo)} · ${texto(thx.codigo)}`}</strong></div>
-      </section>
-
       <section className="hx-live-hud" aria-label="HUD operacional fixo">
         <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{iirhCalculado ? `${numero(iirh.valor, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong><span>{iirhCalculado ? "Resultado canônico" : texto(iirh.motivo, "Evidência insuficiente")}</span></div>
         <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? texto(zona.nome ?? zona.codigo) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? "Classificação canônica" : texto(zona.motivo, "IIRH oficial indisponível")}</span></div>
@@ -659,6 +652,13 @@ export function CockpitOperacionalVivo({
             </strong>
           )}
         </div>
+      </section>
+
+      <section className="hx-live-context-strip" aria-label="Contexto autorizado da sessão">
+        <div><small>ORGANIZAÇÃO</small><strong>{texto(organizacao.nome)}</strong></div>
+        <div><small>PROFISSIONAL</small><strong>{texto(profissional.nome)}</strong></div>
+        <div><small>TIPO DA SESSÃO</small><strong>{sessaoBaseline ? "BASELINE" : "PRÉ → TREINO → PÓS"}</strong></div>
+        <div><small>{sessaoBaseline ? "FLUXO" : "CTR / PROTOCOLO"}</small><strong>{sessaoBaseline ? "INDEPENDENTE" : `${texto(ctr.codigo)} · ${texto(thx.codigo)}`}</strong></div>
       </section>
 
       <div className="hx-live-command-center">

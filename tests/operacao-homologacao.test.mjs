@@ -377,3 +377,40 @@ test("demonstração visual é local, sintética e estruturalmente isolada", asy
   assert.match(demonstracao, /"PRÉ", "TREINO", "PÓS", "BASELINE"/);
   assert.doesNotMatch(demonstracao, /fetch\(|localStorage|sessionStorage|indexedDB|\/api\//);
 });
+
+test("composição executiva premium permanece isolada no front-end da plataforma", async () => {
+  const shell = await source("components/platform-shell.tsx");
+  const navegacao = await source("components/platform-navigation.tsx");
+  const painel = await source("components/painel-seguro.tsx");
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const estilos = await source("app/operational.css");
+
+  assert.match(shell, /hx-app hx-app--executive/);
+  assert.match(navegacao, /hx-nav--collapsed/);
+  assert.match(navegacao, /Recolher menu lateral/);
+  assert.match(navegacao, /Expandir menu lateral/);
+  assert.match(painel, /GOVERNANÇA AUTENTICADA/);
+  assert.match(painel, /CONTEXTO PROTEGIDO PELO NÚCLEO/);
+  assert.doesNotMatch(painel, /BotaoSair/);
+
+  const masthead = cockpit.indexOf('className="hx-live-cockpit__masthead"');
+  const hud = cockpit.indexOf('className="hx-live-hud"');
+  const operacao = cockpit.indexOf('className="hx-live-operation-focus"');
+  const contexto = cockpit.indexOf('className="hx-live-context-strip"');
+  const instrumentos = cockpit.indexOf('className="hx-live-command-center"');
+  assert.ok(
+    masthead >= 0 &&
+      hud > masthead &&
+      operacao > hud &&
+      contexto > operacao &&
+      instrumentos > contexto
+  );
+
+  assert.match(estilos, /composição executiva premium/);
+  assert.match(estilos, /\.hx-app--executive:has\(\.hx-nav--collapsed\)/);
+  assert.match(estilos, /grid-template-columns: repeat\(9, minmax\(0, 1fr\)\)/);
+  assert.match(estilos, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(estilos, /\.hx-live-vector-list\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(estilos, /\.hx-vector-radar-live \.hx-echart\s*\{[\s\S]*min-height: 480px/);
+  assert.match(estilos, /@media \(prefers-reduced-motion: reduce\)/);
+});

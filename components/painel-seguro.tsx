@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BotaoSair } from "@/components/botao-sair";
 import { PerfilHumanexus } from "@/lib/humanexus-core";
 import { destinoDoPerfil, sessaoAtual } from "@/lib/portal-session";
 
@@ -30,7 +29,11 @@ export async function PainelSeguro({
           <h1>{TITULOS[perfilExigido]}</h1>
           <span>Sessão autenticada pelo núcleo oficial HUMANEXUS.</span>
         </div>
-        <BotaoSair csrf={sessao.csrf} />
+        <div className="hx-secure-panel__status">
+          <i aria-hidden="true" />
+          <span>GOVERNANÇA AUTENTICADA</span>
+          <small>CONTEXTO PROTEGIDO PELO NÚCLEO</small>
+        </div>
       </div>
 
       <div className="hx-secure-panel__grid">
