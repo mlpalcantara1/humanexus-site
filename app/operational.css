@@ -2019,10 +2019,12 @@
 
 .hx-app--executive .hx-admin__forms {
   gap: 22px;
+  min-width: 0;
 }
 
 .hx-app--executive .hx-admin__form,
 .hx-app--executive .hx-admin__directory {
+  min-width: 0;
   border: 0;
   background:
     linear-gradient(145deg, rgba(7, 16, 20, 0.88), rgba(3, 9, 12, 0.72)),
