@@ -11,6 +11,7 @@ import {
   type HxTrack,
   type HxVectorAxis
 } from "@/components/hx-command-visualizations";
+import { HxSectionHeader, HxSurface } from "@/components/hx-design-system";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 
 type Registro = Record<string, unknown>;
@@ -601,6 +602,13 @@ export function CockpitOperacionalVivo({
         </div>
       ) : null}
 
+      <section className="hx-live-context-strip" aria-label="Contexto autorizado da sessão">
+        <div><small>ORGANIZAÇÃO</small><strong>{texto(organizacao.nome)}</strong></div>
+        <div><small>PROFISSIONAL</small><strong>{texto(profissional.nome)}</strong></div>
+        <div><small>TIPO DA SESSÃO</small><strong>{sessaoBaseline ? "BASELINE" : "PRÉ → TREINO → PÓS"}</strong></div>
+        <div><small>{sessaoBaseline ? "FLUXO" : "CTR / PROTOCOLO"}</small><strong>{sessaoBaseline ? "INDEPENDENTE" : `${texto(ctr.codigo)} · ${texto(thx.codigo)}`}</strong></div>
+      </section>
+
       <section className="hx-live-hud" aria-label="HUD operacional fixo">
         <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{iirhCalculado ? `${numero(iirh.valor, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong><span>{iirhCalculado ? "Resultado canônico" : texto(iirh.motivo, "Evidência insuficiente")}</span></div>
         <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? texto(zona.nome ?? zona.codigo) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? "Classificação canônica" : texto(zona.motivo, "IIRH oficial indisponível")}</span></div>
@@ -654,20 +662,13 @@ export function CockpitOperacionalVivo({
         </div>
       </section>
 
-      <section className="hx-live-context-strip" aria-label="Contexto autorizado da sessão">
-        <div><small>ORGANIZAÇÃO</small><strong>{texto(organizacao.nome)}</strong></div>
-        <div><small>PROFISSIONAL</small><strong>{texto(profissional.nome)}</strong></div>
-        <div><small>TIPO DA SESSÃO</small><strong>{sessaoBaseline ? "BASELINE" : "PRÉ → TREINO → PÓS"}</strong></div>
-        <div><small>{sessaoBaseline ? "FLUXO" : "CTR / PROTOCOLO"}</small><strong>{sessaoBaseline ? "INDEPENDENTE" : `${texto(ctr.codigo)} · ${texto(thx.codigo)}`}</strong></div>
-      </section>
-
       <div className="hx-live-command-center">
         {radarVetorial.length ? (
-          <section className="hx-live-vector-stage">
-            <header>
-              <small>VETORES VIVOS · MATRIZ VETORIAL</small>
-              <h2>Dez vetores oficiais</h2>
-            </header>
+          <HxSurface as="section" className="hx-live-vector-stage">
+            <HxSectionHeader
+              eyebrow="VETORES VIVOS · MATRIZ VETORIAL"
+              title="Dez vetores oficiais"
+            />
             <VectorRadarChart vectors={radarVetorial} />
             <div className="hx-live-vector-list" aria-label="Estado dos dez vetores oficiais">
               {radarVetorial.map((vetor) => {
@@ -699,17 +700,19 @@ export function CockpitOperacionalVivo({
                 );
               })}
             </div>
-          </section>
+          </HxSurface>
         ) : null}
 
-        <section
+        <HxSurface
+          as="section"
           className="hx-live-graphs"
           data-signal-state={modoHistorico ? "HISTORICO" : modoAguardando ? "AGUARDANDO" : "ATIVO"}
         >
-          <header>
-            <div><small>{modoHistorico ? "DADOS PRESERVADOS" : modoAguardando ? "AGUARDANDO FONTES" : "ATIVIDADE AO VIVO"}</small><h2>Leitura temporal da sessão</h2></div>
-            <span>{modoHistorico ? "Dados físicos históricos · sem transmissão atual" : modoAguardando ? "Nenhum dado é simulado enquanto os sensores não conectam" : "Atualização contínua sem recarregar a página"}</span>
-          </header>
+          <HxSectionHeader
+            eyebrow={modoHistorico ? "DADOS PRESERVADOS" : modoAguardando ? "AGUARDANDO FONTES" : "ATIVIDADE AO VIVO"}
+            title="Leitura temporal da sessão"
+            aside={<span>{modoHistorico ? "Dados físicos históricos · sem transmissão atual" : modoAguardando ? "Nenhum dado é simulado enquanto os sensores não conectam" : "Atualização contínua sem recarregar a página"}</span>}
+          />
           <div className="hx-live-temporal-rail" aria-label={sessaoBaseline ? "Linha temporal do Baseline" : "Linha temporal PRÉ TREINO PÓS"}>
             {passosDoFluxo.map((passo) => (
               <span
@@ -763,7 +766,7 @@ export function CockpitOperacionalVivo({
             <span>{eventos.length} evento(s) preservado(s)</span>
             <span>Último registro {dataLegivel(replay.ultimo_evento)}</span>
           </footer>
-        </section>
+        </HxSurface>
       </div>
 
       <section className="hx-live-regulatory-readout" aria-label="Resultante e trajetória regulatórias">

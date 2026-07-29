@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import { HxSectionHeader, HxSurface } from "@/components/hx-design-system";
 
 type Organizacao = { identificador: string; nome: string; ativa: number };
 type Usuario = {
@@ -111,9 +112,11 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
       </section>
       <section className="hx-admin__layout">
         <div className="hx-admin__forms">
-          <section className="hx-admin__form">
-            <p className="hx-admin__eyebrow">ESTRUTURA INSTITUCIONAL</p>
-            <h2>Organizações</h2>
+          <HxSurface as="section" className="hx-admin__form">
+            <HxSectionHeader
+              eyebrow="ESTRUTURA INSTITUCIONAL"
+              title="Organizações"
+            />
             <p>
               O cadastro institucional completo possui uma única ficha e um
               único histórico.
@@ -121,10 +124,12 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
             <Link className="hx-admin__primary" href="/plataforma/organizacoes">
               Abrir gestão de organizações <span>→</span>
             </Link>
-          </section>
+          </HxSurface>
           <form onSubmit={salvarUsuario} className="hx-admin__form">
-            <p className="hx-admin__eyebrow">ACESSO CONTROLADO</p>
-            <h2>{usuarioSelecionado ? "Ficha do usuário" : "Novo usuário"}</h2>
+            <HxSectionHeader
+              eyebrow="ACESSO CONTROLADO"
+              title={usuarioSelecionado ? "Ficha do usuário" : "Novo usuário"}
+            />
             <input required value={novoUsuario.nome} onChange={(e) => setNovoUsuario({ ...novoUsuario, nome: e.target.value })} placeholder="Nome completo" />
             <input required type="email" value={novoUsuario.email} onChange={(e) => setNovoUsuario({ ...novoUsuario, email: e.target.value })} placeholder="E-mail" />
             {!usuarioSelecionado ? (
@@ -160,8 +165,13 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
             <p aria-live="polite" className="hx-admin__message">{mensagem}</p>
           </form>
         </div>
-        <article className="hx-admin__directory">
-          <div className="hx-admin__directory-head"><div><p>GOVERNANÇA DE ACESSO</p><h2>Usuários e permissões</h2></div><span>CAMADA AUDITÁVEL</span></div>
+        <HxSurface as="article" className="hx-admin__directory">
+          <HxSectionHeader
+            className="hx-admin__directory-head"
+            eyebrow="GOVERNANÇA DE ACESSO"
+            title="Usuários e permissões"
+            aside={<span>CAMADA AUDITÁVEL</span>}
+          />
           <div className="hx-admin__table-wrap"><table>
             <thead><tr><th>Identidade</th><th>Perfil</th><th>Organização</th><th>Acesso</th></tr></thead>
             <tbody>{dados?.usuarios.map((usuario) => (
@@ -177,7 +187,7 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
               </tr>
             ))}</tbody>
           </table></div>
-        </article>
+        </HxSurface>
       </section>
     </div>
   );

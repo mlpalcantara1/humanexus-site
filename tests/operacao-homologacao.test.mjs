@@ -237,6 +237,8 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
     "MODO OPERACIONAL AO VIVO",
     "Inspeção TIRH",
   ]) assert.match(`${client}\n${operacional}`, new RegExp(item));
+  assert.doesNotMatch(client, /<small>INSPEÇÃO<\/small>\s*<strong>Inspeção TIRH<\/strong>/);
+  assert.match(client, /<small>ANÁLISE<\/small>\s*<strong>Inspeção TIRH<\/strong>/);
   for (const item of [
     "ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA",
     "ZONA OPERACIONAL",
@@ -384,6 +386,8 @@ test("composição executiva premium permanece isolada no front-end da plataform
   const painel = await source("components/painel-seguro.tsx");
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
   const estilos = await source("app/operational.css");
+  const estilosGlobais = await source("app/globals.css");
+  const designSystem = await source("components/hx-design-system.tsx");
 
   assert.match(shell, /hx-app hx-app--executive/);
   assert.match(navegacao, /hx-nav--collapsed/);
@@ -400,16 +404,23 @@ test("composição executiva premium permanece isolada no front-end da plataform
   const instrumentos = cockpit.indexOf('className="hx-live-command-center"');
   assert.ok(
     masthead >= 0 &&
-      hud > masthead &&
+      contexto > masthead &&
+      hud > contexto &&
       operacao > hud &&
-      contexto > operacao &&
-      instrumentos > contexto
+      instrumentos > operacao
   );
 
   assert.match(estilos, /composição executiva premium/);
+  assert.match(estilos, /Design System operacional único/);
+  assert.match(designSystem, /export function HxPageHeader/);
+  assert.match(designSystem, /export function HxSectionHeader/);
+  assert.match(designSystem, /export function HxSurface/);
   assert.match(estilos, /\.hx-app--executive:has\(\.hx-nav--collapsed\)/);
-  assert.match(estilos, /grid-template-columns: repeat\(9, minmax\(0, 1fr\)\)/);
-  assert.match(estilos, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(estilos, /\.hx-app--executive \.hx-live-hud/);
+  assert.match(estilosGlobais, /\.hx-live-hud\{position:sticky;top:135px/);
+  assert.match(estilosGlobais, /@media\(min-width:1600px\)\{\.hx-live-hud\{grid-template-columns:repeat\(9,minmax\(88px,1fr\)\)/);
+  assert.match(estilosGlobais, /@media\(max-width:900px\)[\s\S]*\.hx-live-hud\{position:relative;top:auto;grid-template-columns:repeat\(3,1fr\)/);
+  assert.match(estilosGlobais, /@media\(max-width:640px\)[\s\S]*\.hx-live-hud\{grid-template-columns:1fr 1fr\}/);
   assert.match(estilos, /\.hx-live-vector-list\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(estilos, /\.hx-vector-radar-live \.hx-echart\s*\{[\s\S]*min-height: 480px/);
   assert.match(estilos, /\.hx-app__identity b,[\s\S]*text-overflow: ellipsis/);

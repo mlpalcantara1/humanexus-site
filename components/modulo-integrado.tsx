@@ -8,6 +8,7 @@ import { PainelProfissional } from "@/components/painel-profissional";
 import { GovernancaAnamnese, type DadosAnamneseLab } from "@/components/governanca-anamnese";
 import { GestaoOperacional } from "@/components/gestao-operacional";
 import { GovernancaOperacional } from "@/components/governanca-operacional";
+import { HxPageHeader, HxSurface } from "@/components/hx-design-system";
 
 export type ModuloDaPlataforma =
   | "painel" | "organizacoes" | "clientes" | "sessoes" | "treinamentos" | "pre-treino-pos"
@@ -60,31 +61,31 @@ function Estado({ ativo, children }: { ativo: boolean; children: React.ReactNode
 
 function FonteCard({ recurso }: { recurso: Recurso }) {
   return (
-    <article className="hx-source-card">
+    <HxSurface as="article" className="hx-source-card">
       <div className="hx-source-card__top"><p>{humanizar(recurso.nome)}</p><Estado ativo={recurso.disponivel}>{recurso.disponivel ? "núcleo conectado" : "contexto necessário"}</Estado></div>
       <p className="hx-source-card__value">{recurso.disponivel ? descricaoDosDados(recurso.dados) : "A fonte não está disponível para este perfil ou contexto."}</p>
       <div className="hx-source-card__line" />
       <small>LEITURA DIRETA DO NÚCLEO · SEM PREENCHIMENTO ARTIFICIAL</small>
-    </article>
+    </HxSurface>
   );
 }
 
 function CommandHeader({ definicao, modulo }: { definicao: Definicao; modulo: ModuloDaPlataforma }) {
   return (
-    <header className={["painel", "cockpit-vivo"].includes(modulo) ? "hx-module-head hx-module-head--compact" : "hx-module-head"}>
-      <div>
-        <p className="hx-kicker"><span />{definicao.codigo}</p>
-        <h1>{definicao.titulo}</h1>
-        <p>{definicao.descricao}</p>
-      </div>
-      <div className="hx-module-head__status">
+    <HxPageHeader
+      className={["painel", "cockpit-vivo"].includes(modulo) ? "hx-module-head hx-module-head--compact" : "hx-module-head"}
+      eyebrow={<><span />{definicao.codigo}</>}
+      eyebrowClassName="hx-kicker"
+      title={definicao.titulo}
+      description={definicao.descricao}
+      aside={<div className="hx-module-head__status">
         <span>ESTADO FUNCIONAL</span>
         <strong>{definicao.estado ?? "FUNCIONAL"}</strong>
         <span>CONTEXTO ATUAL</span>
         <strong>{modulo === "humanexus-lab" ? "VALIDAÇÃO CIENTÍFICA" : "SESSÃO PROTEGIDA"}</strong>
         <Estado ativo>navegação autenticada</Estado>
-      </div>
-    </header>
+      </div>}
+    />
   );
 }
 

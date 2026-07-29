@@ -17,6 +17,7 @@ import {
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multimodal";
 import { CockpitOperacionalVivo } from "@/components/cockpit-operacional-vivo";
+import { HxSectionHeader } from "@/components/hx-design-system";
 
 type Registro = Record<string, unknown>;
 type Estado = {
@@ -817,11 +818,12 @@ function NavegacaoInterna({
 
 function TituloDaVisao({ kicker, titulo, descricao }: { kicker: string; titulo: string; descricao: string }) {
   return (
-    <header className="hx-cockpit-view-title">
-      <p>{kicker}</p>
-      <h2>{titulo}</h2>
-      <span>{descricao}</span>
-    </header>
+    <HxSectionHeader
+      className="hx-cockpit-view-title"
+      eyebrow={kicker}
+      title={titulo}
+      description={descricao}
+    />
   );
 }
 
@@ -2002,7 +2004,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             type="button"
             onClick={() => selecionarVisao("evidencias")}
           >
-            <small>INSPEÇÃO</small>
+            <small>ANÁLISE</small>
             <strong>Inspeção TIRH</strong>
           </button>
         </div>
@@ -2032,7 +2034,11 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     return (
       <div className="hx-operacao">
         {seletorContexto}
-        <section className="hx-op-title"><p>CONECTORES / OPERAÇÃO TÉCNICA</p><h2>Histórico real de conexão, desconexão e retomada do ambiente isolado.</h2></section>
+        <HxSectionHeader
+          className="hx-op-title"
+          eyebrow="CONECTORES / OPERAÇÃO TÉCNICA"
+          title="Histórico real de conexão, desconexão e retomada do ambiente isolado."
+        />
         <AvisoTecnico />
         {conectoresTecnicos}
       </div>
@@ -2184,7 +2190,12 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       <div className="hx-operacao">
         {seletorContexto}
         <AvisoTecnico />
-        <section className="hx-op-title"><p>LONGITUDINAL</p><h2>Comparabilidade metodológica protegida.</h2><span>Filtros por período, contexto, tarefa e versão científica são aplicados sem ligar sessões incompatíveis.</span></section>
+        <HxSectionHeader
+          className="hx-op-title"
+          eyebrow="LONGITUDINAL"
+          title="Comparabilidade metodológica protegida."
+          description="Filtros por período, contexto, tarefa e versão científica são aplicados sem ligar sessões incompatíveis."
+        />
         <LongitudinalEvolutionChart points={pontos} />
         <Rastreabilidade estado={estado} />
       </div>
@@ -2196,7 +2207,11 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       <div className="hx-operacao">
         {seletorContexto}
         <AvisoTecnico />
-        <section className="hx-op-title"><p>INDICADOR COLETIVO</p><h2>Governança coletiva sem extrapolação individual.</h2></section>
+        <HxSectionHeader
+          className="hx-op-title"
+          eyebrow="INDICADOR COLETIVO"
+          title="Governança coletiva sem extrapolação individual."
+        />
         <EmptySignalState
           title="COORDENAÇÃO · COMUNICAÇÃO · CONSCIÊNCIA COMPARTILHADA · RECUPERAÇÃO COLETIVA"
           status="AMOSTRA NÃO ELEGÍVEL"

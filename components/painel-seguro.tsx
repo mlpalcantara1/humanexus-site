@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PerfilHumanexus } from "@/lib/humanexus-core";
 import { destinoDoPerfil, sessaoAtual } from "@/lib/portal-session";
+import { HxPageHeader, HxSurface } from "@/components/hx-design-system";
 
 const TITULOS: Record<PerfilHumanexus, string> = {
   ADMINISTRADOR_DO_SISTEMA: "Administração do Sistema",
@@ -23,21 +24,21 @@ export async function PainelSeguro({
 
   return (
     <section className="hx-secure-panel">
-      <div className="hx-secure-panel__head">
-        <div>
-          <p>ÁREA HUMANEXUS / GOVERNANÇA</p>
-          <h1>{TITULOS[perfilExigido]}</h1>
-          <span>Sessão autenticada pelo núcleo oficial HUMANEXUS.</span>
-        </div>
-        <div className="hx-secure-panel__status">
+      <HxPageHeader
+        className="hx-secure-panel__head"
+        eyebrow="ÁREA HUMANEXUS / GOVERNANÇA"
+        title={TITULOS[perfilExigido]}
+        description="Sessão autenticada pelo núcleo oficial HUMANEXUS."
+        descriptionAs="span"
+        aside={<div className="hx-secure-panel__status">
           <i aria-hidden="true" />
           <span>GOVERNANÇA AUTENTICADA</span>
           <small>CONTEXTO PROTEGIDO PELO NÚCLEO</small>
-        </div>
-      </div>
+        </div>}
+      />
 
       <div className="hx-secure-panel__grid">
-        <article>
+        <HxSurface as="article">
           <h2>Identidade</h2>
           <dl>
             <div>
@@ -50,9 +51,9 @@ export async function PainelSeguro({
               <dt>Organização</dt><dd>{sessao.usuario.identificador_da_organizacao ?? "Escopo sistêmico"}</dd>
             </div>
           </dl>
-        </article>
+        </HxSurface>
 
-        <article>
+        <HxSurface as="article">
           <h2>Permissões efetivas</h2>
           <ul>
             {sessao.usuario.permissoes.map((permissao) => (
@@ -65,7 +66,7 @@ export async function PainelSeguro({
               <Link href="/profissional/catalogo">Catálogo autoral</Link>
             ) : null}
           </div>
-        </article>
+        </HxSurface>
       </div>
     </section>
   );
