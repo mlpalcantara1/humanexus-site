@@ -364,8 +364,8 @@ export function CockpitOperacionalVivo({
   const contextoSessao = objeto(estado.sessao);
   const estadoOperacional = objeto(estado.estado_operacional);
   const tipoDaSessao = String(
-    estadoOperacional.tipo_de_sessao
-    ?? objeto(contextoSessao.detalhes_operacionais).tipo_de_sessao
+    objeto(contextoSessao.detalhes_operacionais).tipo_de_sessao
+    ?? estadoOperacional.tipo_de_sessao
     ?? "PRE_TREINO_POS"
   );
   const sessaoBaseline = tipoDaSessao === "BASELINE";

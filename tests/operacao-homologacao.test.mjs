@@ -268,6 +268,10 @@ test("Cockpit abre progressivamente e preserva os dez vetores visíveis", async 
   assert.match(operacional, /AGUARDANDO EVIDÊNCIA/);
   assert.match(operacional, /INTERVENÇÃO SELECIONADA/);
   assert.match(operacional, /RESPOSTA OBSERVADA/);
+  assert.match(
+    operacional,
+    /objeto\(contextoSessao\.detalhes_operacionais\)\.tipo_de_sessao[\s\S]*estadoOperacional\.tipo_de_sessao/
+  );
 });
 
 test("telemetria real é contínua, histórica quando encerrada e não cria simulação", async () => {
