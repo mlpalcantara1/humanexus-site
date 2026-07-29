@@ -29,26 +29,22 @@ export async function POST(request: Request) {
     const token = await tokenAtual();
     if (!token) throw new Error("Sessão ausente");
     const corpo = await request.json();
-    const anamnese = await requisitarNucleoAutenticado<{ identificador: string }>(
-      `/api/v1/participantes/${corpo.participante_id}/anamneses`,
-      token,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          identificador_da_identidade_longitudinal: corpo.identidade_id,
-          identificador_do_vinculo: corpo.vinculo_id,
-          finalidade: "ANAMNESE_REGULATORIA",
-          nicho: corpo.nicho
-        })
-      }
-    );
     return NextResponse.json(
       await requisitarNucleoAutenticado(
-        `/api/v1/anamneses/${anamnese.identificador}/convites`,
+        "/api/v1/anamneses/convites-seguros",
         token,
         {
           method: "POST",
           body: JSON.stringify({
+            identificador_da_organizacao:
+              corpo.identificador_da_organizacao,
+            identificador_do_participante:
+              corpo.identificador_do_participante || null,
+            novo_participante: corpo.novo_participante || null,
+            chave_de_idempotencia: corpo.chave_de_idempotencia || null,
+            tipo_de_vinculo: corpo.tipo_de_vinculo,
+            nicho: corpo.nicho,
+            funcao: corpo.funcao,
             validade_horas: Number(corpo.validade_horas ?? 72),
             usos_permitidos: Number(corpo.usos_permitidos ?? 50),
             identificador_da_sessao: corpo.identificador_da_sessao ?? null
@@ -57,9 +53,15 @@ export async function POST(request: Request) {
       ),
       { status: 201 }
     );
-  } catch {
+  } catch (erro) {
     return NextResponse.json(
-      { erro: { mensagem: "Não foi possível criar o convite." } },
+      {
+        erro: {
+          mensagem: erro instanceof Error
+            ? erro.message
+            : "Não foi possível criar o convite."
+        }
+      },
       { status: 422 }
     );
   }

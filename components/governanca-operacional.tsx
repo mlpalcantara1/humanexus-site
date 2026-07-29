@@ -13,7 +13,6 @@ type Dados = {
     inventario_lgpd: Registro[];
     textos_juridicos: Registro[];
     solicitacoes_de_titular: Registro[];
-    juridico: Registro;
   };
   backups: Registro[];
   consentimentos: {
@@ -22,7 +21,6 @@ type Dados = {
     manifestacoes: Registro[];
     responsaveis_legais: Registro[];
     bloqueios_de_coleta: Registro[];
-    situacao_juridica_padrao: string;
   };
   seguranca: {
     versao: string;
@@ -41,7 +39,6 @@ type Dados = {
     manifestacoes: Registro[];
     revogacoes: Registro[];
     auditoria: Registro[];
-    situacao_juridica: string;
     aceite_global_permitido: boolean;
     resposta_operacional_unica: boolean;
     codigo_vigente: string;
@@ -161,7 +158,6 @@ export function GovernancaOperacional() {
     <section className="hx-governance-ops">
       <header>
         <div><small>GOVERNANÇA OPERACIONAL · {dados.governanca.versao}</small><h3>Segurança, LGPD e continuidade</h3></div>
-        <span>{valor(dados.governanca.juridico.estado_padrao)}</span>
       </header>
       <div className="hx-governance-ops__metrics">
         <article><small>Perfis funcionais</small><strong>{dados.governanca.perfis.length}</strong></article>
@@ -180,7 +176,6 @@ export function GovernancaOperacional() {
             <small>INSTRUMENTO INTEGRADO · ADMINISTRADOR PROPRIETÁRIO</small>
             <h4>Ciência, concordância e autorizações</h4>
           </div>
-          <strong>{valor(dados.instrumento_integrado.situacao_juridica)}</strong>
         </header>
         <div className="hx-owner-security__columns">
           <article>
@@ -401,8 +396,7 @@ export function GovernancaOperacional() {
               .split(",")
               .map((item) => item.trim())
               .filter(Boolean),
-            estado: "PENDENTE_DE_HOMOLOGACAO_JURIDICA",
-            situacao_juridica: "PENDENTE_DE_HOMOLOGACAO_JURIDICA"
+            estado: "VIGENTE"
           });
         }}>
           <small>TCLE E AUTORIZAÇÕES</small>
@@ -427,8 +421,7 @@ export function GovernancaOperacional() {
           <label>Finalidade<input name="finalidade" required /></label>
           <label>Sensores abrangidos<input name="sensores" placeholder="POLAR_H10, EEG" /></label>
           <label>Texto<textarea name="texto" required /></label>
-          <button disabled={ocupado}>Registrar versão pendente</button>
-          <p>{valor(dados.consentimentos.situacao_juridica_padrao)}</p>
+          <button disabled={ocupado}>Registrar versão</button>
         </form>
         <form onSubmit={(event: FormEvent<HTMLFormElement>) => {
           event.preventDefault();

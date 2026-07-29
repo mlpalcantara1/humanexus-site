@@ -1,12 +1,10 @@
-const API = process.env.NEXT_PUBLIC_HUMANEXUS_API_URL?.replace(/\/$/, "") ?? "";
-
 export class HumanexusApiError extends Error {}
 
 export async function humanexusApi<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  const response = await fetch(`${API}${path}`, {
+  const response = await fetch(path, {
     ...init,
     headers: {
       "content-type": "application/json",

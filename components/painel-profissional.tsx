@@ -26,6 +26,28 @@ type Entrega = {
   convite: Convite;
   token_de_entrega_unica: string;
   codigo_de_entrega_unica: string;
+  participante?: { identificador: string };
+  anamnese?: { identificador: string };
+};
+type RegistroParticipante = {
+  identificador: string;
+  referencia_externa: string;
+  ativo: boolean;
+  perfil_operacional?: {
+    dados_cadastrais?: {
+      nome_completo?: string;
+      nome_social?: string;
+    };
+  };
+};
+type ContextoParticipantes = {
+  organizacoes: Array<{
+    identificador: string;
+    nome: string;
+    ativa?: boolean;
+  }>;
+  organizacao: { identificador: string; nome: string } | null;
+  participantes: RegistroParticipante[];
 };
 type Resposta = {
   identificador_da_pergunta: string;
@@ -50,8 +72,12 @@ function dataLegivel(value?: string) {
 export function PainelProfissional() {
   const [form, setForm] = useState({
     nome: "", email: "", telefone: "", funcao: "", tipo_vinculo: "ORGANIZACIONAL",
-    organizacao: "", nicho: "OUTROS", validade_horas: 72
+    organizacao: "", participante: "", modo: "NOVO", nicho: "OUTROS",
+    validade_horas: 72
   });
+  const [contexto, setContexto] = useState<ContextoParticipantes | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const [chaveDeOperacao, setChaveDeOperacao] = useState("");
   const [entrega, setEntrega] = useState<Entrega | null>(null);
   const [link, setLink] = useState("");
   const [qr, setQr] = useState("");
@@ -75,26 +101,69 @@ export function PainelProfissional() {
       setStatus("O perfil atual não possui acesso ao painel de convites.");
     }
   }
-  useEffect(() => { void carregar(); }, []);
+  async function carregarParticipantes(organizacao?: string) {
+    const consulta = organizacao
+      ? `?organizacao=${encodeURIComponent(organizacao)}`
+      : "";
+    const dados = await humanexusApi<ContextoParticipantes>(
+      `/api/humanexus/participantes${consulta}`
+    );
+    setContexto(dados);
+    const organizacaoAtual = dados.organizacao?.identificador ?? "";
+    setForm((atual) => ({
+      ...atual,
+      organizacao: organizacaoAtual,
+      participante: dados.participantes.some(
+        (item) => item.identificador === atual.participante
+      )
+        ? atual.participante
+        : ""
+    }));
+  }
+  useEffect(() => {
+    void Promise.all([carregar(), carregarParticipantes()]).catch((erro) => {
+      setStatus(
+        erro instanceof Error
+          ? erro.message
+          : "Não foi possível carregar organizações e participantes."
+      );
+    });
+  }, []);
 
   async function criar(event: FormEvent) {
     event.preventDefault();
-    setStatus("Cadastrando participante e gerando convite seguro…");
+    if (ocupado) return;
+    setOcupado(true);
+    setStatus(
+      form.modo === "NOVO"
+        ? "Cadastrando participante e gerando convite seguro…"
+        : "Gerando convite seguro para o participante selecionado…"
+    );
     try {
-      const participante = await humanexusApi<{
-        id: string; identidade_id: string; vinculo_id: string; nicho: string;
-      }>("/api/humanexus/participantes", {
-        method: "POST",
-        body: JSON.stringify(form)
-      });
+      const chaveIdempotente =
+        chaveDeOperacao || crypto.randomUUID();
+      if (!chaveDeOperacao) setChaveDeOperacao(chaveIdempotente);
       const gerado = await humanexusApi<Entrega>("/api/humanexus/anamneses", {
         method: "POST",
         body: JSON.stringify({
-          participante_id: participante.id,
-          identidade_id: participante.identidade_id,
-          vinculo_id: participante.vinculo_id,
-          nicho: participante.nicho,
-          validade_horas: form.validade_horas
+          identificador_da_organizacao: form.organizacao,
+          identificador_do_participante:
+            form.modo === "EXISTENTE" ? form.participante : null,
+          novo_participante: form.modo === "NOVO"
+            ? {
+                nome: form.nome,
+                email: form.email,
+                telefone: form.telefone,
+                funcao: form.funcao
+              }
+            : null,
+          chave_de_idempotencia:
+            form.modo === "NOVO" ? chaveIdempotente : null,
+          tipo_de_vinculo: form.tipo_vinculo,
+          nicho: form.nicho,
+          funcao: form.funcao,
+          validade_horas: form.validade_horas,
+          usos_permitidos: 50
         })
       });
       const base = PUBLIC_BASE || window.location.origin;
@@ -106,10 +175,24 @@ export function PainelProfissional() {
         color: { dark: "#061014", light: "#f4efe3" },
         errorCorrectionLevel: "M"
       }));
-      setStatus("Convite criado. Link, código e QR Code são exibidos somente nesta entrega.");
+      await carregarParticipantes(form.organizacao);
+      setForm((atual) => ({
+        ...atual,
+        modo: "EXISTENTE",
+        participante:
+          gerado.participante?.identificador ?? atual.participante,
+        nome: "",
+        email: "",
+        telefone: "",
+        funcao: ""
+      }));
+      setChaveDeOperacao("");
+      setStatus("Participante persistido e convite criado. Link, código e QR Code são exibidos somente nesta entrega.");
       await carregar();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Não foi possível criar o convite.");
+    } finally {
+      setOcupado(false);
     }
   }
 
@@ -294,14 +377,17 @@ export function PainelProfissional() {
       </section>
       <div className="hx-invites__workspace">
         <form onSubmit={criar} className="hx-invite-form">
-          <header><small>GERAR CONVITE DE ANAMNESE</small><h3>Cadastrar participante</h3></header>
-          <label><span>Nome</span><input required value={form.nome} onChange={(event) => setForm({ ...form, nome: event.target.value })} /></label>
-          <label><span>E-mail</span><input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
-          <div><label><span>Telefone</span><input value={form.telefone} onChange={(event) => setForm({ ...form, telefone: event.target.value })} /></label><label><span>Função</span><input value={form.funcao} onChange={(event) => setForm({ ...form, funcao: event.target.value })} /></label></div>
+          <header><small>GERAR CONVITE DE ANAMNESE</small><h3>Participante persistido</h3></header>
+          <label><span>Organização</span><select required value={form.organizacao} onChange={(event) => { const organizacao = event.target.value; setForm({ ...form, organizacao, participante: "" }); void carregarParticipantes(organizacao).catch((erro) => setStatus(erro instanceof Error ? erro.message : "Organização indisponível.")); }}><option value="">Selecione</option>{(contexto?.organizacoes ?? []).filter((item) => item.ativa !== false).map((item) => <option key={item.identificador} value={item.identificador}>{item.nome}</option>)}</select></label>
+          <label><span>Origem do cadastro</span><select value={form.modo} onChange={(event) => setForm({ ...form, modo: event.target.value, participante: "" })}><option value="NOVO">Novo participante</option><option value="EXISTENTE">Participante existente</option></select></label>
+          {form.modo === "EXISTENTE" ? <label><span>Participante</span><select required value={form.participante} onChange={(event) => setForm({ ...form, participante: event.target.value })}><option value="">Selecione</option>{(contexto?.participantes ?? []).filter((item) => item.ativo !== false).map((item) => { const cadastrais = item.perfil_operacional?.dados_cadastrais; const nome = cadastrais?.nome_social || cadastrais?.nome_completo || item.referencia_externa; return <option key={item.identificador} value={item.identificador}>{nome}</option>; })}</select></label> : <>
+            <label><span>Nome</span><input required value={form.nome} onChange={(event) => setForm({ ...form, nome: event.target.value })} /></label>
+            <label><span>E-mail</span><input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
+          </>}
+          <div><label><span>Telefone</span><input disabled={form.modo === "EXISTENTE"} value={form.telefone} onChange={(event) => setForm({ ...form, telefone: event.target.value })} /></label><label><span>Função</span><input value={form.funcao} onChange={(event) => setForm({ ...form, funcao: event.target.value })} /></label></div>
           <div><label><span>Vínculo</span><select value={form.tipo_vinculo} onChange={(event) => setForm({ ...form, tipo_vinculo: event.target.value })}>{["PARTICULAR", "ORGANIZACIONAL", "MISTO"].map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Nicho</span><select value={form.nicho} onChange={(event) => setForm({ ...form, nicho: event.target.value })}>{NICHOS.map((item) => <option key={item}>{item}</option>)}</select></label></div>
-          {form.tipo_vinculo !== "PARTICULAR" ? <label><span>Organização</span><input required value={form.organizacao} onChange={(event) => setForm({ ...form, organizacao: event.target.value })} /></label> : null}
           <label><span>Validade</span><select value={form.validade_horas} onChange={(event) => setForm({ ...form, validade_horas: Number(event.target.value) })}><option value={24}>24 horas</option><option value={72}>72 horas</option><option value={168}>7 dias</option></select></label>
-          <button>Gerar convite seguro</button>
+          <button disabled={ocupado || !form.organizacao || (form.modo === "EXISTENTE" && !form.participante)}>{ocupado ? "Processando…" : "Gerar convite seguro"}</button>
         </form>
         <aside className="hx-invite-delivery">
           <header><small>ENTREGA ÚNICA</small><h3>Link, código e QR Code</h3></header>

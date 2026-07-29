@@ -16,7 +16,6 @@ type Documento = {
     versao: string;
     texto: string;
     finalidade: string;
-    situacao_juridica: string;
   };
   aceite_pre_marcado: boolean;
 };
@@ -83,7 +82,6 @@ export function FormularioConsentimento() {
         <p>{dados.documento.finalidade}</p>
         <article className="hx-consent-text">{dados.documento.texto}</article>
         <p className="hx-module__notice">
-          {dados.documento.situacao_juridica.replaceAll("_", " ")}
         </p>
         <form
           key={params.id}

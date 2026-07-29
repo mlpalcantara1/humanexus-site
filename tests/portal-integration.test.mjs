@@ -73,9 +73,30 @@ test("autenticação provisória está funcionalmente desativada", async () => {
 
 test("convite usa a rota canônica", async () => {
   const panel = await source("components/painel-profissional.tsx");
+  const route = await source("app/api/humanexus/anamneses/route.ts");
+  const client = await source("lib/humanexus-api.ts");
   const config = await source("next.config.ts");
   assert.match(panel, /\/acesso-participante\?token=\$\{/);
+  assert.match(panel, /Participante existente/);
+  assert.match(panel, /carregarParticipantes/);
+  assert.match(route, /\/api\/v1\/anamneses\/convites-seguros/);
+  assert.doesNotMatch(route, /\/participantes\/\$\{.*\}\/anamneses/);
+  assert.match(client, /fetch\(path/);
+  assert.doesNotMatch(client, /NEXT_PUBLIC_HUMANEXUS_API_URL/);
   assert.match(config, /destination: "\/anamnese\/convite\/:token"/);
+});
+
+test("status jurídico removido do instrumento integrado e de suas cópias", async () => {
+  const files = [
+    "components/instrumento-integrado.tsx",
+    "components/formulario-consentimento.tsx",
+    "components/governanca-operacional.tsx",
+    "lib/instrumento-integrado-pdf.ts"
+  ];
+  for (const file of files) {
+    const content = await source(file);
+    assert.doesNotMatch(content, /pendente.{0,8}homologa.{0,8}jur[ií]d/i);
+  }
 });
 
 test("evidência aceita pode ser citada idempotentemente na Formulação oficial", async () => {

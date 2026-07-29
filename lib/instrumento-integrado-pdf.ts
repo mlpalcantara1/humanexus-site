@@ -45,7 +45,7 @@ function rodape(doc: PDFKit.PDFDocument) {
   doc.moveTo(46, 757).lineTo(550, 757).lineWidth(.5).strokeColor("#d7dedb").stroke();
   doc.fillColor("#75817e").font("Helvetica").fontSize(6.4)
     .text(
-      "Instituto Humanexus de Performance Operacional LTDA · Instrumento pendente de homologação jurídica",
+      "Instituto Humanexus de Performance Operacional LTDA",
       46,
       766,
       { width: 504, align: "center", lineBreak: false }
@@ -111,7 +111,7 @@ export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
   doc.moveDown(.8);
   doc.fillColor("#52615f").font("Helvetica").fontSize(9)
     .text(
-      `${valor(instrumento.codigo)} · versão ${valor(instrumento.versao)} · ${valor(instrumento.situacao_juridica)}`,
+      `${valor(instrumento.codigo)} · versão ${valor(instrumento.versao)}`,
       { lineGap: 2 }
     );
   doc.moveDown(1.5);
@@ -120,7 +120,6 @@ export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
   const metadados = [
     ["CONFIRMADO EM", data(manifestacao.confirmado_em)],
     ["POLÍTICA DE RETENÇÃO", valor(manifestacao.politica_de_retencao)],
-    ["ESTADO JURÍDICO", valor(manifestacao.situacao_juridica)],
     ["SINCRONIZAÇÃO", valor(manifestacao.sincronizacao)]
   ];
   metadados.forEach(([rotulo, conteudo], indice) => {

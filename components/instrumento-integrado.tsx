@@ -42,7 +42,6 @@ type Consulta = {
     versao: string;
     titulo: string;
     hash_do_documento: string;
-    situacao_juridica: string;
     secoes: Secao[];
   };
   identificacao: {
@@ -74,7 +73,6 @@ type Copia = {
     hash_das_decisoes: string;
     integridade_sha256: string;
     politica_de_retencao: string;
-    situacao_juridica: string;
     estado_consolidado_json: Registro | string;
   };
   decisoes: DecisaoRegistrada[];
@@ -83,7 +81,6 @@ type Copia = {
     versao: string;
     confirmado_em: string;
     integridade_sha256: string;
-    situacao_juridica: string;
   }>;
   resposta_operacional_unica?: "AUTORIZO" | "NAO_AUTORIZO" | null;
   modalidades_abrangidas?: Modalidade[];
@@ -374,9 +371,6 @@ export function InstrumentoIntegrado() {
             única resposta e confirme uma única vez.
           </p>
         </div>
-        <div className="hxiicca__legal">
-          {consulta.instrumento.situacao_juridica}
-        </div>
       </header>
 
       <section className="hxiicca__contexto" aria-label="Identificação">
@@ -499,8 +493,6 @@ export function InstrumentoIntegrado() {
                   <article>
                     <small>VERSÃO DO INSTRUMENTO</small>
                     <span>{consulta.instrumento.codigo} · {consulta.instrumento.versao}</span>
-                    <small>ESTADO JURÍDICO</small>
-                    <span>{consulta.instrumento.situacao_juridica}</span>
                   </article>
                 </div>
                 {!confirmado && (
@@ -561,7 +553,7 @@ export function InstrumentoIntegrado() {
       </div>
       <footer className="hxiicca__rodape">
         <span>{consulta.identificacao.instituto}</span>
-        <span>Canal institucional · Estado jurídico: {consulta.instrumento.situacao_juridica}</span>
+        <span>Canal institucional</span>
         <span>Rascunho {revisao} · validade até {dataLegivel(consulta.apresentacao.expira_em)}</span>
       </footer>
     </main>
