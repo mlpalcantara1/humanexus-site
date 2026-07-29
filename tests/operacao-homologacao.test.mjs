@@ -412,5 +412,8 @@ test("composição executiva premium permanece isolada no front-end da plataform
   assert.match(estilos, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(estilos, /\.hx-live-vector-list\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(estilos, /\.hx-vector-radar-live \.hx-echart\s*\{[\s\S]*min-height: 480px/);
+  assert.match(estilos, /\.hx-app__identity b,[\s\S]*text-overflow: ellipsis/);
+  assert.match(estilos, /\.hx-secure-panel__grid > article:first-child dl\s*\{[\s\S]*grid-template-columns: 1fr/);
+  assert.match(estilos, /\.hx-app__header button,[\s\S]*\.hx-nav-toggle\s*\{[\s\S]*min-height: 44px/);
   assert.match(estilos, /@media \(prefers-reduced-motion: reduce\)/);
 });
