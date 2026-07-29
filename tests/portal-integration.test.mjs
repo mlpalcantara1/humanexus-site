@@ -88,6 +88,7 @@ test("convite usa a rota canônica", async () => {
 
 test("sessão e convites preservam o escopo organizacional selecionado", async () => {
   const management = await source("components/gestao-operacional.tsx");
+  const navigation = await source("components/platform-navigation.tsx");
   const managementRoute = await source("app/api/gestao-operacional/route.ts");
   const invitationRoute = await source(
     "app/api/humanexus/gestao-convites/route.ts"
@@ -100,6 +101,12 @@ test("sessão e convites preservam o escopo organizacional selecionado", async (
   assert.match(management, /PRÉ → TREINO → PÓS/);
   assert.match(management, /INICIAR SESSÃO/);
   assert.match(management, /\/plataforma\/cockpit-vivo\?/);
+  assert.match(management, /Sessão criada e contexto preservado/);
+  assert.match(management, /iniciarSessaoDiretamente/);
+  assert.match(management, /atualizarContextoNaUrl/);
+  for (const key of ["organizacao", "participante", "sessao", "thx"]) {
+    assert.match(navigation, new RegExp(`"${key}"`));
+  }
   assert.match(managementRoute, /x-humanexus-organization-id/);
   assert.match(invitationRoute, /x-humanexus-organization-id/);
   assert.match(panel, /Particulares/);
@@ -115,6 +122,9 @@ test("treinamentos usam somente a biblioteca oficial e evidência persistida", a
   assert.match(management, /Recomendados/);
   assert.match(management, /Compatíveis/);
   assert.match(management, /Biblioteca completa/);
+  assert.match(management, /Favoritos/);
+  assert.match(management, /humanexus:thx-favoritos:v1/);
+  assert.match(management, /aria-pressed=\{favorito\}/);
   assert.match(management, /Ver detalhes operacionais/);
   assert.match(management, /duracao_operacional/);
   assert.match(management, /gatilhos_relacionados/);

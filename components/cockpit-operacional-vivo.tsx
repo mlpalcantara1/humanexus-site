@@ -473,6 +473,23 @@ export function CockpitOperacionalVivo({
     : sessaoFinalizada
       ? "SESSÃO ENCERRADA"
       : "SEM FASE ATIVA";
+  const faseAtual = String(sessao.fase_atual ?? "");
+  const passosDoFluxo = (
+    sessaoBaseline ? ["BASELINE"] : ["PRE", "TREINO", "POS"]
+  ).map((codigo) => {
+    const estadoDoPasso = codigo === "BASELINE"
+      ? texto(contextoSessao.estado)
+      : texto(fases[codigo], "AGUARDANDO");
+    return {
+      codigo,
+      rotulo: codigo === "PRE" ? "PRÉ" : codigo === "POS" ? "PÓS" : codigo,
+      estado: estadoDoPasso,
+      atual: sessaoBaseline
+        ? !sessaoFinalizada
+        : faseAtual === codigo,
+      concluido: /CONCLUID|ENCERRAD|FINALIZAD/i.test(estadoDoPasso)
+    };
+  });
   const respostaObservada = objeto(execucao.resposta_observada_json);
   const resumoDaResposta = respostaObservada.descricao
     ?? respostaObservada.resposta
@@ -534,6 +551,43 @@ export function CockpitOperacionalVivo({
         <div><small>PROFISSIONAL</small><strong>{texto(profissional.nome)}</strong></div>
         <div><small>TIPO DA SESSÃO</small><strong>{sessaoBaseline ? "BASELINE" : "PRÉ → TREINO → PÓS"}</strong></div>
         <div><small>{sessaoBaseline ? "FLUXO" : "CTR / PROTOCOLO"}</small><strong>{sessaoBaseline ? "INDEPENDENTE" : `${texto(ctr.codigo)} · ${texto(thx.codigo)}`}</strong></div>
+      </section>
+
+      <section className="hx-live-operation-focus" aria-label="Comando e progressão da sessão">
+        <div className="hx-live-operation-flow">
+          <small>FLUXO OPERACIONAL</small>
+          <div>
+            {passosDoFluxo.map((passo) => (
+              <span
+                className={[
+                  passo.atual ? "is-current" : "",
+                  passo.concluido ? "is-complete" : ""
+                ].filter(Boolean).join(" ")}
+                key={passo.codigo}
+              >
+                <b>{passo.rotulo}</b>
+                <em>{passo.estado}</em>
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="hx-live-operation-action">
+          <small>PRÓXIMA AÇÃO</small>
+          {acaoPrincipal ? (
+            <button
+              className="hx-live-command__primary"
+              type="button"
+              onClick={executarPrincipal}
+              disabled={ocupado}
+            >
+              {rotuloDaAcao}
+            </button>
+          ) : (
+            <strong className="hx-live-command__done">
+              Sessão sem ação pendente
+            </strong>
+          )}
+        </div>
       </section>
 
       <section className="hx-live-hud" aria-label="HUD operacional fixo">
@@ -600,14 +654,7 @@ export function CockpitOperacionalVivo({
         </section>
 
         <aside className="hx-live-command hx-live-command--contextual">
-          <small>PRÓXIMA AÇÃO</small>
-          {acaoPrincipal ? (
-            <button className="hx-live-command__primary" type="button" onClick={executarPrincipal} disabled={ocupado}>
-              {rotuloDaAcao}
-            </button>
-          ) : (
-            <strong className="hx-live-command__done">Sessão sem ação pendente</strong>
-          )}
+          <small>COMANDOS COMPLEMENTARES</small>
           <div>
             {acoesSecundarias.map((comando) => (
               <button key={comando} type="button" onClick={() => executarSecundaria(comando)} disabled={ocupado}>
@@ -615,7 +662,10 @@ export function CockpitOperacionalVivo({
               </button>
             ))}
           </div>
-          <span>Comandos fornecidos exclusivamente pelo estado operacional do backend.</span>
+          <span>
+            A ação principal permanece em foco acima. Todos os comandos são
+            fornecidos exclusivamente pelo estado operacional do backend.
+          </span>
           {!sessaoBaseline ? <div className="hx-live-protocol-brief">
             <small>CRITÉRIO REGULATÓRIO HUMANO</small>
             <strong>{texto(ctr.codigo)} · {texto(ctr.nome)}</strong>

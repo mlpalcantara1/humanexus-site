@@ -96,6 +96,17 @@ function normalizar(valor: unknown) {
     .toLowerCase();
 }
 
+function atualizarContextoNaUrl(
+  valores: Partial<Record<"organizacao" | "participante" | "sessao" | "thx", string>>
+) {
+  const url = new URL(window.location.href);
+  for (const [chave, valor] of Object.entries(valores)) {
+    if (valor) url.searchParams.set(chave, valor);
+    else url.searchParams.delete(chave);
+  }
+  window.history.replaceState(window.history.state, "", url);
+}
+
 export function GestaoOperacional({
   modulo
 }: {
@@ -141,7 +152,9 @@ export function GestaoOperacional({
     useState<"TODOS" | "PARTICULAR" | "ORGANIZACIONAL">("TODOS");
   const [buscaParticipante, setBuscaParticipante] = useState("");
   const [buscaThx, setBuscaThx] = useState("");
+  const [favoritosThx, setFavoritosThx] = useState<string[]>([]);
   const [limitesThx, setLimitesThx] = useState<Record<string, number>>({
+    FAVORITO: 12,
     RECOMENDADO: 12,
     COMPATIVEL: 12,
     OUTRO_OFICIAL: 12
@@ -189,6 +202,10 @@ export function GestaoOperacional({
     justificativa: "",
     chave_de_idempotencia: ""
   });
+  const [sessaoCriada, setSessaoCriada] = useState<{
+    identificador: string;
+    participante: string;
+  } | null>(null);
   const [participanteDoCatalogo, setParticipanteDoCatalogo] = useState("");
   const [familiaThx, setFamiliaThx] = useState("");
   const [contratoSelecionado, setContratoSelecionado] = useState("");
@@ -314,6 +331,10 @@ export function GestaoOperacional({
     setDados(corpo as Dados);
     const atual = String(corpo.organizacao?.identificador ?? "");
     setOrganizacaoSelecionada(atual);
+    const contextoDaUrl = new URLSearchParams(window.location.search);
+    const participanteDaUrl = contextoDaUrl.get("participante") ?? "";
+    const thxDaUrl = contextoDaUrl.get("thx") ?? "";
+    atualizarContextoNaUrl({ organizacao: atual });
     setNovaOrganizacao(false);
     preencherOrganizacao(corpo.organizacao ?? null);
     const participanteAberto = corpo.participantes?.find(
@@ -328,7 +349,9 @@ export function GestaoOperacional({
     setSessao((estado) => {
       const participanteAtual = corpo.participantes?.find(
         (item: Registro) =>
-          String(item.identificador) === estado.identificador_do_participante
+          String(item.identificador) === (
+            participanteDaUrl || estado.identificador_do_participante
+          )
       ) ?? corpo.participantes?.[0];
       const profissionalAtual = corpo.profissionais?.find(
         (item: Registro) =>
@@ -356,7 +379,9 @@ export function GestaoOperacional({
       const thxAtual = corpo.vinculos_ctr_thx_validados?.find(
         (item: Registro) =>
           String(item.codigo_do_ctr) === String(ctrAtual?.codigo_do_ctr ?? "")
-          && String(item.codigo_do_thx) === estado.codigo_do_thx
+          && String(item.codigo_do_thx) === (
+            thxDaUrl || estado.codigo_do_thx
+          )
       ) ?? corpo.vinculos_ctr_thx_validados?.find(
         (item: Registro) =>
           String(item.codigo_do_ctr) === String(ctrAtual?.codigo_do_ctr ?? "")
@@ -382,16 +407,43 @@ export function GestaoOperacional({
     }));
     setParticipanteDoCatalogo((atual) => (
       corpo.participantes?.some(
-        (item: Registro) => String(item.identificador) === atual
+        (item: Registro) => String(item.identificador) === (
+          participanteDaUrl || atual
+        )
       )
-        ? atual
+        ? participanteDaUrl || atual
         : String(corpo.participantes?.[0]?.identificador ?? "")
     ));
   }
 
   useEffect(() => {
-    carregar().catch((causa) => setErro(causa.message));
+    const parametros = new URLSearchParams(window.location.search);
+    try {
+      const favoritos = JSON.parse(
+        window.localStorage.getItem("humanexus:thx-favoritos:v1") ?? "[]"
+      );
+      if (Array.isArray(favoritos)) {
+        setFavoritosThx(favoritos.map(String));
+      }
+    } catch {
+      setFavoritosThx([]);
+    }
+    carregar(parametros.get("organizacao") ?? "")
+      .catch((causa) => setErro(causa.message));
   }, []);
+
+  function alternarFavoritoThx(codigo: string) {
+    setFavoritosThx((atuais) => {
+      const proximos = atuais.includes(codigo)
+        ? atuais.filter((item) => item !== codigo)
+        : [...atuais, codigo];
+      window.localStorage.setItem(
+        "humanexus:thx-favoritos:v1",
+        JSON.stringify(proximos)
+      );
+      return proximos;
+    });
+  }
 
   async function executar(
     acao: string,
@@ -475,6 +527,29 @@ export function GestaoOperacional({
     });
   }
 
+  async function iniciarSessaoDiretamente(
+    identificadorDaSessao: string,
+    identificadorDoParticipante: string
+  ) {
+    const resultado = await executar(
+      "operar-sessao",
+      { acao: "ABRIR" },
+      identificadorDaSessao
+    );
+    if (!resultado) return;
+    const parametros = new URLSearchParams({
+      organizacao: String(dados?.organizacao?.identificador ?? ""),
+      participante: identificadorDoParticipante,
+      sessao: identificadorDaSessao
+    });
+    atualizarContextoNaUrl({
+      organizacao: String(dados?.organizacao?.identificador ?? ""),
+      participante: identificadorDoParticipante,
+      sessao: identificadorDaSessao
+    });
+    window.location.assign(`/plataforma/cockpit-vivo?${parametros}`);
+  }
+
   const organizacaoAtual = dados?.organizacao;
   const podeAdministrar = [
     "ADMINISTRADOR_DO_SISTEMA",
@@ -512,8 +587,16 @@ export function GestaoOperacional({
           value={organizacaoSelecionada}
           disabled={ocupado || (dados?.organizacoes.length ?? 0) < 2}
           onChange={(evento) => {
-            setOrganizacaoSelecionada(evento.target.value);
-            void carregar(evento.target.value);
+            const identificador = evento.target.value;
+            setOrganizacaoSelecionada(identificador);
+            setSessaoCriada(null);
+            atualizarContextoNaUrl({
+              organizacao: identificador,
+              participante: "",
+              sessao: "",
+              thx: ""
+            });
+            void carregar(identificador);
           }}
         >
           {dados?.organizacoes.map((item) => (
@@ -618,12 +701,16 @@ export function GestaoOperacional({
   );
 
   const tabelaSessoes = (
-    <section className="hx-management-table">
+    <section className="hx-management-table hx-management-table--sessions">
       <header><div><small>SESSÕES</small><h2>Ciclo operacional auditável</h2></div><span>{dados?.sessoes.length ?? 0} registro(s)</span></header>
       <div>
         {dados?.sessoes.map((item) => {
           const operacional = item.detalhes_operacionais as Registro | undefined;
           const estado = String(operacional?.estado_operacional ?? item.estado);
+          const participanteDaLista = dados.participantes.find(
+            (participante) => String(participante.identificador)
+              === String(item.identificador_do_participante)
+          );
           const acao = estado === "CRIADA"
             ? "ABRIR"
             : estado === "INICIADA"
@@ -635,31 +722,27 @@ export function GestaoOperacional({
             <article key={String(item.identificador)}>
               <div><small>Sessão</small><strong>{texto(item.identificador)}</strong></div>
               <div><small>Estado</small><strong>{texto(estado)}</strong></div>
-              <div><small>Participante</small><strong>{texto(item.identificador_do_participante)}</strong></div>
+              <div>
+                <small>Participante</small>
+                <strong>{texto(
+                  participanteDaLista?.referencia_externa,
+                  texto(item.identificador_do_participante)
+                )}</strong>
+              </div>
               {acao && operacional ? (
                 <button
                   type="button"
                   disabled={ocupado}
-                  onClick={() => void (async () => {
-                    const resultado = await executar(
-                      "operar-sessao",
-                      { acao },
-                      item.identificador
-                    );
-                    if (!resultado || acao !== "ABRIR") return;
-                    const parametros = new URLSearchParams({
-                      organizacao: String(
-                        dados?.organizacao?.identificador ?? ""
-                      ),
-                      participante: String(
-                        item.identificador_do_participante ?? ""
-                      ),
-                      sessao: String(item.identificador ?? "")
-                    });
-                    window.location.assign(
-                      `/plataforma/cockpit-vivo?${parametros}`
-                    );
-                  })()}
+                  onClick={() => acao === "ABRIR"
+                    ? void iniciarSessaoDiretamente(
+                        String(item.identificador ?? ""),
+                        String(item.identificador_do_participante ?? "")
+                      )
+                    : void executar(
+                        "operar-sessao",
+                        { acao },
+                        item.identificador
+                      )}
                 >
                   {acao === "ABRIR" ? "INICIAR SESSÃO" : texto(acao)}
                 </button>
@@ -798,6 +881,9 @@ export function GestaoOperacional({
     evidenciaDoCatalogo.ganhos_regulatorios
   ).at(-1);
   const protocolosPorClassificacao = {
+    FAVORITO: protocolosOficiais.filter(
+      (item) => favoritosThx.includes(String(item.codigo ?? ""))
+    ),
     RECOMENDADO: protocolosOficiais.filter(
       (item) => item.classificacao_operacional === "RECOMENDADO"
     ),
@@ -1262,6 +1348,26 @@ export function GestaoOperacional({
               duracao_planejada_minutos: Number(sessao.duracao_planejada_minutos)
             });
             if (resultado) {
+              const identificador = String(
+                resultado.identificador
+                ?? resultado.identificador_da_sessao
+                ?? ""
+              );
+              if (identificador) {
+                const contextoCriado = {
+                  identificador,
+                  participante: sessao.identificador_do_participante
+                };
+                setSessaoCriada(contextoCriado);
+                atualizarContextoNaUrl({
+                  organizacao: String(
+                    dados?.organizacao?.identificador ?? ""
+                  ),
+                  participante: contextoCriado.participante,
+                  sessao: contextoCriado.identificador,
+                  thx: sessao.codigo_do_thx
+                });
+              }
               setSessao((estado) => ({
                 ...estado,
                 chave_de_idempotencia: ""
@@ -1317,6 +1423,12 @@ export function GestaoOperacional({
                 identificador_do_participante: participanteId,
                 identificador_da_anamnese: String(anamnese?.identificador ?? "")
               });
+              setSessaoCriada(null);
+              atualizarContextoNaUrl({
+                participante: participanteId,
+                sessao: "",
+                thx: ""
+              });
             }}>{dados.participantes.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.referencia_externa)}</option>)}</select></label>
             <label>Profissional responsável<select required value={sessao.identificador_do_profissional} onChange={(evento) => setSessao({ ...sessao, identificador_do_profissional: evento.target.value })}>{dados.profissionais.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.nome)}</option>)}</select></label>
             <label>Anamnese concluída<select required value={sessao.identificador_da_anamnese} onChange={(evento) => setSessao({ ...sessao, identificador_da_anamnese: evento.target.value })}><option value="">Selecione</option>{anamnesesConcluidas.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.identificador_da_versao_do_formulario)} · {dataLegivel(item.concluido_em)}</option>)}</select></label>
@@ -1329,9 +1441,21 @@ export function GestaoOperacional({
                 <label>CTR oficial<select required value={sessao.codigo_do_ctr} onChange={(evento) => {
                   const codigo = evento.target.value;
                   const primeiroThx = dados.vinculos_ctr_thx_validados.find((item) => item.codigo_do_ctr === codigo);
-                  setSessao({ ...sessao, codigo_do_ctr: codigo, codigo_do_thx: String(primeiroThx?.codigo_do_thx ?? "") });
+                  const codigoDoThx = String(
+                    primeiroThx?.codigo_do_thx ?? ""
+                  );
+                  setSessao({
+                    ...sessao,
+                    codigo_do_ctr: codigo,
+                    codigo_do_thx: codigoDoThx
+                  });
+                  atualizarContextoNaUrl({ thx: codigoDoThx });
                 }}>{ctrsValidados.map((item) => <option key={String(item.codigo_do_ctr)} value={String(item.codigo_do_ctr)}>{texto(item.codigo_do_ctr)} · {texto(item.nome_do_ctr)}</option>)}</select></label>
-                <label>THX oficial validado<select required value={sessao.codigo_do_thx} onChange={(evento) => setSessao({ ...sessao, codigo_do_thx: evento.target.value })}>{thxValidadosDoCtr.map((item) => <option key={String(item.identificador)} value={String(item.codigo_do_thx)}>{texto(item.codigo_do_thx)} · {texto(item.nome_do_thx)} · {texto(item.papel)}</option>)}</select></label>
+                <label>THX oficial validado<select required value={sessao.codigo_do_thx} onChange={(evento) => {
+                  const codigo = evento.target.value;
+                  setSessao({ ...sessao, codigo_do_thx: codigo });
+                  atualizarContextoNaUrl({ thx: codigo });
+                }}>{thxValidadosDoCtr.map((item) => <option key={String(item.identificador)} value={String(item.codigo_do_thx)}>{texto(item.codigo_do_thx)} · {texto(item.nome_do_thx)} · {texto(item.papel)}</option>)}</select></label>
                 <label>Justificativa da seleção profissional<textarea required value={sessao.justificativa} onChange={(evento) => setSessao({ ...sessao, justificativa: evento.target.value })} /></label>
               </>
             ) : (
@@ -1343,6 +1467,28 @@ export function GestaoOperacional({
             <label>Data programada<input type="datetime-local" value={sessao.data_programada} onChange={(evento) => setSessao({ ...sessao, data_programada: evento.target.value })} /></label>
             <label>Duração planejada<input type="number" min="1" max="1440" value={sessao.duracao_planejada_minutos} onChange={(evento) => setSessao({ ...sessao, duracao_planejada_minutos: evento.target.value })} /></label>
             <button disabled={ocupado || !podeConduzir}>Salvar sessão</button>
+            {sessaoCriada ? (
+              <section className="hx-session-created" aria-live="polite">
+                <div>
+                  <small>PRÓXIMA AÇÃO</small>
+                  <strong>Sessão criada e contexto preservado</strong>
+                  <span>
+                    Organização, participante, modalidade e treinamento serão
+                    transportados automaticamente para o Cockpit.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  disabled={ocupado}
+                  onClick={() => void iniciarSessaoDiretamente(
+                    sessaoCriada.identificador,
+                    sessaoCriada.participante
+                  )}
+                >
+                  INICIAR SESSÃO
+                </button>
+              </section>
+            ) : null}
           </form>
           {tabelaSessoes}
         </div>
@@ -1363,8 +1509,14 @@ export function GestaoOperacional({
               Participante
               <select
                 value={participanteDoCatalogo}
-                onChange={(evento) =>
-                  setParticipanteDoCatalogo(evento.target.value)}
+                onChange={(evento) => {
+                  const identificador = evento.target.value;
+                  setParticipanteDoCatalogo(identificador);
+                  atualizarContextoNaUrl({
+                    participante: identificador,
+                    sessao: ""
+                  });
+                }}
               >
                 {dados.participantes.map((item) => (
                   <option
@@ -1436,6 +1588,11 @@ export function GestaoOperacional({
 
           {([
             [
+              "FAVORITO",
+              "Favoritos",
+              "Protocolos oficiais marcados para acesso rápido neste dispositivo."
+            ],
+            [
               "RECOMENDADO",
               "Recomendados",
               "Recomendações persistidas, sempre sujeitas à validação profissional."
@@ -1452,6 +1609,9 @@ export function GestaoOperacional({
             ]
           ] as const).map(([classificacao, titulo, descricao]) => {
             const protocolos = protocolosPorClassificacao[classificacao];
+            if (classificacao === "FAVORITO" && !protocolos.length) {
+              return null;
+            }
             const limite = limitesThx[classificacao] ?? 12;
             const visiveis = protocolos.slice(0, limite);
             return (
@@ -1506,17 +1666,39 @@ export function GestaoOperacional({
                           ? null
                           : `${protocolo.duracao_em_minutos} min`
                       );
-                    const estadoDaRecomendacao = classificacao === "RECOMENDADO"
+                    const estadoDaRecomendacao =
+                      protocolo.classificacao_operacional === "RECOMENDADO"
                       ? texto(recomendacao.estado, "RECOMENDADO")
-                      : classificacao === "COMPATIVEL"
+                      : protocolo.classificacao_operacional === "COMPATIVEL"
                         ? "COMPATÍVEL"
                         : "NÃO PRIORIZADO";
+                    const favorito = favoritosThx.includes(
+                      String(protocolo.codigo ?? "")
+                    );
                     return (
-                      <article key={String(protocolo.identificador)}>
+                      <article
+                        className={favorito ? "is-favorite" : ""}
+                        key={String(protocolo.identificador)}
+                      >
                         <div className="hx-training-card__heading">
-                          <span>{texto(protocolo.codigo)}</span>
-                          <span>{texto(protocolo.familia)}</span>
-                          <span>{estadoDaRecomendacao}</span>
+                          <div>
+                            <span>{texto(protocolo.codigo)}</span>
+                            <span>{texto(protocolo.familia)}</span>
+                            <span>{estadoDaRecomendacao}</span>
+                          </div>
+                          <button
+                            className="hx-training-card__favorite"
+                            type="button"
+                            aria-label={favorito
+                              ? `Remover ${texto(protocolo.codigo)} dos favoritos`
+                              : `Adicionar ${texto(protocolo.codigo)} aos favoritos`}
+                            aria-pressed={favorito}
+                            onClick={() => alternarFavoritoThx(
+                              String(protocolo.codigo ?? "")
+                            )}
+                          >
+                            <span aria-hidden="true">{favorito ? "★" : "☆"}</span>
+                          </button>
                         </div>
                         <h3>{texto(protocolo.nome)}</h3>
                         <p>{texto(

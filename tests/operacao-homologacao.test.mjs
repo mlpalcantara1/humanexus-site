@@ -252,7 +252,10 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
     assert.doesNotMatch(hud, new RegExp(`<small>${item}</small>`));
   }
   assert.match(operacional, /acaoPrincipal/);
-  assert.match(operacional, /Comandos fornecidos exclusivamente pelo estado operacional do backend/);
+  assert.match(operacional, /hx-live-operation-focus/);
+  assert.match(operacional, /FLUXO OPERACIONAL/);
+  assert.match(operacional, /A ação principal permanece em foco acima/);
+  assert.match(operacional, /fornecidos exclusivamente pelo estado operacional do backend/);
   assert.match(client, /proxima_acao_principal/);
 });
 

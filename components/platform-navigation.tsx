@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Item = { label: string; href: string; mark: string; restricted?: "lab" | "admin" };
@@ -32,6 +32,12 @@ const GROUPS: Group[] = [
 
 function NavigationItems({ podeVerLab, podeAdministrar, close }: { podeVerLab: boolean; podeAdministrar: boolean; close?: () => void }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const contexto = new URLSearchParams();
+  for (const chave of ["organizacao", "participante", "sessao", "thx"]) {
+    const valor = searchParams.get(chave);
+    if (valor) contexto.set(chave, valor);
+  }
   return (
     <>
       {GROUPS.map((group) => {
@@ -44,8 +50,11 @@ function NavigationItems({ podeVerLab, podeAdministrar, close }: { podeVerLab: b
             <p>{group.label}</p>
             {items.map((item) => {
               const active = pathname === item.href;
+              const href = item.href.startsWith("/plataforma") && contexto.size
+                ? `${item.href}?${contexto}`
+                : item.href;
               return (
-                <Link className={active ? "hx-nav__link hx-nav__link--active" : "hx-nav__link"} href={item.href} key={item.href} onClick={close}>
+                <Link className={active ? "hx-nav__link hx-nav__link--active" : "hx-nav__link"} href={href} key={item.href} onClick={close}>
                   <span className="hx-nav__mark">{item.mark}</span>
                   <span>{item.label}</span>
                   {active ? <i aria-hidden="true" /> : null}
