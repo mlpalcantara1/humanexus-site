@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Item = { label: string; href: string; mark: string; restricted?: "lab" | "admin" };
 type Group = { label: string; items: Item[] };
@@ -61,6 +61,11 @@ function NavigationItems({ podeVerLab, podeAdministrar, close }: { podeVerLab: b
 
 export function PlatformNavigation({ podeVerLab, podeAdministrar }: { podeVerLab: boolean; podeAdministrar: boolean }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  useEffect(() => {
+    setOpen(false);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [pathname]);
   return (
     <>
       <aside className="hx-nav" aria-label="Navegação principal da plataforma">

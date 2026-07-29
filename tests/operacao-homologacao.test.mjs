@@ -25,6 +25,13 @@ test("Cockpit agrega leituras e atualiza telemetria sem recarregar o contexto in
   assert.match(client, /carregar\(selecaoInicial, true\)/);
 });
 
+test("Cockpit respeita o escopo organizacional e não escolhe participante fictício", async () => {
+  const route = await source("app/api/operacao-homologacao/route.ts");
+  assert.match(route, /x-humanexus-organization-id/);
+  assert.match(route, /consultarLote\(\s*token,\s*consultasPrincipais,\s*organizacaoId/s);
+  assert.doesNotMatch(route, /PARTICIPANTE FICTÍCIO/);
+});
+
 test("CTR e THX individuais não usam a versão do catálogo como identificador", async () => {
   const route = await source("app/api/operacao-homologacao/route.ts");
   const client = await source("components/operacao-homologacao.tsx");

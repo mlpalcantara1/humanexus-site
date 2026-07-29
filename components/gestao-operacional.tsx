@@ -11,6 +11,7 @@ type Dados = {
   participantes: Registro[];
   sessoes: Registro[];
   catalogo_treinamentos: Registro[];
+  biblioteca_thx_oficial: Registro | null;
   programacoes: Registro[];
   contratos: Registro[];
   profissionais: Registro[];
@@ -64,6 +65,13 @@ function lista(valor: unknown): Registro[] {
   return Array.isArray(valor) ? valor as Registro[] : [];
 }
 
+function normalizar(valor: unknown) {
+  return String(valor ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 export function GestaoOperacional({
   modulo
 }: {
@@ -105,6 +113,10 @@ export function GestaoOperacional({
     organizacao_base: false
   });
   const [participanteSelecionado, setParticipanteSelecionado] = useState("");
+  const [grupoParticipante, setGrupoParticipante] =
+    useState<"TODOS" | "PARTICULAR" | "ORGANIZACIONAL">("TODOS");
+  const [buscaParticipante, setBuscaParticipante] = useState("");
+  const [buscaThx, setBuscaThx] = useState("");
   const [participante, setParticipante] = useState({
     referencia_externa: "",
     tipo_de_vinculo: "ORGANIZACIONAL",
@@ -118,6 +130,11 @@ export function GestaoOperacional({
     profissao: "",
     empresa: "",
     cargo: "",
+    funcao: "",
+    matricula: "",
+    unidade: "",
+    setor: "",
+    equipe: "",
     registro_profissional: "",
     regime_de_trabalho: "",
     contato_emergencia_nome: "",
@@ -131,7 +148,7 @@ export function GestaoOperacional({
   });
   const [sessao, setSessao] = useState({
     identificador_do_participante: "",
-    finalidade: "",
+    finalidade: "HOMOLOGAÇÃO FÍSICA FINAL — DADOS REAIS AUTORIZADOS",
     modalidade: "INDIVIDUAL",
     data_programada: "",
     duracao_planejada_minutos: "60",
@@ -139,7 +156,8 @@ export function GestaoOperacional({
     identificador_da_anamnese: "",
     codigo_do_ctr: "",
     codigo_do_thx: "",
-    justificativa: ""
+    justificativa: "",
+    chave_de_idempotencia: ""
   });
   const [treinamento, setTreinamento] = useState({
     codigo: "",
@@ -243,6 +261,11 @@ export function GestaoOperacional({
       profissao: String(profissionais.profissao ?? ""),
       empresa: String(profissionais.empresa ?? ""),
       cargo: String(profissionais.cargo ?? ""),
+      funcao: String(profissionais.funcao ?? ""),
+      matricula: String(profissionais.matricula ?? ""),
+      unidade: String(profissionais.unidade ?? ""),
+      setor: String(profissionais.setor ?? ""),
+      equipe: String(profissionais.equipe ?? ""),
       registro_profissional: String(profissionais.registro_profissional ?? ""),
       regime_de_trabalho: String(profissionais.regime_de_trabalho ?? ""),
       contato_emergencia_nome: String(contato.nome ?? ""),
@@ -283,31 +306,55 @@ export function GestaoOperacional({
       setParticipanteSelecionado("");
       preencherParticipante(null);
     }
-    setSessao((estado) => ({
-      ...estado,
-      identificador_do_participante:
-        estado.identificador_do_participante
-        || String(corpo.participantes?.[0]?.identificador ?? ""),
-      identificador_do_profissional:
-        estado.identificador_do_profissional
-        || String(corpo.profissionais?.[0]?.identificador ?? ""),
-      identificador_da_anamnese:
-        estado.identificador_da_anamnese
-        || String(
-          corpo.participantes?.[0]?.anamneses
-            ?.find((item: Registro) =>
-              item.estado === "CONCLUIDA_PELO_PARTICIPANTE"
-              && Number(item.percentual_concluido) === 100
-              && item.validade_cientifica === "VALIDA"
-            )?.identificador ?? ""
-        ),
-      codigo_do_ctr:
-        estado.codigo_do_ctr
-        || String(corpo.vinculos_ctr_thx_validados?.[0]?.codigo_do_ctr ?? ""),
-      codigo_do_thx:
-        estado.codigo_do_thx
-        || String(corpo.vinculos_ctr_thx_validados?.[0]?.codigo_do_thx ?? "")
-    }));
+    setSessao((estado) => {
+      const participanteAtual = corpo.participantes?.find(
+        (item: Registro) =>
+          String(item.identificador) === estado.identificador_do_participante
+      ) ?? corpo.participantes?.[0];
+      const profissionalAtual = corpo.profissionais?.find(
+        (item: Registro) =>
+          String(item.identificador) === estado.identificador_do_profissional
+      ) ?? corpo.profissionais?.[0];
+      const anamneses = Array.isArray(participanteAtual?.anamneses)
+        ? participanteAtual.anamneses as Registro[]
+        : [];
+      const anamneseAtual = anamneses.find(
+        (item) =>
+          String(item.identificador) === estado.identificador_da_anamnese
+          && item.estado === "CONCLUIDA_PELO_PARTICIPANTE"
+          && Number(item.percentual_concluido) === 100
+          && item.validade_cientifica === "VALIDA"
+      ) ?? anamneses.find(
+        (item) =>
+          item.estado === "CONCLUIDA_PELO_PARTICIPANTE"
+          && Number(item.percentual_concluido) === 100
+          && item.validade_cientifica === "VALIDA"
+      );
+      const ctrAtual = corpo.vinculos_ctr_thx_validados?.find(
+        (item: Registro) =>
+          String(item.codigo_do_ctr) === estado.codigo_do_ctr
+      ) ?? corpo.vinculos_ctr_thx_validados?.[0];
+      const thxAtual = corpo.vinculos_ctr_thx_validados?.find(
+        (item: Registro) =>
+          String(item.codigo_do_ctr) === String(ctrAtual?.codigo_do_ctr ?? "")
+          && String(item.codigo_do_thx) === estado.codigo_do_thx
+      ) ?? corpo.vinculos_ctr_thx_validados?.find(
+        (item: Registro) =>
+          String(item.codigo_do_ctr) === String(ctrAtual?.codigo_do_ctr ?? "")
+      );
+      return {
+        ...estado,
+        identificador_do_participante:
+          String(participanteAtual?.identificador ?? ""),
+        identificador_do_profissional:
+          String(profissionalAtual?.identificador ?? ""),
+        identificador_da_anamnese:
+          String(anamneseAtual?.identificador ?? ""),
+        codigo_do_ctr: String(ctrAtual?.codigo_do_ctr ?? ""),
+        codigo_do_thx: String(thxAtual?.codigo_do_thx ?? ""),
+        chave_de_idempotencia: ""
+      };
+    });
     setConsentimento((estado) => ({
       ...estado,
       identificador_do_participante:
@@ -339,6 +386,9 @@ export function GestaoOperacional({
         body: JSON.stringify({
           acao,
           identificador,
+          identificador_da_organizacao:
+            organizacaoSelecionada
+            || String(dados?.organizacao?.identificador ?? ""),
           dados: payload
         })
       });
@@ -450,13 +500,54 @@ export function GestaoOperacional({
     </section>
   );
 
+  const participantesVisiveis = (dados?.participantes ?? []).filter((item) => {
+    const perfil = objeto(item.perfil_operacional);
+    const cadastrais = objeto(perfil.dados_cadastrais);
+    const profissionais = objeto(perfil.dados_profissionais);
+    const documentos = lista(perfil.documentos);
+    const vinculo = String(perfil.tipo_de_vinculo ?? "ORGANIZACIONAL");
+    const pertenceAoGrupo = grupoParticipante === "TODOS"
+      || vinculo === grupoParticipante
+      || vinculo === "MISTO";
+    const conjunto = normalizar([
+      item.referencia_externa,
+      cadastrais.nome_completo,
+      cadastrais.nome_social,
+      profissionais.matricula,
+      profissionais.empresa,
+      profissionais.cargo,
+      profissionais.funcao,
+      profissionais.unidade,
+      profissionais.setor,
+      profissionais.equipe,
+      ...documentos.map((documento) => documento.numero)
+    ].join(" "));
+    return pertenceAoGrupo
+      && (!buscaParticipante.trim()
+        || conjunto.includes(normalizar(buscaParticipante.trim())));
+  });
+
   const tabelaParticipantes = (
     <section className="hx-management-table">
-      <header><div><small>PARTICIPANTES</small><h2>Cadastros no escopo</h2></div><span>{dados?.participantes.length ?? 0} registro(s)</span></header>
+      <header><div><small>PARTICIPANTES</small><h2>Cadastros no escopo</h2></div><span>{participantesVisiveis.length} registro(s)</span></header>
+      <div className="hx-management-actions">
+        <button type="button" onClick={() => setGrupoParticipante("TODOS")}>Todos</button>
+        <button type="button" onClick={() => setGrupoParticipante("PARTICULAR")}>Particulares</button>
+        <button type="button" onClick={() => setGrupoParticipante("ORGANIZACIONAL")}>Organizacionais</button>
+        <label>
+          Buscar participante
+          <input
+            value={buscaParticipante}
+            onChange={(evento) => setBuscaParticipante(evento.target.value)}
+            placeholder="Nome, CPF, matrícula, empresa, cargo ou função"
+          />
+        </label>
+      </div>
       <div>
-        {dados?.participantes.map((item) => {
+        {participantesVisiveis.map((item) => {
           const perfil = objeto(item.perfil_operacional);
           const cadastrais = objeto(perfil.dados_cadastrais);
+          const profissionais = objeto(perfil.dados_profissionais);
           return (
             <article key={String(item.identificador)}>
               <div>
@@ -464,6 +555,8 @@ export function GestaoOperacional({
                 <strong>{texto(cadastrais.nome_completo, texto(item.referencia_externa))}</strong>
               </div>
               <div><small>Vínculo</small><strong>{texto(perfil.tipo_de_vinculo)}</strong></div>
+              <div><small>Organização / unidade</small><strong>{texto(profissionais.empresa, texto(dados?.organizacao?.nome))} · {texto(profissionais.unidade)}</strong></div>
+              <div><small>Setor / equipe</small><strong>{texto(profissionais.setor)} · {texto(profissionais.equipe)}</strong></div>
               <div><small>Situação</small><strong>{item.ativo ? "ATIVO" : "INATIVO"}</strong></div>
               <div><small>Versão</small><strong>{texto(perfil.numero_da_versao, "1")}</strong></div>
               <div className="hx-management-actions">
@@ -742,6 +835,11 @@ export function GestaoOperacional({
                 profissao: participante.profissao,
                 empresa: participante.empresa,
                 cargo: participante.cargo,
+                funcao: participante.funcao,
+                matricula: participante.matricula,
+                unidade: participante.unidade,
+                setor: participante.setor,
+                equipe: participante.equipe,
                 registro_profissional: participante.registro_profissional,
                 regime_de_trabalho: participante.regime_de_trabalho
               },
@@ -816,6 +914,11 @@ export function GestaoOperacional({
                 <label>Profissão<input value={participante.profissao} onChange={(evento) => setParticipante({ ...participante, profissao: evento.target.value })} /></label>
                 <label>Empresa ou organização de vínculo<input value={participante.empresa} onChange={(evento) => setParticipante({ ...participante, empresa: evento.target.value })} /></label>
                 <label>Cargo ou função<input value={participante.cargo} onChange={(evento) => setParticipante({ ...participante, cargo: evento.target.value })} /></label>
+                <label>Função operacional<input value={participante.funcao} onChange={(evento) => setParticipante({ ...participante, funcao: evento.target.value })} /></label>
+                <label>Matrícula<input value={participante.matricula} onChange={(evento) => setParticipante({ ...participante, matricula: evento.target.value })} /></label>
+                <label>Unidade<input value={participante.unidade} onChange={(evento) => setParticipante({ ...participante, unidade: evento.target.value })} /></label>
+                <label>Setor<input value={participante.setor} onChange={(evento) => setParticipante({ ...participante, setor: evento.target.value })} /></label>
+                <label>Equipe<input value={participante.equipe} onChange={(evento) => setParticipante({ ...participante, equipe: evento.target.value })} /></label>
                 <label>Registro profissional<input value={participante.registro_profissional} onChange={(evento) => setParticipante({ ...participante, registro_profissional: evento.target.value })} /></label>
                 <label>Regime de trabalho<input value={participante.regime_de_trabalho} onChange={(evento) => setParticipante({ ...participante, regime_de_trabalho: evento.target.value })} /></label>
               </div>
@@ -972,12 +1075,24 @@ export function GestaoOperacional({
 
       {modulo === "sessoes" ? (
         <div className="hx-management-grid">
-          <form onSubmit={(evento: FormEvent) => {
+          <form onSubmit={async (evento: FormEvent) => {
             evento.preventDefault();
-            void executar("criar-sessao-com-vinculo", {
+            const chave = sessao.chave_de_idempotencia || crypto.randomUUID();
+            setSessao((estado) => ({
+              ...estado,
+              chave_de_idempotencia: chave
+            }));
+            const resultado = await executar("criar-sessao-com-vinculo", {
               ...sessao,
+              chave_de_idempotencia: chave,
               duracao_planejada_minutos: Number(sessao.duracao_planejada_minutos)
             });
+            if (resultado) {
+              setSessao((estado) => ({
+                ...estado,
+                chave_de_idempotencia: ""
+              }));
+            }
           }}>
             <small>CONTEXTO CIENTÍFICO PRESERVADO</small>
             <h2>Programar sessão</h2>
@@ -1002,7 +1117,10 @@ export function GestaoOperacional({
             }}>{dados.participantes.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.referencia_externa)}</option>)}</select></label>
             <label>Profissional responsável<select required value={sessao.identificador_do_profissional} onChange={(evento) => setSessao({ ...sessao, identificador_do_profissional: evento.target.value })}>{dados.profissionais.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.nome)}</option>)}</select></label>
             <label>Anamnese concluída<select required value={sessao.identificador_da_anamnese} onChange={(evento) => setSessao({ ...sessao, identificador_da_anamnese: evento.target.value })}><option value="">Selecione</option>{anamnesesConcluidas.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.identificador_da_versao_do_formulario)} · {dataLegivel(item.concluido_em)}</option>)}</select></label>
-            <label>Finalidade<input required value={sessao.finalidade} onChange={(evento) => setSessao({ ...sessao, finalidade: evento.target.value })} /></label>
+            <label>Finalidade<select required value={sessao.finalidade} onChange={(evento) => setSessao({ ...sessao, finalidade: evento.target.value })}>
+              <option value="HOMOLOGAÇÃO FÍSICA FINAL — DADOS REAIS AUTORIZADOS">Homologação física final — dados reais autorizados</option>
+              <option value="HOMOLOGAÇÃO FÍSICA AUTORIZADA — DR. MARCOS ALCÂNTARA">Homologação física autorizada — Dr. Marcos Alcântara</option>
+            </select></label>
             <label>Modalidade<select value={sessao.modalidade} onChange={(evento) => setSessao({ ...sessao, modalidade: evento.target.value })}><option>INDIVIDUAL</option><option>GRUPO</option><option>TREINAMENTO</option><option>AVALIAÇÃO</option></select></label>
             <label>CTR oficial<select required value={sessao.codigo_do_ctr} onChange={(evento) => {
               const codigo = evento.target.value;

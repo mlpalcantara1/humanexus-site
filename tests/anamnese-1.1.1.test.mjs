@@ -49,3 +49,11 @@ test("checkboxes e radios preservam alinhamento e acessibilidade", () => {
   assert.match(estilos, /min-height:48px/);
   assert.match(participante, /aria-describedby=/);
 });
+
+test("respostas são enfileiradas desde a alteração e não piscam na sincronização", () => {
+  assert.match(participante, /answersRef/);
+  assert.match(participante, /changeAnswer\(question, value\)/);
+  assert.match(participante, /void stageAnswer\(question, value\)/);
+  assert.match(participante, /\{ \.\.\.restored, \.\.\.answersRef\.current \}/);
+  assert.match(participante, /pendenteNaSecao/);
+});

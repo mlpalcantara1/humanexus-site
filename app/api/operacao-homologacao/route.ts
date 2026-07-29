@@ -22,8 +22,21 @@ async function tokenAtual() {
   return { armazenamento, token };
 }
 
-function consultar<T>(caminho: string, token: string, init: RequestInit = {}) {
-  return requisitarNucleoAutenticado<T>(caminho, token, init);
+function consultar<T>(
+  caminho: string,
+  token: string,
+  init: RequestInit = {},
+  organizacao?: string
+) {
+  const headers = new Headers(init.headers);
+  if (organizacao) {
+    headers.set("x-humanexus-organization-id", organizacao);
+  }
+  return requisitarNucleoAutenticado<T>(
+    caminho,
+    token,
+    { ...init, headers }
+  );
 }
 
 type ConsultaEmLote = {
@@ -35,7 +48,8 @@ type ConsultaEmLote = {
 
 async function consultarLote(
   token: string,
-  consultas: ConsultaEmLote[]
+  consultas: ConsultaEmLote[],
+  organizacao?: string
 ) {
   const resultados: Array<{
     chave: string;
@@ -59,7 +73,7 @@ async function consultarLote(
           opcional: Boolean(opcional)
         }))
       })
-    });
+    }, organizacao);
     resultados.push(...resposta.resultados);
   }
   const porChave = new Map(
@@ -137,7 +151,7 @@ async function atualizacaoLeve(
       chave: "cockpit_operacional",
       caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional`
     }
-  ]);
+  ], selecao.identificador_da_organizacao);
   return {
     atualizacao_parcial: true,
     conectores: dados.conectores,
@@ -171,7 +185,9 @@ async function estado(
     vinculos_ctr_thx_validados: Registro[];
   }>(
     `/api/v1/gestao/contexto?${parametrosDoContexto}`,
-    token
+    token,
+    {},
+    selecao.identificador_da_organizacao
   );
   const usuario = contextoBase.usuario;
   const organizacoes = contextoBase.organizacoes;
@@ -188,16 +204,7 @@ async function estado(
   );
   const candidatos = participanteSolicitado
     ? [participanteSolicitado]
-    : [
-        encontrar(participantes, "PARTICIPANTE FICTÍCIO"),
-        ...participantes
-      ].filter(
-        (item, indice, itens): item is Registro =>
-          Boolean(item)
-          && itens.findIndex(
-            (candidato) => candidato?.identificador === item?.identificador
-          ) === indice
-      );
+    : participantes;
   const participante = candidatos.find(
     (candidato) => Array.isArray(candidato.sessoes)
       && candidato.sessoes.length > 0
@@ -276,7 +283,11 @@ async function estado(
       padrao: []
     }))
   ];
-  const principais = await consultarLote(token, consultasPrincipais);
+  const principais = await consultarLote(
+    token,
+    consultasPrincipais,
+    organizacaoId
+  );
   const fases = principais.fases as Registro[];
   const ctrs = principais.ctrs as Registro[];
   const catalogoCtr = principais.catalogoCtr as Registro;
@@ -373,7 +384,7 @@ async function estado(
     }))
   ];
   const dependentes = consultasDependentes.length
-    ? await consultarLote(token, consultasDependentes)
+    ? await consultarLote(token, consultasDependentes, organizacaoId)
     : {};
   const protocolo = (dependentes.protocolo ?? null) as Registro | null;
   const rastreabilidade = (dependentes.rastreabilidade ?? null) as Registro | null;
@@ -569,7 +580,7 @@ async function registrarEvento(token: string, contexto: Contexto, dados: Registr
       origem: "PORTAL_HXP_SIMULACAO_TECNICA",
       dados: { marcacao: MARCACAO, ...((dados.dados as Registro) ?? {}) }
     })
-  });
+  }, String(contexto.organizacao.identificador));
 }
 
 async function gerarRelatorio(token: string, contexto: Contexto) {
@@ -604,7 +615,7 @@ async function gerarRelatorio(token: string, contexto: Contexto) {
       ],
       proximos_passos: ["Homologação visual pelo Administrador Proprietário."]
     })
-  });
+  }, String(contexto.organizacao.identificador));
 }
 
 export async function POST(request: Request) {
@@ -633,6 +644,7 @@ export async function POST(request: Request) {
       identificador_da_sessao: corpo.identificador_da_sessao
     };
     const contexto = await estado(token, selecao);
+    const organizacaoId = String(contexto.organizacao.identificador);
     if (corpo.acao === "configurar-cortex") {
       await consultar("/api/v1/pontes-fisicas/cortex/configuracao-local", token, {
         method: "POST",
@@ -710,7 +722,8 @@ export async function POST(request: Request) {
             chave_de_idempotencia: chaveDeIdempotencia,
             justificativa: corpo.justificativa
           })
-        }
+        },
+        organizacaoId
       );
     } else if (corpo.acao === "desconectar" || corpo.acao === "reconectar") {
       const conector = contexto.conectores[0];

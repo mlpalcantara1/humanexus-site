@@ -226,6 +226,7 @@ function isQuestionAnswered(question: Question, value: Answer | undefined) {
 export function AnamneseParticipante({ token }: { token: string }) {
   const [structure, setStructure] = useState<Structure | null>(null);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
+  const answersRef = useRef<Record<string, Answer>>({});
   const [section, setSection] = useState(0);
   const [consent, setConsent] = useState(false);
   const [started, setStarted] = useState(false);
@@ -265,7 +266,11 @@ export function AnamneseParticipante({ token }: { token: string }) {
         restored[item.question_id] = normalizeAnswer(item.answer);
         controls[item.question_id] = item.control_version;
       }
-      setAnswers(restored);
+      const merged = preserveCurrentSection
+        ? { ...restored, ...answersRef.current }
+        : restored;
+      answersRef.current = merged;
+      setAnswers(merged);
       setCustomNiche(data.selecao_de_ramo.nicho_customizado ?? "");
       setCustomFunction(data.selecao_de_ramo.funcao_customizada ?? "");
       const activeBranch = data.selecao_de_ramo.alternativas_oficiais.find(
@@ -390,6 +395,19 @@ export function AnamneseParticipante({ token }: { token: string }) {
     setSaveState(navigator.onLine ? "SINCRONIZACAO_PENDENTE" : "SEM_REDE");
   }, [token, withQueueLock]);
 
+  const changeAnswer = useCallback((question: Question, value: Answer) => {
+    answersRef.current = {
+      ...answersRef.current,
+      [question.identificador]: value
+    };
+    setAnswers(answersRef.current);
+    void stageAnswer(question, value);
+  }, [stageAnswer]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [section, reviewing]);
+
   async function selectBranch() {
     const branch = structure?.selecao_de_ramo.alternativas_oficiais.find(
       (item) => item.codigo_da_alternativa === selectedBranch
@@ -453,8 +471,25 @@ export function AnamneseParticipante({ token }: { token: string }) {
   }
 
   async function move(next: number) {
+    if (next > section) {
+      const pendenteNaSecao = questions.find(
+        (question) =>
+          question.obrigatoria
+          && !isQuestionAnswered(
+            question,
+            answersRef.current[question.identificador]
+          )
+      );
+      if (pendenteNaSecao) {
+        setBranchMessage(
+          `Responda a pergunta obrigatória ${pendenteNaSecao.codigo} antes de avançar.`
+        );
+        return;
+      }
+    }
     const synchronized = await syncPending();
     if (!synchronized && (await readQueue(token)).length) return;
+    setBranchMessage("");
     setSection(Math.max(0, Math.min(sections.length - 1, next)));
   }
 
@@ -578,8 +613,8 @@ export function AnamneseParticipante({ token }: { token: string }) {
                   key={question.identificador}
                   question={question}
                   value={answers[question.identificador] ?? ""}
-                  onChange={(value) => setAnswers((current) => ({ ...current, [question.identificador]: value }))}
-                  onBlur={(value) => { void stageAnswer(question, value).then(() => syncPending()); }}
+                  onChange={(value) => changeAnswer(question, value)}
+                  onBlur={() => { void syncPending(); }}
                 />
               ))}
             </div>}

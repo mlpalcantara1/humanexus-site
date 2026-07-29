@@ -10,6 +10,8 @@ const PUBLIC_BASE = process.env.NEXT_PUBLIC_HUMANEXUS_APP_URL;
 type Convite = {
   identificador: string;
   identificador_da_anamnese: string;
+  identificador_da_organizacao?: string;
+  tipo_de_vinculo?: "PARTICULAR" | "ORGANIZACIONAL" | "MISTO";
   participante: string;
   organizacao?: string;
   identificador_do_profissional?: string;
@@ -55,7 +57,7 @@ type Resposta = {
   pergunta?: { codigo: string; texto: string; blocos_json: string[] };
 };
 type Revisao = {
-  anamnese: { identificador: string; identificador_do_participante: string; estado: string; numero_da_versao: number; nicho: string; funcao?: string };
+  anamnese: { identificador: string; identificador_do_participante: string; identificador_da_organizacao?: string; estado: string; numero_da_versao: number; nicho: string; funcao?: string };
   respostas: (Resposta & { aplicavel_ao_ramo_atual: boolean })[];
   consentimentos: Record<string, unknown>[];
   revisoes: Record<string, unknown>[];
@@ -84,6 +86,8 @@ export function PainelProfissional() {
   const [status, setStatus] = useState("Aguardando uma ação.");
   const [convites, setConvites] = useState<Convite[]>([]);
   const [filtro, setFiltro] = useState("TODOS");
+  const [grupoConvite, setGrupoConvite] =
+    useState<"PARTICULAR" | "ORGANIZACIONAL">("ORGANIZACIONAL");
   const [busca, setBusca] = useState("");
   const [versaoFiltro, setVersaoFiltro] = useState("TODAS");
   const [expiracaoProxima, setExpiracaoProxima] = useState(false);
@@ -94,9 +98,14 @@ export function PainelProfissional() {
   const [justificativaReabertura, setJustificativaReabertura] = useState("");
   const [citacoes, setCitacoes] = useState<Set<string>>(new Set());
 
-  async function carregar() {
+  async function carregar(organizacao = form.organizacao) {
     try {
-      setConvites(await humanexusApi<Convite[]>("/api/humanexus/gestao-convites"));
+      const consulta = organizacao
+        ? `?organizacao=${encodeURIComponent(organizacao)}`
+        : "";
+      setConvites(await humanexusApi<Convite[]>(
+        `/api/humanexus/gestao-convites${consulta}`
+      ));
     } catch {
       setStatus("O perfil atual não possui acesso ao painel de convites.");
     }
@@ -119,9 +128,12 @@ export function PainelProfissional() {
         ? atual.participante
         : ""
     }));
+    return dados;
   }
   useEffect(() => {
-    void Promise.all([carregar(), carregarParticipantes()]).catch((erro) => {
+    void carregarParticipantes().then(
+      (dados) => carregar(dados.organizacao?.identificador ?? "")
+    ).catch((erro) => {
       setStatus(
         erro instanceof Error
           ? erro.message
@@ -188,7 +200,7 @@ export function PainelProfissional() {
       }));
       setChaveDeOperacao("");
       setStatus("Participante persistido e convite criado. Link, código e QR Code são exibidos somente nesta entrega.");
-      await carregar();
+      await carregar(form.organizacao);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Não foi possível criar o convite.");
     } finally {
@@ -206,7 +218,7 @@ export function PainelProfissional() {
       method: "POST",
       body: JSON.stringify({ acao: "COMPARTILHAMENTO_INICIADO" })
     });
-    await carregar();
+    await carregar(form.organizacao);
   }
 
   function whatsapp() {
@@ -231,7 +243,7 @@ export function PainelProfissional() {
       body: JSON.stringify({ acao: "REVOGAR", justificativa: "Revogação solicitada pelo profissional." })
     });
     setStatus("Convite revogado e auditado.");
-    await carregar();
+    await carregar(form.organizacao);
   }
 
   async function exibirNovaEntrega(gerado: Entrega) {
@@ -254,7 +266,7 @@ export function PainelProfissional() {
     });
     await exibirNovaEntrega(gerado);
     setStatus("Novo convite criado; o anterior ativo foi revogado de forma auditada.");
-    await carregar();
+    await carregar(form.organizacao);
   }
 
   async function reabrir() {
@@ -276,7 +288,7 @@ export function PainelProfissional() {
     setReabertura(null);
     setJustificativaReabertura("");
     setStatus("Nova versão de preenchimento criada; a versão concluída anterior foi preservada.");
-    await carregar();
+    await carregar(form.organizacao);
   }
 
   async function abrirAuditoria(conviteId: string) {
@@ -318,7 +330,10 @@ export function PainelProfissional() {
         participante_id: revisao.anamnese.identificador_do_participante,
         anamnese_id: revisao.anamnese.identificador,
         evidencia_id: evidencia.identificador,
-        pergunta_id: evidencia.identificador_da_pergunta
+        pergunta_id: evidencia.identificador_da_pergunta,
+        identificador_da_organizacao:
+          revisao.anamnese.identificador_da_organizacao
+          ?? form.organizacao
       })
     });
     setCitacoes((atuais) => new Set(atuais).add(evidencia.identificador));
@@ -345,12 +360,17 @@ export function PainelProfissional() {
     () => convites.filter((item) => {
       const texto = `${item.participante} ${item.organizacao ?? ""}`.toLowerCase();
       const pertoDeExpirar = new Date(item.expira_em).getTime() - Date.now() <= 24 * 60 * 60 * 1000;
-      return (filtro === "TODOS" || item.estado === filtro)
+      const grupoCorreto = grupoConvite === "PARTICULAR"
+        ? item.tipo_de_vinculo === "PARTICULAR"
+          || item.tipo_de_vinculo === "MISTO"
+        : item.tipo_de_vinculo !== "PARTICULAR";
+      return grupoCorreto
+        && (filtro === "TODOS" || item.estado === filtro)
         && (versaoFiltro === "TODAS" || item.versao_da_anamnese === versaoFiltro)
         && (!busca.trim() || texto.includes(busca.trim().toLowerCase()))
         && (!expiracaoProxima || pertoDeExpirar);
     }),
-    [busca, convites, expiracaoProxima, filtro, versaoFiltro]
+    [busca, convites, expiracaoProxima, filtro, grupoConvite, versaoFiltro]
   );
   const indicadores = {
     ativos: convites.filter((item) => !["CONCLUIDO", "EXPIRADO", "REVOGADO"].includes(item.estado)).length,
@@ -378,7 +398,7 @@ export function PainelProfissional() {
       <div className="hx-invites__workspace">
         <form onSubmit={criar} className="hx-invite-form">
           <header><small>GERAR CONVITE DE ANAMNESE</small><h3>Participante persistido</h3></header>
-          <label><span>Organização</span><select required value={form.organizacao} onChange={(event) => { const organizacao = event.target.value; setForm({ ...form, organizacao, participante: "" }); void carregarParticipantes(organizacao).catch((erro) => setStatus(erro instanceof Error ? erro.message : "Organização indisponível.")); }}><option value="">Selecione</option>{(contexto?.organizacoes ?? []).filter((item) => item.ativa !== false).map((item) => <option key={item.identificador} value={item.identificador}>{item.nome}</option>)}</select></label>
+          <label><span>Organização</span><select required value={form.organizacao} onChange={(event) => { const organizacao = event.target.value; setForm({ ...form, organizacao, participante: "" }); void Promise.all([carregarParticipantes(organizacao), carregar(organizacao)]).catch((erro) => setStatus(erro instanceof Error ? erro.message : "Organização indisponível.")); }}><option value="">Selecione</option>{(contexto?.organizacoes ?? []).filter((item) => item.ativa !== false).map((item) => <option key={item.identificador} value={item.identificador}>{item.nome}</option>)}</select></label>
           <label><span>Origem do cadastro</span><select value={form.modo} onChange={(event) => setForm({ ...form, modo: event.target.value, participante: "" })}><option value="NOVO">Novo participante</option><option value="EXISTENTE">Participante existente</option></select></label>
           {form.modo === "EXISTENTE" ? <label><span>Participante</span><select required value={form.participante} onChange={(event) => setForm({ ...form, participante: event.target.value })}><option value="">Selecione</option>{(contexto?.participantes ?? []).filter((item) => item.ativo !== false).map((item) => { const cadastrais = item.perfil_operacional?.dados_cadastrais; const nome = cadastrais?.nome_social || cadastrais?.nome_completo || item.referencia_externa; return <option key={item.identificador} value={item.identificador}>{nome}</option>; })}</select></label> : <>
             <label><span>Nome</span><input required value={form.nome} onChange={(event) => setForm({ ...form, nome: event.target.value })} /></label>
@@ -407,7 +427,7 @@ export function PainelProfissional() {
         </aside>
       </div>
       <section className="hx-invites__panel">
-        <header><div><small>PAINEL DE CONVITES</small><h3>Acompanhamento operacional</h3></div><div className="hx-invites__filters"><input aria-label="Filtrar por participante ou organização" placeholder="Participante ou organização" value={busca} onChange={(event) => setBusca(event.target.value)} /><select value={filtro} onChange={(event) => setFiltro(event.target.value)}><option value="TODOS">Todos os estados</option>{["CRIADO", "COMPARTILHAMENTO_INICIADO", "ENVIADO_CONFIRMADO", "ACESSADO", "EM_PREENCHIMENTO", "CONCLUIDO", "EXPIRADO", "REVOGADO", "REABERTO"].map((item) => <option key={item}>{item}</option>)}</select><select value={versaoFiltro} onChange={(event) => setVersaoFiltro(event.target.value)}><option value="TODAS">Todas as versões</option>{[...new Set(convites.map((item) => item.versao_da_anamnese))].map((item) => <option key={item}>{item}</option>)}</select><label><input type="checkbox" checked={expiracaoProxima} onChange={(event) => setExpiracaoProxima(event.target.checked)} /> Expira em até 24h</label></div></header>
+        <header><div><small>PAINEL DE CONVITES</small><h3>Acompanhamento operacional</h3></div><div className="hx-invites__filters"><button type="button" onClick={() => setGrupoConvite("ORGANIZACIONAL")}>Organizacionais</button><button type="button" onClick={() => setGrupoConvite("PARTICULAR")}>Particulares</button><input aria-label="Filtrar por participante ou organização" placeholder="Participante ou organização" value={busca} onChange={(event) => setBusca(event.target.value)} /><select value={filtro} onChange={(event) => setFiltro(event.target.value)}><option value="TODOS">Todos os estados</option>{["CRIADO", "COMPARTILHAMENTO_INICIADO", "ENVIADO_CONFIRMADO", "ACESSADO", "EM_PREENCHIMENTO", "CONCLUIDO", "EXPIRADO", "REVOGADO", "REABERTO"].map((item) => <option key={item}>{item}</option>)}</select><select value={versaoFiltro} onChange={(event) => setVersaoFiltro(event.target.value)}><option value="TODAS">Todas as versões</option>{[...new Set(convites.map((item) => item.versao_da_anamnese))].map((item) => <option key={item}>{item}</option>)}</select><label><input type="checkbox" checked={expiracaoProxima} onChange={(event) => setExpiracaoProxima(event.target.checked)} /> Expira em até 24h</label></div></header>
         <div className="hx-invites__table"><table><thead><tr><th>Participante</th><th>Organização</th><th>Versão</th><th>Criação / validade</th><th>Situação</th><th>Progresso</th><th>Ações</th></tr></thead><tbody>{visiveis.map((item) => <tr key={item.identificador}><td>{item.participante}</td><td>{item.organizacao || "Particular"}</td><td>{item.versao_da_anamnese}</td><td>{dataLegivel(item.criado_em)}<small>{dataLegivel(item.expira_em)}</small></td><td><span data-state={item.estado}>{item.estado.replaceAll("_", " ")}</span></td><td>{Number(item.progresso || 0).toFixed(0)}%</td><td><button onClick={() => void abrirRevisao(item.identificador_da_anamnese)}>Revisar</button><button onClick={() => void abrirAuditoria(item.identificador)}>Auditoria</button>{!["CONCLUIDO", "EXPIRADO", "REVOGADO"].includes(item.estado) ? <button onClick={() => void revogar(item.identificador)}>Revogar</button> : null}{["EXPIRADO", "REVOGADO"].includes(item.estado) ? <button onClick={() => void gerarNovoConvite(item.identificador_da_anamnese)}>Novo convite</button> : null}{item.estado === "CONCLUIDO" ? <button onClick={() => { setReabertura({ anamneseId: item.identificador_da_anamnese, participante: item.participante }); setJustificativaReabertura(""); }}>Reabrir</button> : null}</td></tr>)}</tbody></table></div>
       </section>
       {reabertura ? <section className="hx-review">

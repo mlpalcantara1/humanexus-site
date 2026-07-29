@@ -33,13 +33,19 @@ export async function POST(request: Request) {
     const evidencia = String(corpo.evidencia_id ?? "");
     const anamnese = String(corpo.anamnese_id ?? "");
     const pergunta = String(corpo.pergunta_id ?? "");
+    const organizacao = String(corpo.identificador_da_organizacao ?? "");
     if (!participante || !evidencia || !anamnese || !pergunta) {
       throw new Error("Referência de origem incompleta.");
     }
 
     const existentes = await requisitarNucleoAutenticado<Registro[]>(
       `/api/v1/participantes/${encodeURIComponent(participante)}/formulacoes`,
-      token
+      token,
+      {
+        headers: organizacao
+          ? { "x-humanexus-organization-id": organizacao }
+          : undefined
+      }
     );
     const jaCitada = existentes.find((item) => {
       const referencias = objeto(item.referencias_de_origem_json);
@@ -54,6 +60,9 @@ export async function POST(request: Request) {
         token,
         {
           method: "POST",
+          headers: organizacao
+            ? { "x-humanexus-organization-id": organizacao }
+            : undefined,
           body: JSON.stringify({
             conteudo: {
               dados: {

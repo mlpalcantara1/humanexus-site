@@ -84,61 +84,7 @@ export async function POST(request: Request) {
     } else if (acao === "criar-contexto-participante") {
       caminho = `/api/v1/participantes/${encodeURIComponent(String(corpo.identificador))}/contextos`;
     } else if (acao === "criar-sessao-com-vinculo") {
-      const payload = dados as Registro;
-      const contextoOperacional = await contexto(
-        token,
-        undefined,
-        "sessoes"
-      );
-      const sessaoPendente = (
-        Array.isArray(contextoOperacional.sessoes)
-          ? contextoOperacional.sessoes
-          : []
-      )
-        .find((item) => {
-          const sessao = item as Registro;
-          const detalhes = (sessao.detalhes_operacionais ?? {}) as Registro;
-          return (
-            String(sessao.identificador_do_participante ?? "") ===
-              String(payload.identificador_do_participante ?? "") &&
-            String(detalhes.identificador_da_anamnese ?? "") ===
-              String(payload.identificador_da_anamnese ?? "") &&
-            String(detalhes.finalidade ?? "") === String(payload.finalidade ?? "") &&
-            String(detalhes.estado_operacional ?? "") === "CRIADA" &&
-            !detalhes.identificador_do_ctr &&
-            !detalhes.identificador_do_thx
-          );
-        }) as Registro | undefined;
-      const sessao = sessaoPendente ?? await requisitarNucleoAutenticado<Registro>(
-          "/api/v1/sessoes-operacionais",
-          token,
-          {
-            method: "POST",
-            body: JSON.stringify({
-              identificador_do_participante: payload.identificador_do_participante,
-              finalidade: payload.finalidade,
-              modalidade: payload.modalidade,
-              data_programada: payload.data_programada,
-              duracao_planejada_minutos: payload.duracao_planejada_minutos,
-              identificador_do_profissional: payload.identificador_do_profissional,
-              identificador_da_anamnese: payload.identificador_da_anamnese
-            })
-          }
-        );
-      const vinculo = await requisitarNucleoAutenticado(
-        `/api/v1/sessoes/${encodeURIComponent(String(sessao.identificador))}/vinculo-operacional-ctr-thx`,
-        token,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            identificador_do_profissional: payload.identificador_do_profissional,
-            codigo_do_ctr: payload.codigo_do_ctr,
-            codigo_do_thx: payload.codigo_do_thx,
-            justificativa: payload.justificativa
-          })
-        }
-      );
-      return NextResponse.json({ sessao, vinculo }, { status: 201 });
+      caminho = "/api/v1/sessoes-operacionais";
     } else if (acao === "criar-sessao") {
       caminho = "/api/v1/sessoes-operacionais";
     } else if (acao === "operar-sessao") {
@@ -166,10 +112,21 @@ export async function POST(request: Request) {
     } else {
       throw new Error("Ação operacional inválida.");
     }
+    const organizacao = String(
+      corpo.identificador_da_organizacao
+      ?? (dados as Registro).identificador_da_organizacao
+      ?? ""
+    );
     const resultado = await requisitarNucleoAutenticado(
       caminho,
       token,
-      { method: metodo, body: JSON.stringify(dados) }
+      {
+        method: metodo,
+        headers: organizacao
+          ? { "x-humanexus-organization-id": organizacao }
+          : undefined,
+        body: JSON.stringify(dados)
+      }
     );
     return NextResponse.json(resultado, { status: metodo === "POST" ? 201 : 200 });
   } catch (erro) {

@@ -86,6 +86,37 @@ test("convite usa a rota canônica", async () => {
   assert.match(config, /destination: "\/anamnese\/convite\/:token"/);
 });
 
+test("sessão e convites preservam o escopo organizacional selecionado", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  const managementRoute = await source("app/api/gestao-operacional/route.ts");
+  const invitationRoute = await source(
+    "app/api/humanexus/gestao-convites/route.ts"
+  );
+  const panel = await source("components/painel-profissional.tsx");
+  assert.match(management, /identificador_da_organizacao:/);
+  assert.match(management, /chave_de_idempotencia/);
+  assert.match(managementRoute, /x-humanexus-organization-id/);
+  assert.match(invitationRoute, /x-humanexus-organization-id/);
+  assert.match(panel, /Particulares/);
+  assert.match(panel, /Organizacionais/);
+});
+
+test("participantes possuem grupos e busca operacional completa", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  for (const field of [
+    "buscaParticipante",
+    "matricula",
+    "unidade",
+    "setor",
+    "equipe",
+    "funcao"
+  ]) {
+    assert.match(management, new RegExp(field));
+  }
+  assert.match(management, /Particulares/);
+  assert.match(management, /Organizacionais/);
+});
+
 test("status jurídico removido do instrumento integrado e de suas cópias", async () => {
   const files = [
     "components/instrumento-integrado.tsx",
