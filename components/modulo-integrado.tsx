@@ -247,9 +247,11 @@ export function ModuloIntegrado({ modulo }: { modulo: ModuloDaPlataforma }) {
   return <section className={`hx-module hx-module--${definicao.modo ?? "standard"}`}>
     <div className="hx-module__grid" aria-hidden="true" />
     <div className="hx-module__inner">
-      <CommandHeader definicao={definicao} modulo={modulo} />
+      {modulo !== "cockpit-vivo"
+        ? <CommandHeader definicao={definicao} modulo={modulo} />
+        : null}
       {definicao.observacao ? <p className="hx-module__notice">{definicao.observacao}</p> : null}
-      {moduloOperacional ? <p className="hx-module__notice"><strong>CONTEXTO OPERACIONAL PROTEGIDO.</strong> Organização, participante e sessão são selecionados entre registros autorizados do núcleo e permanecem sincronizados entre as visões. Dados técnicos simulados continuam separados de evidência humana.</p> : null}
+      {moduloOperacional && modulo !== "cockpit-vivo" ? <p className="hx-module__notice"><strong>CONTEXTO OPERACIONAL PROTEGIDO.</strong> Organização, participante e sessão são selecionados entre registros autorizados do núcleo e permanecem sincronizados entre as visões. Dados técnicos simulados continuam separados de evidência humana.</p> : null}
       {erro ? <p className="hx-module__error" role="status">{erro}</p> : null}
       {exigeConsultaGlobal && !resposta && !erro ? <p className="hx-module__loading">Consultando o núcleo oficial…</p> : null}
       {moduloOperacional ? <OperacaoHomologacao modulo={modulo} /> : null}

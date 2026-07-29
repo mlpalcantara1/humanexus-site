@@ -500,6 +500,15 @@ export function CockpitOperacionalVivo({
         ? execucao.resposta_observada_json
         : null
     );
+  const sensoresAguardando = [
+    ["Polar H10", polar],
+    ["EPOC X", eeg]
+  ].filter(([, fonte]) => !["CONECTADO", "CAPTURANDO"].includes(
+    String((fonte as Fonte).estado ?? "").toUpperCase().replaceAll("_", " ")
+  )).map(([nome]) => nome);
+  const orientacaoDeConexao = sensoresAguardando.length
+    ? `Conecte ${sensoresAguardando.join(" e ")} para iniciar a leitura real. O Centro de Comando permanece pronto sem fabricar dados.`
+    : "Fontes autorizadas conectadas. A leitura permanece condicionada à qualidade real dos sinais recebidos.";
 
   const enviarRegistro = async () => {
     if (!registro.trim()) return;
@@ -510,6 +519,7 @@ export function CockpitOperacionalVivo({
   return (
     <section className="hx-live-cockpit" data-cockpit-mode={cockpit.modo}>
       <header className="hx-live-cockpit__masthead">
+        <div className="hx-live-masthead-rail" aria-hidden="true"><i /><i /><i /></div>
         <div>
           <span className="hx-live-eyebrow">
             {modoHistorico
@@ -553,6 +563,18 @@ export function CockpitOperacionalVivo({
         <div><small>{sessaoBaseline ? "FLUXO" : "CTR / PROTOCOLO"}</small><strong>{sessaoBaseline ? "INDEPENDENTE" : `${texto(ctr.codigo)} · ${texto(thx.codigo)}`}</strong></div>
       </section>
 
+      <section className="hx-live-hud" aria-label="HUD operacional fixo">
+        <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{iirhCalculado ? `${numero(iirh.valor, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong><span>{iirhCalculado ? "Resultado canônico" : texto(iirh.motivo, "Evidência insuficiente")}</span></div>
+        <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? texto(zona.nome ?? zona.codigo) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? "Classificação canônica" : texto(zona.motivo, "IIRH oficial indisponível")}</span></div>
+        <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
+        <div><small>FASE</small><strong>{fase}</strong><span>{texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
+        <div><small>TEMPO</small><strong>{duracao(sessao.tempo_total_inicio, sessao.tempo_total_fim, agora)}</strong><span>Sessão</span></div>
+        <div><small>FREQUÊNCIA CARDÍACA</small><strong>{numero(objeto(polar.valores).hr_bpm)} bpm</strong><span>{modoHistorico ? "Dado histórico" : texto(polar.estado)}</span></div>
+        <div><small>RMSSD</small><strong>{numero(objeto(polar.valores).rmssd_tecnico_ms, 1)} ms</strong><span>{modoHistorico ? "Técnico histórico" : texto(polar.estado)}</span></div>
+        <div><small>ESTADO DO EEG</small><strong>{texto(eeg.estado)}</strong><span>Qualidade {percentual(objeto(eeg.valores).qualidade_global)}</span></div>
+        <div><small>ESTADO DO POLAR</small><strong>{texto(polar.estado)}</strong><span>Última sequência {numero(objeto(polar.metricas).ultima_sequencia)}</span></div>
+      </section>
+
       <section className="hx-live-operation-focus" aria-label="Comando e progressão da sessão">
         <div className="hx-live-operation-flow">
           <small>FLUXO OPERACIONAL</small>
@@ -572,10 +594,14 @@ export function CockpitOperacionalVivo({
           </div>
         </div>
         <div className="hx-live-operation-action">
-          <small>PRÓXIMA AÇÃO</small>
+          <small>COMANDO PRINCIPAL</small>
           {acaoPrincipal ? (
             <button
-              className="hx-live-command__primary"
+              className={`hx-live-command__primary ${
+                acaoPrincipal.startsWith("ENCERRAR_") || acaoPrincipal === "CONCLUIR_SESSAO"
+                  ? "is-critical"
+                  : ""
+              }`}
               type="button"
               onClick={executarPrincipal}
               disabled={ocupado}
@@ -588,18 +614,6 @@ export function CockpitOperacionalVivo({
             </strong>
           )}
         </div>
-      </section>
-
-      <section className="hx-live-hud" aria-label="HUD operacional fixo">
-        <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{iirhCalculado ? `${numero(iirh.valor, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong><span>{iirhCalculado ? "Resultado canônico" : texto(iirh.motivo, "Evidência insuficiente")}</span></div>
-        <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? texto(zona.nome ?? zona.codigo) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? "Classificação canônica" : texto(zona.motivo, "IIRH oficial indisponível")}</span></div>
-        <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
-        <div><small>FASE</small><strong>{fase}</strong><span>{texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
-        <div><small>TEMPO</small><strong>{duracao(sessao.tempo_total_inicio, sessao.tempo_total_fim, agora)}</strong><span>Sessão</span></div>
-        <div><small>FREQUÊNCIA CARDÍACA</small><strong>{numero(objeto(polar.valores).hr_bpm)} bpm</strong><span>{modoHistorico ? "Dado histórico" : texto(polar.estado)}</span></div>
-        <div><small>RMSSD</small><strong>{numero(objeto(polar.valores).rmssd_tecnico_ms, 1)} ms</strong><span>{modoHistorico ? "Técnico histórico" : texto(polar.estado)}</span></div>
-        <div><small>ESTADO DO EEG</small><strong>{texto(eeg.estado)}</strong><span>Qualidade {percentual(objeto(eeg.valores).qualidade_global)}</span></div>
-        <div><small>ESTADO DO POLAR</small><strong>{texto(polar.estado)}</strong><span>Última sequência {numero(objeto(polar.metricas).ultima_sequencia)}</span></div>
       </section>
 
       <div className="hx-live-command-center">
@@ -641,6 +655,21 @@ export function CockpitOperacionalVivo({
             <div><small>{modoHistorico ? "DADOS PRESERVADOS" : modoAguardando ? "AGUARDANDO FONTES" : "ATIVIDADE AO VIVO"}</small><h2>Leitura temporal da sessão</h2></div>
             <span>{modoHistorico ? "Dados físicos históricos · sem transmissão atual" : modoAguardando ? "Nenhum dado é simulado enquanto os sensores não conectam" : "Atualização contínua sem recarregar a página"}</span>
           </header>
+          <div className="hx-live-temporal-rail" aria-label={sessaoBaseline ? "Linha temporal do Baseline" : "Linha temporal PRÉ TREINO PÓS"}>
+            {passosDoFluxo.map((passo) => (
+              <span
+                className={[
+                  passo.atual ? "is-current" : "",
+                  passo.concluido ? "is-complete" : ""
+                ].filter(Boolean).join(" ")}
+                key={passo.codigo}
+              >
+                <i aria-hidden="true" />
+                <b>{passo.rotulo}</b>
+                <em>{passo.estado}</em>
+              </span>
+            ))}
+          </div>
           {graficos.length
             ? (
               <CockpitSignalStack
@@ -650,79 +679,87 @@ export function CockpitOperacionalVivo({
                 showTechnicalLegend={false}
               />
             )
-            : <div className="hx-live-empty">Nenhuma série física autorizada disponível.</div>}
+            : (
+              <div className="hx-live-temporal-wait" role="status">
+                <div className="hx-live-temporal-pulse" aria-hidden="true"><i /><i /><i /></div>
+                <div>
+                  <strong>AGUARDANDO EVIDÊNCIA REAL</strong>
+                  <p>{orientacaoDeConexao}</p>
+                </div>
+              </div>
+            )}
+          {timelineItems.length ? (
+            <div className="hx-live-replay-inline">
+              <ReplayTimelineChart
+                items={timelineItems}
+                phases={faixas}
+                markers={marcadores}
+                cursorPercent={100}
+                interval={[0, 100]}
+                zoom={1}
+                visibleTracks={trilhasVisiveis}
+              />
+            </div>
+          ) : null}
+          <footer className="hx-live-temporal-footer">
+            <span>{sessaoBaseline
+              ? "Baseline como modalidade independente"
+              : "Ciclo independente de Baseline obrigatório"}</span>
+            <span>{eventos.length} evento(s) preservado(s)</span>
+            <span>Último registro {dataLegivel(replay.ultimo_evento)}</span>
+          </footer>
         </section>
-
-        <aside className="hx-live-command hx-live-command--contextual">
-          <small>COMANDOS COMPLEMENTARES</small>
-          <div>
-            {acoesSecundarias.map((comando) => (
-              <button key={comando} type="button" onClick={() => executarSecundaria(comando)} disabled={ocupado}>
-                {rotuloDaSecundaria(comando)}
-              </button>
-            ))}
-          </div>
-          <span>
-            A ação principal permanece em foco acima. Todos os comandos são
-            fornecidos exclusivamente pelo estado operacional do backend.
-          </span>
-          {!sessaoBaseline ? <div className="hx-live-protocol-brief">
-            <small>CRITÉRIO REGULATÓRIO HUMANO</small>
-            <strong>{texto(ctr.codigo)} · {texto(ctr.nome)}</strong>
-            <small>INTERVENÇÃO SELECIONADA · TREINAMENTO HUMANEXUS</small>
-            <strong>{texto(thx.codigo)} · {texto(thx.nome)}</strong>
-            <span>{texto(execucao.estado)}</span>
-            <small>RESPOSTA OBSERVADA</small>
-            <strong>{texto(
-              resumoDaResposta,
-              "AGUARDANDO REGISTRO PROFISSIONAL"
-            )}</strong>
-          </div> : null}
-          <div className="hx-live-events-brief">
-            <small>EVENTOS RECENTES</small>
-            {[...eventos].reverse().slice(0, 4).map((item) => (
-              <span key={texto(item.identificador)}>
-                <b>{texto(objeto(item.dados_json).tipo ?? item.tipo)}</b>
-                {dataLegivel(item.ocorrido_em)}
-              </span>
-            ))}
-          </div>
-        </aside>
       </div>
 
-      {leituraCientificaVisivel ? (
-        <section className="hx-live-science-results" aria-label="Resultados científicos canônicos da sessão">
-          {iirhCalculado ? <article><small>Índice de Inteligência Regulatória Humana</small><strong>{numero(iirh.valor, 1)} {texto(iirh.unidade, "")}</strong><span>Versão {texto(iirh.versao_do_algoritmo)}</span></article> : null}
-          {zonaCalculada ? <article><small>Zona Operacional</small><strong>{texto(zona.nome ?? zona.codigo)}</strong><span>Vinculada ao índice canônico</span></article> : null}
-          {resultanteCalculada ? <article><small>Resultante Regulatória</small><strong>{numero(resultante.valor, 2)} {texto(resultante.unidade, "")}</strong><span>Registro canônico da sessão</span></article> : null}
-          {trajetoriaCalculada ? <article><small>Trajetória Regulatória</small><strong>{texto(trajetoria.valor)}</strong><span>Estados sucessivos comparáveis</span></article> : null}
-        </section>
-      ) : null}
-
-      <section className="hx-live-sources">
-        <FontePolar fonte={polar} />
-        <FonteEpoc fonte={eeg} />
-        <article className="hx-live-source-card">
-          <header><div><small>MÍDIA</small><strong>{texto(replay.midia, "SEM GRAVAÇÃO")}</strong></div><FonteEstado estado="SINCRONIZADA" /></header>
-          <div className="hx-live-source-values">
-            <span><small>Áudio/vídeo</small><b>{texto(replay.midia, "SEM GRAVAÇÃO")}</b></span>
-            <span><small>Replay</small><b>{texto(replay.estado)}</b></span>
-            <span><small>Armazenamento</small><b>PRIVADO</b></span>
-            <span><small>Ausência de mídia</small><b>NÃO É FALHA</b></span>
-          </div>
-          <footer><span>Último evento {dataLegivel(replay.ultimo_evento)}</span><span>Fontes {Array.isArray(replay.fontes_sincronizadas) ? replay.fontes_sincronizadas.length : 0}</span></footer>
+      <section className="hx-live-regulatory-readout" aria-label="Resultante e trajetória regulatórias">
+        <article>
+          <small>RESULTANTE REGULATÓRIA</small>
+          <strong>{resultanteCalculada
+            ? `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`
+            : "NÃO CALCULÁVEL"}</strong>
+          <span>{resultanteCalculada
+            ? "Configuração integrada oficialmente registrada"
+            : texto(resultante.motivo, "Evidência humana insuficiente")}</span>
         </article>
-        <article className="hx-live-source-card">
-          <header><div><small>SIMULADOR OU TAREFA</small><strong>NÃO APLICÁVEL</strong></div><FonteEstado estado="NÃO SELECIONADO" /></header>
-          <div className="hx-live-source-values">
-            <span><small>Selecionado</small><b>NÃO</b></span>
-            <span><small>Conectado</small><b>NÃO</b></span>
-            <span><small>Telemetria</small><b>NÃO APLICÁVEL</b></span>
-            <span><small>Eventos</small><b>{eventos.length}</b></span>
-          </div>
-          <footer><span>Nenhuma fonte artificial foi criada.</span></footer>
+        <article>
+          <small>TRAJETÓRIA REGULATÓRIA</small>
+          <strong>{trajetoriaCalculada ? texto(trajetoria.valor) : "NÃO INFERÍVEL"}</strong>
+          <span>{trajetoriaCalculada
+            ? "Estados sucessivos comparáveis"
+            : "Um ponto isolado não produz trajetória"}</span>
         </article>
       </section>
+
+      <details className="hx-live-technical-drawer">
+        <summary>
+          <span>FONTES TÉCNICAS E INTEGRIDADE</span>
+          <strong>{texto(replay.estado, "REPLAY SINCRONIZANDO")} · {orientacaoDeConexao}</strong>
+        </summary>
+        <section className="hx-live-sources">
+          <FontePolar fonte={polar} />
+          <FonteEpoc fonte={eeg} />
+          <article className="hx-live-source-card">
+            <header><div><small>MÍDIA</small><strong>{texto(replay.midia, "SEM GRAVAÇÃO")}</strong></div><FonteEstado estado="SINCRONIZADA" /></header>
+            <div className="hx-live-source-values">
+              <span><small>Áudio/vídeo</small><b>{texto(replay.midia, "SEM GRAVAÇÃO")}</b></span>
+              <span><small>Replay</small><b>{texto(replay.estado)}</b></span>
+              <span><small>Armazenamento</small><b>PRIVADO</b></span>
+              <span><small>Ausência de mídia</small><b>NÃO É FALHA</b></span>
+            </div>
+            <footer><span>Último evento {dataLegivel(replay.ultimo_evento)}</span><span>Fontes {Array.isArray(replay.fontes_sincronizadas) ? replay.fontes_sincronizadas.length : 0}</span></footer>
+          </article>
+          <article className="hx-live-source-card">
+            <header><div><small>SIMULADOR OU TAREFA</small><strong>NÃO APLICÁVEL</strong></div><FonteEstado estado="NÃO SELECIONADO" /></header>
+            <div className="hx-live-source-values">
+              <span><small>Selecionado</small><b>NÃO</b></span>
+              <span><small>Conectado</small><b>NÃO</b></span>
+              <span><small>Telemetria</small><b>NÃO APLICÁVEL</b></span>
+              <span><small>Eventos</small><b>{eventos.length}</b></span>
+            </div>
+            <footer><span>Nenhuma fonte artificial foi criada.</span></footer>
+          </article>
+        </section>
+      </details>
 
       {indicadores.length ? (
         <section className="hx-live-indicators">
@@ -753,7 +790,34 @@ export function CockpitOperacionalVivo({
         </section>
       ) : null}
 
-      <section className="hx-live-lower">
+      <section className="hx-live-conduction" aria-label="Condução profissional da sessão">
+        <div className="hx-live-intervention">
+          <header><small>{sessaoBaseline ? "CONDUÇÃO DO BASELINE" : "INTERVENÇÃO SELECIONADA · EM APLICAÇÃO"}</small><strong>{sessaoBaseline ? "Referência regulatória independente" : texto(thx.nome, "Treinamento selecionado")}</strong></header>
+          <div>
+            <span><small>CRITÉRIO REGULATÓRIO</small><b>{sessaoBaseline ? "Modalidade independente" : texto(ctr.nome, "Critério preservado no contexto")}</b></span>
+            <span><small>ESTADO DA APLICAÇÃO</small><b>{texto(execucao.estado, texto(contextoSessao.estado))}</b></span>
+            <span><small>RESPOSTA OBSERVADA</small><b>{texto(resumoDaResposta, "AGUARDANDO REGISTRO PROFISSIONAL")}</b></span>
+          </div>
+        </div>
+
+        <aside className="hx-live-command hx-live-command--secondary">
+          <small>AÇÕES SECUNDÁRIAS PERMITIDAS</small>
+          <div>
+            {acoesSecundarias.map((comando) => (
+              <button
+                className={comando.startsWith("ENCERRAR_") || comando === "CONCLUIR_SESSAO" ? "is-critical" : ""}
+                key={comando}
+                type="button"
+                onClick={() => executarSecundaria(comando)}
+                disabled={ocupado}
+              >
+                {rotuloDaSecundaria(comando)}
+              </button>
+            ))}
+          </div>
+          <span>A ação principal permanece em foco acima. Comandos complementares são fornecidos exclusivamente pelo estado operacional do backend.</span>
+        </aside>
+
         <div className="hx-live-register">
           <header><small>REGISTRO PROFISSIONAL RÁPIDO</small><strong>Contexto preenchido automaticamente</strong></header>
           <div>
@@ -791,38 +855,6 @@ export function CockpitOperacionalVivo({
             ))}
           </ol>
         </div>
-      </section>
-
-      <section className="hx-live-replay">
-        <header>
-          <div><small>{texto(replay.estado, "REPLAY SINCRONIZANDO")}</small><strong>Linha do tempo operacional</strong></div>
-          <div><span>Último pacote {dataLegivel(replay.ultimo_pacote)}</span><span>Último evento {dataLegivel(replay.ultimo_evento)}</span></div>
-        </header>
-        {timelineItems.length ? (
-          <ReplayTimelineChart
-            items={timelineItems}
-            phases={faixas}
-            markers={marcadores}
-            cursorPercent={100}
-            interval={[0, 100]}
-            zoom={1}
-            visibleTracks={trilhasVisiveis}
-          />
-        ) : <div className="hx-live-empty">Replay preservado sem itens consolidados nesta versão.</div>}
-        <div className="hx-live-baseline-summary">
-          <small>REFERÊNCIA DE BASELINE</small>
-          <strong>{baseline.estado}</strong>
-          <span>{baseline.realizadoEm} · {baseline.duracao}</span>
-          <span>Fontes: {baseline.fontes}</span>
-          <span>Cobertura {baseline.cobertura} · {baseline.qualidade}</span>
-        </div>
-        <footer>
-          <span>{sessaoBaseline
-            ? "Baseline como modalidade independente"
-            : "Baseline não integra este ciclo"}</span>
-          <span>{sessaoBaseline ? "BASELINE" : "PRÉ → TREINO → PÓS"}</span>
-          <span>Mídia opcional: {texto(replay.midia, "SEM GRAVAÇÃO")}</span>
-        </footer>
       </section>
 
       {erro ? <p className="hx-module__error">{erro}</p> : null}

@@ -259,6 +259,30 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
   assert.match(client, /proxima_acao_principal/);
 });
 
+test("Cockpit cinematográfico prioriza HUD, leitura viva e condução sem alterar o núcleo", async () => {
+  const client = await source("components/operacao-homologacao.tsx");
+  const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  const modulo = await source("components/modulo-integrado.tsx");
+  const estilos = await source("app/globals.css");
+
+  const hud = operacional.indexOf('className="hx-live-hud"');
+  const comando = operacional.indexOf('className="hx-live-operation-focus"');
+  const vetores = operacional.indexOf('className="hx-live-command-center"');
+  assert.ok(hud >= 0 && comando > hud && vetores > comando);
+  assert.match(operacional, /hx-live-temporal-rail/);
+  assert.match(operacional, /AGUARDANDO EVIDÊNCIA REAL/);
+  assert.match(operacional, /hx-live-regulatory-readout/);
+  assert.match(operacional, /hx-live-conduction/);
+  assert.match(operacional, /hx-live-technical-drawer/);
+  assert.match(operacional, /Baseline como modalidade independente/);
+  assert.match(operacional, /Ciclo independente de Baseline obrigatório/);
+  assert.match(client, /EstruturaInicialDoCockpit/);
+  assert.match(client, /window\.confirm/);
+  assert.match(modulo, /modulo !== "cockpit-vivo"/);
+  assert.match(estilos, /Cockpit Premium cinematográfico/);
+  assert.match(estilos, /grid-template-columns: repeat\(9, minmax\(78px, 1fr\)\)/);
+});
+
 test("Cockpit abre progressivamente e preserva os dez vetores visíveis", async () => {
   const client = await source("components/operacao-homologacao.tsx");
   const operacional = await source("components/cockpit-operacional-vivo.tsx");

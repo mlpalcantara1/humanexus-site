@@ -1109,6 +1109,29 @@ function FormulacaoRegulatoria({ estado }: { estado: Estado }) {
   );
 }
 
+function EstruturaInicialDoCockpit() {
+  return (
+    <section
+      className="hx-live-loading-shell"
+      aria-label="Preparando Centro de Comando HUMANEXUS"
+      aria-busy="true"
+    >
+      <header>
+        <div><small>CENTRO DE COMANDO HUMANEXUS</small><strong>Preparando contexto protegido</strong></div>
+        <span>CONEXÃO SEGURA EM ANDAMENTO</span>
+      </header>
+      <div className="hx-live-loading-hud" aria-hidden="true">
+        {Array.from({ length: 9 }, (_, indice) => <i key={indice} />)}
+      </div>
+      <div className="hx-live-loading-command">
+        <div><small>LEITURA REGULATÓRIA</small><span /></div>
+        <div><small>COMANDO OPERACIONAL</small><span /></div>
+      </div>
+      <p>Carregando sessão, evidências e permissões sem bloquear a estrutura principal.</p>
+    </section>
+  );
+}
+
 export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) {
   const [estado, setEstado] = useState<Estado | null>(null);
   const [erro, setErro] = useState("");
@@ -1384,7 +1407,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   };
 
   if (erro && !estado) return <p className="hx-module__error">{erro}</p>;
-  if (!estado) return <p className="hx-module__loading">Carregando a sessão técnica preservada…</p>;
+  if (!estado) return modulo === "cockpit-vivo"
+    ? <EstruturaInicialDoCockpit />
+    : <p className="hx-module__loading">Carregando a sessão técnica preservada…</p>;
 
   const marcadores = marcadoresDaSessao(estado);
   const faixas = faixasDasFases(estado);
@@ -1450,9 +1475,25 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       void comandos.operacional(acaoPrincipal, justificativa.trim());
       return;
     }
+    if (
+      (acaoPrincipal.startsWith("ENCERRAR_") || acaoPrincipal === "CONCLUIR_SESSAO")
+      && !window.confirm(
+        `Confirmar ${(
+          ROTULOS_DOS_COMANDOS[acaoPrincipal] ?? texto(acaoPrincipal)
+        ).toLocaleLowerCase("pt-BR")}? Os registros já recebidos serão preservados.`
+      )
+    ) return;
     void comandos.principal();
   };
   const executarSecundaria = (comando: string) => {
+    if (
+      (comando.startsWith("ENCERRAR_") || comando === "CONCLUIR_SESSAO")
+      && !window.confirm(
+        `Confirmar ${(
+          ROTULOS_DOS_COMANDOS[comando] ?? texto(comando)
+        ).toLocaleLowerCase("pt-BR")}? Os registros já recebidos serão preservados.`
+      )
+    ) return;
     if (comando === "REGISTRAR_EVENTO") return void comandos.evento();
     if (comando === "REGISTRAR_INTERVENCAO") {
       return void comandos.intervencao();
