@@ -25,6 +25,17 @@ test("Cockpit agrega leituras e atualiza telemetria sem recarregar o contexto in
   assert.match(client, /carregar\(selecaoInicial, true\)/);
 });
 
+test("comandos operacionais sincronizam o controle de captura sem recarregamento manual", async () => {
+  const cockpit = await source("components/operacao-homologacao.tsx");
+  const captura = await source("components/controle-gravacao-multimodal.tsx");
+
+  assert.match(cockpit, /humanexus:operacao-atualizada/);
+  assert.match(cockpit, /identificador_da_sessao/);
+  assert.match(captura, /humanexus:operacao-atualizada/);
+  assert.match(captura, /detalhe\.sessao !== sessao/);
+  assert.match(captura, /void carregar\(\)/);
+});
+
 test("Cockpit respeita o escopo organizacional e não escolhe participante fictício", async () => {
   const route = await source("app/api/operacao-homologacao/route.ts");
   assert.match(route, /x-humanexus-organization-id/);

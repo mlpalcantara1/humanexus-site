@@ -262,6 +262,25 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessao]);
 
+  useEffect(() => {
+    const atualizarPeloComandoOperacional = (evento: Event) => {
+      const detalhe = (evento as CustomEvent<{ sessao?: string }>).detail;
+      if (detalhe?.sessao && detalhe.sessao !== sessao) return;
+      void carregar().catch((erro) => setMensagem(erro.message));
+    };
+    window.addEventListener(
+      "humanexus:operacao-atualizada",
+      atualizarPeloComandoOperacional
+    );
+    return () => {
+      window.removeEventListener(
+        "humanexus:operacao-atualizada",
+        atualizarPeloComandoOperacional
+      );
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessao]);
+
   async function executar(acao: string, dados: Registro) {
     const resposta = await fetch("/api/plataforma/gravacao-multimodal", {
       method: "POST",

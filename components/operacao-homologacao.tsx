@@ -1364,6 +1364,20 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       const retorno = await resposta.json();
       if (!resposta.ok) throw new Error(retorno?.erro?.mensagem ?? "Comando recusado.");
       setEstado(retorno);
+      if (["acao-principal", "acao-operacional"].includes(acao)) {
+        window.dispatchEvent(new CustomEvent(
+          "humanexus:operacao-atualizada",
+          {
+            detail: {
+              sessao: String(
+                retorno.contextos?.selecao?.identificador_da_sessao
+                ?? selecaoDaUrl.sessao
+                ?? ""
+              )
+            }
+          }
+        ));
+      }
       if (retorno.carregamento_progressivo) {
         void carregar({
           organizacao: String(
