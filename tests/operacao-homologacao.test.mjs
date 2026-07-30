@@ -436,7 +436,8 @@ test("Cockpit não converte ausência de evidência em zero e explica cobertura"
   const operacao = await source("components/operacao-homologacao.tsx");
 
   assert.match(cockpit, /valor == null \|\| valor === ""/);
-  assert.match(cockpit, /COBERTURA CIENTÍFICA EXPLICÁVEL/);
+  assert.match(cockpit, /COBERTURA CIENTÍFICA/);
+  assert.match(cockpit, /Detalhe sob demanda/);
   assert.match(cockpit, /Evidências recebidas/);
   assert.match(cockpit, /Fontes válidas/);
   assert.match(cockpit, /Janela acumulada/);

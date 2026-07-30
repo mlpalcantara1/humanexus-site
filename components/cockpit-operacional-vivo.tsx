@@ -798,18 +798,16 @@ export function CockpitOperacionalVivo({
         </article>
       </section>
 
-      <section
+      <details
         className="hx-live-scientific-coverage"
-        aria-label="Cobertura científica por indicador"
       >
-        <header>
-          <small>COBERTURA CIENTÍFICA EXPLICÁVEL</small>
-          <strong>Por que cada cálculo está disponível ou bloqueado</strong>
+        <summary>
           <span>
-            Somente requisitos oficiais do núcleo; nenhum limiar é criado na
-            interface.
+            <small>COBERTURA CIENTÍFICA</small>
+            <strong>Ver requisitos por indicador</strong>
           </span>
-        </header>
+          <em>Detalhe sob demanda · critérios oficiais do núcleo</em>
+        </summary>
         <div>
           {diagnosticosCientificos.map(([rotulo, diagnostico]) => {
             const evidencias = lista(diagnostico.evidencias_recebidas);
@@ -857,7 +855,7 @@ export function CockpitOperacionalVivo({
             );
           })}
         </div>
-      </section>
+      </details>
 
       <details className="hx-live-technical-drawer">
         <summary>
