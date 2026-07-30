@@ -54,9 +54,44 @@ test("proxy público protege origem e não persiste token", async () => {
   const rota = await fonte(
     "app/api/humanexus/instrumento-integrado/[id]/route.ts"
   );
+  const componente = await fonte("components/instrumento-integrado.tsx");
   assert.match(rota, /exigirMesmaOrigem/);
   assert.match(rota, /requisitarNucleoPublico/);
+  assert.match(rota, /x-humanexus-context-source/);
+  assert.match(rota, /instrument-token/);
+  assert.match(rota, /private, no-store, no-cache/);
+  assert.doesNotMatch(
+    rota,
+    /COOKIE_SESSAO|cookies\(\)|requisitarNucleoAutenticado|authorization/i
+  );
+  assert.match(componente, /credentials: "omit"/);
+  assert.match(componente, /new AbortController\(\)/);
+  assert.match(componente, /setConsulta\(null\)/);
+  assert.match(
+    componente,
+    /contexto_do_token\?\.identificador_do_participante[\s\S]*dados\.apresentacao\.identificador_do_participante/
+  );
+  assert.match(
+    componente,
+    /contexto_do_token\?\.identificador_da_organizacao[\s\S]*dados\.apresentacao\.identificador_da_organizacao/
+  );
   assert.doesNotMatch(rota, /console\.(log|error)|localStorage|sessionStorage/);
+});
+
+test("troca de organização elimina contexto anterior do instrumento", async () => {
+  const gestao = await fonte("components/gestao-operacional.tsx");
+  assert.match(
+    gestao,
+    /setConsentimento\(\(estado\) => \(\{[\s\S]*identificador_do_participante: ""[\s\S]*identificador_da_sessao: ""/
+  );
+  assert.match(
+    gestao,
+    /participanteDaUrl \|\| estado\.identificador_do_participante/
+  );
+  assert.match(
+    gestao,
+    /proximoParticipante === estado\.identificador_do_participante[\s\S]*\? estado\.identificador_da_sessao[\s\S]*: ""/
+  );
 });
 
 test("PDF contém cópia integral, resposta única, hashes e estado jurídico", async () => {

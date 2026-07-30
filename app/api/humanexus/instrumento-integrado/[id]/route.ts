@@ -4,21 +4,35 @@ import { exigirMesmaOrigem } from "@/lib/request-security";
 
 type Contexto = { params: Promise<{ id: string }> };
 
+const CABECALHOS_SEM_CONTEXTO_ADMINISTRATIVO = {
+  "cache-control": "private, no-store, no-cache, max-age=0, must-revalidate",
+  pragma: "no-cache",
+  expires: "0",
+  "x-humanexus-context-source": "instrument-token"
+};
+
 export async function GET(request: Request, contexto: Contexto) {
   try {
     const { id } = await contexto.params;
     const url = new URL(request.url);
     const token = url.searchParams.get("token") ?? "";
+    if (!id || !token) throw new Error("Instrumento indisponível.");
     const copia = url.searchParams.get("copia") === "1";
     const caminho =
       `/api/v1/instrumento-integrado/apresentacoes/${encodeURIComponent(id)}`
       + (copia ? "/copia" : "")
       + `?token=${encodeURIComponent(token)}`;
-    return NextResponse.json(await requisitarNucleoPublico(caminho));
+    return NextResponse.json(
+      await requisitarNucleoPublico(caminho),
+      { headers: CABECALHOS_SEM_CONTEXTO_ADMINISTRATIVO }
+    );
   } catch {
     return NextResponse.json(
       { erro: { mensagem: "Instrumento indisponível." } },
-      { status: 404 }
+      {
+        status: 404,
+        headers: CABECALHOS_SEM_CONTEXTO_ADMINISTRATIVO
+      }
     );
   }
 }
@@ -28,6 +42,8 @@ export async function POST(request: Request, contexto: Contexto) {
     exigirMesmaOrigem(request);
     const { id } = await contexto.params;
     const corpo = await request.json() as Record<string, unknown>;
+    const token = String(corpo.token ?? "");
+    if (!id || !token) throw new Error("Instrumento indisponível.");
     const acao = String(corpo.acao ?? "");
     const sufixo = acao === "salvar"
       ? "rascunho"
@@ -43,12 +59,13 @@ export async function POST(request: Request, contexto: Contexto) {
         method: "POST",
         body: JSON.stringify({
           ...corpo,
-          token: String(corpo.token ?? "")
+          token
         })
       }
     );
     return NextResponse.json(dados, {
-      status: acao === "confirmar" ? 201 : 200
+      status: acao === "confirmar" ? 201 : 200,
+      headers: CABECALHOS_SEM_CONTEXTO_ADMINISTRATIVO
     });
   } catch (erro) {
     return NextResponse.json(
@@ -59,7 +76,10 @@ export async function POST(request: Request, contexto: Contexto) {
             : "Não foi possível registrar a decisão."
         }
       },
-      { status: 400 }
+      {
+        status: 400,
+        headers: CABECALHOS_SEM_CONTEXTO_ADMINISTRATIVO
+      }
     );
   }
 }

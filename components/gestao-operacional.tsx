@@ -406,12 +406,25 @@ export function GestaoOperacional({
         chave_de_idempotencia: ""
       };
     });
-    setConsentimento((estado) => ({
-      ...estado,
-      identificador_do_participante:
-        estado.identificador_do_participante
-        || String(corpo.participantes?.[0]?.identificador ?? "")
-    }));
+    setConsentimento((estado) => {
+      const participanteDoContexto = corpo.participantes?.find(
+        (item: Registro) =>
+          String(item.identificador) === (
+            participanteDaUrl || estado.identificador_do_participante
+          )
+      ) ?? corpo.participantes?.[0];
+      const proximoParticipante = String(
+        participanteDoContexto?.identificador ?? ""
+      );
+      return {
+        ...estado,
+        identificador_do_participante: proximoParticipante,
+        identificador_da_sessao:
+          proximoParticipante === estado.identificador_do_participante
+            ? estado.identificador_da_sessao
+            : ""
+      };
+    });
     setParticipanteDoCatalogo((atual) => (
       corpo.participantes?.some(
         (item: Registro) => String(item.identificador) === (
@@ -697,6 +710,11 @@ export function GestaoOperacional({
             const identificador = evento.target.value;
             setOrganizacaoSelecionada(identificador);
             setSessaoCriada(null);
+            setConsentimento((estado) => ({
+              ...estado,
+              identificador_do_participante: "",
+              identificador_da_sessao: ""
+            }));
             atualizarContextoNaUrl({
               organizacao: identificador,
               participante: "",

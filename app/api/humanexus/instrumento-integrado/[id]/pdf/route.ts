@@ -20,7 +20,10 @@ export async function GET(request: Request, contexto: Contexto) {
         "content-type": "application/pdf",
         "content-disposition":
           `attachment; filename="instrumento-integrado-humanexus-${encodeURIComponent(id.slice(0, 8))}.pdf"`,
-        "cache-control": "private, no-store"
+        "cache-control": "private, no-store, no-cache, max-age=0, must-revalidate",
+        pragma: "no-cache",
+        expires: "0",
+        "x-humanexus-context-source": "instrument-token"
       }
     });
   } catch {

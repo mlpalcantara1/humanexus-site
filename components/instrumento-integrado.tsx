@@ -29,6 +29,9 @@ type RespostaUnica = {
 type Consulta = {
   apresentacao: {
     identificador: string;
+    identificador_do_participante: string;
+    identificador_da_organizacao: string;
+    identificador_da_sessao?: string | null;
     estado: string;
     finalidade: string;
     rascunho_json: Record<string, string> | string;
@@ -49,6 +52,14 @@ type Consulta = {
     participante: string;
     organizacao?: string | null;
     finalidade: string;
+  };
+  contexto_do_token: {
+    origem: "TOKEN_EXCLUSIVO_DA_APRESENTACAO";
+    autossuficiente: true;
+    identificador_da_apresentacao: string;
+    identificador_do_participante: string;
+    identificador_da_organizacao: string;
+    identificador_da_sessao?: string | null;
   };
   opcoes_pre_marcadas: false;
   confirmacao_final_unica: true;
@@ -136,7 +147,7 @@ export function InstrumentoIntegrado() {
   const obterCopia = useCallback(async () => {
     const retorno = await fetch(
       `${caminho}?token=${encodeURIComponent(token)}&copia=1`,
-      { cache: "no-store" }
+      { cache: "no-store", credentials: "omit" }
     );
     if (!retorno.ok) return null;
     return await retorno.json() as Copia;
@@ -144,11 +155,24 @@ export function InstrumentoIntegrado() {
 
   useEffect(() => {
     let ativo = true;
+    const abortar = new AbortController();
+    setConsulta(null);
+    setCopia(null);
+    setResposta("");
+    setErro("");
+    setOcupado(false);
+    setSincronizacao("PERSISTIDO_NO_NUCLEO");
+    revisaoRef.current = 0;
+    setRevisao(0);
     async function carregar() {
       if (!token) throw new Error("Instrumento indisponível.");
       const retorno = await fetch(
         `${caminho}?token=${encodeURIComponent(token)}`,
-        { cache: "no-store" }
+        {
+          cache: "no-store",
+          credentials: "omit",
+          signal: abortar.signal
+        }
       );
       const corpo = await retorno.json();
       if (!retorno.ok) {
@@ -156,6 +180,17 @@ export function InstrumentoIntegrado() {
       }
       if (!ativo) return;
       const dados = corpo as Consulta;
+      if (
+        dados.apresentacao.identificador !== identificador
+        || dados.contexto_do_token?.identificador_da_apresentacao
+          !== identificador
+        || dados.contexto_do_token?.identificador_do_participante
+          !== dados.apresentacao.identificador_do_participante
+        || dados.contexto_do_token?.identificador_da_organizacao
+          !== dados.apresentacao.identificador_da_organizacao
+      ) {
+        throw new Error("Contexto criptográfico do instrumento inválido.");
+      }
       const rascunho = json<Record<string, string>>(
         dados.apresentacao.rascunho_json ?? {}
       );
@@ -184,9 +219,10 @@ export function InstrumentoIntegrado() {
     });
     return () => {
       ativo = false;
+      abortar.abort();
       if (temporizador.current) clearTimeout(temporizador.current);
     };
-  }, [caminho, obterCopia, token]);
+  }, [caminho, identificador, obterCopia, token]);
 
   async function enviar(
     acao: "salvar" | "confirmar" | "revogar",
@@ -195,6 +231,7 @@ export function InstrumentoIntegrado() {
     const retorno = await fetch(caminho, {
       method: "POST",
       headers: { "content-type": "application/json" },
+      credentials: "omit",
       body: JSON.stringify({ acao, token, ...payload })
     });
     const corpo = await retorno.json();
