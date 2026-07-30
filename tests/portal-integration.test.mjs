@@ -348,3 +348,22 @@ test("TCLE usa aceites separados e recuperação proprietária não expõe token
   assert.match(redefinicao, /modo.*local/);
   assert.doesNotMatch(redefinicao, /token.*modo.*local/);
 });
+
+test("anamnese alimenta sugestões MMFTR com decisão e programação profissionais", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  const route = await source("app/api/gestao-operacional/route.ts");
+
+  assert.match(management, /sugestoes_pre_baseline/);
+  assert.match(management, /PROJEÇÃO REGULATÓRIA PRÉ-BASELINE/);
+  assert.match(management, /Preparar para validação/);
+  assert.match(management, /Confirmar/);
+  assert.match(management, /Recusar/);
+  assert.match(management, /Substituir seleção/);
+  assert.match(management, /Programar treinamento/);
+  assert.match(management, /identificador_da_sessao/);
+  assert.match(management, /duracao_minutos/);
+  assert.match(management, /sequencia/);
+  assert.match(route, /materializar-sugestao-pre-baseline/);
+  assert.match(route, /decidir-recomendacao-thx/);
+  assert.doesNotMatch(management, /selecao_automatica:\s*true/);
+});

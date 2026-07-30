@@ -430,3 +430,20 @@ test("composição executiva premium permanece isolada no front-end da plataform
   assert.match(estilos, /\.hx-app__header button,[\s\S]*\.hx-nav-toggle\s*\{[\s\S]*min-height: 44px/);
   assert.match(estilos, /@media \(prefers-reduced-motion: reduce\)/);
 });
+
+test("Cockpit não converte ausência de evidência em zero e explica cobertura", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const operacao = await source("components/operacao-homologacao.tsx");
+
+  assert.match(cockpit, /valor == null \|\| valor === ""/);
+  assert.match(cockpit, /COBERTURA CIENTÍFICA EXPLICÁVEL/);
+  assert.match(cockpit, /Evidências recebidas/);
+  assert.match(cockpit, /Fontes válidas/);
+  assert.match(cockpit, /Janela acumulada/);
+  assert.match(cockpit, /Requisito restante/);
+  assert.match(operacao, /contextoAtual\.current/);
+  assert.doesNotMatch(
+    operacao,
+    /visao !== "visao-geral"[\s\S]{0,120}estado\.carregamento_progressivo/
+  );
+});

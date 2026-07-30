@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ModuloDaPlataforma } from "@/components/modulo-integrado";
 import {
   CockpitSignalStack,
@@ -1148,6 +1148,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const [vetorSelecionado, setVetorSelecionado] = useState<string | null>(null);
   const [painelTecnico, setPainelTecnico] = useState("fontes");
   const [selecaoInicial, setSelecaoInicial] = useState<Record<string, string>>({});
+  const contextoAtual = useRef("");
   const [cortexClientId, setCortexClientId] = useState("");
   const [cortexClientSecret, setCortexClientSecret] = useState("");
 
@@ -1182,6 +1183,11 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     leve = false,
     inicial = false
   ) => {
+    const chaveSolicitada = [
+      selecao.organizacao,
+      selecao.participante,
+      selecao.sessao
+    ].join(":");
     const parametros = new URLSearchParams({ modulo });
     const visaoSolicitada = new URLSearchParams(
       window.location.search
@@ -1199,6 +1205,13 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     const dados = await resposta.json();
     if (!resposta.ok) throw new Error(dados?.erro?.mensagem ?? "Consulta operacional indisponível.");
     if (dados.atualizacao_parcial) {
+      if (
+        contextoAtual.current
+        && chaveSolicitada
+        && contextoAtual.current !== chaveSolicitada
+      ) {
+        return selecao;
+      }
       setEstado((atual) => atual ? {
         ...atual,
         conectores: dados.conectores,
@@ -1216,6 +1229,11 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       participante: String(dados.contextos.selecao.identificador_do_participante),
       sessao: String(dados.contextos.selecao.identificador_da_sessao)
     };
+    contextoAtual.current = [
+      atual.organizacao,
+      atual.participante,
+      atual.sessao
+    ].join(":");
     setSelecaoInicial(atual);
     const url = new URL(window.location.href);
     url.searchParams.set("organizacao", atual.organizacao);
@@ -1249,8 +1267,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
 
   useEffect(() => {
     if (
-      visao !== "visao-geral"
-      || !estado
+      !estado
       || estado.carregamento_progressivo
       || estado.sessao.estado === "FINALIZADA"
     ) {
@@ -1268,7 +1285,6 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     }, 2500);
     return () => window.clearInterval(id);
   }, [
-    visao,
     estado?.sessao.estado,
     ocupado,
     selecaoInicial.organizacao,

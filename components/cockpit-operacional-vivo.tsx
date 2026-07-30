@@ -139,6 +139,7 @@ function referenciaDeBaseline(valor: unknown) {
 }
 
 function numero(valor: unknown, casas = 0) {
+  if (valor == null || valor === "") return "—";
   const convertido = Number(valor);
   return Number.isFinite(convertido) ? convertido.toFixed(casas) : "—";
 }
@@ -152,7 +153,8 @@ function LeituraNumerica({
   casas?: number;
   sufixo?: string;
 }) {
-  const alvo = Number(valor);
+  const presente = valor != null && valor !== "";
+  const alvo = presente ? Number(valor) : Number.NaN;
   const valido = Number.isFinite(alvo);
   const anterior = useRef(valido ? alvo : 0);
   const [exibido, setExibido] = useState<number | null>(valido ? alvo : null);
@@ -441,6 +443,7 @@ export function CockpitOperacionalVivo({
   const zona = objeto(leituraCientifica.zona);
   const resultante = objeto(leituraCientifica.resultante);
   const trajetoria = objeto(leituraCientifica.trajetoria);
+  const coberturaVetorial = objeto(leituraCientifica.cobertura_vetorial);
   const definicoesVetoriais = lista(ciencia.vetores);
   const estadosVetoriais = lista(leituraCientifica.vetores);
   const estadosVetoriaisPorDefinicao = new Map(
@@ -468,6 +471,13 @@ export function CockpitOperacionalVivo({
     || resultanteCalculada
     || trajetoriaCalculada
     || radarCompleto;
+  const diagnosticosCientificos = [
+    ["VETORES", coberturaVetorial],
+    ["IIRH", objeto(iirh.cobertura_cientifica)],
+    ["ZONA OPERACIONAL", objeto(zona.cobertura_cientifica)],
+    ["RESULTANTE REGULATÓRIA", objeto(resultante.cobertura_cientifica)],
+    ["TRAJETÓRIA REGULATÓRIA", objeto(trajetoria.cobertura_cientifica)]
+  ] as const;
 
   useEffect(() => {
     const id = window.setInterval(() => setAgora(Date.now()), 1000);
@@ -786,6 +796,67 @@ export function CockpitOperacionalVivo({
             ? "Estados sucessivos comparáveis"
             : "Um ponto isolado não produz trajetória"}</span>
         </article>
+      </section>
+
+      <section
+        className="hx-live-scientific-coverage"
+        aria-label="Cobertura científica por indicador"
+      >
+        <header>
+          <small>COBERTURA CIENTÍFICA EXPLICÁVEL</small>
+          <strong>Por que cada cálculo está disponível ou bloqueado</strong>
+          <span>
+            Somente requisitos oficiais do núcleo; nenhum limiar é criado na
+            interface.
+          </span>
+        </header>
+        <div>
+          {diagnosticosCientificos.map(([rotulo, diagnostico]) => {
+            const evidencias = lista(diagnostico.evidencias_recebidas);
+            const fontesValidas = Array.isArray(diagnostico.fontes_validas)
+              ? diagnostico.fontes_validas.map(String)
+              : [];
+            const requisitos = lista(diagnostico.requisitos_pendentes);
+            return (
+              <article key={rotulo}>
+                <small>{rotulo}</small>
+                <strong>{texto(
+                  diagnostico.motivo_objetivo,
+                  "Aguardando diagnóstico do núcleo"
+                )}</strong>
+                <dl>
+                  <div>
+                    <dt>Evidências recebidas</dt>
+                    <dd>{evidencias.length
+                      ? evidencias.map((item) => (
+                          `${texto(item.fonte)}: ${numero(item.amostras_validas)} válida(s)`
+                        )).join(" · ")
+                      : "Nenhuma evidência registrada"}</dd>
+                  </div>
+                  <div>
+                    <dt>Fontes válidas</dt>
+                    <dd>{fontesValidas.join(" · ") || "Nenhuma"}</dd>
+                  </div>
+                  <div>
+                    <dt>Janela acumulada</dt>
+                    <dd>{diagnostico.janela_acumulada_segundos == null
+                      ? "Ainda não iniciada"
+                      : `${numero(diagnostico.janela_acumulada_segundos, 1)} s`}</dd>
+                  </div>
+                  <div>
+                    <dt>Requisito restante</dt>
+                    <dd>{requisitos.length
+                      ? requisitos.map((item) => texto(
+                          item.requisito,
+                          "Requisito oficial pendente"
+                        )).join(" · ")
+                      : "Nenhum requisito pendente informado"}</dd>
+                  </div>
+                </dl>
+              </article>
+            );
+          })}
+        </div>
       </section>
 
       <details className="hx-live-technical-drawer">

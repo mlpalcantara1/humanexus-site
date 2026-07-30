@@ -112,6 +112,10 @@ export async function POST(request: Request) {
       caminho = `/api/v1/treinamentos/catalogo/${encodeURIComponent(String(corpo.identificador))}/${acao.startsWith("inativar") ? "inativar" : "reativar"}`;
     } else if (acao === "programar-treinamento") {
       caminho = "/api/v1/treinamentos/programacoes";
+    } else if (acao === "materializar-sugestao-pre-baseline") {
+      caminho = `/api/v1/sessoes/${encodeURIComponent(String(corpo.identificador))}/sugestoes-pre-baseline`;
+    } else if (acao === "decidir-recomendacao-thx") {
+      caminho = `/api/v1/recomendacoes-thx/${encodeURIComponent(String(corpo.identificador))}/decidir`;
     } else if (acao === "operar-programacao") {
       caminho = `/api/v1/treinamentos/programacoes/${encodeURIComponent(String(corpo.identificador))}/operacoes`;
     } else if (acao === "criar-contrato") {

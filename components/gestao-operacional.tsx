@@ -7,6 +7,7 @@ type Registro = Record<string, unknown>;
 type ProtocoloClassificado = Registro & {
   classificacao_operacional: "RECOMENDADO" | "COMPATIVEL" | "OUTRO_OFICIAL";
   recomendacao_operacional: Registro | null;
+  sugestao_operacional: Registro | null;
   vinculos_compativeis: Registro[];
 };
 type Dados = {
@@ -208,6 +209,13 @@ export function GestaoOperacional({
   } | null>(null);
   const [participanteDoCatalogo, setParticipanteDoCatalogo] = useState("");
   const [familiaThx, setFamiliaThx] = useState("");
+  const [planejamentoThx, setPlanejamentoThx] = useState({
+    identificador_da_sessao: "",
+    justificativa: "",
+    data_programada: "",
+    duracao_minutos: "60",
+    sequencia: "1"
+  });
   const [contratoSelecionado, setContratoSelecionado] = useState("");
   const [contrato, setContrato] = useState({
     tipo: "ORGANIZACIONAL",
@@ -503,6 +511,115 @@ export function GestaoOperacional({
     } finally {
       setOcupado(false);
     }
+  }
+
+  async function prepararSugestaoThx(
+    protocolo: ProtocoloClassificado,
+    substituir = false
+  ) {
+    const sugestao = objeto(protocolo.sugestao_operacional);
+    const sessaoId = planejamentoThx.identificador_da_sessao
+      || String(sessoesDoParticipante.at(0)?.identificador ?? "");
+    const codigoCtr = String(sugestao.codigo_do_ctr ?? "");
+    if (!sessaoId || !codigoCtr) {
+      setErro(
+        "Selecione uma sessão do participante e um protocolo sugerido pela MMFTR."
+      );
+      return;
+    }
+    const justificativa = planejamentoThx.justificativa.trim();
+    if (substituir && !justificativa) {
+      setErro("A substituição profissional exige justificativa.");
+      return;
+    }
+    if (substituir) {
+      const atual = lista(evidenciaDoCatalogo.recomendacoes_thx).find(
+        (item) => item.estado === "PENDENTE_DE_VALIDACAO"
+          && String(item.identificador_do_protocolo ?? "")
+            !== String(protocolo.identificador ?? "")
+      );
+      if (atual) {
+        const rejeitada = await executar(
+          "decidir-recomendacao-thx",
+          {
+            estado: "REJEITADA",
+            justificativa
+          },
+          atual.identificador,
+          false
+        );
+        if (!rejeitada) return;
+      }
+    }
+    await executar(
+      "materializar-sugestao-pre-baseline",
+      {
+        codigo_do_ctr: codigoCtr,
+        codigo_do_thx: protocolo.codigo
+      },
+      sessaoId
+    );
+  }
+
+  async function decidirRecomendacaoThx(
+    protocolo: ProtocoloClassificado,
+    estado: "VALIDADA" | "REJEITADA"
+  ) {
+    const recomendacao = objeto(protocolo.recomendacao_operacional);
+    const justificativa = planejamentoThx.justificativa.trim();
+    if (!recomendacao.identificador || !justificativa) {
+      setErro("A decisão profissional exige justificativa.");
+      return;
+    }
+    await executar(
+      "decidir-recomendacao-thx",
+      { estado, justificativa },
+      recomendacao.identificador
+    );
+  }
+
+  async function programarProtocoloThx(
+    protocolo: ProtocoloClassificado
+  ) {
+    const recomendacao = objeto(protocolo.recomendacao_operacional);
+    const sugestao = objeto(protocolo.sugestao_operacional);
+    const codigoCtr = String(
+      objeto(
+        lista(evidenciaDoCatalogo.avaliacoes_ctr).find(
+          (item) => item.identificador
+            === recomendacao.identificador_da_avaliacao_ctr
+        )?.contexto_json
+      ).codigo_do_ctr
+      ?? sugestao.codigo_do_ctr
+      ?? ""
+    );
+    if (!["VALIDADA", "AJUSTADA"].includes(
+      String(recomendacao.estado ?? "")
+    )) {
+      setErro(
+        "Confirme profissionalmente a recomendação antes de programar."
+      );
+      return;
+    }
+    if (!planejamentoThx.data_programada) {
+      setErro("Informe a data programada.");
+      return;
+    }
+    await executar("programar-treinamento", {
+      identificador_do_participante: participanteDoCatalogo,
+      identificador_do_grupo: null,
+      identificador_do_ctr: codigoCtr,
+      identificador_do_thx: protocolo.identificador,
+      cronograma: [{
+        inicio: new Date(
+          planejamentoThx.data_programada
+        ).toISOString(),
+        duracao_minutos: Number(planejamentoThx.duracao_minutos),
+        sequencia: Number(planejamentoThx.sequencia),
+        identificador_da_sessao:
+          planejamentoThx.identificador_da_sessao || null
+      }]
+    });
   }
 
   async function apresentarConsentimento(evento: FormEvent<HTMLFormElement>) {
@@ -900,6 +1017,23 @@ export function GestaoOperacional({
     );
     return objeto(porParticipante[participanteDoCatalogo]);
   }, [dados, participanteDoCatalogo]);
+  const projecaoPreBaseline = objeto(
+    evidenciaDoCatalogo.sugestoes_pre_baseline
+  );
+  const sugestoesPreBaseline = lista(projecaoPreBaseline.sugestoes);
+  const protocolosSugeridos = useMemo(() => {
+    const recomendados = new Set<string>();
+    const compativeis = new Set<string>();
+    for (const sugestao of sugestoesPreBaseline) {
+      for (const item of lista(sugestao.thx_recomendados)) {
+        recomendados.add(String(item.codigo ?? ""));
+      }
+      for (const item of lista(sugestao.thx_compativeis)) {
+        compativeis.add(String(item.codigo ?? ""));
+      }
+    }
+    return { recomendados, compativeis };
+  }, [evidenciaDoCatalogo]);
   const protocolosOficiais = useMemo<ProtocoloClassificado[]>(() => {
     const biblioteca = objeto(dados?.biblioteca_thx_oficial);
     const recomendacoes = lista(evidenciaDoCatalogo.recomendacoes_thx)
@@ -945,18 +1079,26 @@ export function GestaoOperacional({
           (item) => String(item.identificador_do_protocolo ?? "")
             === String(protocolo.identificador ?? "")
         );
+        const sugestao = sugestoesPreBaseline.find((item) =>
+          lista(item.thx_compativeis).some(
+            (thx) => String(thx.codigo ?? "") === codigo
+          )
+        );
         const vinculosCompativeis = vinculos.filter((item) =>
           ctrsComEvidencia.has(String(item.codigo_do_ctr ?? ""))
         );
         const classificacao: ProtocoloClassificado[
           "classificacao_operacional"
         ] = (
-          recomendacao || idsRecomendados.has(String(protocolo.identificador))
+          recomendacao
+          || idsRecomendados.has(String(protocolo.identificador))
+          || protocolosSugeridos.recomendados.has(codigo)
         )
           ? "RECOMENDADO"
           : (
               thxExplicitamenteCompativeis.has(codigo)
               || vinculosCompativeis.length > 0
+              || protocolosSugeridos.compativeis.has(codigo)
             )
             ? "COMPATIVEL"
             : "OUTRO_OFICIAL";
@@ -964,6 +1106,7 @@ export function GestaoOperacional({
           ...protocolo,
           classificacao_operacional: classificacao,
           recomendacao_operacional: recomendacao ?? null,
+          sugestao_operacional: sugestao ?? null,
           vinculos_compativeis: vinculosCompativeis
         };
       })
@@ -990,7 +1133,8 @@ export function GestaoOperacional({
     buscaThx,
     dados,
     evidenciaDoCatalogo,
-    familiaThx
+    familiaThx,
+    protocolosSugeridos
   ]);
   const gatilhoDoCatalogo = lista(
     evidenciaDoCatalogo.gatilhos
@@ -1007,6 +1151,11 @@ export function GestaoOperacional({
   const ganhoDoCatalogo = lista(
     evidenciaDoCatalogo.ganhos_regulatorios
   ).at(-1);
+  const sugestaoPrincipal = sugestoesPreBaseline.at(0);
+  const sessoesDoParticipante = (dados?.sessoes ?? []).filter(
+    (item) => String(item.identificador_do_participante ?? "")
+      === participanteDoCatalogo
+  );
   const protocolosPorClassificacao = {
     FAVORITO: protocolosOficiais.filter(
       (item) => favoritosThx.includes(String(item.codigo ?? ""))
@@ -1902,6 +2051,10 @@ export function GestaoOperacional({
                 onChange={(evento) => {
                   const identificador = evento.target.value;
                   setParticipanteDoCatalogo(identificador);
+                  setPlanejamentoThx((atual) => ({
+                    ...atual,
+                    identificador_da_sessao: ""
+                  }));
                   atualizarContextoNaUrl({
                     participante: identificador,
                     sessao: ""
@@ -1939,6 +2092,123 @@ export function GestaoOperacional({
             </label>
           </section>
 
+          <section className="hx-training-decision">
+            <header>
+              <div>
+                <small>PROJEÇÃO REGULATÓRIA PRÉ-BASELINE</small>
+                <h2>Sugestões editáveis e auditáveis</h2>
+                <p>
+                  Correspondência documental entre a anamnese persistida, a
+                  MMFTR e a Biblioteca Oficial. Não constitui decisão
+                  profissional definitiva e será refinada pelo Baseline.
+                </p>
+              </div>
+              <span>{sugestoesPreBaseline.length} sugestão(ões)</span>
+            </header>
+            <div className="hx-training-decision__controls">
+              <label>
+                Sessão vinculada
+                <select
+                  value={planejamentoThx.identificador_da_sessao}
+                  onChange={(evento) => setPlanejamentoThx({
+                    ...planejamentoThx,
+                    identificador_da_sessao: evento.target.value
+                  })}
+                >
+                  <option value="">Selecione a sessão</option>
+                  {sessoesDoParticipante.map((item) => (
+                    <option
+                      key={String(item.identificador)}
+                      value={String(item.identificador)}
+                    >
+                      {texto(item.tipo_de_sessao, "Sessão")} · {
+                        texto(item.estado)
+                      } · {dataLegivel(item.criado_em)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Justificativa profissional
+                <textarea
+                  value={planejamentoThx.justificativa}
+                  onChange={(evento) => setPlanejamentoThx({
+                    ...planejamentoThx,
+                    justificativa: evento.target.value
+                  })}
+                  placeholder="Obrigatória para confirmar, recusar ou substituir."
+                />
+              </label>
+              <label>
+                Data programada
+                <input
+                  type="datetime-local"
+                  value={planejamentoThx.data_programada}
+                  onChange={(evento) => setPlanejamentoThx({
+                    ...planejamentoThx,
+                    data_programada: evento.target.value
+                  })}
+                />
+              </label>
+              <label>
+                Duração (min)
+                <input
+                  type="number"
+                  min="1"
+                  value={planejamentoThx.duracao_minutos}
+                  onChange={(evento) => setPlanejamentoThx({
+                    ...planejamentoThx,
+                    duracao_minutos: evento.target.value
+                  })}
+                />
+              </label>
+              <label>
+                Sequência
+                <input
+                  type="number"
+                  min="1"
+                  value={planejamentoThx.sequencia}
+                  onChange={(evento) => setPlanejamentoThx({
+                    ...planejamentoThx,
+                    sequencia: evento.target.value
+                  })}
+                />
+              </label>
+            </div>
+            {sugestoesPreBaseline.length ? (
+              <details>
+                <summary>Abrir fundamentos das sugestões</summary>
+                <div className="hx-training-decision__suggestions">
+                  {sugestoesPreBaseline.map((item) => {
+                    const rota = objeto(item.rota_regulatoria_sugerida);
+                    return (
+                      <article key={String(item.codigo_do_ctr)}>
+                        <small>{texto(item.codigo_do_ctr)}</small>
+                        <strong>{texto(item.nome_do_ctr)}</strong>
+                        <p><b>ARR:</b> {texto(item.arr_sugerida)}</p>
+                        <p><b>Rota candidata:</b> {texto(rota.nome)}</p>
+                        <p><b>RRO:</b> {texto(item.rro_sugerido)}</p>
+                        <p><b>NRA:</b> {texto(item.nra_sugerida)}</p>
+                        <p><b>Ganho sugerido:</b> {
+                          texto(item.ganho_regulatorio_sugerido)
+                        }</p>
+                        <span>
+                          {lista(item.evidencias_de_origem).length} evidência(s)
+                          de origem · validação profissional obrigatória
+                        </span>
+                      </article>
+                    );
+                  })}
+                </div>
+              </details>
+            ) : (
+              <p className="hx-module__notice">
+                A anamnese não possui correspondência literal documentada na
+                MMFTR. Nenhuma recomendação genérica foi fabricada.
+              </p>
+            )}
+          </section>
+
           <section className="hx-regulatory-evidence">
             <article>
               <small>Gatilho</small>
@@ -1950,28 +2220,37 @@ export function GestaoOperacional({
             <article>
               <small>ARR / rota dominante</small>
               <strong>{texto(
-                arrDoCatalogo?.padrao_dominante,
+                arrDoCatalogo?.padrao_dominante
+                  ?? sugestaoPrincipal?.arr_sugerida
+                  ?? objeto(
+                    sugestaoPrincipal?.rota_dominante_sugerida
+                  ).nome_candidato,
                 "Não registrada"
               )}</strong>
             </article>
             <article>
               <small>RRO</small>
               <strong>{texto(
-                rroDoCatalogo?.categoria,
+                rroDoCatalogo?.categoria
+                  ?? sugestaoPrincipal?.rro_sugerido,
                 "Não registrado"
               )}</strong>
             </article>
             <article>
               <small>NRA</small>
               <strong>{texto(
-                nraDoCatalogo?.estado,
+                nraDoCatalogo?.estado
+                  ?? sugestaoPrincipal?.nra_sugerida,
                 "Não registrada"
               )}</strong>
             </article>
             <article>
               <small>Ganho regulatório</small>
               <strong>{ganhoDoCatalogo?.ganho_relativo == null
-                ? "Não calculado"
+                ? texto(
+                    sugestaoPrincipal?.ganho_regulatorio_sugerido,
+                    "Não calculado"
+                  )
                 : texto(ganhoDoCatalogo.ganho_relativo)}</strong>
             </article>
           </section>
@@ -2021,6 +2300,9 @@ export function GestaoOperacional({
                   {visiveis.map((protocolo) => {
                     const recomendacao = objeto(
                       protocolo.recomendacao_operacional
+                    );
+                    const sugestao = objeto(
+                      protocolo.sugestao_operacional
                     );
                     const vinculosCompativeis = lista(
                       protocolo.vinculos_compativeis
@@ -2197,6 +2479,70 @@ export function GestaoOperacional({
                           </div>
                           </dl>
                         </details>
+                        <div className="hx-training-card__actions">
+                          {sugestao.codigo_do_ctr
+                            && !recomendacao.identificador ? (
+                            <>
+                              <button
+                                type="button"
+                                disabled={ocupado}
+                                onClick={() => void prepararSugestaoThx(
+                                  protocolo
+                                )}
+                              >
+                                Preparar para validação
+                              </button>
+                              <button
+                                type="button"
+                                disabled={ocupado}
+                                onClick={() => void prepararSugestaoThx(
+                                  protocolo,
+                                  true
+                                )}
+                              >
+                                Substituir seleção
+                              </button>
+                            </>
+                          ) : null}
+                          {recomendacao.estado
+                            === "PENDENTE_DE_VALIDACAO" ? (
+                            <>
+                              <button
+                                type="button"
+                                disabled={ocupado}
+                                onClick={() => void decidirRecomendacaoThx(
+                                  protocolo,
+                                  "VALIDADA"
+                                )}
+                              >
+                                Confirmar
+                              </button>
+                              <button
+                                type="button"
+                                disabled={ocupado}
+                                onClick={() => void decidirRecomendacaoThx(
+                                  protocolo,
+                                  "REJEITADA"
+                                )}
+                              >
+                                Recusar
+                              </button>
+                            </>
+                          ) : null}
+                          {["VALIDADA", "AJUSTADA"].includes(
+                            String(recomendacao.estado ?? "")
+                          ) ? (
+                            <button
+                              type="button"
+                              disabled={ocupado}
+                              onClick={() => void programarProtocoloThx(
+                                protocolo
+                              )}
+                            >
+                              Programar treinamento
+                            </button>
+                          ) : null}
+                        </div>
                       </article>
                     );
                   })}
