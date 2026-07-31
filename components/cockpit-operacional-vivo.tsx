@@ -619,9 +619,9 @@ export function CockpitOperacionalVivo({
                 ? "MODO OPERACIONAL — AGUARDANDO CONEXÃO"
                 : "MODO OPERACIONAL AO VIVO"}
           </span>
-          <h1>{texto(participante.nome ?? participante.referencia_externa, "Participante")}</h1>
+          <h1>{texto(contextoSessao.nome_operacional, "Sessão operacional")}</h1>
           <p>
-            Sessão {texto(contextoSessao.identificador)} · {
+            {texto(participante.nome ?? participante.referencia_externa, "Participante")} · {
               sessaoBaseline
                 ? "Baseline"
                 : `THX ${texto(thx.codigo)} · ${texto(execucao.estado)}`

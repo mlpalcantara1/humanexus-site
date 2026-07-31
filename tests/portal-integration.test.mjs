@@ -120,9 +120,10 @@ test("criação da sessão exige escolhas profissionais e Cockpit não reutiliza
 
   for (const evidence of [
     "Sugestões oficiais da MMFTR e Biblioteca THX",
-    "Aceitar sugestão oficial",
-    "Substituir por outro vínculo oficial",
-    "Não selecionar neste momento",
+    "ACATAR RECOMENDAÇÃO",
+    "NÃO ACATAR",
+    "SUBSTITUIR",
+    "DEIXAR SEM SELEÇÃO",
     "Justificativa profissional",
     "Finalidade editável"
   ]) {
@@ -409,4 +410,35 @@ test("anamnese alimenta sugestões MMFTR com decisão e programação profission
   assert.match(route, /materializar-sugestao-pre-baseline/);
   assert.match(route, /decidir-recomendacao-thx/);
   assert.doesNotMatch(management, /selecao_automatica:\s*true/);
+});
+
+test("sessão exige nome, decisão explícita e comandos completos no Cockpit", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  const operation = await source("components/operacao-homologacao.tsx");
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const route = await source("app/api/gestao-operacional/route.ts");
+
+  assert.match(management, /Nome da sessão/);
+  assert.match(management, /nome_da_sessao/);
+  assert.match(management, /ACATAR RECOMENDAÇÃO/);
+  assert.match(management, /NÃO ACATAR/);
+  assert.match(management, /SUBSTITUIR/);
+  assert.match(management, /DEIXAR SEM SELEÇÃO/);
+  assert.match(management, /Biblioteca Oficial completa/);
+  assert.doesNotMatch(
+    management,
+    /decisao_profissional:\s*"NAO_SELECIONAR"/
+  );
+  assert.match(route, /atualizar-sessao/);
+  assert.match(route, /configuracao-operacional/);
+  assert.match(cockpit, /contextoSessao\.nome_operacional/);
+  for (const label of [
+    "PREPARAR SESSÃO",
+    "INICIAR SESSÃO",
+    "PAUSAR SESSÃO",
+    "RETOMAR SESSÃO",
+    "ENCERRAR SESSÃO"
+  ]) {
+    assert.match(operation, new RegExp(label));
+  }
 });

@@ -707,10 +707,11 @@ async function gerarRelatorio(token: string, contexto: Contexto) {
     body: JSON.stringify({
       tipo: "PRE_TREINO_POS",
       destinatario: "PROFISSIONAL",
-      titulo: "Homologação operacional PRÉ / TREINO / PÓS",
+      titulo: `${String(contexto.sessao.nome_operacional ?? "Sessão operacional")} — relatório HUMANEXUS`,
       objetivo: "Documentar a sessão técnica preservada sem convertê-la em resultado humano.",
       contexto: {
-        sessao: contexto.sessao.identificador,
+        nome_da_sessao: contexto.sessao.nome_operacional,
+        identificador_interno_da_sessao: contexto.sessao.identificador,
         natureza: MARCACAO,
         fases: "PRE, TREINO e POS",
         referencia_de_baseline: contexto.gravacao?.baseline ?? {

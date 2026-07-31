@@ -110,6 +110,7 @@ function atualizarContextoNaUrl(
 
 function sessaoInicial() {
   return {
+    nome_da_sessao: "",
     identificador_do_participante: "",
     finalidade: "",
     modalidade: "INDIVIDUAL",
@@ -118,7 +119,7 @@ function sessaoInicial() {
     duracao_planejada_minutos: "60",
     identificador_do_profissional: "",
     identificador_da_anamnese: "",
-    decisao_profissional: "NAO_SELECIONAR",
+    decisao_profissional: "",
     codigo_do_ctr: "",
     codigo_do_thx: "",
     justificativa: "",
@@ -212,6 +213,7 @@ export function GestaoOperacional({
     identificador: string;
     participante: string;
   } | null>(null);
+  const [sessaoEmEdicao, setSessaoEmEdicao] = useState("");
   const [participanteDoCatalogo, setParticipanteDoCatalogo] = useState("");
   const [familiaThx, setFamiliaThx] = useState("");
   const [planejamentoThx, setPlanejamentoThx] = useState({
@@ -845,6 +847,7 @@ export function GestaoOperacional({
             setOrganizacaoSelecionada(identificador);
             setSessao(sessaoInicial());
             setSessaoCriada(null);
+            setSessaoEmEdicao("");
             setConsentimento((estado) => ({
               ...estado,
               identificador_do_participante: "",
@@ -982,7 +985,11 @@ export function GestaoOperacional({
                 : null;
           return (
             <article key={String(item.identificador)}>
-              <div><small>Sessão</small><strong>{texto(item.identificador)}</strong></div>
+              <div>
+                <small>Sessão</small>
+                <strong>{texto(item.nome_operacional, "Sessão sem nome legado")}</strong>
+                <span>Identificador interno preservado</span>
+              </div>
               <div><small>Estado</small><strong>{texto(estado)}</strong></div>
               <div>
                 <small>Participante</small>
@@ -991,6 +998,52 @@ export function GestaoOperacional({
                   texto(item.identificador_do_participante)
                 )}</strong>
               </div>
+              {operacional && estado === "CRIADA" ? (
+                <button
+                  type="button"
+                  disabled={ocupado}
+                  onClick={() => {
+                    const decisao = objeto(
+                      operacional.decisao_profissional_json
+                    );
+                    setSessao({
+                      ...sessaoInicial(),
+                      nome_da_sessao: String(item.nome_operacional ?? ""),
+                      identificador_do_participante: String(
+                        item.identificador_do_participante ?? ""
+                      ),
+                      finalidade: String(operacional.finalidade ?? ""),
+                      modalidade: String(operacional.modalidade ?? "INDIVIDUAL"),
+                      tipo_de_sessao: String(
+                        operacional.tipo_de_sessao ?? "PRE_TREINO_POS"
+                      ),
+                      data_programada: String(
+                        operacional.data_programada ?? ""
+                      ),
+                      duracao_planejada_minutos: String(
+                        operacional.duracao_planejada_minutos ?? "60"
+                      ),
+                      identificador_do_profissional: String(
+                        operacional.identificador_do_profissional ?? ""
+                      ),
+                      identificador_da_anamnese: String(
+                        operacional.identificador_da_anamnese ?? ""
+                      ),
+                      decisao_profissional: String(
+                        decisao.decisao ?? ""
+                      ),
+                      codigo_do_ctr: String(decisao.codigo_do_ctr ?? ""),
+                      codigo_do_thx: String(decisao.codigo_do_thx ?? ""),
+                      justificativa: String(decisao.justificativa ?? "")
+                    });
+                    setSessaoEmEdicao(String(item.identificador));
+                    setSessaoCriada(null);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  Editar configuração
+                </button>
+              ) : null}
               {acao && operacional ? (
                 <button
                   type="button"
@@ -1026,7 +1079,7 @@ export function GestaoOperacional({
   const ctrsValidados = useMemo(() => Array.from(new Map(
     (dados?.vinculos_ctr_thx_validados ?? []).map((item) => [String(item.codigo_do_ctr), item])
   ).values()), [dados]);
-  const ctrsDisponiveis = sessao.decisao_profissional === "ACEITAR_SUGESTAO"
+  const ctrsDisponiveis = sessao.decisao_profissional === "ACEITAR_RECOMENDACAO"
     ? ctrsValidados.filter((item) => sugestoesDaAnamnese.some(
         (sugestao) => String(sugestao.codigo_do_ctr ?? "")
           === String(item.codigo_do_ctr ?? "")
@@ -1041,11 +1094,17 @@ export function GestaoOperacional({
       sessao.codigo_do_ctr,
       codigo
     ].join("::"));
-    if (sessao.decisao_profissional === "ACEITAR_SUGESTAO") {
+    if (sessao.decisao_profissional === "ACEITAR_RECOMENDACAO") {
       return sugerido;
     }
     return !codigo.startsWith("THX-AER") || sugerido;
   });
+  const bibliotecaCompletaDaSessao = Array.from(new Map(
+    (dados?.vinculos_ctr_thx_validados ?? []).map((item) => [
+      String(item.codigo_do_thx ?? ""),
+      item
+    ])
+  ).values()).filter((item) => String(item.codigo_do_thx ?? ""));
   const evidenciaDoCatalogo = useMemo(() => {
     const porParticipante = objeto(
       dados?.evidencias_regulatorias_treinamento
@@ -1907,22 +1966,28 @@ export function GestaoOperacional({
               ...estado,
               chave_de_idempotencia: chave
             }));
-            const resultado = await executar("criar-sessao-com-vinculo", {
+            const resultado = await executar(
+              sessaoEmEdicao ? "atualizar-sessao" : "criar-sessao-com-vinculo",
+              {
               ...sessao,
               codigo_do_ctr: sessao.tipo_de_sessao === "BASELINE"
-                || sessao.decisao_profissional === "NAO_SELECIONAR"
+                || ["NAO_ACATAR", "DEIXAR_SEM_SELECAO"].includes(
+                  sessao.decisao_profissional
+                )
                 ? ""
                 : sessao.codigo_do_ctr,
               codigo_do_thx: sessao.tipo_de_sessao === "BASELINE"
-                || sessao.decisao_profissional === "NAO_SELECIONAR"
+                || ["NAO_ACATAR", "DEIXAR_SEM_SELECAO"].includes(
+                  sessao.decisao_profissional
+                )
                 ? ""
                 : sessao.codigo_do_thx,
-              decisao_profissional: sessao.tipo_de_sessao === "BASELINE"
-                ? "NAO_SELECIONAR"
-                : sessao.decisao_profissional,
+              recomendacao_original: sugestoesDaAnamnese,
               chave_de_idempotencia: chave,
-              duracao_planejada_minutos: Number(sessao.duracao_planejada_minutos)
-            });
+                duracao_planejada_minutos: Number(sessao.duracao_planejada_minutos)
+              },
+              sessaoEmEdicao || undefined
+            );
             if (resultado) {
               const sessaoPersistida = objeto(resultado.sessao);
               const identificador = String(
@@ -1950,10 +2015,12 @@ export function GestaoOperacional({
                 ...estado,
                 chave_de_idempotencia: ""
               }));
+              setSessaoEmEdicao("");
             }
           }}>
             <small>CONTEXTO CIENTÍFICO PRESERVADO</small>
-            <h2>Criar sessão</h2>
+            <h2>{sessaoEmEdicao ? "Editar sessão" : "Criar sessão"}</h2>
+            <label>Nome da sessão<input required maxLength={160} value={sessao.nome_da_sessao} onChange={(evento) => setSessao({ ...sessao, nome_da_sessao: evento.target.value })} placeholder="Nome operacional definido pelo profissional" /></label>
             <label>Participante<select required value={sessao.identificador_do_participante} onChange={(evento) => {
               const participanteId = evento.target.value;
               setSessao({
@@ -1973,7 +2040,7 @@ export function GestaoOperacional({
             <label>Anamnese concluída<select required value={sessao.identificador_da_anamnese} onChange={(evento) => setSessao({
               ...sessao,
               identificador_da_anamnese: evento.target.value,
-              decisao_profissional: sessao.tipo_de_sessao === "BASELINE" ? "NAO_SELECIONAR" : "",
+              decisao_profissional: "",
               codigo_do_ctr: "",
               codigo_do_thx: ""
             })}><option value="">Selecione</option>{anamnesesConcluidas.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.identificador_da_versao_do_formulario)} · {dataLegivel(item.concluido_em)}</option>)}</select></label>
@@ -2006,9 +2073,10 @@ export function GestaoOperacional({
                 <fieldset className="hx-session-type">
                   <legend>Decisão profissional sobre CTR e THX</legend>
                   {([
-                    ["ACEITAR_SUGESTAO", "Aceitar sugestão oficial"],
-                    ["SUBSTITUIR", "Substituir por outro vínculo oficial"],
-                    ["NAO_SELECIONAR", "Não selecionar neste momento"]
+                    ["ACEITAR_RECOMENDACAO", "ACATAR RECOMENDAÇÃO"],
+                    ["NAO_ACATAR", "NÃO ACATAR"],
+                    ["SUBSTITUIR", "SUBSTITUIR"],
+                    ["DEIXAR_SEM_SELECAO", "DEIXAR SEM SELEÇÃO"]
                   ] as const).map(([valor, rotulo]) => (
                     <label key={valor}>
                       <input
@@ -2031,7 +2099,9 @@ export function GestaoOperacional({
                     </label>
                   ))}
                 </fieldset>
-                {sessao.decisao_profissional !== "NAO_SELECIONAR" ? (
+                {["ACEITAR_RECOMENDACAO", "SUBSTITUIR"].includes(
+                  sessao.decisao_profissional
+                ) ? (
                   <>
                     <label>CTR oficial<select required value={sessao.codigo_do_ctr} onChange={(evento) => {
                       const codigo = evento.target.value;
@@ -2042,18 +2112,30 @@ export function GestaoOperacional({
                       });
                       atualizarContextoNaUrl({ thx: "" });
                     }}><option value="">Selecione</option>{ctrsDisponiveis.map((item) => <option key={String(item.codigo_do_ctr)} value={String(item.codigo_do_ctr)}>{texto(item.codigo_do_ctr)} · {texto(item.nome_do_ctr)}</option>)}</select></label>
-                    <label>THX ou THX-AER elegível<select required value={sessao.codigo_do_thx} onChange={(evento) => {
+                    <label>Biblioteca Oficial completa — THX ou THX-AER<select required value={sessao.codigo_do_thx} onChange={(evento) => {
                       const codigo = evento.target.value;
                       setSessao({ ...sessao, codigo_do_thx: codigo });
                       atualizarContextoNaUrl({ thx: codigo });
-                    }}><option value="">Selecione</option>{thxValidadosDoCtr.map((item) => <option key={String(item.identificador)} value={String(item.codigo_do_thx)}>{texto(item.codigo_do_thx)} · {texto(item.nome_do_thx)} · {texto(item.papel)}</option>)}</select></label>
+                    }}><option value="">Selecione</option>{(
+                      sessao.decisao_profissional === "ACEITAR_RECOMENDACAO"
+                        ? thxValidadosDoCtr
+                        : bibliotecaCompletaDaSessao
+                    ).map((item) => <option key={String(item.codigo_do_thx)} value={String(item.codigo_do_thx)}>{texto(item.codigo_do_thx)} · {texto(item.nome_do_thx)} · {texto(item.papel)}</option>)}</select></label>
+                    {sessao.codigo_do_ctr && sessao.codigo_do_thx
+                      && !thxValidadosDoCtr.some((item) => String(item.codigo_do_thx) === sessao.codigo_do_thx) ? (
+                        <p role="alert">Combinação sem vínculo oficial direto. A justificativa profissional é obrigatória e será auditada.</p>
+                      ) : null}
                   </>
                 ) : null}
               </>
             ) : (
-              <p>
-                Baseline é independente: nenhuma seleção CTR–THX será criada.
-              </p>
+              <fieldset className="hx-session-type">
+                <legend>Decisão profissional para o Baseline</legend>
+                <label>
+                  <input required type="radio" name="decisao-profissional" value="DEIXAR_SEM_SELECAO" checked={sessao.decisao_profissional === "DEIXAR_SEM_SELECAO"} onChange={() => setSessao({ ...sessao, decisao_profissional: "DEIXAR_SEM_SELECAO", codigo_do_ctr: "", codigo_do_thx: "" })} />
+                  DEIXAR SEM SELEÇÃO — Baseline independente
+                </label>
+              </fieldset>
             )}
             <label>Justificativa profissional<textarea required value={sessao.justificativa} onChange={(evento) => setSessao({ ...sessao, justificativa: evento.target.value })} /></label>
             <label>Finalidade editável<textarea required value={sessao.finalidade} onChange={(evento) => setSessao({ ...sessao, finalidade: evento.target.value })} /></label>
@@ -2070,7 +2152,7 @@ export function GestaoOperacional({
                   onChange={() => setSessao({
                     ...sessao,
                     tipo_de_sessao: "BASELINE",
-                    decisao_profissional: "NAO_SELECIONAR",
+                    decisao_profissional: "",
                     codigo_do_ctr: "",
                     codigo_do_thx: ""
                   })}
@@ -2094,7 +2176,17 @@ export function GestaoOperacional({
                 PRÉ → TREINO → PÓS
               </label>
             </fieldset>
-            <button disabled={ocupado || !podeConduzir}>Salvar sessão</button>
+            <button disabled={ocupado || !podeConduzir}>
+              {sessaoEmEdicao ? "Salvar alterações" : "Salvar sessão"}
+            </button>
+            {sessaoEmEdicao ? (
+              <button type="button" onClick={() => {
+                setSessao(sessaoInicial());
+                setSessaoEmEdicao("");
+              }}>
+                Cancelar edição
+              </button>
+            ) : null}
             {sessaoCriada ? (
               <section className="hx-session-created" aria-live="polite">
                 <div>

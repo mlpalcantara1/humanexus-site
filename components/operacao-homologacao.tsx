@@ -236,6 +236,17 @@ const ROTULOS_DOS_COMANDOS: Record<string, string> = {
   GERAR_RELATORIO: "Gerar relatório"
 };
 
+function rotuloDoComandoCentral(comando: string) {
+  if (comando === "PREPARAR_SESSAO") return "PREPARAR SESSÃO";
+  if (comando.startsWith("INICIAR_")) return "INICIAR SESSÃO";
+  if (comando.startsWith("PAUSAR_")) return "PAUSAR SESSÃO";
+  if (comando.startsWith("RETOMAR_")) return "RETOMAR SESSÃO";
+  if (comando.startsWith("ENCERRAR_") || comando === "CONCLUIR_SESSAO") {
+    return "ENCERRAR SESSÃO";
+  }
+  return ROTULOS_DOS_COMANDOS[comando] ?? texto(comando);
+}
+
 function Botao({
   onClick,
   children,
@@ -705,7 +716,7 @@ function ContextoPersistente({ estado, visao }: { estado: Estado; visao: VisaoCo
         <div><small>Participante</small><strong>{texto(estado.participante.nome ?? estado.participante.referencia_externa)}</strong></div>
         <div><small>Organização</small><strong>{texto(estado.organizacao.nome)}</strong></div>
         <div><small>Profissional</small><strong>{texto(profissional?.nome)}</strong></div>
-        <div><small>Sessão</small><strong>{texto(estado.sessao.identificador)}</strong></div>
+        <div><small>Sessão</small><strong>{texto(estado.sessao.nome_operacional, "Sessão sem nome legado")}</strong></div>
         <div><small>Estado da sessão</small><strong>{texto(detalhes.estado_operacional ?? estado.sessao.estado)}</strong></div>
         <div><small>Tipo da sessão</small><strong>{tipoDaSessao === "BASELINE" ? "Baseline" : "PRÉ → TREINO → PÓS"}</strong></div>
         <div><small>Finalidade</small><strong>{texto(detalhes.finalidade)}</strong></div>
@@ -787,7 +798,7 @@ function SeletorDeContexto({
           >
             {estado.contextos.sessoes.map((item) => (
               <option key={String(item.identificador)} value={String(item.identificador)}>
-                {texto(item.estado)} · {dataLegivel(item.iniciado_em ?? item.criado_em)}
+                {texto(item.nome_operacional, "Sessão sem nome legado")} · {texto(item.estado)} · {dataLegivel(item.iniciado_em ?? item.criado_em)}
               </option>
             ))}
           </select>
@@ -1197,7 +1208,7 @@ function SelecaoInicialDoCockpit({
           disabled={ocupado || !selecao.participante}
           onChange={(evento) => selecionar("sessao", evento.target.value)}
         ><option value="">Selecione</option>{sessoes.map((item) => (
-          <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.estado)} · {dataLegivel(item.criado_em)}</option>
+          <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.nome_operacional, "Sessão sem nome legado")} · {texto(item.estado)} · {dataLegivel(item.criado_em)}</option>
         ))}</select></label>
       </div>
       <button
@@ -1963,7 +1974,13 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const pontosLongitudinais = historicoLongitudinal.map((item) => ({
     time: instante(item.ocorrido_em ?? item.criado_em ?? item.iniciado_em),
     value: typeof item.iirh === "number" && item.iirh_valido !== false ? item.iirh : null,
-    label: texto(item.identificador_da_sessao),
+    label: texto(
+      item.nome_operacional
+      ?? (item.identificador_da_sessao === estado.sessao.identificador
+        ? estado.sessao.nome_operacional
+        : null),
+      "Sessão histórica"
+    ),
     source: "Longitudinal oficial",
     quality: typeof item.confiabilidade === "number" ? item.confiabilidade : null,
     coverage: typeof item.cobertura === "number" ? item.cobertura : null,
@@ -2167,10 +2184,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       ocupado={ocupado !== ""}
       erro={erro}
       acaoPrincipal={acaoPrincipal}
-      rotuloDaAcao={ROTULOS_DOS_COMANDOS[acaoPrincipal] ?? texto(acaoPrincipal)}
+      rotuloDaAcao={rotuloDoComandoCentral(acaoPrincipal)}
       acoesSecundarias={acoesSecundarias}
-      rotuloDaSecundaria={(comando) =>
-        ROTULOS_DOS_COMANDOS[comando] ?? texto(comando)}
+      rotuloDaSecundaria={rotuloDoComandoCentral}
       executarPrincipal={executarPrincipal}
       executarSecundaria={executarSecundaria}
       registrar={(categoria, textoDoRegistro) =>
@@ -2379,7 +2395,13 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     const pontos = historico.map((item) => ({
       time: instante(item.ocorrido_em ?? item.criado_em ?? item.iniciado_em),
       value: typeof item.iirh === "number" && item.iirh_valido !== false ? item.iirh : null,
-      label: texto(item.identificador_da_sessao),
+      label: texto(
+        item.nome_operacional
+        ?? (item.identificador_da_sessao === estado.sessao.identificador
+          ? estado.sessao.nome_operacional
+          : null),
+        "Sessão histórica"
+      ),
       source: "Longitudinal oficial",
       quality: typeof item.confiabilidade === "number" ? item.confiabilidade : null,
       coverage: typeof item.cobertura === "number" ? item.cobertura : null,

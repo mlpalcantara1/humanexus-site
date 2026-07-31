@@ -97,6 +97,9 @@ export async function POST(request: Request) {
       caminho = "/api/v1/sessoes-operacionais";
     } else if (acao === "criar-sessao") {
       caminho = "/api/v1/sessoes-operacionais";
+    } else if (acao === "atualizar-sessao") {
+      caminho = `/api/v1/sessoes/${encodeURIComponent(String(corpo.identificador))}/configuracao-operacional`;
+      metodo = "PUT";
     } else if (acao === "operar-sessao") {
       caminho = `/api/v1/sessoes/${encodeURIComponent(String(corpo.identificador))}/operacoes`;
     } else if (acao === "apresentar-consentimento") {
