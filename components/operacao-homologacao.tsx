@@ -1193,7 +1193,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       window.location.search
     ).get("visao");
     if (visaoSolicitada) parametros.set("visao", visaoSolicitada);
-    if (leve) parametros.set("leve", "1");
+    if (leve) {
+      parametros.set("leve", "1");
+      parametros.set("_t", String(Date.now()));
+    }
     if (inicial) parametros.set("inicial", "1");
     for (const campo of ["organizacao", "participante", "sessao"]) {
       if (selecao[campo]) parametros.set(campo, selecao[campo]);

@@ -23,6 +23,7 @@ test("Cockpit agrega leituras e atualiza telemetria sem recarregar o contexto in
   assert.match(route, /limite=120/);
   assert.match(client, /atualizacao_parcial/);
   assert.match(client, /carregar\(selecaoInicial, true\)/);
+  assert.match(client, /parametros\.set\("_t", String\(Date\.now\(\)\)\)/);
 });
 
 test("comandos operacionais sincronizam o controle de captura sem recarregamento manual", async () => {
