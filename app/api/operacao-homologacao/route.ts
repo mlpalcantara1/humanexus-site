@@ -186,7 +186,6 @@ async function estado(
     participantes: Registro[];
     sessoes: Registro[];
     profissionais: Registro[];
-    responsaveis_persistidos_nas_sessoes?: Registro[];
     vinculos_ctr_thx_validados: Registro[];
   }>(
     `/api/v1/gestao/contexto?${parametrosDoContexto}`,
@@ -422,28 +421,23 @@ async function estado(
   const ctr = ctrs.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
   const execucao = execucoes.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
   const usuariosDisponiveis = contextoBase.profissionais;
-  const responsaveisPersistidos = Array.isArray(
-    contextoBase.responsaveis_persistidos_nas_sessoes
-  )
-    ? contextoBase.responsaveis_persistidos_nas_sessoes
-    : [];
   const vinculosOficiais = contextoBase.vinculos_ctr_thx_validados;
   const nomeDoParticipante = anamneses
     .map((item) => item.nome_do_participante)
     .find((item) => typeof item === "string" && item.trim());
-  const detalhesOperacionais = registro(sessaoOperacional.detalhes);
+  const detalhesOperacionaisConsultados = registro(sessaoOperacional.detalhes);
+  const detalhesOperacionais = Object.keys(detalhesOperacionaisConsultados).length
+    ? detalhesOperacionaisConsultados
+    : registro(sessao.detalhes_operacionais);
   const relatoriosDaSessao = relatorios.filter(
     (item) => registro(item.contexto_json).sessao === sessaoId
   );
-  const profissionalResponsavel = [
-    ...usuariosDisponiveis,
-    ...responsaveisPersistidos
-  ].find(
+  const profissionalResponsavel = usuariosDisponiveis.find(
     (item) => item.identificador === detalhesOperacionais.identificador_do_profissional
   );
   if (!profissionalResponsavel) {
     throw new Error(
-      "Profissional responsável persistido na sessão não foi localizado no histórico autorizado."
+      "Profissional responsável persistido na sessão não pertence ao contexto autorizado."
     );
   }
   const criteriosCatalogo = Array.isArray(catalogoCtr.criterios) ? catalogoCtr.criterios as Registro[] : [];

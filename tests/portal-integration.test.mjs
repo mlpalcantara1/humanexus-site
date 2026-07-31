@@ -145,10 +145,10 @@ test("criação da sessão exige escolhas profissionais e Cockpit não reutiliza
     route,
     /Sessão não pertence ao participante e à organização selecionados/
   );
-  assert.match(route, /responsaveis_persistidos_nas_sessoes/);
+  assert.match(route, /sessao\.detalhes_operacionais/);
   assert.match(
     route,
-    /Profissional responsável persistido na sessão não foi localizado no histórico autorizado/
+    /Object\.keys\(detalhesOperacionaisConsultados\)\.length/
   );
   assert.doesNotMatch(
     route,
