@@ -145,6 +145,15 @@ test("criação da sessão exige escolhas profissionais e Cockpit não reutiliza
     route,
     /Sessão não pertence ao participante e à organização selecionados/
   );
+  assert.match(route, /responsaveis_persistidos_nas_sessoes/);
+  assert.match(
+    route,
+    /Profissional responsável persistido na sessão não foi localizado no histórico autorizado/
+  );
+  assert.doesNotMatch(
+    route,
+    /identificador_do_profissional:\s*usuario\.identificador/
+  );
 });
 
 test("treinamentos usam somente a biblioteca oficial e evidência persistida", async () => {
