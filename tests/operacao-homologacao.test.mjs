@@ -460,3 +460,17 @@ test("Cockpit não converte ausência de evidência em zero e explica cobertura"
     /visao !== "visao-geral"[\s\S]{0,120}estado\.carregamento_progressivo/
   );
 });
+
+test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+
+  assert.match(cockpit, /if \(fonte\.ao_vivo !== true\) return \[\];/);
+  assert.match(cockpit, /fontes\.filter\(\(fonte\) => fonte\.ao_vivo === true\)/);
+  assert.match(cockpit, /polar\.ao_vivo === true[\s\S]*Sem leitura atual/);
+  assert.match(cockpit, /eeg\.ao_vivo === true[\s\S]*Sem leitura atual/);
+  assert.match(cockpit, /Última leitura registrada/);
+  assert.match(cockpit, /leituraAoVivo \? valorNormalizado/);
+  assert.match(cockpit, /const iirhCalculado = leituraAoVivo/);
+  assert.match(cockpit, /const resultanteCalculada = leituraAoVivo/);
+  assert.match(cockpit, /const trajetoriaCalculada = leituraAoVivo/);
+});

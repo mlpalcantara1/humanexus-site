@@ -25,6 +25,7 @@ type Fonte = Registro & {
   metricas?: Registro;
   metricas_de_desempenho?: Registro[];
   series?: Record<string, Registro[]>;
+  ultima_leitura_registrada?: Registro;
 };
 
 type Props = {
@@ -51,6 +52,7 @@ const METRICAS_DE_DESEMPENHO_VISIVEIS = [
 ] as const;
 
 function metricasDeDesempenhoVisiveis(fonte: Fonte) {
+  if (fonte.ao_vivo !== true) return [];
   return (Array.isArray(fonte.metricas_de_desempenho)
     ? fonte.metricas_de_desempenho
     : []).filter((item) =>
@@ -157,11 +159,20 @@ function LeituraNumerica({
   const alvo = presente ? Number(valor) : Number.NaN;
   const valido = Number.isFinite(alvo);
   const anterior = useRef(valido ? alvo : 0);
+  const tinhaLeituraAtual = useRef(valido);
   const [exibido, setExibido] = useState<number | null>(valido ? alvo : null);
 
   useEffect(() => {
     if (!valido) {
+      anterior.current = 0;
+      tinhaLeituraAtual.current = false;
       setExibido(null);
+      return;
+    }
+    if (!tinhaLeituraAtual.current) {
+      tinhaLeituraAtual.current = true;
+      anterior.current = alvo;
+      setExibido(alvo);
       return;
     }
     const origem = anterior.current;
@@ -182,7 +193,8 @@ function LeituraNumerica({
     return () => window.cancelAnimationFrame(quadro);
   }, [alvo, valido]);
 
-  return <>{exibido == null ? "—" : exibido.toFixed(casas)}{sufixo}</>;
+  if (!valido || exibido == null) return <>Sem leitura atual</>;
+  return <>{exibido.toFixed(casas)}{sufixo}</>;
 }
 
 function valorNormalizado(valor: unknown): number | null {
@@ -256,6 +268,7 @@ function Sparkline({ pontos, cor }: { pontos: Registro[]; cor: string }) {
 }
 
 function pontosDaSerie(fonte: Fonte, serie: string, origem: string): HxDataPoint[] {
+  if (fonte.ao_vivo !== true) return [];
   return lista(fonte.series?.[serie]).flatMap((item) => {
     const tempo = new Date(String(item.timestamp ?? "")).getTime();
     const valor = Number(item.valor);
@@ -338,40 +351,52 @@ function trilhas(fontes: Fonte[]): HxTrack[] {
 }
 
 function FontePolar({ fonte }: { fonte: Fonte }) {
-  const valores = objeto(fonte.valores);
-  const metricas = objeto(fonte.metricas);
+  const aoVivo = fonte.ao_vivo === true;
+  const valores = aoVivo ? objeto(fonte.valores) : {};
+  const metricas = aoVivo ? objeto(fonte.metricas) : {};
+  const ultimaRegistrada = objeto(fonte.ultima_leitura_registrada);
+  const valoresRegistrados = objeto(ultimaRegistrada.valores);
   return (
     <article className="hx-live-source-card" data-source="polar">
       <header><div><small>POLAR H10</small><strong>Sinal cardiovascular</strong></div><FonteEstado estado={fonte.estado} /></header>
       <div className="hx-live-source-values">
-        <span><small>Frequência cardíaca</small><b>{numero(valores.hr_bpm)} bpm</b></span>
-        <span><small>RMSSD</small><b>{numero(valores.rmssd_tecnico_ms, 1)} ms</b></span>
-        <span><small>Qualidade</small><b>{percentual(metricas.qualidade)}</b></span>
-        <span><small>Bateria</small><b>{percentual(valores.bateria_percentual)}</b></span>
+        <span><small>Frequência cardíaca</small><b>{aoVivo ? `${numero(valores.hr_bpm)} bpm` : "Sem leitura atual"}</b></span>
+        <span><small>RMSSD</small><b>{aoVivo ? `${numero(valores.rmssd_tecnico_ms, 1)} ms` : "Sem leitura atual"}</b></span>
+        <span><small>Qualidade</small><b>{aoVivo ? percentual(metricas.qualidade) : "Sem leitura atual"}</b></span>
+        <span><small>Bateria</small><b>{aoVivo ? percentual(valores.bateria_percentual) : "Sem leitura atual"}</b></span>
       </div>
-      <Sparkline pontos={lista(fonte.series?.hr)} cor={C.gold} />
+      <Sparkline pontos={aoVivo ? lista(fonte.series?.hr) : []} cor={C.gold} />
       <footer>
-        <span>Último pacote {dataLegivel(metricas.ultimo_pacote)}</span>
-        <span>Latência {numero(metricas.latencia_ms, 1)} ms · perdas {numero(metricas.perdas)}</span>
+        <span>{aoVivo ? `Pacote atual ${dataLegivel(metricas.ultimo_pacote)}` : "Sem pacote atual"}</span>
+        <span>{aoVivo ? `Latência ${numero(metricas.latencia_ms, 1)} ms · perdas ${numero(metricas.perdas)}` : "Fonte sem transmissão atual"}</span>
       </footer>
+      {!aoVivo && ultimaRegistrada.timestamp ? (
+        <details className="hx-live-recorded-reading">
+          <summary>Última leitura registrada</summary>
+          <span>{dataLegivel(ultimaRegistrada.timestamp)} · FC {numero(valoresRegistrados.hr_bpm)} bpm · RMSSD {numero(valoresRegistrados.rmssd_tecnico_ms, 1)} ms</span>
+        </details>
+      ) : null}
     </article>
   );
 }
 
 function FonteEpoc({ fonte }: { fonte: Fonte }) {
-  const valores = objeto(fonte.valores);
-  const metricas = objeto(fonte.metricas);
+  const aoVivo = fonte.ao_vivo === true;
+  const valores = aoVivo ? objeto(fonte.valores) : {};
+  const metricas = aoVivo ? objeto(fonte.metricas) : {};
   const desempenho = metricasDeDesempenhoVisiveis(fonte);
+  const ultimaRegistrada = objeto(fonte.ultima_leitura_registrada);
+  const valoresRegistrados = objeto(ultimaRegistrada.valores);
   return (
     <article className="hx-live-source-card hx-live-source-card--epoc" data-source="epoc-x">
       <header><div><small>EPOC X</small><strong>Desempenho e qualidade</strong></div><FonteEstado estado={fonte.estado} /></header>
       <div className="hx-live-source-values">
-        <span><small>Qualidade do sinal</small><b>{percentual(valores.qualidade_global)}</b></span>
-        <span><small>Contato adequado</small><b>{numero(valores.canais_adequados)}/{numero(valores.canais_total)} canais</b></span>
-        <span><small>Bateria</small><b>{percentual(valores.bateria_percentual)}</b></span>
-        <span><small>Último dado</small><b>{dataLegivel(metricas.ultimo_pacote)}</b></span>
+        <span><small>Qualidade do sinal</small><b>{aoVivo ? percentual(valores.qualidade_global) : "Sem leitura atual"}</b></span>
+        <span><small>Contato adequado</small><b>{aoVivo ? `${numero(valores.canais_adequados)}/${numero(valores.canais_total)} canais` : "Sem leitura atual"}</b></span>
+        <span><small>Bateria</small><b>{aoVivo ? percentual(valores.bateria_percentual) : "Sem leitura atual"}</b></span>
+        <span><small>Último dado</small><b>{aoVivo ? dataLegivel(metricas.ultimo_pacote) : "Sem leitura atual"}</b></span>
       </div>
-      <Sparkline pontos={lista(fonte.series?.qualidade)} cor={C.green} />
+      <Sparkline pontos={aoVivo ? lista(fonte.series?.qualidade) : []} cor={C.green} />
       {desempenho.length ? (
         <div className="hx-live-performance-grid">
           {desempenho.map((metrica) => (
@@ -383,9 +408,15 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
           ))}
         </div>
       ) : null}
+      {!aoVivo && ultimaRegistrada.timestamp ? (
+        <details className="hx-live-recorded-reading">
+          <summary>Última leitura registrada</summary>
+          <span>{dataLegivel(ultimaRegistrada.timestamp)} · qualidade {percentual(valoresRegistrados.qualidade_global)}</span>
+        </details>
+      ) : null}
       <footer>
-        <span>Latência {numero(metricas.latencia_ms, 1)} ms · perdas {numero(metricas.perdas)}</span>
-        <span>Métricas fornecidas pelo equipamento · sem interpretação HUMANEXUS automática</span>
+        <span>{aoVivo ? `Latência ${numero(metricas.latencia_ms, 1)} ms · perdas ${numero(metricas.perdas)}` : "Sem pacote atual"}</span>
+        <span>{aoVivo ? "Métricas fornecidas pelo equipamento · sem interpretação HUMANEXUS automática" : "Fonte sem transmissão atual"}</span>
       </footer>
     </article>
   );
@@ -434,8 +465,12 @@ export function CockpitOperacionalVivo({
   const fases = objeto(sessao.estados_das_fases);
   const modoHistorico = cockpit.modo === "REPLAY_HISTORICO";
   const modoAguardando = cockpit.modo === "MODO_OPERACIONAL_AGUARDANDO_CONEXAO";
+  const leituraAoVivo = cockpit.ao_vivo === true && !modoHistorico;
   const sessaoFinalizada = contextoSessao.estado === "FINALIZADA";
-  const graficos = useMemo(() => trilhas(fontes), [fontes]);
+  const graficos = useMemo(
+    () => trilhas(fontes.filter((fonte) => fonte.ao_vivo === true)),
+    [fontes]
+  );
   const baseline = referenciaDeBaseline(objeto(estado.gravacao).baseline);
   const ciencia = objeto(estado.ciencia);
   const leituraCientifica = objeto(cockpit.leitura_cientifica);
@@ -455,17 +490,17 @@ export function CockpitOperacionalVivo({
     return {
       code: codigoVetorial(definicao),
       name: nomeVetorial(definicao),
-      value: valorNormalizado(estadoVetorial?.magnitude)
+      value: leituraAoVivo ? valorNormalizado(estadoVetorial?.magnitude) : null
     };
   });
   const radarCompleto = radarVetorial.length === 10
     && radarVetorial.every((item) => item.value != null);
-  const iirhCalculado = iirh.estado === "CALCULADO"
+  const iirhCalculado = leituraAoVivo && iirh.estado === "CALCULADO"
     && typeof iirh.valor === "number";
-  const resultanteCalculada = resultante.estado === "CALCULADO"
+  const resultanteCalculada = leituraAoVivo && resultante.estado === "CALCULADO"
     && typeof resultante.valor === "number";
   const zonaCalculada = iirhCalculado && Boolean(zona.nome ?? zona.codigo);
-  const trajetoriaCalculada = trajetoria.valor != null;
+  const trajetoriaCalculada = leituraAoVivo && trajetoria.valor != null;
   const leituraCientificaVisivel = iirhCalculado
     || zonaCalculada
     || resultanteCalculada
@@ -625,10 +660,10 @@ export function CockpitOperacionalVivo({
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
         <div><small>TEMPO</small><strong>{duracao(sessao.tempo_total_inicio, sessao.tempo_total_fim, agora)}</strong><span>Sessão</span></div>
-        <div><small>FREQUÊNCIA CARDÍACA</small><strong><LeituraNumerica valor={objeto(polar.valores).hr_bpm} sufixo=" bpm" /></strong><span>{modoHistorico ? "Dado histórico" : texto(polar.estado)}</span></div>
-        <div><small>RMSSD</small><strong><LeituraNumerica valor={objeto(polar.valores).rmssd_tecnico_ms} casas={1} sufixo=" ms" /></strong><span>{modoHistorico ? "Técnico histórico" : texto(polar.estado)}</span></div>
-        <div><small>ESTADO DO EEG</small><strong>{texto(eeg.estado)}</strong><span>Qualidade {percentual(objeto(eeg.valores).qualidade_global)}</span></div>
-        <div><small>ESTADO DO POLAR</small><strong>{texto(polar.estado)}</strong><span>Última sequência {numero(objeto(polar.metricas).ultima_sequencia)}</span></div>
+        <div><small>FREQUÊNCIA CARDÍACA</small><strong>{polar.ao_vivo === true ? <LeituraNumerica valor={objeto(polar.valores).hr_bpm} sufixo=" bpm" /> : "Sem leitura atual"}</strong><span>{texto(polar.estado)}</span></div>
+        <div><small>RMSSD</small><strong>{polar.ao_vivo === true ? <LeituraNumerica valor={objeto(polar.valores).rmssd_tecnico_ms} casas={1} sufixo=" ms" /> : "Sem leitura atual"}</strong><span>{texto(polar.estado)}</span></div>
+        <div><small>ESTADO DO EEG</small><strong>{texto(eeg.estado)}</strong><span>{eeg.ao_vivo === true ? `Qualidade ${percentual(objeto(eeg.valores).qualidade_global)}` : "Sem leitura atual"}</span></div>
+        <div><small>ESTADO DO POLAR</small><strong>{texto(polar.estado)}</strong><span>{polar.ao_vivo === true ? `Sequência atual ${numero(objeto(polar.metricas).ultima_sequencia)}` : "Sem leitura atual"}</span></div>
       </section>
 
       <section className="hx-live-operation-focus" aria-label="Comando e progressão da sessão">
