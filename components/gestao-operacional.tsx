@@ -108,6 +108,24 @@ function atualizarContextoNaUrl(
   window.history.replaceState(window.history.state, "", url);
 }
 
+function sessaoInicial() {
+  return {
+    identificador_do_participante: "",
+    finalidade: "",
+    modalidade: "INDIVIDUAL",
+    tipo_de_sessao: "BASELINE",
+    data_programada: "",
+    duracao_planejada_minutos: "60",
+    identificador_do_profissional: "",
+    identificador_da_anamnese: "",
+    decisao_profissional: "NAO_SELECIONAR",
+    codigo_do_ctr: "",
+    codigo_do_thx: "",
+    justificativa: "",
+    chave_de_idempotencia: ""
+  };
+}
+
 export function GestaoOperacional({
   modulo
 }: {
@@ -189,20 +207,7 @@ export function GestaoOperacional({
     ativo: true,
     justificativa: ""
   });
-  const [sessao, setSessao] = useState({
-    identificador_do_participante: "",
-    finalidade: "HOMOLOGAÇÃO FÍSICA FINAL — DADOS REAIS AUTORIZADOS",
-    modalidade: "INDIVIDUAL",
-    tipo_de_sessao: "PRE_TREINO_POS",
-    data_programada: "",
-    duracao_planejada_minutos: "60",
-    identificador_do_profissional: "",
-    identificador_da_anamnese: "",
-    codigo_do_ctr: "",
-    codigo_do_thx: "",
-    justificativa: "",
-    chave_de_idempotencia: ""
-  });
+  const [sessao, setSessao] = useState(sessaoInicial);
   const [sessaoCriada, setSessaoCriada] = useState<{
     identificador: string;
     participante: string;
@@ -348,7 +353,6 @@ export function GestaoOperacional({
     setOrganizacaoSelecionada(atual);
     const contextoDaUrl = new URLSearchParams(window.location.search);
     const participanteDaUrl = contextoDaUrl.get("participante") ?? "";
-    const thxDaUrl = contextoDaUrl.get("thx") ?? "";
     atualizarContextoNaUrl({ organizacao: atual });
     setNovaOrganizacao(false);
     preencherOrganizacao(corpo.organizacao ?? null);
@@ -367,11 +371,11 @@ export function GestaoOperacional({
           String(item.identificador) === (
             participanteDaUrl || estado.identificador_do_participante
           )
-      ) ?? corpo.participantes?.[0];
+      );
       const profissionalAtual = corpo.profissionais?.find(
         (item: Registro) =>
           String(item.identificador) === estado.identificador_do_profissional
-      ) ?? corpo.profissionais?.[0];
+      );
       const anamneses = Array.isArray(participanteAtual?.anamneses)
         ? participanteAtual.anamneses as Registro[]
         : [];
@@ -381,25 +385,15 @@ export function GestaoOperacional({
           && item.estado === "CONCLUIDA_PELO_PARTICIPANTE"
           && Number(item.percentual_concluido) === 100
           && item.validade_cientifica === "VALIDA"
-      ) ?? anamneses.find(
-        (item) =>
-          item.estado === "CONCLUIDA_PELO_PARTICIPANTE"
-          && Number(item.percentual_concluido) === 100
-          && item.validade_cientifica === "VALIDA"
       );
       const ctrAtual = corpo.vinculos_ctr_thx_validados?.find(
         (item: Registro) =>
           String(item.codigo_do_ctr) === estado.codigo_do_ctr
-      ) ?? corpo.vinculos_ctr_thx_validados?.[0];
+      );
       const thxAtual = corpo.vinculos_ctr_thx_validados?.find(
         (item: Registro) =>
           String(item.codigo_do_ctr) === String(ctrAtual?.codigo_do_ctr ?? "")
-          && String(item.codigo_do_thx) === (
-            thxDaUrl || estado.codigo_do_thx
-          )
-      ) ?? corpo.vinculos_ctr_thx_validados?.find(
-        (item: Registro) =>
-          String(item.codigo_do_ctr) === String(ctrAtual?.codigo_do_ctr ?? "")
+          && String(item.codigo_do_thx) === estado.codigo_do_thx
       );
       return {
         ...estado,
@@ -420,7 +414,7 @@ export function GestaoOperacional({
           String(item.identificador) === (
             participanteDaUrl || estado.identificador_do_participante
           )
-      ) ?? corpo.participantes?.[0];
+      );
       const proximoParticipante = String(
         participanteDoContexto?.identificador ?? ""
       );
@@ -440,7 +434,7 @@ export function GestaoOperacional({
         )
       )
         ? participanteDaUrl || atual
-        : String(corpo.participantes?.[0]?.identificador ?? "")
+        : ""
     ));
   }
 
@@ -810,6 +804,29 @@ export function GestaoOperacional({
       && Number(item.percentual_concluido) === 100
       && item.validade_cientifica === "VALIDA"
   ) ?? [];
+  const evidenciasDaSessao = objeto(
+    objeto(dados?.evidencias_regulatorias_treinamento)[
+      sessao.identificador_do_participante
+    ]
+  );
+  const projecaoDaSessao = objeto(
+    evidenciasDaSessao.sugestoes_pre_baseline
+  );
+  const sugestoesDaAnamnese = lista(projecaoDaSessao.sugestoes).filter(
+    (sugestao) => lista(sugestao.evidencias_de_origem).some(
+      (evidencia) => String(evidencia.identificador_da_anamnese ?? "")
+        === sessao.identificador_da_anamnese
+    )
+  );
+  const paresSugeridosDaSessao = new Set(
+    sugestoesDaAnamnese.flatMap((sugestao) => [
+      ...lista(sugestao.thx_recomendados),
+      ...lista(sugestao.thx_compativeis)
+    ].map((thx) => [
+      String(sugestao.codigo_do_ctr ?? ""),
+      String(thx.codigo ?? "")
+    ].join("::")))
+  );
 
   const cabecalho = (
     <section className="hx-management-context">
@@ -826,6 +843,7 @@ export function GestaoOperacional({
           onChange={(evento) => {
             const identificador = evento.target.value;
             setOrganizacaoSelecionada(identificador);
+            setSessao(sessaoInicial());
             setSessaoCriada(null);
             setConsentimento((estado) => ({
               ...estado,
@@ -1008,9 +1026,26 @@ export function GestaoOperacional({
   const ctrsValidados = useMemo(() => Array.from(new Map(
     (dados?.vinculos_ctr_thx_validados ?? []).map((item) => [String(item.codigo_do_ctr), item])
   ).values()), [dados]);
-  const thxValidadosDoCtr = useMemo(() => (
+  const ctrsDisponiveis = sessao.decisao_profissional === "ACEITAR_SUGESTAO"
+    ? ctrsValidados.filter((item) => sugestoesDaAnamnese.some(
+        (sugestao) => String(sugestao.codigo_do_ctr ?? "")
+          === String(item.codigo_do_ctr ?? "")
+      ))
+    : ctrsValidados;
+  const thxValidadosDoCtr = (
     dados?.vinculos_ctr_thx_validados ?? []
-  ).filter((item) => item.codigo_do_ctr === sessao.codigo_do_ctr), [dados, sessao.codigo_do_ctr]);
+  ).filter((item) => {
+    if (item.codigo_do_ctr !== sessao.codigo_do_ctr) return false;
+    const codigo = String(item.codigo_do_thx ?? "");
+    const sugerido = paresSugeridosDaSessao.has([
+      sessao.codigo_do_ctr,
+      codigo
+    ].join("::"));
+    if (sessao.decisao_profissional === "ACEITAR_SUGESTAO") {
+      return sugerido;
+    }
+    return !codigo.startsWith("THX-AER") || sugerido;
+  });
   const evidenciaDoCatalogo = useMemo(() => {
     const porParticipante = objeto(
       dados?.evidencias_regulatorias_treinamento
@@ -1875,21 +1910,25 @@ export function GestaoOperacional({
             const resultado = await executar("criar-sessao-com-vinculo", {
               ...sessao,
               codigo_do_ctr: sessao.tipo_de_sessao === "BASELINE"
+                || sessao.decisao_profissional === "NAO_SELECIONAR"
                 ? ""
                 : sessao.codigo_do_ctr,
               codigo_do_thx: sessao.tipo_de_sessao === "BASELINE"
+                || sessao.decisao_profissional === "NAO_SELECIONAR"
                 ? ""
                 : sessao.codigo_do_thx,
-              justificativa: sessao.tipo_de_sessao === "BASELINE"
-                ? ""
-                : sessao.justificativa,
+              decisao_profissional: sessao.tipo_de_sessao === "BASELINE"
+                ? "NAO_SELECIONAR"
+                : sessao.decisao_profissional,
               chave_de_idempotencia: chave,
               duracao_planejada_minutos: Number(sessao.duracao_planejada_minutos)
             });
             if (resultado) {
+              const sessaoPersistida = objeto(resultado.sessao);
               const identificador = String(
                 resultado.identificador
                 ?? resultado.identificador_da_sessao
+                ?? sessaoPersistida.identificador
                 ?? ""
               );
               if (identificador) {
@@ -1915,6 +1954,111 @@ export function GestaoOperacional({
           }}>
             <small>CONTEXTO CIENTÍFICO PRESERVADO</small>
             <h2>Criar sessão</h2>
+            <label>Participante<select required value={sessao.identificador_do_participante} onChange={(evento) => {
+              const participanteId = evento.target.value;
+              setSessao({
+                ...sessaoInicial(),
+                identificador_do_participante: participanteId,
+                modalidade: sessao.modalidade,
+                tipo_de_sessao: sessao.tipo_de_sessao
+              });
+              setSessaoCriada(null);
+              atualizarContextoNaUrl({
+                participante: participanteId,
+                sessao: "",
+                thx: ""
+              });
+            }}><option value="">Selecione</option>{dados.participantes.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.referencia_externa)}</option>)}</select></label>
+            <label>Profissional responsável<select required value={sessao.identificador_do_profissional} onChange={(evento) => setSessao({ ...sessao, identificador_do_profissional: evento.target.value })}><option value="">Selecione</option>{dados.profissionais.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.nome)}</option>)}</select></label>
+            <label>Anamnese concluída<select required value={sessao.identificador_da_anamnese} onChange={(evento) => setSessao({
+              ...sessao,
+              identificador_da_anamnese: evento.target.value,
+              decisao_profissional: sessao.tipo_de_sessao === "BASELINE" ? "NAO_SELECIONAR" : "",
+              codigo_do_ctr: "",
+              codigo_do_thx: ""
+            })}><option value="">Selecione</option>{anamnesesConcluidas.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.identificador_da_versao_do_formulario)} · {dataLegivel(item.concluido_em)}</option>)}</select></label>
+            <section className="hx-module__notice" aria-live="polite">
+              <strong>Sugestões oficiais da MMFTR e Biblioteca THX</strong>
+              {sessao.identificador_da_anamnese && sugestoesDaAnamnese.length ? (
+                sugestoesDaAnamnese.map((sugestao) => (
+                  <article key={String(sugestao.codigo_do_ctr)}>
+                    <b>{texto(sugestao.codigo_do_ctr)} · {texto(sugestao.nome_do_ctr)}</b>
+                    <span>
+                      THX recomendados: {lista(sugestao.thx_recomendados)
+                        .map((item) => texto(item.codigo))
+                        .join(", ") || "nenhum"}.
+                    </span>
+                    <span>
+                      Hipótese documental; a decisão permanece do profissional.
+                    </span>
+                  </article>
+                ))
+              ) : (
+                <span>
+                  {sessao.identificador_da_anamnese
+                    ? "Nenhuma correspondência documental oficial foi localizada para esta anamnese."
+                    : "Selecione uma anamnese para carregar as sugestões rastreáveis."}
+                </span>
+              )}
+            </section>
+            {sessao.tipo_de_sessao === "PRE_TREINO_POS" ? (
+              <>
+                <fieldset className="hx-session-type">
+                  <legend>Decisão profissional sobre CTR e THX</legend>
+                  {([
+                    ["ACEITAR_SUGESTAO", "Aceitar sugestão oficial"],
+                    ["SUBSTITUIR", "Substituir por outro vínculo oficial"],
+                    ["NAO_SELECIONAR", "Não selecionar neste momento"]
+                  ] as const).map(([valor, rotulo]) => (
+                    <label key={valor}>
+                      <input
+                        required
+                        type="radio"
+                        name="decisao-profissional"
+                        value={valor}
+                        checked={sessao.decisao_profissional === valor}
+                        onChange={() => {
+                          setSessao({
+                            ...sessao,
+                            decisao_profissional: valor,
+                            codigo_do_ctr: "",
+                            codigo_do_thx: ""
+                          });
+                          atualizarContextoNaUrl({ thx: "" });
+                        }}
+                      />
+                      {rotulo}
+                    </label>
+                  ))}
+                </fieldset>
+                {sessao.decisao_profissional !== "NAO_SELECIONAR" ? (
+                  <>
+                    <label>CTR oficial<select required value={sessao.codigo_do_ctr} onChange={(evento) => {
+                      const codigo = evento.target.value;
+                      setSessao({
+                        ...sessao,
+                        codigo_do_ctr: codigo,
+                        codigo_do_thx: ""
+                      });
+                      atualizarContextoNaUrl({ thx: "" });
+                    }}><option value="">Selecione</option>{ctrsDisponiveis.map((item) => <option key={String(item.codigo_do_ctr)} value={String(item.codigo_do_ctr)}>{texto(item.codigo_do_ctr)} · {texto(item.nome_do_ctr)}</option>)}</select></label>
+                    <label>THX ou THX-AER elegível<select required value={sessao.codigo_do_thx} onChange={(evento) => {
+                      const codigo = evento.target.value;
+                      setSessao({ ...sessao, codigo_do_thx: codigo });
+                      atualizarContextoNaUrl({ thx: codigo });
+                    }}><option value="">Selecione</option>{thxValidadosDoCtr.map((item) => <option key={String(item.identificador)} value={String(item.codigo_do_thx)}>{texto(item.codigo_do_thx)} · {texto(item.nome_do_thx)} · {texto(item.papel)}</option>)}</select></label>
+                  </>
+                ) : null}
+              </>
+            ) : (
+              <p>
+                Baseline é independente: nenhuma seleção CTR–THX será criada.
+              </p>
+            )}
+            <label>Justificativa profissional<textarea required value={sessao.justificativa} onChange={(evento) => setSessao({ ...sessao, justificativa: evento.target.value })} /></label>
+            <label>Finalidade editável<textarea required value={sessao.finalidade} onChange={(evento) => setSessao({ ...sessao, finalidade: evento.target.value })} /></label>
+            <label>Data programada<input type="datetime-local" value={sessao.data_programada} onChange={(evento) => setSessao({ ...sessao, data_programada: evento.target.value })} /></label>
+            <label>Duração planejada<input type="number" min="1" max="1440" value={sessao.duracao_planejada_minutos} onChange={(evento) => setSessao({ ...sessao, duracao_planejada_minutos: evento.target.value })} /></label>
             <fieldset className="hx-session-type">
               <legend>Tipo da sessão</legend>
               <label>
@@ -1923,9 +2067,12 @@ export function GestaoOperacional({
                   name="tipo-da-sessao"
                   value="BASELINE"
                   checked={sessao.tipo_de_sessao === "BASELINE"}
-                  onChange={(evento) => setSessao({
+                  onChange={() => setSessao({
                     ...sessao,
-                    tipo_de_sessao: evento.target.value
+                    tipo_de_sessao: "BASELINE",
+                    decisao_profissional: "NAO_SELECIONAR",
+                    codigo_do_ctr: "",
+                    codigo_do_thx: ""
                   })}
                 />
                 Baseline
@@ -1936,75 +2083,17 @@ export function GestaoOperacional({
                   name="tipo-da-sessao"
                   value="PRE_TREINO_POS"
                   checked={sessao.tipo_de_sessao === "PRE_TREINO_POS"}
-                  onChange={(evento) => setSessao({
+                  onChange={() => setSessao({
                     ...sessao,
-                    tipo_de_sessao: evento.target.value
+                    tipo_de_sessao: "PRE_TREINO_POS",
+                    decisao_profissional: "",
+                    codigo_do_ctr: "",
+                    codigo_do_thx: ""
                   })}
                 />
                 PRÉ → TREINO → PÓS
               </label>
             </fieldset>
-            <label>Participante<select required value={sessao.identificador_do_participante} onChange={(evento) => {
-              const participanteId = evento.target.value;
-              const participanteSelecionado = dados.participantes.find(
-                (item) => item.identificador === participanteId
-              );
-              const anamnese = (
-                participanteSelecionado?.anamneses as Registro[] | undefined
-              )?.find(
-                (item) =>
-                  item.estado === "CONCLUIDA_PELO_PARTICIPANTE"
-                  && Number(item.percentual_concluido) === 100
-                  && item.validade_cientifica === "VALIDA"
-              );
-              setSessao({
-                ...sessao,
-                identificador_do_participante: participanteId,
-                identificador_da_anamnese: String(anamnese?.identificador ?? "")
-              });
-              setSessaoCriada(null);
-              atualizarContextoNaUrl({
-                participante: participanteId,
-                sessao: "",
-                thx: ""
-              });
-            }}>{dados.participantes.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.referencia_externa)}</option>)}</select></label>
-            <label>Profissional responsável<select required value={sessao.identificador_do_profissional} onChange={(evento) => setSessao({ ...sessao, identificador_do_profissional: evento.target.value })}>{dados.profissionais.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.nome)}</option>)}</select></label>
-            <label>Anamnese concluída<select required value={sessao.identificador_da_anamnese} onChange={(evento) => setSessao({ ...sessao, identificador_da_anamnese: evento.target.value })}><option value="">Selecione</option>{anamnesesConcluidas.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.identificador_da_versao_do_formulario)} · {dataLegivel(item.concluido_em)}</option>)}</select></label>
-            <label>Finalidade<select required value={sessao.finalidade} onChange={(evento) => setSessao({ ...sessao, finalidade: evento.target.value })}>
-              <option value="HOMOLOGAÇÃO FÍSICA FINAL — DADOS REAIS AUTORIZADOS">Homologação física final — dados reais autorizados</option>
-              <option value="HOMOLOGAÇÃO FÍSICA AUTORIZADA — DR. MARCOS ALCÂNTARA">Homologação física autorizada — Dr. Marcos Alcântara</option>
-            </select></label>
-            {sessao.tipo_de_sessao === "PRE_TREINO_POS" ? (
-              <>
-                <label>CTR oficial<select required value={sessao.codigo_do_ctr} onChange={(evento) => {
-                  const codigo = evento.target.value;
-                  const primeiroThx = dados.vinculos_ctr_thx_validados.find((item) => item.codigo_do_ctr === codigo);
-                  const codigoDoThx = String(
-                    primeiroThx?.codigo_do_thx ?? ""
-                  );
-                  setSessao({
-                    ...sessao,
-                    codigo_do_ctr: codigo,
-                    codigo_do_thx: codigoDoThx
-                  });
-                  atualizarContextoNaUrl({ thx: codigoDoThx });
-                }}>{ctrsValidados.map((item) => <option key={String(item.codigo_do_ctr)} value={String(item.codigo_do_ctr)}>{texto(item.codigo_do_ctr)} · {texto(item.nome_do_ctr)}</option>)}</select></label>
-                <label>THX oficial validado<select required value={sessao.codigo_do_thx} onChange={(evento) => {
-                  const codigo = evento.target.value;
-                  setSessao({ ...sessao, codigo_do_thx: codigo });
-                  atualizarContextoNaUrl({ thx: codigo });
-                }}>{thxValidadosDoCtr.map((item) => <option key={String(item.identificador)} value={String(item.codigo_do_thx)}>{texto(item.codigo_do_thx)} · {texto(item.nome_do_thx)} · {texto(item.papel)}</option>)}</select></label>
-                <label>Justificativa da seleção profissional<textarea required value={sessao.justificativa} onChange={(evento) => setSessao({ ...sessao, justificativa: evento.target.value })} /></label>
-              </>
-            ) : (
-              <p>
-                Baseline é uma modalidade independente e não exige seleção de
-                CTR ou THX.
-              </p>
-            )}
-            <label>Data programada<input type="datetime-local" value={sessao.data_programada} onChange={(evento) => setSessao({ ...sessao, data_programada: evento.target.value })} /></label>
-            <label>Duração planejada<input type="number" min="1" max="1440" value={sessao.duracao_planejada_minutos} onChange={(evento) => setSessao({ ...sessao, duracao_planejada_minutos: evento.target.value })} /></label>
             <button disabled={ocupado || !podeConduzir}>Salvar sessão</button>
             {sessaoCriada ? (
               <section className="hx-session-created" aria-live="polite">

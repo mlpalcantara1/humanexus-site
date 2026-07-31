@@ -203,27 +203,37 @@ async function estado(
   }
   const organizacaoId = String(organizacao.identificador);
   const participantes = contextoBase.participantes;
+  if (!selecao.identificador_do_participante) {
+    throw new Error(
+      "Selecione explicitamente o participante antes de abrir o Cockpit."
+    );
+  }
   const participanteSolicitado = participantes.find(
     (item) => item.identificador === selecao.identificador_do_participante
   );
-  const candidatos = participanteSolicitado
-    ? [participanteSolicitado]
-    : participantes;
-  const participante = candidatos.find(
-    (candidato) => Array.isArray(candidato.sessoes)
-      && candidato.sessoes.length > 0
-  );
+  const participante = participanteSolicitado;
   const sessoes = (
     Array.isArray(participante?.sessoes)
       ? participante.sessoes
       : []
   ) as Registro[];
-  if (!participante) throw new Error("Nenhuma sessão autorizada está disponível para os participantes.");
+  if (!participante) {
+    throw new Error("Participante não pertence ao contexto autorizado.");
+  }
   const participanteId = String(participante.identificador);
+  if (!selecao.identificador_da_sessao) {
+    throw new Error(
+      "Selecione explicitamente uma sessão existente antes de abrir o Cockpit."
+    );
+  }
   const sessao = sessoes.find(
     (item) => item.identificador === selecao.identificador_da_sessao
-  ) ?? sessoes[0];
-  if (!sessao) throw new Error("Nenhuma sessão autorizada está disponível para o participante.");
+  );
+  if (!sessao) {
+    throw new Error(
+      "Sessão não pertence ao participante e à organização selecionados."
+    );
+  }
   const sessaoId = String(sessao.identificador);
   const consultasPrincipaisCompletas: ConsultaEmLote[] = [
     { chave: "fases", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/fases` },
@@ -421,7 +431,12 @@ async function estado(
   );
   const profissionalResponsavel = usuariosDisponiveis.find(
     (item) => item.identificador === detalhesOperacionais.identificador_do_profissional
-  ) ?? usuario;
+  );
+  if (!profissionalResponsavel) {
+    throw new Error(
+      "Profissional responsável persistido na sessão não pertence ao contexto autorizado."
+    );
+  }
   const criteriosCatalogo = Array.isArray(catalogoCtr.criterios) ? catalogoCtr.criterios as Registro[] : [];
   const contextoCtr = registro(ctr?.contexto_json);
   const codigosCtr = lista(ctr?.criterios_atendidos_json).length

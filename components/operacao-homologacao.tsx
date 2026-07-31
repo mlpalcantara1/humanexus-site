@@ -99,6 +99,13 @@ type Estado = {
   };
 };
 
+type ContextoParaSelecao = {
+  organizacoes: Registro[];
+  organizacao: Registro | null;
+  participantes: Registro[];
+  sessoes: Registro[];
+};
+
 const AVISO = "SIMULAÇÃO TÉCNICA — NÃO É RESULTADO HUMANO";
 const FASES = ["PRE", "TREINO", "POS"] as const;
 type VisaoCockpit =
@@ -682,18 +689,26 @@ function valorVetorial(valor: unknown, indisponivel: string) {
 
 function ContextoPersistente({ estado, visao }: { estado: Estado; visao: VisaoCockpit }) {
   const finalizada = estado.sessao.estado === "FINALIZADA";
+  const detalhes = objeto(estado.sessao.detalhes_operacionais);
   const tipoDaSessao = String(
-    objeto(estado.sessao.detalhes_operacionais).tipo_de_sessao
+    detalhes.tipo_de_sessao
     ?? objeto(estado.estado_operacional).tipo_de_sessao
     ?? "PRE_TREINO_POS"
+  );
+  const profissional = estado.contextos.profissionais.find(
+    (item) => String(item.identificador)
+      === estado.contextos.selecao.identificador_do_profissional
   );
   return (
     <>
       <section className="hx-cockpit-context" aria-label="Contexto preservado do Cockpit">
         <div><small>Participante</small><strong>{texto(estado.participante.nome ?? estado.participante.referencia_externa)}</strong></div>
         <div><small>Organização</small><strong>{texto(estado.organizacao.nome)}</strong></div>
+        <div><small>Profissional</small><strong>{texto(profissional?.nome)}</strong></div>
         <div><small>Sessão</small><strong>{texto(estado.sessao.identificador)}</strong></div>
+        <div><small>Estado da sessão</small><strong>{texto(detalhes.estado_operacional ?? estado.sessao.estado)}</strong></div>
         <div><small>Tipo da sessão</small><strong>{tipoDaSessao === "BASELINE" ? "Baseline" : "PRÉ → TREINO → PÓS"}</strong></div>
+        <div><small>Finalidade</small><strong>{texto(detalhes.finalidade)}</strong></div>
         <div><small>CTR / THX</small><strong>{texto(estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador)} · {texto(estado.thx_individual?.codigo)}</strong></div>
         <div><small>Fase atual</small><strong>{faseAtual(estado)}</strong></div>
         <div><small>Próxima ação</small><strong>{texto(objeto(estado.estado_operacional).proxima_acao_principal, "SEM AÇÃO PENDENTE")}</strong></div>
@@ -1134,6 +1149,66 @@ function EstruturaInicialDoCockpit() {
   );
 }
 
+function SelecaoInicialDoCockpit({
+  contexto,
+  selecao,
+  ocupado,
+  selecionarOrganizacao,
+  selecionar,
+  abrir
+}: {
+  contexto: ContextoParaSelecao;
+  selecao: Record<string, string>;
+  ocupado: boolean;
+  selecionarOrganizacao: (identificador: string) => void;
+  selecionar: (campo: "participante" | "sessao", identificador: string) => void;
+  abrir: () => void;
+}) {
+  const sessoes = contexto.sessoes.filter(
+    (item) => String(item.identificador_do_participante ?? "")
+      === selecao.participante
+  );
+  return (
+    <section className="hx-context-selector" aria-label="Selecionar contexto do Cockpit Vivo">
+      <header>
+        <div>
+          <small>ENTRADA DO COCKPIT VIVO</small>
+          <strong>Selecione o contexto operacional</strong>
+        </div>
+        <span>NENHUM CONTEXTO ANTERIOR SERÁ REUTILIZADO</span>
+      </header>
+      <div>
+        <label>Organização<select
+          value={selecao.organizacao}
+          disabled={ocupado}
+          onChange={(evento) => selecionarOrganizacao(evento.target.value)}
+        ><option value="">Selecione</option>{contexto.organizacoes.map((item) => (
+          <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.nome)}</option>
+        ))}</select></label>
+        <label>Participante<select
+          value={selecao.participante}
+          disabled={ocupado || !selecao.organizacao}
+          onChange={(evento) => selecionar("participante", evento.target.value)}
+        ><option value="">Selecione</option>{contexto.participantes.map((item) => (
+          <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.rotulo ?? item.referencia_externa)}</option>
+        ))}</select></label>
+        <label>Sessão existente<select
+          value={selecao.sessao}
+          disabled={ocupado || !selecao.participante}
+          onChange={(evento) => selecionar("sessao", evento.target.value)}
+        ><option value="">Selecione</option>{sessoes.map((item) => (
+          <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.estado)} · {dataLegivel(item.criado_em)}</option>
+        ))}</select></label>
+      </div>
+      <button
+        type="button"
+        disabled={ocupado || !selecao.organizacao || !selecao.participante || !selecao.sessao}
+        onClick={abrir}
+      >ABRIR COCKPIT VIVO</button>
+    </section>
+  );
+}
+
 export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) {
   const [estado, setEstado] = useState<Estado | null>(null);
   const [erro, setErro] = useState("");
@@ -1148,7 +1223,16 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const [vetorSelecionado, setVetorSelecionado] = useState<string | null>(null);
   const [painelTecnico, setPainelTecnico] = useState("fontes");
   const [selecaoInicial, setSelecaoInicial] = useState<Record<string, string>>({});
+  const [contextoParaSelecao, setContextoParaSelecao] =
+    useState<ContextoParaSelecao | null>(null);
+  const [selecaoPendente, setSelecaoPendente] =
+    useState<Record<string, string>>({
+      organizacao: "",
+      participante: "",
+      sessao: ""
+    });
   const contextoAtual = useRef("");
+  const atualizacaoEmAndamento = useRef(false);
   const [cortexClientId, setCortexClientId] = useState("");
   const [cortexClientSecret, setCortexClientSecret] = useState("");
 
@@ -1163,6 +1247,11 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       sessao: parametros.get("sessao") ?? ""
     };
     setSelecaoInicial(selecao);
+    if (!selecao.organizacao || !selecao.participante || !selecao.sessao) {
+      void carregarOpcoesDeContexto(selecao.organizacao)
+        .catch((causa) => setErro(causa.message));
+      return;
+    }
     void (async () => {
       const contexto = await carregar(selecao, false, true);
       await carregar(contexto);
@@ -1207,6 +1296,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     );
     const dados = await resposta.json();
     if (!resposta.ok) throw new Error(dados?.erro?.mensagem ?? "Consulta operacional indisponível.");
+    setErro("");
     if (dados.atualizacao_parcial) {
       if (
         contextoAtual.current
@@ -1246,6 +1336,56 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     return atual;
   };
 
+  const carregarOpcoesDeContexto = async (
+    organizacao = "",
+    participante = ""
+  ) => {
+    setOcupado("contexto");
+    setErro("");
+    try {
+      const parametros = new URLSearchParams({ modulo: "sessoes" });
+      if (organizacao) parametros.set("organizacao", organizacao);
+      const resposta = await fetch(
+        `/api/gestao-operacional?${parametros}`,
+        { cache: "no-store" }
+      );
+      const corpo = await resposta.json();
+      if (!resposta.ok) {
+        throw new Error(
+          corpo?.erro?.mensagem ?? "Contexto operacional indisponível."
+        );
+      }
+      const contexto = corpo as ContextoParaSelecao;
+      const organizacaoAtual = String(
+        contexto.organizacao?.identificador ?? organizacao ?? ""
+      );
+      setContextoParaSelecao(contexto);
+      setSelecaoPendente({
+        organizacao: organizacaoAtual,
+        participante: contexto.participantes.some(
+          (item) => String(item.identificador) === participante
+        ) ? participante : "",
+        sessao: ""
+      });
+    } finally {
+      setOcupado("");
+    }
+  };
+
+  const abrirContextoSelecionado = async () => {
+    setOcupado("contexto");
+    setErro("");
+    try {
+      const contexto = await carregar(selecaoPendente, false, true);
+      await carregar(contexto);
+      setContextoParaSelecao(null);
+    } catch (causa) {
+      setErro(causa instanceof Error ? causa.message : "Contexto recusado.");
+    } finally {
+      setOcupado("");
+    }
+  };
+
   useEffect(() => {
     const atualizarBaseline = () => {
       void carregar().catch((causa) => {
@@ -1277,14 +1417,23 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       return;
     }
     const id = window.setInterval(() => {
-      if (document.visibilityState !== "visible" || ocupado) return;
-      void carregar(selecaoInicial, true).catch((causa) => {
-        setErro(
-          causa instanceof Error
-            ? causa.message
-            : "Não foi possível atualizar a telemetria operacional."
-        );
-      });
+      if (
+        document.visibilityState !== "visible"
+        || ocupado
+        || atualizacaoEmAndamento.current
+      ) return;
+      atualizacaoEmAndamento.current = true;
+      void carregar(selecaoInicial, true)
+        .catch((causa) => {
+          setErro(
+            causa instanceof Error
+              ? causa.message
+              : "Não foi possível atualizar a telemetria operacional."
+          );
+        })
+        .finally(() => {
+          atualizacaoEmAndamento.current = false;
+        });
     }, 2500);
     return () => window.clearInterval(id);
   }, [
@@ -1300,17 +1449,21 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     identificador: string
   ) => {
     const atual = estado?.contextos.selecao;
+    if (campo === "organizacao" || campo === "participante") {
+      const organizacao = campo === "organizacao"
+        ? identificador
+        : String(atual?.identificador_da_organizacao ?? "");
+      const participante = campo === "participante" ? identificador : "";
+      setEstado(null);
+      await carregarOpcoesDeContexto(organizacao, participante);
+      return;
+    }
     const proxima: Record<string, string> = {
       organizacao: String(atual?.identificador_da_organizacao ?? ""),
       participante: String(atual?.identificador_do_participante ?? ""),
       sessao: String(atual?.identificador_da_sessao ?? "")
     };
     proxima[campo] = identificador;
-    if (campo === "organizacao") {
-      proxima.participante = "";
-      proxima.sessao = "";
-    }
-    if (campo === "participante") proxima.sessao = "";
     setOcupado("contexto");
     setErro("");
     try {
@@ -1441,6 +1594,24 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     });
   };
 
+  if (contextoParaSelecao && !estado) return <>
+    {erro ? <p className="hx-module__error">{erro}</p> : null}
+    <SelecaoInicialDoCockpit
+      contexto={contextoParaSelecao}
+      selecao={selecaoPendente}
+      ocupado={ocupado !== ""}
+      selecionarOrganizacao={(identificador) => {
+        void carregarOpcoesDeContexto(identificador)
+          .catch((causa) => setErro(causa.message));
+      }}
+      selecionar={(campo, identificador) => setSelecaoPendente((atual) => ({
+        ...atual,
+        [campo]: identificador,
+        ...(campo === "participante" ? { sessao: "" } : {})
+      }))}
+      abrir={() => void abrirContextoSelecionado()}
+    />
+  </>;
   if (erro && !estado) return <p className="hx-module__error">{erro}</p>;
   if (!estado) return modulo === "cockpit-vivo"
     ? <EstruturaInicialDoCockpit />

@@ -113,6 +113,40 @@ test("sessão e convites preservam o escopo organizacional selecionado", async (
   assert.match(panel, /Organizacionais/);
 });
 
+test("criação da sessão exige escolhas profissionais e Cockpit não reutiliza contexto", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  const cockpit = await source("components/operacao-homologacao.tsx");
+  const route = await source("app/api/operacao-homologacao/route.ts");
+
+  for (const evidence of [
+    "Sugestões oficiais da MMFTR e Biblioteca THX",
+    "Aceitar sugestão oficial",
+    "Substituir por outro vínculo oficial",
+    "Não selecionar neste momento",
+    "Justificativa profissional",
+    "Finalidade editável"
+  ]) {
+    assert.match(management, new RegExp(evidence));
+  }
+  assert.doesNotMatch(
+    management,
+    /finalidade: "HOMOLOGAÇÃO FÍSICA FINAL/
+  );
+  assert.doesNotMatch(management, /primeiroThx/);
+  assert.match(cockpit, /Selecione o contexto operacional/);
+  assert.match(cockpit, /NENHUM CONTEXTO ANTERIOR SERÁ REUTILIZADO/);
+  assert.match(cockpit, /atualizacaoEmAndamento/);
+  assert.doesNotMatch(route, /\?\? sessoes\[0\]/);
+  assert.match(
+    route,
+    /Selecione explicitamente o participante antes de abrir o Cockpit/
+  );
+  assert.match(
+    route,
+    /Sessão não pertence ao participante e à organização selecionados/
+  );
+});
+
 test("treinamentos usam somente a biblioteca oficial e evidência persistida", async () => {
   const management = await source("components/gestao-operacional.tsx");
   const liveCockpit = await source("components/cockpit-operacional-vivo.tsx");
