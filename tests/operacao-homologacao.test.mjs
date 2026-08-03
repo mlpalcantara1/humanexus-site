@@ -22,7 +22,10 @@ test("Cockpit agrega leituras e atualiza telemetria sem recarregar o contexto in
   assert.match(route, /atualizacaoLeve/);
   assert.match(route, /limite=120/);
   assert.match(client, /atualizacao_parcial/);
-  assert.match(client, /carregar\(selecaoInicial, true\)/);
+  assert.match(
+    client,
+    /carregar\(contexto, true, false, \{ signal: controlador\.signal \}\)/
+  );
   assert.match(client, /parametros\.set\("_t", String\(Date\.now\(\)\)\)/);
 });
 
@@ -481,9 +484,49 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
 test("Polling oficial expira requisição travada e permite nova tentativa", async () => {
   const operacao = await source("components/operacao-homologacao.tsx");
 
-  assert.match(operacao, /const controlador = leve \? new AbortController\(\) : null/);
+  assert.match(operacao, /const controlador = leve && !opcoes\.signal \? new AbortController\(\) : null/);
   assert.match(operacao, /window\.setTimeout\(\(\) => controlador\.abort\(\), 12_000\)/);
-  assert.match(operacao, /signal: controlador\?\.signal/);
+  assert.match(operacao, /signal: controlador\.signal/);
   assert.match(operacao, /nova tentativa automática em andamento/);
-  assert.match(operacao, /atualizacaoEmAndamento\.current = false/);
+  assert.match(operacao, /controlador\.abort\(\)[\s\S]*agendar\(250\)/);
+  assert.match(operacao, /concluir\(identificador, 2500\)/);
+});
+
+test("Polling autenticado preserva contexto, ordenação e ciclo único", async () => {
+  const operacao = await source("components/operacao-homologacao.tsx");
+
+  assert.match(operacao, /contextoDoPolling\.current = atual/);
+  assert.match(operacao, /polling exige organização, participante e sessão explícitos/i);
+  assert.match(operacao, /sequenciaDasSolicitacoes\.current/);
+  assert.match(
+    operacao,
+    /ordemDaSolicitacao < sequenciaDasSolicitacoes\.current/
+  );
+  assert.match(operacao, /ordemDaSolicitacao < ultimaRespostaAplicada\.current/);
+  assert.match(operacao, /atualizacaoEmAndamento\.current\?\.identificador/);
+  assert.match(operacao, /limparTemporizador\(\)[\s\S]*window\.setTimeout\(executar, atraso\)/);
+  assert.match(operacao, /document\.visibilityState !== "visible"/);
+  assert.match(operacao, /visibilitychange/);
+  assert.match(operacao, /window\.addEventListener\("focus"/);
+  assert.match(operacao, /removeEventListener\("focus"/);
+  assert.match(operacao, /atualizacaoEmAndamento\.current\?\.controlador\.abort\(\)/);
+  assert.doesNotMatch(
+    operacao,
+    /!estado[\s\S]{0,120}\|\| estado\.carregamento_progressivo/
+  );
+});
+
+test("expiração administrativa para o polling não perde nem substitui a sessão", async () => {
+  const operacao = await source("components/operacao-homologacao.tsx");
+
+  assert.match(operacao, /resposta\.status === 403/);
+  assert.match(operacao, /sessão ausente/i);
+  assert.match(operacao, /autenticacaoExpiradaAtual\.current = true/);
+  assert.match(operacao, /contexto explícito deste Cockpit foi preservado/i);
+  assert.match(operacao, /href="\/entrar" target="_blank"/);
+  assert.match(operacao, /retomarAposAutenticacaoOuFoco/);
+  assert.doesNotMatch(
+    operacao,
+    /localStorage|sessionStorage|participante fictício|sessão de teste/i
+  );
 });

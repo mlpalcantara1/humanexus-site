@@ -20,6 +20,9 @@ import { CockpitOperacionalVivo } from "@/components/cockpit-operacional-vivo";
 import { HxSectionHeader } from "@/components/hx-design-system";
 
 type Registro = Record<string, unknown>;
+type OpcoesDeCarregamento = {
+  signal?: AbortSignal;
+};
 type Estado = {
   carregamento_progressivo?: boolean;
   aviso: string;
@@ -1243,9 +1246,33 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       sessao: ""
     });
   const contextoAtual = useRef("");
-  const atualizacaoEmAndamento = useRef(false);
+  const contextoDoPolling = useRef<Record<string, string>>({});
+  const atualizacaoEmAndamento = useRef<{
+    identificador: number;
+    controlador: AbortController;
+  } | null>(null);
+  const sequenciaDoPolling = useRef(0);
+  const sequenciaDasSolicitacoes = useRef(0);
+  const ultimaRespostaAplicada = useRef(0);
+  const componenteMontado = useRef(false);
+  const ocupadoAtual = useRef("");
+  const autenticacaoExpiradaAtual = useRef(false);
+  const [autenticacaoExpirada, setAutenticacaoExpirada] = useState(false);
   const [cortexClientId, setCortexClientId] = useState("");
   const [cortexClientSecret, setCortexClientSecret] = useState("");
+
+  useEffect(() => {
+    componenteMontado.current = true;
+    return () => {
+      componenteMontado.current = false;
+      atualizacaoEmAndamento.current?.controlador.abort();
+      atualizacaoEmAndamento.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    ocupadoAtual.current = ocupado;
+  }, [ocupado]);
 
   useEffect(() => {
     const parametros = new URLSearchParams(window.location.search);
@@ -1258,6 +1285,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       sessao: parametros.get("sessao") ?? ""
     };
     setSelecaoInicial(selecao);
+    contextoDoPolling.current = selecao;
     if (!selecao.organizacao || !selecao.participante || !selecao.sessao) {
       void carregarOpcoesDeContexto(selecao.organizacao)
         .catch((causa) => setErro(causa.message));
@@ -1279,14 +1307,31 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   };
 
   const carregar = async (
-    selecao: Record<string, string> = selecaoInicial,
+    selecao: Record<string, string> = contextoDoPolling.current,
     leve = false,
-    inicial = false
+    inicial = false,
+    opcoes: OpcoesDeCarregamento = {}
   ) => {
+    const ordemDaSolicitacao = ++sequenciaDasSolicitacoes.current;
+    const contextoExplicito = {
+      organizacao: String(selecao.organizacao ?? ""),
+      participante: String(selecao.participante ?? ""),
+      sessao: String(selecao.sessao ?? "")
+    };
+    if (
+      leve
+      && (!contextoExplicito.organizacao
+        || !contextoExplicito.participante
+        || !contextoExplicito.sessao)
+    ) {
+      throw new Error(
+        "O polling exige organização, participante e sessão explícitos."
+      );
+    }
     const chaveSolicitada = [
-      selecao.organizacao,
-      selecao.participante,
-      selecao.sessao
+      contextoExplicito.organizacao,
+      contextoExplicito.participante,
+      contextoExplicito.sessao
     ].join(":");
     const parametros = new URLSearchParams({ modulo });
     const visaoSolicitada = new URLSearchParams(
@@ -1299,9 +1344,15 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     }
     if (inicial) parametros.set("inicial", "1");
     for (const campo of ["organizacao", "participante", "sessao"]) {
-      if (selecao[campo]) parametros.set(campo, selecao[campo]);
+      if (contextoExplicito[campo as keyof typeof contextoExplicito]) {
+        parametros.set(
+          campo,
+          contextoExplicito[campo as keyof typeof contextoExplicito]
+        );
+      }
     }
-    const controlador = leve ? new AbortController() : null;
+    const controlador = leve && !opcoes.signal ? new AbortController() : null;
+    const signal = opcoes.signal ?? controlador?.signal;
     const limiteDaAtualizacao = controlador
       ? window.setTimeout(() => controlador.abort(), 12_000)
       : null;
@@ -1315,7 +1366,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         `/api/operacao-homologacao${parametros.size ? `?${parametros}` : ""}`,
         {
           cache: "no-store",
-          signal: controlador?.signal
+          signal
         }
       );
       dados = await resposta.json();
@@ -1335,7 +1386,30 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         window.clearTimeout(limiteDaAtualizacao);
       }
     }
-    if (!resposta.ok) throw new Error(dados?.erro?.mensagem ?? "Consulta operacional indisponível.");
+    const mensagemDaFalha = dados?.erro?.mensagem
+      ?? "Consulta operacional indisponível.";
+    if (!resposta.ok) {
+      if (
+        leve
+        && resposta.status === 403
+        && /sessão ausente/i.test(mensagemDaFalha)
+      ) {
+        autenticacaoExpiradaAtual.current = true;
+        if (componenteMontado.current) setAutenticacaoExpirada(true);
+      }
+      throw new Error(mensagemDaFalha);
+    }
+    if (
+      !componenteMontado.current
+      || signal?.aborted
+      || ordemDaSolicitacao < sequenciaDasSolicitacoes.current
+      || ordemDaSolicitacao < ultimaRespostaAplicada.current
+    ) {
+      return contextoExplicito;
+    }
+    ultimaRespostaAplicada.current = ordemDaSolicitacao;
+    autenticacaoExpiradaAtual.current = false;
+    setAutenticacaoExpirada(false);
     setErro("");
     if (dados.atualizacao_parcial) {
       if (
@@ -1354,7 +1428,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         estado_operacional: dados.estado_operacional,
         cockpit_operacional: dados.cockpit_operacional
       } : atual);
-      return selecao;
+      return contextoExplicito;
     }
     setEstado(dados);
     const atual = {
@@ -1367,6 +1441,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       atual.participante,
       atual.sessao
     ].join(":");
+    contextoDoPolling.current = atual;
     setSelecaoInicial(atual);
     const url = new URL(window.location.href);
     url.searchParams.set("organizacao", atual.organizacao);
@@ -1451,20 +1526,81 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   useEffect(() => {
     if (
       !estado
-      || estado.carregamento_progressivo
       || estado.sessao.estado === "FINALIZADA"
+      || !selecaoInicial.organizacao
+      || !selecaoInicial.participante
+      || !selecaoInicial.sessao
     ) {
       return;
     }
-    const id = window.setInterval(() => {
+
+    contextoDoPolling.current = {
+      organizacao: selecaoInicial.organizacao,
+      participante: selecaoInicial.participante,
+      sessao: selecaoInicial.sessao
+    };
+    let encerrado = false;
+    let temporizador: number | null = null;
+    let limiteDaRequisicao: number | null = null;
+
+    const limparTemporizador = () => {
+      if (temporizador !== null) window.clearTimeout(temporizador);
+      temporizador = null;
+    };
+    const agendar = (atraso: number) => {
+      if (encerrado || autenticacaoExpiradaAtual.current) return;
+      limparTemporizador();
+      temporizador = window.setTimeout(executar, atraso);
+    };
+    const concluir = (identificador: number, proximoAtraso: number) => {
+      if (
+        atualizacaoEmAndamento.current?.identificador
+        !== identificador
+      ) return;
+      if (limiteDaRequisicao !== null) {
+        window.clearTimeout(limiteDaRequisicao);
+        limiteDaRequisicao = null;
+      }
+      atualizacaoEmAndamento.current = null;
+      agendar(proximoAtraso);
+    };
+    const executar = () => {
+      temporizador = null;
+      if (encerrado || autenticacaoExpiradaAtual.current) return;
+      const contexto = { ...contextoDoPolling.current };
+      if (!contexto.organizacao || !contexto.participante || !contexto.sessao) {
+        setErro("O Cockpit preservou a tela, mas não iniciará polling sem sessão explícita.");
+        return;
+      }
       if (
         document.visibilityState !== "visible"
-        || ocupado
+        || ocupadoAtual.current
         || atualizacaoEmAndamento.current
-      ) return;
-      atualizacaoEmAndamento.current = true;
-      void carregar(selecaoInicial, true)
+      ) {
+        agendar(500);
+        return;
+      }
+      const identificador = ++sequenciaDoPolling.current;
+      const controlador = new AbortController();
+      atualizacaoEmAndamento.current = { identificador, controlador };
+      limiteDaRequisicao = window.setTimeout(() => {
+        if (
+          atualizacaoEmAndamento.current?.identificador
+          !== identificador
+        ) return;
+        controlador.abort();
+        atualizacaoEmAndamento.current = null;
+        limiteDaRequisicao = null;
+        agendar(250);
+      }, 12_000);
+      void carregar(contexto, true, false, { signal: controlador.signal })
         .catch((causa) => {
+          if (autenticacaoExpiradaAtual.current) {
+            setErro(
+              "Sessão administrativa expirada. Autentique-se novamente; o contexto explícito deste Cockpit foi preservado."
+            );
+            return;
+          }
           setErro(
             causa instanceof Error
               ? causa.message
@@ -1472,13 +1608,38 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           );
         })
         .finally(() => {
-          atualizacaoEmAndamento.current = false;
+          concluir(identificador, 2500);
         });
-    }, 2500);
-    return () => window.clearInterval(id);
+    };
+    const retomarAposAutenticacaoOuFoco = () => {
+      if (document.visibilityState !== "visible") return;
+      autenticacaoExpiradaAtual.current = false;
+      setAutenticacaoExpirada(false);
+      agendar(0);
+    };
+
+    window.addEventListener("focus", retomarAposAutenticacaoOuFoco);
+    document.addEventListener(
+      "visibilitychange",
+      retomarAposAutenticacaoOuFoco
+    );
+    agendar(250);
+    return () => {
+      encerrado = true;
+      limparTemporizador();
+      if (limiteDaRequisicao !== null) {
+        window.clearTimeout(limiteDaRequisicao);
+      }
+      atualizacaoEmAndamento.current?.controlador.abort();
+      atualizacaoEmAndamento.current = null;
+      window.removeEventListener("focus", retomarAposAutenticacaoOuFoco);
+      document.removeEventListener(
+        "visibilitychange",
+        retomarAposAutenticacaoOuFoco
+      );
+    };
   }, [
     estado?.sessao.estado,
-    ocupado,
     selecaoInicial.organizacao,
     selecaoInicial.participante,
     selecaoInicial.sessao
@@ -2270,6 +2431,16 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             <NavegacaoInterna visao={visao} selecionar={selecionarVisao} />
           </>
         )}
+        {autenticacaoExpirada ? (
+          <aside className="hx-module__error" role="status" aria-live="polite">
+            Sessão administrativa expirada. O contexto explícito do Cockpit
+            permanece nesta tela. {" "}
+            <a href="/entrar" target="_blank" rel="noreferrer">
+              Autenticar novamente
+            </a>
+            {" "}e retornar a esta aba para retomar o polling.
+          </aside>
+        ) : null}
         <main className="hx-cockpit-view" data-cockpit-view={visao}>
           {conteudoDaVisao}
           {operacional ? controleDeBaseline : null}
