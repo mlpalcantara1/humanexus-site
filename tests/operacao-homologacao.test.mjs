@@ -481,6 +481,28 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /valores: \{\}[\s\S]*metricas: \{\}[\s\S]*series: \{\}/);
 });
 
+test("Cockpit resolve vetores por UUID ou código e exibe rastreabilidade sob demanda", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+
+  assert.match(cockpit, /estadosVetoriaisPorDefinicao\.get\(identificador\)[\s\S]*codigoVetorial\(definicao\)/);
+  assert.match(cockpit, /estadosVetoriaisPorDefinicao\.get\(vetor\.code\)/);
+  assert.match(cockpit, /valor <= 1 \? valor : valor \/ 100/);
+  assert.match(cockpit, /Rastreabilidade científica/);
+  for (const item of [
+    "Cobertura",
+    "Qualidade",
+    "Confiança",
+    "Sessão",
+    "Fase",
+    "Timestamp",
+    "Biblioteca",
+    "Origem matemática",
+    "Evidências utilizadas",
+    "Evidências ausentes",
+    "Requisito ausente"
+  ]) assert.match(cockpit, new RegExp(item));
+});
+
 test("Polling oficial expira requisição travada e permite nova tentativa", async () => {
   const operacao = await source("components/operacao-homologacao.tsx");
 

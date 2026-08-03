@@ -205,14 +205,14 @@ function valorNormalizado(valor: unknown): number | null {
       return null;
     }
   }
-  if (typeof valor === "number" && Number.isFinite(valor) && valor >= 0 && valor <= 1) {
-    return valor;
+  if (typeof valor === "number" && Number.isFinite(valor) && valor >= 0 && valor <= 100) {
+    return valor <= 1 ? valor : valor / 100;
   }
   const registro = objeto(valor);
   for (const chave of ["valor", "magnitude", "escore", "value"]) {
     const candidato = registro[chave];
-    if (typeof candidato === "number" && Number.isFinite(candidato) && candidato >= 0 && candidato <= 1) {
-      return candidato;
+    if (typeof candidato === "number" && Number.isFinite(candidato) && candidato >= 0 && candidato <= 100) {
+      return candidato <= 1 ? candidato : candidato / 100;
     }
   }
   return null;
@@ -506,7 +506,8 @@ export function CockpitOperacionalVivo({
   );
   const radarVetorial: HxVectorAxis[] = definicoesVetoriais.map((definicao) => {
     const identificador = identificadorVetorial(definicao);
-    const estadoVetorial = estadosVetoriaisPorDefinicao.get(identificador);
+    const estadoVetorial = estadosVetoriaisPorDefinicao.get(identificador)
+      ?? estadosVetoriaisPorDefinicao.get(codigoVetorial(definicao));
     return {
       code: codigoVetorial(definicao),
       name: nomeVetorial(definicao),
@@ -742,6 +743,17 @@ export function CockpitOperacionalVivo({
                 );
                 const estadoVetorial = estadosVetoriaisPorDefinicao.get(
                   identificadorVetorial(definicao ?? {})
+                ) ?? estadosVetoriaisPorDefinicao.get(vetor.code);
+                const evidenciasUtilizadas = lista(
+                  estadoVetorial?.evidencias_utilizadas
+                );
+                const evidenciasAusentes = Array.isArray(
+                  estadoVetorial?.evidencias_ausentes
+                )
+                  ? estadoVetorial.evidencias_ausentes.map(String)
+                  : [];
+                const origemMatematica = objeto(
+                  estadoVetorial?.origem_matematica
                 );
                 return (
                   <div className={vetor.value == null ? "is-missing" : "has-value"} key={vetor.code}>
@@ -761,6 +773,35 @@ export function CockpitOperacionalVivo({
                         ? <em />
                         : <i style={{ width: `${vetor.value * 100}%` }} />}
                     </span>
+                    <details className="hx-live-vector-trace">
+                      <summary>Rastreabilidade científica</summary>
+                      <dl>
+                        <div><dt>Estado</dt><dd>{texto(estadoVetorial?.estado, "NAO_DEFINIDO")}</dd></div>
+                        <div><dt>Cobertura</dt><dd>{percentual(estadoVetorial?.cobertura)}</dd></div>
+                        <div><dt>Qualidade</dt><dd>{percentual(estadoVetorial?.qualidade)}</dd></div>
+                        <div><dt>Confiança</dt><dd>{percentual(estadoVetorial?.confiabilidade)}</dd></div>
+                        <div><dt>Sessão</dt><dd>{texto(estadoVetorial?.identificador_da_sessao)}</dd></div>
+                        <div><dt>Fase</dt><dd>{texto(estadoVetorial?.fase)}</dd></div>
+                        <div><dt>Timestamp</dt><dd>{dataLegivel(estadoVetorial?.timestamp)}</dd></div>
+                        <div><dt>Biblioteca</dt><dd>{texto(estadoVetorial?.versao_da_biblioteca)}</dd></div>
+                        <div><dt>Origem matemática</dt><dd>{[
+                          texto(origemMatematica.versao),
+                          texto(origemMatematica.arquivo),
+                          texto(origemMatematica.funcao),
+                          texto(origemMatematica.linhas)
+                        ].join(" · ")}</dd></div>
+                        <div><dt>Evidências utilizadas</dt><dd>{evidenciasUtilizadas.length
+                          ? evidenciasUtilizadas.map((item) => texto(item.codigo)).join(" · ")
+                          : "Nenhuma"}</dd></div>
+                        <div><dt>Evidências ausentes</dt><dd>{evidenciasAusentes.join(" · ") || "Nenhuma"}</dd></div>
+                        {vetor.value == null ? (
+                          <div><dt>Requisito ausente</dt><dd>{texto(
+                            estadoVetorial?.motivo,
+                            "EVIDÊNCIA ABAIXO DO MÍNIMO AUTORAL"
+                          )}</dd></div>
+                        ) : null}
+                      </dl>
+                    </details>
                   </div>
                 );
               })}
