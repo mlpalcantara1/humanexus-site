@@ -473,4 +473,17 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /const iirhCalculado = leituraAoVivo/);
   assert.match(cockpit, /const resultanteCalculada = leituraAoVivo/);
   assert.match(cockpit, /const trajetoriaCalculada = leituraAoVivo/);
+  assert.match(cockpit, /const projecaoOperacionalAtual = Number\.isFinite/);
+  assert.match(cockpit, /projecaoOperacionalAtual[\s\S]*ao_vivo: false/);
+  assert.match(cockpit, /valores: \{\}[\s\S]*metricas: \{\}[\s\S]*series: \{\}/);
+});
+
+test("Polling oficial expira requisição travada e permite nova tentativa", async () => {
+  const operacao = await source("components/operacao-homologacao.tsx");
+
+  assert.match(operacao, /const controlador = leve \? new AbortController\(\) : null/);
+  assert.match(operacao, /window\.setTimeout\(\(\) => controlador\.abort\(\), 12_000\)/);
+  assert.match(operacao, /signal: controlador\?\.signal/);
+  assert.match(operacao, /nova tentativa automática em andamento/);
+  assert.match(operacao, /atualizacaoEmAndamento\.current = false/);
 });

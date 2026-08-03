@@ -455,7 +455,24 @@ export function CockpitOperacionalVivo({
   const ctr = objeto(estado.ctr_individual);
   const thx = objeto(estado.thx_individual);
   const execucao = objeto(estado.execucao);
-  const fontes = lista(cockpit.fontes) as Fonte[];
+  const atualizadoEm = new Date(String(cockpit.atualizado_em ?? "")).getTime();
+  const limiteDaProjecaoMs = (
+    Number(cockpit.limite_de_recencia_segundos ?? 15) + 5
+  ) * 1000;
+  const projecaoOperacionalAtual = Number.isFinite(atualizadoEm)
+    && agora >= atualizadoEm
+    && agora - atualizadoEm <= limiteDaProjecaoMs;
+  const fontesRecebidas = lista(cockpit.fontes) as Fonte[];
+  const fontes = projecaoOperacionalAtual
+    ? fontesRecebidas
+    : fontesRecebidas.map((fonte) => ({
+        ...fonte,
+        estado: "RECONECTANDO",
+        ao_vivo: false,
+        valores: {},
+        metricas: {},
+        series: {}
+      }));
   const replay = objeto(cockpit.replay);
   const indicadores = lista(cockpit.indicadores_contratados);
   const alertas = lista(cockpit.alertas_acionaveis);
@@ -464,8 +481,11 @@ export function CockpitOperacionalVivo({
   const itensReplay = lista(replayCompleto.itens);
   const fases = objeto(sessao.estados_das_fases);
   const modoHistorico = cockpit.modo === "REPLAY_HISTORICO";
-  const modoAguardando = cockpit.modo === "MODO_OPERACIONAL_AGUARDANDO_CONEXAO";
-  const leituraAoVivo = cockpit.ao_vivo === true && !modoHistorico;
+  const modoAguardando = !projecaoOperacionalAtual
+    || cockpit.modo === "MODO_OPERACIONAL_AGUARDANDO_CONEXAO";
+  const leituraAoVivo = projecaoOperacionalAtual
+    && cockpit.ao_vivo === true
+    && !modoHistorico;
   const sessaoFinalizada = contextoSessao.estado === "FINALIZADA";
   const graficos = useMemo(
     () => trilhas(fontes.filter((fonte) => fonte.ao_vivo === true)),

@@ -1301,11 +1301,40 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     for (const campo of ["organizacao", "participante", "sessao"]) {
       if (selecao[campo]) parametros.set(campo, selecao[campo]);
     }
-    const resposta = await fetch(
-      `/api/operacao-homologacao${parametros.size ? `?${parametros}` : ""}`,
-      { cache: "no-store" }
-    );
-    const dados = await resposta.json();
+    const controlador = leve ? new AbortController() : null;
+    const limiteDaAtualizacao = controlador
+      ? window.setTimeout(() => controlador.abort(), 12_000)
+      : null;
+    let resposta: Response;
+    let dados: Estado & {
+      atualizacao_parcial?: boolean;
+      erro?: { mensagem?: string };
+    };
+    try {
+      resposta = await fetch(
+        `/api/operacao-homologacao${parametros.size ? `?${parametros}` : ""}`,
+        {
+          cache: "no-store",
+          signal: controlador?.signal
+        }
+      );
+      dados = await resposta.json();
+    } catch (causa) {
+      if (
+        leve
+        && causa instanceof DOMException
+        && causa.name === "AbortError"
+      ) {
+        throw new Error(
+          "Atualização do Cockpit expirou; nova tentativa automática em andamento."
+        );
+      }
+      throw causa;
+    } finally {
+      if (limiteDaAtualizacao !== null) {
+        window.clearTimeout(limiteDaAtualizacao);
+      }
+    }
     if (!resposta.ok) throw new Error(dados?.erro?.mensagem ?? "Consulta operacional indisponível.");
     setErro("");
     if (dados.atualizacao_parcial) {
