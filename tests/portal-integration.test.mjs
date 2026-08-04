@@ -16,6 +16,7 @@ test("site expõe Área HUMANEXUS sem substituir AGENDAR", async () => {
 test("perfis oficiais possuem destinos privados exatos", async () => {
   const session = await source("lib/portal-session.ts");
   const expected = {
+    ADMINISTRADOR_PROPRIETARIO: "/admin",
     ADMINISTRADOR_DO_SISTEMA: "/admin",
     GOVERNANCA_CIENTIFICA: "/governanca",
     ADMINISTRADOR_DA_ORGANIZACAO: "/organizacao",
@@ -26,6 +27,27 @@ test("perfis oficiais possuem destinos privados exatos", async () => {
   for (const [profile, destination] of Object.entries(expected)) {
     assert.match(session, new RegExp(`${profile}: "${destination}"`));
   }
+});
+
+test("Administrador Proprietário possui autoridade operacional exclusiva no portal", async () => {
+  const core = await source("lib/humanexus-core.ts");
+  const shell = await source("components/platform-shell.tsx");
+  const securePanel = await source("components/painel-seguro.tsx");
+  const management = await source("components/gestao-operacional.tsx");
+  const operation = await source("components/operacao-homologacao.tsx");
+  const administration = await source("components/painel-administrador.tsx");
+
+  assert.match(core, /"ADMINISTRADOR_PROPRIETARIO"/);
+  assert.match(shell, /"Administrador Proprietário"/);
+  assert.match(securePanel, /perfil !== "ADMINISTRADOR_PROPRIETARIO"/);
+  assert.match(management, /permissoesDoUsuario\.includes\("conduzir_sessao"\)/);
+  assert.match(operation, /includes\("conduzir_sessao"\)/);
+  assert.match(administration, /Acesso protegido/);
+  assert.match(administration, /mecanismo extraordinário|perfil e escopo protegidos/);
+  assert.doesNotMatch(
+    administration,
+    /\["ADMINISTRADOR_PROPRIETARIO","ADMINISTRADOR_DO_SISTEMA"/
+  );
 });
 
 test("alias organizacional converge para a área privada canônica", async () => {
@@ -48,6 +70,18 @@ test("token de sessão não é armazenado no navegador", async () => {
   assert.match(login, /httpOnly: true/);
   assert.match(login, /sameSite: "strict"/);
   assert.match(login, /protocol === "https:"/);
+});
+
+test("entrada diferencia bloqueio, inatividade e indisponibilidade sem revelar credenciais", async () => {
+  const login = await source("app/api/sessao/entrar/route.ts");
+  assert.match(login, /AUTENTICACAO_TEMPORARIAMENTE_BLOQUEADA/);
+  assert.match(login, /status: 423/);
+  assert.match(login, /CONTA_INATIVA/);
+  assert.match(login, /status: 403/);
+  assert.match(login, /NUCLEO_TEMPORARIAMENTE_INDISPONIVEL/);
+  assert.match(login, /status: 503/);
+  assert.match(login, /CREDENCIAIS_INVALIDAS/);
+  assert.match(login, /E-mail ou senha inválidos\./);
 });
 
 test("site e plataforma possuem layouts estruturalmente isolados", async () => {
@@ -432,13 +466,10 @@ test("sessão exige nome, decisão explícita e comandos completos no Cockpit", 
   assert.match(route, /atualizar-sessao/);
   assert.match(route, /configuracao-operacional/);
   assert.match(cockpit, /contextoSessao\.nome_operacional/);
-  for (const label of [
-    "PREPARAR SESSÃO",
-    "INICIAR SESSÃO",
-    "PAUSAR SESSÃO",
-    "RETOMAR SESSÃO",
-    "ENCERRAR SESSÃO"
-  ]) {
-    assert.match(operation, new RegExp(label));
-  }
+  assert.match(operation, /PREPARAR SESSÃO/);
+  assert.match(operation, /INICIAR_PRE: "Iniciar PRÉ"/);
+  assert.match(operation, /PAUSAR_PRE: "Pausar PRÉ"/);
+  assert.match(operation, /RETOMAR_PRE: "Retomar PRÉ"/);
+  assert.match(operation, /ENCERRAR SESSÃO/);
+  assert.match(operation, /rotuloDoComandoCentral/);
 });

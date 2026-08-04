@@ -74,6 +74,9 @@ test("gráficos e Replay usam registros do núcleo e expõem controles exigidos"
     if (label === "Exportação autorizada") assert.match(client, /Exportar intervalo/);
     else assert.match(client, new RegExp(label));
   }
+  assert.match(client, /const replayDisponivel = itensDaLinha\.length > 0/);
+  assert.match(client, /disabled=\{!replayDisponivel\}/);
+  assert.match(client, /Nenhum conteúdo válido disponível nesta sessão/);
   assert.match(client, /estado\.telemetria/);
   assert.match(client, /estado\.replay/);
   assert.match(runtime, /import\("echarts"\)/);
@@ -206,7 +209,7 @@ test("Matriz Vetorial não fabrica força, magnitude, direção, sentido ou inte
 test("Resultante, IIRH, Zona e Trajetória permanecem ontologicamente separados", async () => {
   const client = await source("components/operacao-homologacao.tsx");
   assert.match(client, /A Resultante.*não é IIRH nem Zona/s);
-  assert.match(client, /RESULTANTE REGULATÓRIA NÃO CALCULÁVEL/);
+  assert.match(client, /Aguardando evidência operacional/);
   assert.match(client, /TRAJETÓRIA NÃO INFERÍVEL/);
   assert.match(client, /um ponto isolado não gera trajetória/i);
   assert.doesNotMatch(client, /iirh\s*=\s*resultante|zona\s*=\s*resultante/i);
@@ -409,6 +412,8 @@ test("composição executiva premium permanece isolada no front-end da plataform
   assert.match(navegacao, /hx-nav--collapsed/);
   assert.match(navegacao, /Recolher menu lateral/);
   assert.match(navegacao, /Expandir menu lateral/);
+  assert.match(navegacao, /humanexus:navegacao-recolhida:\$\{escopoDePersistencia\}/);
+  assert.match(shell, /escopoDePersistencia=\{sessao\?\.usuario\.identificador/);
   assert.match(painel, /GOVERNANÇA AUTENTICADA/);
   assert.match(painel, /CONTEXTO PROTEGIDO PELO NÚCLEO/);
   assert.doesNotMatch(painel, /BotaoSair/);

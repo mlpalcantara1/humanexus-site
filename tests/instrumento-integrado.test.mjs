@@ -86,7 +86,7 @@ test("troca de organização elimina contexto anterior do instrumento", async ()
   );
   assert.match(
     gestao,
-    /participanteDaUrl \|\| estado\.identificador_do_participante/
+    /participanteDaNavegacao \|\| estado\.identificador_do_participante/
   );
   assert.match(
     gestao,
