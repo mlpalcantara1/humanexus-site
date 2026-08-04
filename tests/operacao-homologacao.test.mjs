@@ -522,6 +522,25 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
   ]) assert.match(cockpit, new RegExp(item));
   assert.match(cockpit, /Somente relações autorais rastreáveis/);
   assert.match(cockpit, /nenhuma decisão automática/);
+  assert.match(cockpit, /HIPÓTESE OPERACIONAL v0\.1 — EM VALIDAÇÃO EMPÍRICA/);
+  assert.match(cockpit, /Validação profissional obrigatória/);
+  assert.match(cockpit, /resultante\.estado === "CALCULAVEL"/);
+  assert.match(cockpit, /resultante\.estado === "CONFLITANTE"/);
+  assert.match(cockpit, /Cobertura[\s\S]*Qualidade[\s\S]*Confiança/);
+  for (const item of [
+    "Direção funcional",
+    "Sentido contextual",
+    "Vetores contribuintes",
+    "Vetores ausentes",
+    "Macrocampos cobertos",
+    "Macrocampos ausentes",
+    "Conflitos",
+    "Compensações",
+    "Versão científica",
+    "Origem matemática",
+    "Justificativa",
+    "Incertezas"
+  ]) assert.match(cockpit, new RegExp(item));
   assert.match(cockpit, /Rastreabilidade, dependências e candidatos documentais/);
   assert.match(
     cockpit,

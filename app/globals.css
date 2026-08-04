@@ -1469,6 +1469,20 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
   font: 400 17px Georgia, serif;
 }
 
+.hx-live-regulatory-readout__seal {
+  display: block;
+  width: fit-content;
+  margin-top: 7px;
+  border: 1px solid rgba(205, 178, 116, .28);
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: #cdb274;
+  background: rgba(205, 178, 116, .07);
+  letter-spacing: .08em;
+  font: 6px/1.2 var(--font-geist-mono), monospace;
+  font-style: normal;
+}
+
 .hx-live-regulatory-readout span {
   display: block;
   margin-top: 4px;

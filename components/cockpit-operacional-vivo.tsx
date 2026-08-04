@@ -518,8 +518,28 @@ export function CockpitOperacionalVivo({
     && radarVetorial.every((item) => item.value != null);
   const iirhCalculado = leituraAoVivo && iirh.estado === "CALCULADO"
     && typeof iirh.valor === "number";
-  const resultanteCalculada = leituraAoVivo && resultante.estado === "CALCULADO"
+  const resultanteCalculada = leituraAoVivo
+    && (resultante.estado === "CALCULAVEL" || resultante.estado === "CONFLITANTE")
     && typeof resultante.valor === "number";
+  const seloDaResultante = texto(
+    resultante.selo,
+    "HIPÓTESE OPERACIONAL v0.1 — EM VALIDAÇÃO EMPÍRICA"
+  );
+  const vetoresContribuintesDaResultante = Array.isArray(resultante.vetores_contribuintes)
+    ? resultante.vetores_contribuintes.map(String)
+    : [];
+  const vetoresAusentesDaResultante = Array.isArray(resultante.vetores_ausentes)
+    ? resultante.vetores_ausentes.map(String)
+    : [];
+  const macrocamposCobertosDaResultante = Array.isArray(resultante.macrocampos_cobertos)
+    ? resultante.macrocampos_cobertos.map(String)
+    : [];
+  const macrocamposAusentesDaResultante = Array.isArray(resultante.macrocampos_ausentes)
+    ? resultante.macrocampos_ausentes.map(String)
+    : [];
+  const incertezasDaResultante = Array.isArray(resultante.incertezas)
+    ? resultante.incertezas.map(String)
+    : [];
   const zonaCalculada = iirhCalculado && Boolean(zona.nome ?? zona.codigo);
   const trajetoriaCalculada = leituraAoVivo && trajetoria.valor != null;
   const leituraCientificaVisivel = iirhCalculado
@@ -576,7 +596,7 @@ export function CockpitOperacionalVivo({
       nome: "Resultante Regulatória",
       estado: texto(resultante.estado, "NAO DEFINIDA"),
       motivo: texto(
-        resultante.motivo,
+        resultante.justificativa ?? resultante.motivo,
         "Fórmula autoral de composição ainda não operacionalizada."
       )
     },
@@ -984,12 +1004,38 @@ export function CockpitOperacionalVivo({
       <section className="hx-live-regulatory-readout" aria-label="Resultante e trajetória regulatórias">
         <article>
           <small>RESULTANTE REGULATÓRIA</small>
+          <em className="hx-live-regulatory-readout__seal">{seloDaResultante}</em>
           <strong>{resultanteCalculada
             ? `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`
             : "NÃO CALCULÁVEL"}</strong>
           <span>{resultanteCalculada
-            ? "Configuração integrada oficialmente registrada"
-            : texto(resultante.motivo, "Evidência humana insuficiente")}</span>
+            ? `Direção ${texto(resultante.vetor_dominante, "não dominante")} · Sentido ${texto(resultante.sentido_contextual, "NAO_DETERMINAVEL")}`
+            : texto(resultante.justificativa ?? resultante.motivo, "Evidência humana insuficiente")}</span>
+          <span>Cobertura {numero(resultante.cobertura, 2)} · Qualidade {numero(resultante.qualidade, 2)} · Confiança {numero(resultante.confianca, 2)}</span>
+          <span>Validação profissional obrigatória · nenhuma decisão ou intervenção automática</span>
+          <details className="hx-live-vector-trace">
+            <summary>Estrutura científica e rastreabilidade</summary>
+            <dl>
+              <div><dt>Estado</dt><dd>{texto(resultante.estado, "NAO_CALCULAVEL")}</dd></div>
+              <div><dt>Magnitude</dt><dd>{numero(resultante.magnitude_global, 4)}</dd></div>
+              <div><dt>Direção funcional</dt><dd>{JSON.stringify(objeto(resultante.direcao_funcional))}</dd></div>
+              <div><dt>Sentido contextual</dt><dd>{texto(resultante.sentido_contextual, "NAO_DETERMINAVEL")}</dd></div>
+              <div><dt>Vetores contribuintes</dt><dd>{vetoresContribuintesDaResultante.join(" · ") || "Nenhum"}</dd></div>
+              <div><dt>Vetores ausentes</dt><dd>{vetoresAusentesDaResultante.join(" · ") || "Nenhum"}</dd></div>
+              <div><dt>Macrocampos cobertos</dt><dd>{macrocamposCobertosDaResultante.join(" · ") || "Nenhum"}</dd></div>
+              <div><dt>Macrocampos ausentes</dt><dd>{macrocamposAusentesDaResultante.join(" · ") || "Nenhum"}</dd></div>
+              <div><dt>Conflitos</dt><dd>{lista(resultante.conflitos).length}</dd></div>
+              <div><dt>Compensações</dt><dd>{lista(resultante.compensacoes).length}</dd></div>
+              <div><dt>Contexto</dt><dd>{JSON.stringify(objeto(resultante.contexto))}</dd></div>
+              <div><dt>Fase</dt><dd>{texto(resultante.fase)}</dd></div>
+              <div><dt>Timestamp</dt><dd>{dataLegivel(resultante.timestamp)}</dd></div>
+              <div><dt>Versão científica</dt><dd>{texto(resultante.versao_cientifica)}</dd></div>
+              <div><dt>Versão da fórmula</dt><dd>{texto(resultante.versao)}</dd></div>
+              <div><dt>Origem matemática</dt><dd>{JSON.stringify(objeto(resultante.origem_matematica))}</dd></div>
+              <div><dt>Justificativa</dt><dd>{texto(resultante.justificativa)}</dd></div>
+              <div><dt>Incertezas</dt><dd>{incertezasDaResultante.join(" · ") || "Nenhuma"}</dd></div>
+            </dl>
+          </details>
         </article>
         <article>
           <small>TRAJETÓRIA REGULATÓRIA</small>
