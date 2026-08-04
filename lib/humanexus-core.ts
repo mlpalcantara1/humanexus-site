@@ -5,6 +5,7 @@ const CORE_API =
   "http://127.0.0.1:8080";
 
 export type PerfilHumanexus =
+  | "ADMINISTRADOR_PROPRIETARIO"
   | "ADMINISTRADOR_DO_SISTEMA"
   | "GOVERNANCA_CIENTIFICA"
   | "ADMINISTRADOR_DA_ORGANIZACAO"
@@ -28,7 +29,11 @@ export type SessaoDoNucleo = {
 };
 
 export class ErroDoNucleo extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly codigo: string = "ERRO_DO_NUCLEO"
+  ) {
     super(message);
   }
 }
@@ -78,7 +83,8 @@ async function requisitar<T>(
   if (!resposta.ok) {
     throw new ErroDoNucleo(
       dados?.erro?.mensagem ?? "Não foi possível concluir a operação.",
-      resposta.status
+      resposta.status,
+      String(dados?.erro?.codigo ?? "ERRO_DO_NUCLEO")
     );
   }
   return dados as T;

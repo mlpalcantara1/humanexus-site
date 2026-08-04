@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requisitarNucleoAutenticado } from "@/lib/humanexus-core";
 import { COOKIE_CSRF, COOKIE_SESSAO } from "@/lib/portal-session";
 import { exigirCsrf } from "@/lib/request-security";
+import { responderErroDaApi } from "@/lib/api-route-error";
 
 type Registro = Record<string, unknown>;
 
@@ -12,28 +13,29 @@ export async function GET() {
     return NextResponse.json({ erro: { mensagem: "Sessão ausente." } }, { status: 401 });
   }
   try {
-    const [governanca, backups, consentimentos, seguranca, instrumentoIntegrado] = await Promise.all([
-      requisitarNucleoAutenticado<Registro>(
-        "/api/v1/governanca-operacional",
-        token
-      ),
-      requisitarNucleoAutenticado<Registro[]>(
-        "/api/v1/governanca-operacional/backups",
-        token
-      ).catch(() => []),
-      requisitarNucleoAutenticado<Registro>(
-        "/api/v1/consentimentos/lab",
-        token
-      ),
-      requisitarNucleoAutenticado<Registro>(
-        "/api/v1/seguranca-proprietario",
-        token
-      ),
-      requisitarNucleoAutenticado<Registro>(
-        "/api/v1/instrumento-integrado/lab",
-        token
-      )
-    ]);
+    // O servidor local oficial é deliberadamente conservador. Consultas
+    // sequenciais evitam uma fila concorrente que antes convertia latência em
+    // falso 403 e podia derrubar a renderização do LAB.
+    const governanca = await requisitarNucleoAutenticado<Registro>(
+      "/api/v1/governanca-operacional",
+      token
+    );
+    const backups = await requisitarNucleoAutenticado<Registro[]>(
+      "/api/v1/governanca-operacional/backups",
+      token
+    ).catch(() => []);
+    const consentimentos = await requisitarNucleoAutenticado<Registro>(
+      "/api/v1/consentimentos/lab",
+      token
+    );
+    const seguranca = await requisitarNucleoAutenticado<Registro>(
+      "/api/v1/seguranca-proprietario",
+      token
+    );
+    const instrumentoIntegrado = await requisitarNucleoAutenticado<Registro>(
+      "/api/v1/instrumento-integrado/lab",
+      token
+    );
     return NextResponse.json({
       governanca,
       backups,
@@ -42,10 +44,11 @@ export async function GET() {
       instrumento_integrado: instrumentoIntegrado
     });
   } catch (erro) {
-    return NextResponse.json(
-      { erro: { mensagem: erro instanceof Error ? erro.message : "Acesso negado." } },
-      { status: 403 }
-    );
+    return responderErroDaApi(erro, {
+      modulo: "GOVERNANCA_OPERACIONAL",
+      rota: "/api/v1/governanca-operacional",
+      mensagemDeAcessoNegado: "Acesso à governança operacional não autorizado."
+    });
   }
 }
 

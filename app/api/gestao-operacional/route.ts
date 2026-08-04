@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { requisitarNucleoAutenticado } from "@/lib/humanexus-core";
+import { ErroDoNucleo, requisitarNucleoAutenticado } from "@/lib/humanexus-core";
 import { COOKIE_CSRF, COOKIE_SESSAO } from "@/lib/portal-session";
 import { exigirCsrf } from "@/lib/request-security";
+import { responderErroDaApi } from "@/lib/api-route-error";
 
 type Registro = Record<string, unknown>;
 
@@ -39,16 +40,11 @@ export async function GET(request: Request) {
       )
     );
   } catch (erro) {
-    return NextResponse.json(
-      {
-        erro: {
-          mensagem: erro instanceof Error
-            ? erro.message
-            : "Gestão operacional indisponível."
-        }
-      },
-      { status: 403 }
-    );
+    return responderErroDaApi(erro, {
+      modulo: "GESTAO_OPERACIONAL",
+      rota: "/api/v1/gestao/contexto",
+      mensagemDeAcessoNegado: "Este perfil pode consultar o módulo, mas não executar ações profissionais."
+    });
   }
 }
 
@@ -147,6 +143,13 @@ export async function POST(request: Request) {
     );
     return NextResponse.json(resultado, { status: metodo === "POST" ? 201 : 200 });
   } catch (erro) {
+    if (erro instanceof ErroDoNucleo) {
+      return responderErroDaApi(erro, {
+        modulo: "GESTAO_OPERACIONAL",
+        rota: "COMANDO_DE_GESTAO",
+        mensagemDeAcessoNegado: "A ação exige um perfil profissional autorizado."
+      });
+    }
     return NextResponse.json(
       {
         erro: {

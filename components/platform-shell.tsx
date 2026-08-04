@@ -2,12 +2,28 @@ import Link from "next/link";
 import { BotaoSair } from "@/components/botao-sair";
 import { PlatformNavigation } from "@/components/platform-navigation";
 import { ExperienceModeControl } from "@/components/experience-mode-control";
+import { NucleoConnectionBadge } from "@/components/nucleo-connection-badge";
 import { sessaoAtual } from "@/lib/portal-session";
+import { ErroDoNucleo } from "@/lib/humanexus-core";
 
 export async function PlatformShell({ children }: { children: React.ReactNode }) {
-  const sessao = await sessaoAtual();
+  let sessao: Awaited<ReturnType<typeof sessaoAtual>> = null;
+  let nucleoIndisponivel = false;
+  try {
+    sessao = await sessaoAtual();
+  } catch (erro) {
+    if (erro instanceof ErroDoNucleo && [502, 503, 504].includes(erro.status)) {
+      nucleoIndisponivel = true;
+    } else {
+      throw erro;
+    }
+  }
   const podeVerLab = sessao?.usuario.permissoes.includes("acessar_humanexus_lab") ?? false;
-  const podeAdministrar = sessao?.usuario.perfil === "ADMINISTRADOR_DO_SISTEMA";
+  const podeAdministrar = [
+    "ADMINISTRADOR_PROPRIETARIO",
+    "ADMINISTRADOR_DO_SISTEMA"
+  ].includes(String(sessao?.usuario.perfil));
+  const contextoPreservado = Boolean(sessao || nucleoIndisponivel);
   return (
     <div className="hx-app hx-app--executive">
       <div className="hx-app__atmosphere" aria-hidden="true" />
@@ -24,17 +40,21 @@ export async function PlatformShell({ children }: { children: React.ReactNode })
           <strong>HUMANEXUS COMMAND</strong>
         </div>
         <div className="hx-app__header-meta">
-          {sessao ? <ExperienceModeControl /> : null}
+          {contextoPreservado ? <ExperienceModeControl /> : null}
           <span className="hx-app__environment">AMBIENTE PROTEGIDO</span>
-          <span className="hx-app__connection"><i />NÚCLEO CONECTADO</span>
-          {sessao ? <span className="hx-app__identity"><b>{sessao.usuario.nome}</b><small>{sessao.usuario.perfil.replaceAll("_", " ")}</small></span> : null}
+          <NucleoConnectionBadge estadoInicial={nucleoIndisponivel ? "reconectando" : "verificando"} />
+          {sessao ? <span className="hx-app__identity"><b>{sessao.usuario.nome}</b><small>{sessao.usuario.perfil === "ADMINISTRADOR_PROPRIETARIO" ? "Administrador Proprietário" : sessao.usuario.perfil.replaceAll("_", " ")}</small></span> : null}
           {sessao ? <BotaoSair csrf={sessao.csrf} /> : null}
         </div>
       </header>
-      {sessao ? (
-        <PlatformNavigation podeVerLab={podeVerLab} podeAdministrar={podeAdministrar} />
+      {contextoPreservado ? (
+        <PlatformNavigation
+          podeVerLab={podeVerLab}
+          podeAdministrar={podeAdministrar}
+          escopoDePersistencia={sessao?.usuario.identificador ?? "sessao-indisponivel"}
+        />
       ) : null}
-      <main className={sessao ? "hx-app__content hx-app__content--signed" : "hx-app__content"}>{children}</main>
+      <main className={contextoPreservado ? "hx-app__content hx-app__content--signed" : "hx-app__content"}>{children}</main>
       <footer className="hx-app__footer">
         <span>HUMANEXUS / COMMAND</span>
         <small>Inteligência Regulatória Humana · ambiente operacional protegido.</small>

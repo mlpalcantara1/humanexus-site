@@ -41,6 +41,7 @@ type Props = {
   executarSecundaria: (comando: string) => void;
   registrar: (categoria: string, texto: string) => Promise<void> | void;
   abrirAnalitico: () => void;
+  permitirOperacao: boolean;
 };
 
 const METRICAS_DE_DESEMPENHO_VISIVEIS = [
@@ -458,7 +459,8 @@ export function CockpitOperacionalVivo({
   executarPrincipal,
   executarSecundaria,
   registrar,
-  abrirAnalitico
+  abrirAnalitico,
+  permitirOperacao
 }: Props) {
   const [agora, setAgora] = useState(Date.now());
   const [categoria, setCategoria] = useState("EVENTO");
@@ -874,7 +876,7 @@ export function CockpitOperacionalVivo({
               }`}
               type="button"
               onClick={executarPrincipal}
-              disabled={ocupado}
+              disabled={ocupado || !permitirOperacao}
             >
               {rotuloDaAcao}
             </button>
@@ -1271,7 +1273,7 @@ export function CockpitOperacionalVivo({
                 key={comando}
                 type="button"
                 onClick={() => executarSecundaria(comando)}
-                disabled={ocupado}
+                disabled={ocupado || (!permitirOperacao && comando !== "ABRIR_REPLAY")}
               >
                 {rotuloDaSecundaria(comando)}
               </button>
@@ -1283,7 +1285,7 @@ export function CockpitOperacionalVivo({
         <div className="hx-live-register">
           <header><small>REGISTRO PROFISSIONAL RÁPIDO</small><strong>Contexto preenchido automaticamente</strong></header>
           <div>
-            <select value={categoria} onChange={(evento) => setCategoria(evento.target.value)} disabled={sessaoFinalizada}>
+            <select value={categoria} onChange={(evento) => setCategoria(evento.target.value)} disabled={sessaoFinalizada || !permitirOperacao}>
               <option value="EVENTO">Evento</option>
               <option value="INTERVENCAO">Intervenção</option>
               <option value="RESPOSTA">Resposta</option>
@@ -1298,11 +1300,11 @@ export function CockpitOperacionalVivo({
               }}
               placeholder={sessaoFinalizada ? "Sessão finalizada — consulta somente" : "Registrar sem repetir participante, fase ou protocolo"}
               maxLength={500}
-              disabled={sessaoFinalizada}
+              disabled={sessaoFinalizada || !permitirOperacao}
             />
-            <button type="button" onClick={() => void enviarRegistro()} disabled={sessaoFinalizada || ocupado || !registro.trim()}>Registrar</button>
+            <button type="button" onClick={() => void enviarRegistro()} disabled={sessaoFinalizada || ocupado || !permitirOperacao || !registro.trim()}>Registrar</button>
           </div>
-          <span>Atalho: ⌘/Ctrl + Enter · organização, participante, sessão, fase, horário, THX, fontes e cobertura vêm do núcleo.</span>
+          <span>{permitirOperacao ? "Atalho: ⌘/Ctrl + Enter · organização, participante, sessão, fase, horário, THX, fontes e cobertura vêm do núcleo." : "Consulta administrativa: registros e comandos operacionais exigem o profissional responsável."}</span>
         </div>
 
         <div className="hx-live-events">

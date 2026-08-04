@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { ModuloDaPlataforma } from "@/components/modulo-integrado";
+import { consultarJson } from "@/lib/client-request";
+import { PlatformErrorState } from "@/components/platform-error-state";
 
 type Registro = Record<string, unknown>;
 type ProtocoloClassificado = Registro & {
@@ -342,20 +344,23 @@ export function GestaoOperacional({
     setEntregaDeConsentimento(null);
     const parametros = new URLSearchParams({ modulo });
     if (organizacaoId) parametros.set("organizacao", organizacaoId);
-    const resposta = await fetch(
-      `/api/gestao-operacional${parametros.size ? `?${parametros}` : ""}`,
-      { cache: "no-store" }
+    const corpo = await consultarJson<Dados>(
+      `/api/gestao-operacional${parametros.size ? `?${parametros}` : ""}`
     );
-    const corpo = await resposta.json();
-    if (!resposta.ok) {
-      throw new Error(corpo?.erro?.mensagem ?? "Gestão indisponível.");
-    }
     setDados(corpo as Dados);
     const atual = String(corpo.organizacao?.identificador ?? "");
     setOrganizacaoSelecionada(atual);
     const contextoDaUrl = new URLSearchParams(window.location.search);
+    const organizacaoDaUrl = contextoDaUrl.get("organizacao") ?? "";
     const participanteDaUrl = contextoDaUrl.get("participante") ?? "";
-    atualizarContextoNaUrl({ organizacao: atual });
+    const mudouDeOrganizacao = Boolean(
+      organizacaoDaUrl && atual && organizacaoDaUrl !== atual
+    );
+    const participanteDaNavegacao = mudouDeOrganizacao ? "" : participanteDaUrl;
+    atualizarContextoNaUrl({
+      organizacao: atual,
+      ...(mudouDeOrganizacao ? { participante: "", sessao: "" } : {})
+    });
     setNovaOrganizacao(false);
     preencherOrganizacao(corpo.organizacao ?? null);
     const participanteAberto = corpo.participantes?.find(
@@ -371,7 +376,7 @@ export function GestaoOperacional({
       const participanteAtual = corpo.participantes?.find(
         (item: Registro) =>
           String(item.identificador) === (
-            participanteDaUrl || estado.identificador_do_participante
+            participanteDaNavegacao || estado.identificador_do_participante
           )
       );
       const profissionalAtual = corpo.profissionais?.find(
@@ -414,7 +419,7 @@ export function GestaoOperacional({
       const participanteDoContexto = corpo.participantes?.find(
         (item: Registro) =>
           String(item.identificador) === (
-            participanteDaUrl || estado.identificador_do_participante
+            participanteDaNavegacao || estado.identificador_do_participante
           )
       );
       const proximoParticipante = String(
@@ -432,10 +437,10 @@ export function GestaoOperacional({
     setParticipanteDoCatalogo((atual) => (
       corpo.participantes?.some(
         (item: Registro) => String(item.identificador) === (
-          participanteDaUrl || atual
+          participanteDaNavegacao || atual
         )
       )
-        ? participanteDaUrl || atual
+        ? participanteDaNavegacao || atual
         : ""
     ));
   }
@@ -771,16 +776,20 @@ export function GestaoOperacional({
 
   const organizacaoAtual = dados?.organizacao;
   const podeAdministrar = [
+    "ADMINISTRADOR_PROPRIETARIO",
     "ADMINISTRADOR_DO_SISTEMA",
     "ADMINISTRADOR_DA_ORGANIZACAO"
   ].includes(String(dados?.usuario.perfil));
   const podeGerenciarParticipantes = [
+    "ADMINISTRADOR_PROPRIETARIO",
     "ADMINISTRADOR_DO_SISTEMA",
     "ADMINISTRADOR_DA_ORGANIZACAO",
     "PROFISSIONAL_HUMANEXUS"
   ].includes(String(dados?.usuario.perfil));
-  const podeConduzir = String(dados?.usuario.perfil) === "PROFISSIONAL_HUMANEXUS"
-    || String(dados?.usuario.perfil) === "ADMINISTRADOR_DO_SISTEMA";
+  const permissoesDoUsuario = Array.isArray(dados?.usuario.permissoes)
+    ? dados.usuario.permissoes.map(String)
+    : [];
+  const podeConduzir = permissoesDoUsuario.includes("conduzir_sessao");
   const administradorProprietario =
     dados?.usuario.administrador_proprietario === true;
   const participanteAtualSelecionado = dados?.participantes.find(
@@ -934,10 +943,14 @@ export function GestaoOperacional({
               <div className="hx-management-actions">
                 <button
                   type="button"
-                  disabled={ocupado}
                   onClick={() => {
-                    setParticipanteSelecionado(String(item.identificador));
+                    const identificador = String(item.identificador);
+                    setParticipanteSelecionado(identificador);
                     preencherParticipante(item);
+                    atualizarContextoNaUrl({
+                      participante: identificador,
+                      sessao: ""
+                    });
                   }}
                 >
                   Abrir ficha
@@ -1001,7 +1014,7 @@ export function GestaoOperacional({
               {operacional && estado === "CRIADA" ? (
                 <button
                   type="button"
-                  disabled={ocupado}
+                  disabled={ocupado || !podeConduzir}
                   onClick={() => {
                     const decisao = objeto(
                       operacional.decisao_profissional_json
@@ -1047,7 +1060,7 @@ export function GestaoOperacional({
               {acao && operacional ? (
                 <button
                   type="button"
-                  disabled={ocupado}
+                  disabled={ocupado || !podeConduzir}
                   onClick={() => acao === "ABRIR"
                     ? void iniciarSessaoDiretamente(
                         String(item.identificador ?? ""),
@@ -1265,7 +1278,14 @@ export function GestaoOperacional({
     )
   };
 
-  if (erro && !dados) return <p className="hx-module__error">{erro}</p>;
+  if (erro && !dados) return (
+    <PlatformErrorState
+      automatico={false}
+      tentarNovamente={() => void carregar().catch((causa) => setErro(causa.message))}
+      titulo="Módulo temporariamente indisponível"
+      mensagem={erro}
+    />
+  );
   if (!dados) return <p className="hx-module__loading">Carregando gestão operacional…</p>;
 
   return (
@@ -1506,7 +1526,7 @@ export function GestaoOperacional({
                   <div><small>CNPJ</small><strong>{texto(institucionais.cnpj)}</strong></div>
                   <div><small>Situação</small><strong>{item.ativa ? "ATIVA" : "INATIVA"}</strong></div>
                   <div><small>Versão</small><strong>{texto(perfil.numero_da_versao, "1")}</strong></div>
-                  <button type="button" disabled={ocupado} onClick={() => void carregar(String(item.identificador))}>Abrir ficha</button>
+                  <button type="button" onClick={() => void carregar(String(item.identificador))}>Abrir ficha</button>
                 </article>
               );
             })}</div>
@@ -1959,6 +1979,12 @@ export function GestaoOperacional({
 
       {modulo === "sessoes" ? (
         <div className="hx-management-grid">
+          {!podeConduzir ? (
+            <p className="hx-module__notice">
+              Consulta administrativa ativa. Criar, editar e conduzir sessões
+              exige o perfil profissional autorizado.
+            </p>
+          ) : null}
           <form onSubmit={async (evento: FormEvent) => {
             evento.preventDefault();
             const chave = sessao.chave_de_idempotencia || crypto.randomUUID();
@@ -2199,7 +2225,7 @@ export function GestaoOperacional({
                 </div>
                 <button
                   type="button"
-                  disabled={ocupado}
+                  disabled={ocupado || !podeConduzir}
                   onClick={() => void iniciarSessaoDiretamente(
                     sessaoCriada.identificador,
                     sessaoCriada.participante
@@ -2216,6 +2242,12 @@ export function GestaoOperacional({
 
       {modulo === "treinamentos" ? (
         <div className="hx-training-library">
+          {!podeConduzir ? (
+            <p className="hx-module__notice">
+              Consulta administrativa ativa. Validar recomendações e programar
+              treinamentos exige o perfil profissional autorizado.
+            </p>
+          ) : null}
           <section className="hx-training-library__controls">
             <div>
               <small>BIBLIOTECA OFICIAL HUMANEXUS</small>
@@ -2666,7 +2698,7 @@ export function GestaoOperacional({
                             <>
                               <button
                                 type="button"
-                                disabled={ocupado}
+                                disabled={ocupado || !podeConduzir}
                                 onClick={() => void prepararSugestaoThx(
                                   protocolo
                                 )}
@@ -2675,7 +2707,7 @@ export function GestaoOperacional({
                               </button>
                               <button
                                 type="button"
-                                disabled={ocupado}
+                                disabled={ocupado || !podeConduzir}
                                 onClick={() => void prepararSugestaoThx(
                                   protocolo,
                                   true
@@ -2690,7 +2722,7 @@ export function GestaoOperacional({
                             <>
                               <button
                                 type="button"
-                                disabled={ocupado}
+                                disabled={ocupado || !podeConduzir}
                                 onClick={() => void decidirRecomendacaoThx(
                                   protocolo,
                                   "VALIDADA"
@@ -2700,7 +2732,7 @@ export function GestaoOperacional({
                               </button>
                               <button
                                 type="button"
-                                disabled={ocupado}
+                                disabled={ocupado || !podeConduzir}
                                 onClick={() => void decidirRecomendacaoThx(
                                   protocolo,
                                   "REJEITADA"
@@ -2715,7 +2747,7 @@ export function GestaoOperacional({
                           ) ? (
                             <button
                               type="button"
-                              disabled={ocupado}
+                              disabled={ocupado || !podeConduzir}
                               onClick={() => void programarProtocoloThx(
                                 protocolo
                               )}

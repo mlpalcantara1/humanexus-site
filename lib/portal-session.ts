@@ -12,6 +12,7 @@ export const COOKIE_SESSAO = "humanexus_sessao";
 export const COOKIE_CSRF = "humanexus_csrf";
 
 export const DESTINO_POR_PERFIL: Record<PerfilHumanexus, string> = {
+  ADMINISTRADOR_PROPRIETARIO: "/admin",
   ADMINISTRADOR_DO_SISTEMA: "/admin",
   GOVERNANCA_CIENTIFICA: "/governanca",
   ADMINISTRADOR_DA_ORGANIZACAO: "/organizacao",

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   confirmarSegundoFatorNoNucleo,
+  ErroDoNucleo,
   entrarNoNucleo,
   obterUsuarioDoNucleo
 } from "@/lib/humanexus-core";
@@ -61,9 +62,42 @@ export async function POST(request: Request) {
       httpOnly: false
     });
     return resposta;
-  } catch {
+  } catch (erro) {
+    if (erro instanceof ErroDoNucleo) {
+      if (
+        erro.status === 423
+        && erro.codigo === "AUTENTICACAO_TEMPORARIAMENTE_BLOQUEADA"
+      ) {
+        return NextResponse.json(
+          { erro: { codigo: erro.codigo, mensagem: erro.message } },
+          { status: 423 }
+        );
+      }
+      if (erro.status === 403 && erro.codigo === "CONTA_INATIVA") {
+        return NextResponse.json(
+          { erro: { codigo: erro.codigo, mensagem: erro.message } },
+          { status: 403 }
+        );
+      }
+      if ([502, 503, 504].includes(erro.status)) {
+        return NextResponse.json(
+          {
+            erro: {
+              codigo: "NUCLEO_TEMPORARIAMENTE_INDISPONIVEL",
+              mensagem: "Núcleo temporariamente indisponível. Aguarde alguns segundos e tente novamente."
+            }
+          },
+          { status: 503 }
+        );
+      }
+    }
     return NextResponse.json(
-      { erro: { mensagem: "E-mail ou senha inválidos." } },
+      {
+        erro: {
+          codigo: "CREDENCIAIS_INVALIDAS",
+          mensagem: "E-mail ou senha inválidos."
+        }
+      },
       { status: 401 }
     );
   }

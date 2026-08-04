@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { ConfiguracaoEstacaoHumanexus } from
   "@/components/configuracao-estacao-humanexus";
+import { consultarJson } from "@/lib/client-request";
+import { PlatformErrorState } from "@/components/platform-error-state";
 
 type Registro = Record<string, unknown>;
 type Dados = {
@@ -76,24 +78,10 @@ export function GovernancaOperacional() {
   const [ocupado, setOcupado] = useState(false);
 
   async function carregar() {
-    const resposta = await fetch("/api/plataforma/governanca-operacional", {
-      cache: "no-store"
-    });
-    const corpo = await resposta.json();
-    if (!resposta.ok) {
-      throw new Error(corpo?.erro?.mensagem ?? "Governança indisponível.");
-    }
+    setErro("");
+    const corpo = await consultarJson<Dados>("/api/plataforma/governanca-operacional");
     setDados(corpo as Dados);
-    const respostaGestao = await fetch("/api/gestao-operacional", {
-      cache: "no-store"
-    });
-    const corpoGestao = await respostaGestao.json();
-    if (!respostaGestao.ok) {
-      setErro(
-        corpoGestao?.erro?.mensagem ?? "Participantes indisponíveis."
-      );
-      return;
-    }
+    const corpoGestao = await consultarJson<Gestao>("/api/gestao-operacional", { tentativas: 1 });
     setGestao(corpoGestao as Gestao);
   }
 
@@ -152,7 +140,9 @@ export function GovernancaOperacional() {
     });
   }
 
-  if (!dados) return erro ? <p className="hx-module__error">{erro}</p> : <p>Carregando governança operacional…</p>;
+  if (!dados) return erro
+    ? <PlatformErrorState automatico={false} tentarNovamente={() => void carregar().catch((causa) => setErro(causa.message))} titulo="Governança temporariamente indisponível" mensagem={erro} />
+    : <p className="hx-module__loading">Carregando governança operacional…</p>;
 
   return (
     <section className="hx-governance-ops">

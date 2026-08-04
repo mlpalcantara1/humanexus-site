@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OperacaoHomologacao } from "@/components/operacao-homologacao";
 import { ParametrizacaoProspectiva, type DadosPHP } from "@/components/parametrizacao-prospectiva";
 import { PainelProfissional } from "@/components/painel-profissional";
@@ -9,6 +10,7 @@ import { GovernancaAnamnese, type DadosAnamneseLab } from "@/components/governan
 import { GestaoOperacional } from "@/components/gestao-operacional";
 import { GovernancaOperacional } from "@/components/governanca-operacional";
 import { HxPageHeader, HxSurface } from "@/components/hx-design-system";
+import { consultarJson, ErroDeConsulta } from "@/lib/client-request";
 
 export type ModuloDaPlataforma =
   | "painel" | "organizacoes" | "clientes" | "sessoes" | "treinamentos" | "pre-treino-pos"
@@ -89,7 +91,21 @@ function CommandHeader({ definicao, modulo }: { definicao: Definicao; modulo: Mo
   );
 }
 
+function useHrefComContexto() {
+  const searchParams = useSearchParams();
+  return useCallback((destino: string) => {
+    const [caminho, consulta = ""] = destino.split("?");
+    const parametros = new URLSearchParams(consulta);
+    for (const chave of ["organizacao", "participante", "sessao", "thx"]) {
+      const valor = searchParams.get(chave);
+      if (valor && !parametros.has(chave)) parametros.set(chave, valor);
+    }
+    return parametros.size ? `${caminho}?${parametros}` : caminho;
+  }, [searchParams]);
+}
+
 function Painel({ recursos }: { recursos: Recurso[] }) {
+  const hrefComContexto = useHrefComContexto();
   const porNome = new Map(recursos.map((recurso) => [recurso.nome, recurso]));
   const resumo = porNome.get("painel")?.dados as Record<string, unknown> | undefined;
   const numero = (chave: string) => typeof resumo?.[chave] === "number" ? String(resumo[chave]) : "—";
@@ -109,11 +125,11 @@ function Painel({ recursos }: { recursos: Recurso[] }) {
     <section className="hx-command-dashboard__actions">
       <div><p>OPERAÇÃO ATUAL</p><strong>{texto(resumo?.estado, "CONTEXTO DISPONÍVEL")}</strong><span>Versão científica {texto(resumo?.versao_cientifica, "não informada")}</span></div>
       <nav aria-label="Atalhos operacionais">
-        <Link href="/plataforma/organizacoes">Consultar organizações</Link>
-        <Link href="/plataforma/clientes">Consultar participantes</Link>
-        <Link href="/plataforma/anamnese-regulatoria">Gerar convite de Anamnese</Link>
-        <Link href="/plataforma/cockpit-vivo">Abrir sessão técnica</Link>
-        <Link className="is-primary" href="/plataforma/cockpit-vivo">Abrir Cockpit Vivo</Link>
+        <Link href={hrefComContexto("/plataforma/organizacoes")}>Consultar organizações</Link>
+        <Link href={hrefComContexto("/plataforma/clientes")}>Consultar participantes</Link>
+        <Link href={hrefComContexto("/plataforma/anamnese-regulatoria")}>Gerar convite de Anamnese</Link>
+        <Link href={hrefComContexto("/plataforma/cockpit-vivo")}>Abrir sessão técnica</Link>
+        <Link className="is-primary" href={hrefComContexto("/plataforma/cockpit-vivo")}>Abrir Cockpit Vivo</Link>
       </nav>
     </section>
     <section className="hx-command-dashboard__metrics" aria-label="Indicadores operacionais">
@@ -154,19 +170,25 @@ function Replay({ recurso }: { recurso?: Recurso }) {
   </div>;
 }
 
-function Lab({ dados, php, anamnese }: { dados: unknown; php: DadosPHP | null; anamnese: DadosAnamneseLab | null }) {
+function Lab({ dados, php, anamnese, avisos }: { dados: unknown; php: DadosPHP | null; anamnese: DadosAnamneseLab | null; avisos: string[] }) {
+  const hrefComContexto = useHrefComContexto();
   const entradas = dados && typeof dados === "object" && !Array.isArray(dados) ? Object.entries(dados as Record<string, unknown>) : [];
   return <div className="hx-lab">
     <section className="hx-lab__intro"><div><p>AMBIENTE OFICIAL DE HOMOLOGAÇÃO</p><h2>Constituição científica e rastreabilidade em consulta viva.</h2></div><Estado ativo>acesso de proprietário validado pelo núcleo</Estado></section>
     <section className="hx-lab__cockpit">
       <div><p>INSPEÇÃO DA OPERACIONALIZAÇÃO</p><strong>Cockpit Vivo · TIRH operacional</strong><span>Postulados, campos, Matriz Vetorial, Resultante, Trajetória, fases, rotas e produtos integrados em um único contexto.</span></div>
-      <Link href="/plataforma/cockpit-vivo?visao=constituicao">Abrir inspeção no Cockpit Vivo</Link>
+      <Link href={hrefComContexto("/plataforma/cockpit-vivo?visao=constituicao")}>Abrir inspeção no Cockpit Vivo</Link>
     </section>
+    {avisos.length ? <aside className="hx-lab__partial" role="status"><strong>Dados parciais preservados</strong>{avisos.map((aviso) => <span key={aviso}>{aviso}</span>)}</aside> : null}
     <section className="hx-lab__grid">
       {entradas.length ? entradas.map(([chave, valor], indice) => <article className="hx-lab-card" key={chave}><span>{String(indice + 1).padStart(2, "0")}</span><p>{humanizar(chave)}</p><strong>{descricaoDosDados(valor)}</strong><small>FONTE OFICIAL · INSPEÇÃO AUTORIZADA</small></article>) : <article className="hx-lab-card hx-lab-card--empty"><p>Validação em consulta</p><strong>O núcleo não retornou módulos homologáveis para este contexto.</strong><small>NENHUM DADO FOI SUBSTITUÍDO</small></article>}
     </section>
-    <ParametrizacaoProspectiva dados={php} />
-    <GovernancaAnamnese dados={anamnese} />
+    {php
+      ? <ParametrizacaoProspectiva dados={php} />
+      : <section className="hx-lab__restricted"><small>CAMADA PROSPECTIVA AUTORAL</small><strong>Conteúdo restrito ao Administrador Proprietário.</strong><span>O LAB principal permanece disponível sem simular ou preencher esta camada.</span></section>}
+    {anamnese
+      ? <GovernancaAnamnese dados={anamnese} />
+      : <section className="hx-lab__restricted"><small>GOVERNANÇA AUTORAL / ANAMNESE</small><strong>Conteúdo restrito ao Administrador Proprietário.</strong><span>A ausência de permissão é preservada e não impede a navegação pelo LAB.</span></section>}
     <GovernancaOperacional />
     <details className="hx-lab__trace"><summary>Inspecionar rastreabilidade técnica autorizada</summary><pre>{JSON.stringify(dados, null, 2)}</pre></details>
   </div>;
@@ -183,54 +205,70 @@ export function ModuloIntegrado({ modulo }: { modulo: ModuloDaPlataforma }) {
   const [php, setPhp] = useState<DadosPHP | null>(null);
   const [anamneseLab, setAnamneseLab] = useState<DadosAnamneseLab | null>(null);
   const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
+  const [mensagem, setMensagem] = useState("");
+  const [avisosLab, setAvisosLab] = useState<string[]>([]);
+  const falhouAntes = useRef(false);
 
-  useEffect(() => {
+  const carregar = useCallback(async (signal?: AbortSignal) => {
     if (!exigeConsultaGlobal) {
       setResposta(null);
       setErro("");
       return;
     }
-    let ativo = true;
+    setCarregando(true);
+    setMensagem("");
     const destino = modulo === "humanexus-lab"
       ? "/api/plataforma/lab"
       : `/api/plataforma/resumo?modulo=${encodeURIComponent(modulo)}`;
-    fetch(destino, { cache: "no-store" }).then(async (resultado) => {
-      const dados = await resultado.json();
-      if (!resultado.ok) throw new Error(dados?.erro?.mensagem ?? "Consulta indisponível.");
-      if (ativo) setResposta(modulo === "humanexus-lab" ? { recursos: [{ nome: "humanexus-lab", disponivel: true, dados: dados.dados }], usuario: { perfil: "ADMINISTRADOR_PROPRIETARIO", permissoes: [] } } : dados as Resposta);
-    }).catch((causa) => ativo && setErro(causa instanceof Error ? causa.message : "Consulta indisponível."));
-    return () => { ativo = false; };
+    try {
+      const dados = await consultarJson<{ dados?: unknown } | Resposta>(destino, { signal });
+      const avisos: string[] = [];
+      let proximaAnamnese: DadosAnamneseLab | null = null;
+      let proximoPhp: DadosPHP | null = null;
+      if (modulo === "humanexus-lab") {
+        for (const adicional of [
+          { caminho: "/api/plataforma/governanca-anamnese", aplicar: (valor: unknown) => { proximaAnamnese = valor as DadosAnamneseLab; } },
+          { caminho: "/api/plataforma/governanca-restrita", aplicar: (valor: unknown) => { proximoPhp = valor as DadosPHP; } }
+        ]) {
+          try {
+            const respostaAdicional = await consultarJson<{ dados: unknown }>(adicional.caminho, { tentativas: 1, signal });
+            adicional.aplicar(respostaAdicional.dados);
+          } catch (causa) {
+            if (!(causa instanceof ErroDeConsulta && causa.status === 403)) {
+              avisos.push(causa instanceof Error ? causa.message : "Consulta complementar indisponível.");
+            }
+          }
+        }
+      }
+      setAnamneseLab(proximaAnamnese);
+      setPhp(proximoPhp);
+      setAvisosLab(avisos);
+      setResposta(modulo === "humanexus-lab"
+        ? { recursos: [{ nome: "humanexus-lab", disponivel: true, dados: (dados as { dados?: unknown }).dados }], usuario: { perfil: "ADMINISTRADOR_PROPRIETARIO", permissoes: [] } }
+        : dados as Resposta);
+      setErro("");
+      if (falhouAntes.current) setMensagem("Conexão restabelecida.");
+      falhouAntes.current = false;
+    } catch (causa) {
+      if (signal?.aborted) return;
+      falhouAntes.current = true;
+      setErro(causa instanceof Error ? causa.message : "Consulta indisponível.");
+    } finally {
+      if (!signal?.aborted) setCarregando(false);
+    }
   }, [exigeConsultaGlobal, modulo]);
 
   useEffect(() => {
-    if (modulo !== "humanexus-lab") return;
-    let ativo = true;
-    fetch("/api/plataforma/governanca-anamnese", { cache: "no-store" })
-      .then(async (resultado) => {
-        const corpo = await resultado.json();
-        if (!resultado.ok) throw new Error(corpo?.erro?.mensagem ?? "Governança autoral indisponível.");
-        if (ativo) setAnamneseLab(corpo.dados as DadosAnamneseLab);
-      })
-      .catch(() => undefined);
-    return () => { ativo = false; };
-  }, [modulo]);
-
-  useEffect(() => {
-    if (modulo !== "humanexus-lab") return;
-    let ativo = true;
-    fetch("/api/plataforma/governanca-restrita", { cache: "no-store" })
-      .then(async (resultado) => {
-        const corpo = await resultado.json();
-        if (!resultado.ok) {
-          throw new Error(corpo?.erro?.mensagem ?? "Recurso restrito indisponível.");
-        }
-        if (ativo) setPhp(corpo.dados as DadosPHP);
-      })
-      .catch((causa) => {
-        if (ativo) setErro(causa instanceof Error ? causa.message : "Recurso restrito indisponível.");
-      });
-    return () => { ativo = false; };
-  }, [modulo]);
+    const controlador = new AbortController();
+    void carregar(controlador.signal);
+    const aoReconectar = () => void carregar(controlador.signal);
+    window.addEventListener("online", aoReconectar);
+    return () => {
+      controlador.abort();
+      window.removeEventListener("online", aoReconectar);
+    };
+  }, [carregar]);
 
   const recursos = useMemo(() => {
     const porNome = new Map(resposta?.recursos.map((recurso) => [recurso.nome, recurso]));
@@ -253,15 +291,16 @@ export function ModuloIntegrado({ modulo }: { modulo: ModuloDaPlataforma }) {
         : null}
       {definicao.observacao ? <p className="hx-module__notice">{definicao.observacao}</p> : null}
       {moduloOperacional && modulo !== "cockpit-vivo" ? <p className="hx-module__notice"><strong>CONTEXTO OPERACIONAL PROTEGIDO.</strong> Organização, participante e sessão são selecionados entre registros autorizados do núcleo e permanecem sincronizados entre as visões. Dados técnicos simulados continuam separados de evidência humana.</p> : null}
-      {erro ? <p className="hx-module__error" role="status">{erro}</p> : null}
-      {exigeConsultaGlobal && !resposta && !erro ? <p className="hx-module__loading">Consultando o núcleo oficial…</p> : null}
+      {erro ? <aside className="hx-module__error" role="status"><strong>{erro}</strong><button type="button" onClick={() => void carregar()}>Tentar novamente</button></aside> : null}
+      {mensagem ? <p className="hx-module__success" role="status">{mensagem}</p> : null}
+      {exigeConsultaGlobal && !resposta && carregando && !erro ? <p className="hx-module__loading">Consultando o núcleo oficial…</p> : null}
       {moduloOperacional ? <OperacaoHomologacao modulo={modulo} /> : null}
       {moduloDeGestao ? <GestaoOperacional modulo={modulo} /> : null}
       {modulo === "anamnese-regulatoria" ? <PainelProfissional /> : null}
       {resposta && definicao.modo === "painel" ? <Painel recursos={recursos} /> : null}
       {resposta && definicao.modo === "cockpit" && !moduloOperacional ? <Cockpit recursos={recursos} /> : null}
       {resposta && definicao.modo === "replay" && !moduloOperacional ? <Replay recurso={recursos[0]} /> : null}
-      {resposta && definicao.modo === "lab" ? <Lab dados={dadosDoLab} php={php} anamnese={anamneseLab} /> : null}
+      {resposta && definicao.modo === "lab" ? <Lab dados={dadosDoLab} php={php} anamnese={anamneseLab} avisos={avisosLab} /> : null}
       {resposta && modulo !== "anamnese-regulatoria" && !definicao.modo && !moduloOperacional && !moduloDeGestao ? <div className="hx-source-grid hx-source-grid--standard">{recursos.map((recurso) => <FonteCard recurso={recurso} key={recurso.nome} />)}</div> : null}
     </div>
   </section>;

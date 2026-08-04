@@ -28,9 +28,11 @@ function moduloExiste(valor: string): valor is Modulo {
 }
 
 export default async function ModuloPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ modulo: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { modulo } = await params;
   if (!moduloExiste(modulo)) notFound();
@@ -38,7 +40,16 @@ export default async function ModuloPage({
   if (!sessao) redirect("/sessao-expirada");
   const visaoInterna = VISAO_INTERNA_DO_COCKPIT[modulo];
   if (visaoInterna) {
-    redirect(`/plataforma/cockpit-vivo?visao=${visaoInterna}`);
+    const origem = await searchParams;
+    const consulta = new URLSearchParams();
+    const [visao, adicional = ""] = visaoInterna.split("&");
+    consulta.set("visao", visao);
+    for (const [chave, valor] of new URLSearchParams(adicional)) consulta.set(chave, valor);
+    for (const chave of ["organizacao", "participante", "sessao", "thx"]) {
+      const valor = origem[chave];
+      if (typeof valor === "string" && valor) consulta.set(chave, valor);
+    }
+    redirect(`/plataforma/cockpit-vivo?${consulta}`);
   }
   return <ModuloIntegrado modulo={modulo} />;
 }

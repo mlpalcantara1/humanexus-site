@@ -97,7 +97,7 @@ function NavigationItems({ podeVerLab, podeAdministrar, close }: { podeVerLab: b
                   ? !visaoAtual || visaoAtual === "visao-geral"
                   : true);
               for (const [chave, valor] of contexto) if (!itemQuery.has(chave)) itemQuery.set(chave, valor);
-              const href = item.href.startsWith("/plataforma") && itemQuery.size
+              const href = (item.href.startsWith("/plataforma") || item.href === "/admin") && itemQuery.size
                 ? `${path}?${itemQuery}`
                 : item.href;
               return (
@@ -115,14 +115,28 @@ function NavigationItems({ podeVerLab, podeAdministrar, close }: { podeVerLab: b
   );
 }
 
-export function PlatformNavigation({ podeVerLab, podeAdministrar }: { podeVerLab: boolean; podeAdministrar: boolean }) {
+export function PlatformNavigation({
+  podeVerLab,
+  podeAdministrar,
+  escopoDePersistencia
+}: {
+  podeVerLab: boolean;
+  podeAdministrar: boolean;
+  escopoDePersistencia: string;
+}) {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const routeKey = `${pathname}?${searchParams.toString()}`;
+  const chaveDePersistencia = `humanexus:navegacao-recolhida:${escopoDePersistencia}`;
+  useEffect(() => {
+    setCollapsed(window.localStorage.getItem(chaveDePersistencia) === "true");
+  }, [chaveDePersistencia]);
   useEffect(() => {
     setOpen(false);
     window.scrollTo({ top: 0, behavior: "auto" });
-  }, [pathname]);
+  }, [routeKey]);
   return (
     <>
       <aside
@@ -138,7 +152,11 @@ export function PlatformNavigation({ podeVerLab, podeAdministrar }: { podeVerLab
               type="button"
               aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
               aria-pressed={collapsed}
-              onClick={() => setCollapsed((valor) => !valor)}
+              onClick={() => setCollapsed((valor) => {
+                const proximo = !valor;
+                window.localStorage.setItem(chaveDePersistencia, String(proximo));
+                return proximo;
+              })}
             >
               <span aria-hidden="true"><i /><i /></span>
               <b>{collapsed ? "Expandir" : "Recolher"}</b>

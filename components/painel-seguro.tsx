@@ -5,6 +5,7 @@ import { destinoDoPerfil, sessaoAtual } from "@/lib/portal-session";
 import { HxPageHeader, HxSurface } from "@/components/hx-design-system";
 
 const TITULOS: Record<PerfilHumanexus, string> = {
+  ADMINISTRADOR_PROPRIETARIO: "Administrador Proprietário",
   ADMINISTRADOR_DO_SISTEMA: "Administração do Sistema",
   GOVERNANCA_CIENTIFICA: "Governança Científica",
   ADMINISTRADOR_DA_ORGANIZACAO: "Administração Organizacional",
@@ -20,7 +21,10 @@ export async function PainelSeguro({
 }) {
   const sessao = await sessaoAtual();
   if (!sessao) redirect("/sessao-expirada");
-  if (sessao.usuario.perfil !== perfilExigido) redirect("/acesso-negado");
+  if (
+    sessao.usuario.perfil !== "ADMINISTRADOR_PROPRIETARIO"
+    && sessao.usuario.perfil !== perfilExigido
+  ) redirect("/acesso-negado");
 
   return (
     <section className="hx-secure-panel">

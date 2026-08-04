@@ -5,7 +5,9 @@ import { sessaoAtual } from "@/lib/portal-session";
 export default async function CatalogoPage() {
   const sessao = await sessaoAtual();
   if (!sessao) redirect("/sessao-expirada");
-  if (sessao.usuario.perfil !== "PROFISSIONAL_HUMANEXUS") {
+  if (!["ADMINISTRADOR_PROPRIETARIO", "PROFISSIONAL_HUMANEXUS"].includes(
+    sessao.usuario.perfil
+  )) {
     redirect("/acesso-negado");
   }
   const byNiche = catalog.nichos.map((niche) => ({

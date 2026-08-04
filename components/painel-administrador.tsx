@@ -14,10 +14,29 @@ type Usuario = {
   ativo: boolean;
   registro_profissional?: string | null;
   historico?: Record<string, unknown>[];
+  administrador_proprietario?: boolean;
 };
 type Resumo = Record<string, string | number>;
 
-export function PainelAdministrador({ csrf }: { csrf: string }) {
+type UsuarioAtual = {
+  identificador: string;
+  perfil: string;
+};
+
+function rotuloDoPerfil(perfil: string) {
+  if (perfil === "ADMINISTRADOR_PROPRIETARIO") {
+    return "Administrador Proprietário";
+  }
+  return perfil.replaceAll("_", " ");
+}
+
+export function PainelAdministrador({
+  csrf,
+  usuarioAtual
+}: {
+  csrf: string;
+  usuarioAtual: UsuarioAtual;
+}) {
   const [dados, setDados] = useState<{ resumo: Resumo; organizacoes: Organizacao[]; usuarios: Usuario[] } | null>(null);
   const [mensagem, setMensagem] = useState("");
   const [usuarioSelecionado, setUsuarioSelecionado] = useState("");
@@ -35,6 +54,10 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
   useEffect(() => { carregar(); }, []);
 
   async function alterarAcesso(usuario: Usuario) {
+    if (usuario.administrador_proprietario) {
+      setMensagem("O Administrador Proprietário possui acesso protegido.");
+      return;
+    }
     const resposta = await fetch("/api/administracao", {
       method: "POST",
       headers: { "content-type": "application/json", "x-humanexus-csrf": csrf },
@@ -50,6 +73,18 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
 
   async function salvarUsuario(evento: FormEvent) {
     evento.preventDefault();
+    const usuarioEmEdicao = dados?.usuarios.find(
+      (usuario) => usuario.identificador === usuarioSelecionado
+    );
+    if (
+      usuarioEmEdicao?.administrador_proprietario
+      && usuarioAtual.perfil !== "ADMINISTRADOR_PROPRIETARIO"
+    ) {
+      setMensagem(
+        "Somente o próprio Administrador Proprietário pode atualizar sua ficha."
+      );
+      return;
+    }
     const resposta = await fetch("/api/administracao", {
       method: "POST",
       headers: { "content-type": "application/json", "x-humanexus-csrf": csrf },
@@ -99,6 +134,17 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
     });
   }
 
+  const usuarioEmEdicao = dados?.usuarios.find(
+    (usuario) => usuario.identificador === usuarioSelecionado
+  );
+  const edicaoProprietaria = Boolean(
+    usuarioEmEdicao?.administrador_proprietario
+  );
+  const edicaoSomenteLeitura = Boolean(
+    edicaoProprietaria
+    && usuarioAtual.perfil !== "ADMINISTRADOR_PROPRIETARIO"
+  );
+
   return (
     <div className="hx-admin">
       <section className="hx-admin__metrics">
@@ -130,15 +176,20 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
               eyebrow="ACESSO CONTROLADO"
               title={usuarioSelecionado ? "Ficha do usuário" : "Novo usuário"}
             />
-            <input required value={novoUsuario.nome} onChange={(e) => setNovoUsuario({ ...novoUsuario, nome: e.target.value })} placeholder="Nome completo" />
-            <input required type="email" value={novoUsuario.email} onChange={(e) => setNovoUsuario({ ...novoUsuario, email: e.target.value })} placeholder="E-mail" />
+            <input disabled={edicaoSomenteLeitura} required value={novoUsuario.nome} onChange={(e) => setNovoUsuario({ ...novoUsuario, nome: e.target.value })} placeholder="Nome completo" />
+            <input disabled={edicaoSomenteLeitura} required type="email" value={novoUsuario.email} onChange={(e) => setNovoUsuario({ ...novoUsuario, email: e.target.value })} placeholder="E-mail" />
             {!usuarioSelecionado ? (
               <input required type="password" minLength={10} value={novoUsuario.senha_inicial} onChange={(e) => setNovoUsuario({ ...novoUsuario, senha_inicial: e.target.value })} placeholder="Senha inicial" />
             ) : null}
-            <select value={novoUsuario.perfil} onChange={(e) => setNovoUsuario({ ...novoUsuario, perfil: e.target.value })}>
+            <select disabled={edicaoProprietaria} value={novoUsuario.perfil} onChange={(e) => setNovoUsuario({ ...novoUsuario, perfil: e.target.value })}>
+              {novoUsuario.perfil === "ADMINISTRADOR_PROPRIETARIO" ? (
+                <option value="ADMINISTRADOR_PROPRIETARIO">
+                  Administrador Proprietário
+                </option>
+              ) : null}
               {["ADMINISTRADOR_DO_SISTEMA","GOVERNANCA_CIENTIFICA","ADMINISTRADOR_DA_ORGANIZACAO","PROFISSIONAL_HUMANEXUS","VISUALIZADOR_OPERACIONAL","AUDITOR"].map((perfil) => <option key={perfil}>{perfil}</option>)}
             </select>
-            <select value={novoUsuario.identificador_da_organizacao} onChange={(e) => setNovoUsuario({ ...novoUsuario, identificador_da_organizacao: e.target.value })}>
+            <select disabled={edicaoProprietaria} value={novoUsuario.identificador_da_organizacao} onChange={(e) => setNovoUsuario({ ...novoUsuario, identificador_da_organizacao: e.target.value })}>
               <option value="">Escopo sistêmico</option>
               {dados?.organizacoes.map((org) => <option key={org.identificador} value={org.identificador}>{org.nome}</option>)}
             </select>
@@ -146,9 +197,14 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
               <input value={novoUsuario.registro_profissional} onChange={(e) => setNovoUsuario({ ...novoUsuario, registro_profissional: e.target.value })} placeholder="Registro profissional" />
             ) : null}
             {usuarioSelecionado ? (
-              <textarea required value={novoUsuario.justificativa} onChange={(e) => setNovoUsuario({ ...novoUsuario, justificativa: e.target.value })} placeholder="Justificativa da nova versão" />
+              <textarea disabled={edicaoSomenteLeitura} required value={novoUsuario.justificativa} onChange={(e) => setNovoUsuario({ ...novoUsuario, justificativa: e.target.value })} placeholder="Justificativa da nova versão" />
             ) : null}
-            <button className="hx-admin__primary">
+            {edicaoProprietaria ? (
+              <p className="hx-admin__message">
+                Administrador Proprietário · perfil e escopo protegidos por vínculo exclusivo.
+              </p>
+            ) : null}
+            <button disabled={edicaoSomenteLeitura} className="hx-admin__primary">
               {usuarioSelecionado ? "Salvar nova versão" : "Criar usuário"} <span>→</span>
             </button>
             {usuarioSelecionado ? (
@@ -177,11 +233,14 @@ export function PainelAdministrador({ csrf }: { csrf: string }) {
             <tbody>{dados?.usuarios.map((usuario) => (
               <tr key={usuario.identificador} className="border-t border-white/10">
                 <td><div>{usuario.nome}</div><small>{usuario.email}</small></td>
-                <td>{usuario.perfil}</td>
+                <td>{rotuloDoPerfil(usuario.perfil)}</td>
                 <td>{dados.organizacoes.find((org) => org.identificador === usuario.identificador_da_organizacao)?.nome ?? "Sistema"}</td>
                 <td>
                   <button onClick={() => abrirUsuario(usuario)}>Abrir ficha</button>
-                  <button onClick={() => alterarAcesso(usuario)}>{usuario.ativo ? "Suspender" : "Reativar"}</button>
+                  <button
+                    disabled={usuario.administrador_proprietario}
+                    onClick={() => alterarAcesso(usuario)}
+                  >{usuario.administrador_proprietario ? "Acesso protegido" : usuario.ativo ? "Suspender" : "Reativar"}</button>
                   <small>{usuario.historico?.length ?? 0} versão(ões)</small>
                 </td>
               </tr>

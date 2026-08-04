@@ -271,9 +271,9 @@ const ROTULOS_DOS_COMANDOS: Record<string, string> = {
 
 function rotuloDoComandoCentral(comando: string) {
   if (comando === "PREPARAR_SESSAO") return "PREPARAR SESSÃO";
-  if (comando.startsWith("INICIAR_")) return "INICIAR SESSÃO";
-  if (comando.startsWith("PAUSAR_")) return "PAUSAR SESSÃO";
-  if (comando.startsWith("RETOMAR_")) return "RETOMAR SESSÃO";
+  if (comando.startsWith("INICIAR_") || comando.startsWith("PAUSAR_") || comando.startsWith("RETOMAR_")) {
+    return (ROTULOS_DOS_COMANDOS[comando] ?? texto(comando)).toUpperCase();
+  }
   if (comando.startsWith("ENCERRAR_") || comando === "CONCLUIR_SESSAO") {
     return "ENCERRAR SESSÃO";
   }
@@ -1090,11 +1090,11 @@ function ResultanteRegulatoria({ estado, resumida = false }: { estado: Estado; r
     <section className="hx-cockpit-panel hx-resultant">
       <TituloDaVisao
         kicker="RESULTANTE REGULATÓRIA"
-        titulo={resultado ? "Composição vetorial rastreável." : "RESULTANTE REGULATÓRIA NÃO CALCULÁVEL"}
+        titulo={resultado ? "Composição vetorial rastreável." : "Aguardando evidência operacional"}
         descricao="A Resultante é a síntese funcional da configuração vetorial; não é IIRH nem Zona."
       />
       <div className="hx-resultant__core">
-        <div><small>Estado</small><strong>{resultado ? texto(valorDoRegistro(resultado, "estado", "estado_processamento")) : "BLOQUEADA"}</strong></div>
+        <div><small>Estado</small><strong>{resultado ? texto(valorDoRegistro(resultado, "estado", "estado_processamento")) : "EVIDÊNCIA INSUFICIENTE"}</strong></div>
         <div><small>Direção predominante</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "direcao_predominante", "direcao"), "NÃO CALCULÁVEL")}</strong></div>
         <div><small>Sentido predominante</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "sentido_predominante", "sentido"), "NÃO CALCULÁVEL")}</strong></div>
         <div><small>Cobertura global</small><strong>{typeof resultado?.cobertura === "number" ? `${Math.round(resultado.cobertura * 100)}%` : "INSUFICIENTE"}</strong></div>
@@ -1951,6 +1951,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const acaoPrincipal = String(
     fluxoOperacional.proxima_acao_principal ?? ""
   ).trim().toUpperCase().replace(/\s+/g, "_");
+  const podeConduzirOperacao = Array.isArray(estado.usuario.permissoes)
+    && estado.usuario.permissoes.map(String).includes("conduzir_sessao");
   const acoesSecundarias = Array.isArray(
     fluxoOperacional.acoes_secundarias_permitidas
   )
@@ -2061,7 +2063,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       </div>
       <div className="hx-op-controls__primary">
         {acaoPrincipal ? (
-          <Botao forte onClick={executarPrincipal} disabled={ocupado !== ""}>
+          <Botao forte onClick={executarPrincipal} disabled={ocupado !== "" || !podeConduzirOperacao}>
             {ROTULOS_DOS_COMANDOS[acaoPrincipal] ?? texto(acaoPrincipal)}
           </Botao>
         ) : (
@@ -2072,6 +2074,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             {texto(fluxoOperacional.motivo_de_bloqueio)}
           </span>
         ) : null}
+        {!podeConduzirOperacao ? (
+          <span>Consulta administrativa ativa. A condução da sessão permanece exclusiva do profissional responsável.</span>
+        ) : null}
       </div>
       {acoesSecundarias.length ? (
         <div className="hx-op-controls__secondary">
@@ -2079,7 +2084,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             <Botao
               key={comando}
               onClick={() => executarSecundaria(comando)}
-              disabled={ocupado !== "" || !pode(comando)}
+              disabled={ocupado !== "" || !pode(comando) || (
+                !podeConduzirOperacao && comando !== "ABRIR_REPLAY"
+              )}
             >
               {ROTULOS_DOS_COMANDOS[comando] ?? texto(comando)}
             </Botao>
@@ -2325,6 +2332,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const itensDaLinha = [...itensDaLinhaCientifica, ...itensDoBaseline];
   const modalidadesReplay = [...new Set(itensDaLinha.map((item) => item.track))];
   const trilhasVisiveis = modalidadesReplay.filter((item) => trilhas[item] !== false);
+  const replayDisponivel = itensDaLinha.length > 0;
   const visaoReplay = (
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="REPLAY" titulo="Linha multimodal da sessão ativa." descricao="Participante, CTR, THX, fases, eventos, fontes e contexto permanecem sincronizados." />
@@ -2341,23 +2349,29 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           <div><Botao onClick={comandos.replay} disabled={ocupado !== ""}>Atualizar linha</Botao><Botao forte onClick={comandos.exportarReplay} disabled={ocupado !== "" || !itensReplay.length}>Exportar intervalo</Botao></div>
         </div>
         <div className="hx-replay-controls">
-          <Botao onClick={() => setTocando(true)} disabled={!itensReplay.length}>Reproduzir</Botao>
-          <Botao onClick={() => setTocando(false)}>Pausar</Botao>
-          <Botao onClick={() => setCursor((valor) => Math.max(intervalo[0], valor - 5))}>Retroceder</Botao>
-          <Botao onClick={() => setCursor((valor) => Math.min(intervalo[1], valor + 5))}>Avançar</Botao>
-          <label>Velocidade<select value={velocidade} onChange={(evento) => setVelocidade(Number(evento.target.value))}><option value=".5">0,5×</option><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
-          <label>Zoom<input type="range" min="1" max="6" step=".25" value={zoom} onChange={(evento) => setZoom(Number(evento.target.value))} /></label>
+          <Botao onClick={() => setTocando(true)} disabled={!replayDisponivel}>Reproduzir</Botao>
+          <Botao onClick={() => setTocando(false)} disabled={!replayDisponivel || !tocando}>Pausar</Botao>
+          <Botao onClick={() => setCursor((valor) => Math.max(intervalo[0], valor - 5))} disabled={!replayDisponivel}>Retroceder</Botao>
+          <Botao onClick={() => setCursor((valor) => Math.min(intervalo[1], valor + 5))} disabled={!replayDisponivel}>Avançar</Botao>
+          <label>Velocidade<select disabled={!replayDisponivel} value={velocidade} onChange={(evento) => setVelocidade(Number(evento.target.value))}><option value=".5">0,5×</option><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+          <label>Zoom<input disabled={!replayDisponivel} type="range" min="1" max="6" step=".25" value={zoom} onChange={(evento) => setZoom(Number(evento.target.value))} /></label>
         </div>
         <div className="hx-replay-interval">
-          <label>Início do intervalo<input type="range" min="0" max="100" value={intervalo[0]} onChange={(evento) => setIntervalo([Math.min(Number(evento.target.value), intervalo[1] - 1), intervalo[1]])} /></label>
-          <label>Fim do intervalo<input type="range" min="0" max="100" value={intervalo[1]} onChange={(evento) => setIntervalo([intervalo[0], Math.max(Number(evento.target.value), intervalo[0] + 1)])} /></label>
+          <label>Início do intervalo<input disabled={!replayDisponivel} type="range" min="0" max="100" value={intervalo[0]} onChange={(evento) => setIntervalo([Math.min(Number(evento.target.value), intervalo[1] - 1), intervalo[1]])} /></label>
+          <label>Fim do intervalo<input disabled={!replayDisponivel} type="range" min="0" max="100" value={intervalo[1]} onChange={(evento) => setIntervalo([intervalo[0], Math.max(Number(evento.target.value), intervalo[0] + 1)])} /></label>
           <span>Cursor {cursor.toFixed(0)}% · intervalo {intervalo[0]}–{intervalo[1]}%</span>
         </div>
         <div className="hx-replay-filters">
-          {modalidadesReplay.map((item) => <label key={item}><input type="checkbox" checked={trilhas[item] !== false} onChange={(evento) => setTrilhas((atual) => ({ ...atual, [item]: evento.target.checked }))} />{item}</label>)}
+          {modalidadesReplay.map((item) => <label key={item}><input disabled={!replayDisponivel} type="checkbox" checked={trilhas[item] !== false} onChange={(evento) => setTrilhas((atual) => ({ ...atual, [item]: evento.target.checked }))} />{item}</label>)}
           <label><input type="checkbox" disabled checked={false} readOnly />Vetores · indisponíveis</label>
           <label><input type="checkbox" disabled checked={false} readOnly />Resultante · indisponível</label>
         </div>
+        {!replayDisponivel ? (
+          <p className="hx-module__notice">
+            Nenhum conteúdo válido disponível nesta sessão. Os comandos de
+            reprodução permanecem indisponíveis até existir uma linha auditável.
+          </p>
+        ) : null}
         <ReplayTimelineChart items={itensDaLinha} phases={faixas} markers={marcadores} cursorPercent={cursor} interval={intervalo} zoom={zoom} visibleTracks={trilhasVisiveis} />
         {midiasPersistidas.length ? <div className="hx-replay-media">
           {midiasPersistidas.map((item) => (
@@ -2477,6 +2491,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       registrar={(categoria, textoDoRegistro) =>
         comandos.registro(categoria, textoDoRegistro)}
       abrirAnalitico={() => selecionarVisao("evidencias")}
+      permitirOperacao={podeConduzirOperacao}
     />
   );
   const controleDeBaseline = [
@@ -2604,22 +2619,28 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           </div>
           <div className="hx-replay-controls">
             <Botao onClick={() => setTocando(true)} disabled={!itens.length}>Reproduzir</Botao>
-            <Botao onClick={() => setTocando(false)}>Pausar</Botao>
-            <Botao onClick={() => setCursor((valor) => Math.max(intervalo[0], valor - 5))}>Retroceder</Botao>
-            <Botao onClick={() => setCursor((valor) => Math.min(intervalo[1], valor + 5))}>Avançar</Botao>
-            <label>Velocidade<select value={velocidade} onChange={(evento) => setVelocidade(Number(evento.target.value))}><option value=".5">0,5×</option><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
-            <label>Zoom<input type="range" min="1" max="6" step=".25" value={zoom} onChange={(evento) => setZoom(Number(evento.target.value))} /></label>
+            <Botao onClick={() => setTocando(false)} disabled={!itens.length || !tocando}>Pausar</Botao>
+            <Botao onClick={() => setCursor((valor) => Math.max(intervalo[0], valor - 5))} disabled={!itens.length}>Retroceder</Botao>
+            <Botao onClick={() => setCursor((valor) => Math.min(intervalo[1], valor + 5))} disabled={!itens.length}>Avançar</Botao>
+            <label>Velocidade<select disabled={!itens.length} value={velocidade} onChange={(evento) => setVelocidade(Number(evento.target.value))}><option value=".5">0,5×</option><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+            <label>Zoom<input disabled={!itens.length} type="range" min="1" max="6" step=".25" value={zoom} onChange={(evento) => setZoom(Number(evento.target.value))} /></label>
           </div>
           <div className="hx-replay-interval">
-            <label>Início do intervalo<input type="range" min="0" max="100" value={intervalo[0]} onChange={(evento) => setIntervalo([Math.min(Number(evento.target.value), intervalo[1] - 1), intervalo[1]])} /></label>
-            <label>Fim do intervalo<input type="range" min="0" max="100" value={intervalo[1]} onChange={(evento) => setIntervalo([intervalo[0], Math.max(Number(evento.target.value), intervalo[0] + 1)])} /></label>
+            <label>Início do intervalo<input disabled={!itens.length} type="range" min="0" max="100" value={intervalo[0]} onChange={(evento) => setIntervalo([Math.min(Number(evento.target.value), intervalo[1] - 1), intervalo[1]])} /></label>
+            <label>Fim do intervalo<input disabled={!itens.length} type="range" min="0" max="100" value={intervalo[1]} onChange={(evento) => setIntervalo([intervalo[0], Math.max(Number(evento.target.value), intervalo[0] + 1)])} /></label>
             <span>Cursor {cursor.toFixed(0)}% · intervalo {intervalo[0]}–{intervalo[1]}%</span>
           </div>
           <div className="hx-replay-filters">
             {modalidades.map((item) => (
-              <label key={item}><input type="checkbox" checked={trilhas[item] !== false} onChange={(evento) => setTrilhas((atual) => ({ ...atual, [item]: evento.target.checked }))} />{item}</label>
+              <label key={item}><input disabled={!itens.length} type="checkbox" checked={trilhas[item] !== false} onChange={(evento) => setTrilhas((atual) => ({ ...atual, [item]: evento.target.checked }))} />{item}</label>
             ))}
           </div>
+          {!itens.length ? (
+            <p className="hx-module__notice">
+              Nenhum conteúdo válido disponível nesta sessão. Os comandos de
+              reprodução permanecem indisponíveis até existir uma linha auditável.
+            </p>
+          ) : null}
           <ReplayTimelineChart
             items={timelineItems}
             phases={faixas}

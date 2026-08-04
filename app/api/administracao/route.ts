@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requisitarNucleoAutenticado } from "@/lib/humanexus-core";
 import { COOKIE_CSRF, COOKIE_SESSAO } from "@/lib/portal-session";
 import { exigirCsrf } from "@/lib/request-security";
+import { responderErroDaApi } from "@/lib/api-route-error";
 
 async function tokenDaSessao() {
   return (await cookies()).get(COOKIE_SESSAO)?.value;
@@ -12,17 +13,16 @@ export async function GET() {
   const token = await tokenDaSessao();
   if (!token) return NextResponse.json({}, { status: 401 });
   try {
-    const [resumo, organizacoes, usuarios] = await Promise.all([
-      requisitarNucleoAutenticado("/api/v1/painel/resumo", token),
-      requisitarNucleoAutenticado("/api/v1/organizacoes", token),
-      requisitarNucleoAutenticado("/api/v1/usuarios", token)
-    ]);
+    const resumo = await requisitarNucleoAutenticado("/api/v1/painel/resumo", token);
+    const organizacoes = await requisitarNucleoAutenticado("/api/v1/organizacoes", token);
+    const usuarios = await requisitarNucleoAutenticado("/api/v1/usuarios", token);
     return NextResponse.json({ resumo, organizacoes, usuarios });
-  } catch {
-    return NextResponse.json(
-      { erro: { mensagem: "Acesso administrativo não autorizado." } },
-      { status: 403 }
-    );
+  } catch (erro) {
+    return responderErroDaApi(erro, {
+      modulo: "ADMINISTRACAO",
+      rota: "/api/v1/painel/resumo",
+      mensagemDeAcessoNegado: "Acesso administrativo não autorizado."
+    });
   }
 }
 

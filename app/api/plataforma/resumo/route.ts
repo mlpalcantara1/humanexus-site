@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { requisitarNucleoAutenticado } from "@/lib/humanexus-core";
 import { COOKIE_SESSAO } from "@/lib/portal-session";
+import { responderErroDaApi } from "@/lib/api-route-error";
 
 type Fonte = { nome: string; caminho: string };
 
@@ -66,10 +67,11 @@ export async function GET(request: Request) {
       )
     ]);
     return NextResponse.json({ usuario, recursos });
-  } catch {
-    return NextResponse.json(
-      { erro: { mensagem: "Não foi possível validar o contexto da plataforma." } },
-      { status: 403 }
-    );
+  } catch (erro) {
+    return responderErroDaApi(erro, {
+      modulo: "RESUMO_DA_PLATAFORMA",
+      rota: "/api/v1/painel/inicial",
+      mensagemDeAcessoNegado: "Não foi possível validar o contexto autorizado da plataforma."
+    });
   }
 }
