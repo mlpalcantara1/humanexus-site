@@ -24,6 +24,7 @@ type Fonte = Registro & {
   valores?: Registro;
   metricas?: Registro;
   metricas_de_desempenho?: Registro[];
+  janela_de_qualidade?: Registro;
   series?: Record<string, Registro[]>;
   ultima_leitura_registrada?: Registro;
 };
@@ -384,6 +385,7 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
   const aoVivo = fonte.ao_vivo === true;
   const valores = aoVivo ? objeto(fonte.valores) : {};
   const metricas = aoVivo ? objeto(fonte.metricas) : {};
+  const janela = aoVivo ? objeto(fonte.janela_de_qualidade) : {};
   const desempenho = metricasDeDesempenhoVisiveis(fonte);
   const ultimaRegistrada = objeto(fonte.ultima_leitura_registrada);
   const valoresRegistrados = objeto(ultimaRegistrada.valores);
@@ -391,11 +393,17 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
     <article className="hx-live-source-card hx-live-source-card--epoc" data-source="epoc-x">
       <header><div><small>EPOC X</small><strong>Desempenho e qualidade</strong></div><FonteEstado estado={fonte.estado} /></header>
       <div className="hx-live-source-values">
-        <span><small>Qualidade do sinal</small><b>{aoVivo ? percentual(valores.qualidade_global) : "Sem leitura atual"}</b></span>
-        <span><small>Contato adequado</small><b>{aoVivo ? `${numero(valores.canais_adequados)}/${numero(valores.canais_total)} canais` : "Sem leitura atual"}</b></span>
-        <span><small>Bateria</small><b>{aoVivo ? percentual(valores.bateria_percentual) : "Sem leitura atual"}</b></span>
-        <span><small>Último dado</small><b>{aoVivo ? dataLegivel(metricas.ultimo_pacote) : "Sem leitura atual"}</b></span>
+        <span><small>Qualidade atual</small><b>{aoVivo ? percentual(valores.qualidade_global) : "Sem leitura atual"}</b></span>
+        <span><small>Mediana da janela</small><b>{aoVivo ? percentual(valores.qualidade_mediana_da_janela) : "Sem leitura atual"}</b></span>
+        <span><small>Confiança do EEG</small><b>{aoVivo ? texto(valores.nivel_de_confianca_eeg) : "Indisponível"}</b></span>
+        <span><small>Sequência atual</small><b>{aoVivo ? numero(metricas.ultima_sequencia) : "Sem leitura atual"}</b></span>
       </div>
+      {aoVivo && janela.estado_da_qualidade === "QUALIDADE_MUITO_DEGRADADA" ? (
+        <div className="hx-live-source-advisory" role="status">
+          <strong>QUALIDADE MUITO DEGRADADA</strong>
+          <span>EEG com confiança reduzida ou não admissível. A sessão e as demais fontes continuam normalmente.</span>
+        </div>
+      ) : null}
       <Sparkline pontos={aoVivo ? lista(fonte.series?.qualidade) : []} cor={C.green} />
       {desempenho.length ? (
         <div className="hx-live-performance-grid">
@@ -738,15 +746,16 @@ export function CockpitOperacionalVivo({
         ? execucao.resposta_observada_json
         : null
     );
-  const sensoresAguardando = [
-    ["Polar H10", polar],
-    ["EPOC X", eeg]
-  ].filter(([, fonte]) => !["CONECTADO", "CAPTURANDO"].includes(
-    String((fonte as Fonte).estado ?? "").toUpperCase().replaceAll("_", " ")
-  )).map(([nome]) => nome);
-  const orientacaoDeConexao = sensoresAguardando.length
-    ? `Conecte ${sensoresAguardando.join(" e ")} para iniciar a leitura real. O Centro de Comando permanece pronto sem fabricar dados.`
-    : "Fontes autorizadas conectadas. A leitura permanece condicionada à qualidade real dos sinais recebidos.";
+  const fonteCapturando = (fonte: Fonte) => ["CONECTADO", "CAPTURANDO"].includes(
+    String(fonte.estado ?? "").toUpperCase().replaceAll("_", " ")
+  );
+  const polarAguardando = !fonteCapturando(polar);
+  const epocAguardando = !fonteCapturando(eeg);
+  const orientacaoDeConexao = polarAguardando
+    ? "Conecte o Polar H10 para iniciar a leitura cardiovascular real. O Centro de Comando permanece pronto sem fabricar dados."
+    : epocAguardando
+      ? "Polar H10 ativo. O EPOC X está indisponível ou reconectando; a sessão continua sem reutilizar dados EEG anteriores."
+      : "Fontes autorizadas conectadas. A qualidade do EPOC modula somente a confiança do EEG e não bloqueia o fluxo da sessão.";
 
   const enviarRegistro = async () => {
     if (!registro.trim()) return;
@@ -815,7 +824,7 @@ export function CockpitOperacionalVivo({
         <div><small>TEMPO</small><strong>{duracao(sessao.tempo_total_inicio, sessao.tempo_total_fim, agora)}</strong><span>Sessão</span></div>
         <div><small>FREQUÊNCIA CARDÍACA</small><strong>{polar.ao_vivo === true ? <LeituraNumerica valor={objeto(polar.valores).hr_bpm} sufixo=" bpm" /> : "Sem leitura atual"}</strong><span>{texto(polar.estado)}</span></div>
         <div><small>RMSSD</small><strong>{polar.ao_vivo === true ? <LeituraNumerica valor={objeto(polar.valores).rmssd_tecnico_ms} casas={1} sufixo=" ms" /> : "Sem leitura atual"}</strong><span>{texto(polar.estado)}</span></div>
-        <div><small>ESTADO DO EEG</small><strong>{texto(eeg.estado)}</strong><span>{eeg.ao_vivo === true ? `Qualidade ${percentual(objeto(eeg.valores).qualidade_global)}` : "Sem leitura atual"}</span></div>
+        <div><small>ESTADO DO EEG</small><strong>{texto(eeg.estado)}</strong><span>{eeg.ao_vivo === true ? `Atual ${percentual(objeto(eeg.valores).qualidade_global)} · mediana ${percentual(objeto(eeg.valores).qualidade_mediana_da_janela)}` : "Sem leitura atual"}</span></div>
         <div><small>ESTADO DO POLAR</small><strong>{texto(polar.estado)}</strong><span>{polar.ao_vivo === true ? `Sequência atual ${numero(objeto(polar.metricas).ultima_sequencia)}` : "Sem leitura atual"}</span></div>
       </section>
 

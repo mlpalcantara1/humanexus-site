@@ -517,6 +517,17 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /valores: \{\}[\s\S]*metricas: \{\}[\s\S]*series: \{\}/);
 });
 
+test("EPOC degradado gera ressalva sem bloquear o fluxo operacional", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+
+  assert.match(cockpit, /qualidade_mediana_da_janela/);
+  assert.match(cockpit, /nivel_de_confianca_eeg/);
+  assert.match(cockpit, /QUALIDADE_MUITO_DEGRADADA/);
+  assert.match(cockpit, /A sessão e as demais fontes continuam normalmente/);
+  assert.match(cockpit, /EPOC X está indisponível ou reconectando; a sessão continua/);
+  assert.match(cockpit, /não bloqueia o fluxo da sessão/);
+});
+
 test("Cockpit resolve vetores por UUID ou código e exibe rastreabilidade sob demanda", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
 
