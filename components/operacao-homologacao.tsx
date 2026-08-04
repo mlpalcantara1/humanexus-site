@@ -167,6 +167,36 @@ function objeto(valor: unknown): Registro {
   return {};
 }
 
+function mesclarAtualizacaoIncremental(
+  anterior: unknown,
+  alteracao: unknown
+): unknown {
+  if (alteracao === undefined) return anterior;
+  if (
+    alteracao === null
+    || Array.isArray(alteracao)
+    || typeof alteracao !== "object"
+  ) {
+    return alteracao;
+  }
+  const base = anterior && typeof anterior === "object" && !Array.isArray(anterior)
+    ? anterior as Registro
+    : {};
+  return Object.fromEntries(
+    Array.from(
+      new Set([...Object.keys(base), ...Object.keys(alteracao as Registro)])
+    ).map((chave) => [
+        chave,
+        Object.prototype.hasOwnProperty.call(alteracao, chave)
+          ? mesclarAtualizacaoIncremental(
+              base[chave],
+              (alteracao as Registro)[chave]
+            )
+          : base[chave]
+      ])
+  );
+}
+
 function lista(valor: unknown): unknown[] {
   if (Array.isArray(valor)) return valor;
   if (typeof valor !== "string" || !valor) return [];
@@ -1257,6 +1287,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const componenteMontado = useRef(false);
   const ocupadoAtual = useRef("");
   const autenticacaoExpiradaAtual = useRef(false);
+  const versaoDoCockpit = useRef("");
+  const estadoOperacionalDoPolling = useRef("");
   const [autenticacaoExpirada, setAutenticacaoExpirada] = useState(false);
   const [cortexClientId, setCortexClientId] = useState("");
   const [cortexClientSecret, setCortexClientSecret] = useState("");
@@ -1341,6 +1373,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     if (leve) {
       parametros.set("leve", "1");
       parametros.set("_t", String(Date.now()));
+      if (versaoDoCockpit.current) {
+        parametros.set("versao", versaoDoCockpit.current);
+      }
     }
     if (inicial) parametros.set("inicial", "1");
     for (const campo of ["organizacao", "participante", "sessao"]) {
@@ -1359,6 +1394,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     let resposta: Response;
     let dados: Estado & {
       atualizacao_parcial?: boolean;
+      sem_alteracao?: boolean;
+      modo_da_atualizacao?: "SNAPSHOT" | "DELTA" | "SEM_ALTERACAO";
+      versao_do_cockpit?: string;
       erro?: { mensagem?: string };
     };
     try {
@@ -1419,18 +1457,41 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       ) {
         return selecao;
       }
-      setEstado((atual) => atual ? {
-        ...atual,
-        conectores: dados.conectores,
-        fontes: dados.fontes,
-        telemetria: dados.telemetria,
-        eventos_tecnicos: dados.eventos_tecnicos,
-        estado_operacional: dados.estado_operacional,
-        cockpit_operacional: dados.cockpit_operacional
-      } : atual);
+      if (dados.versao_do_cockpit) {
+        versaoDoCockpit.current = dados.versao_do_cockpit;
+      }
+      if (dados.sem_alteracao) return contextoExplicito;
+      const estadoRecebido = String(
+        objeto(dados.estado_operacional).estado_da_sessao ?? ""
+      ).toUpperCase();
+      if (estadoRecebido) {
+        estadoOperacionalDoPolling.current = estadoRecebido;
+      }
+      setEstado((atual) => {
+        if (!atual) return atual;
+        const estadoOperacional = mesclarAtualizacaoIncremental(
+          atual.estado_operacional,
+          dados.estado_operacional
+        ) as Registro;
+        estadoOperacionalDoPolling.current = String(
+          estadoOperacional.estado_da_sessao ?? ""
+        ).toUpperCase();
+        return {
+          ...atual,
+          estado_operacional: estadoOperacional,
+          cockpit_operacional: mesclarAtualizacaoIncremental(
+            atual.cockpit_operacional,
+            dados.cockpit_operacional
+          ) as Registro
+        };
+      });
       return contextoExplicito;
     }
     setEstado(dados);
+    versaoDoCockpit.current = "";
+    estadoOperacionalDoPolling.current = String(
+      objeto(dados.estado_operacional).estado_da_sessao ?? ""
+    ).toUpperCase();
     const atual = {
       organizacao: String(dados.contextos.selecao.identificador_da_organizacao),
       participante: String(dados.contextos.selecao.identificador_do_participante),
@@ -1491,6 +1552,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     setOcupado("contexto");
     setErro("");
     try {
+      versaoDoCockpit.current = "";
       const contexto = await carregar(selecaoPendente, false, true);
       await carregar(contexto);
       setContextoParaSelecao(null);
@@ -1542,13 +1604,20 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     let encerrado = false;
     let temporizador: number | null = null;
     let limiteDaRequisicao: number | null = null;
+    let falhasConsecutivas = 0;
 
     const limparTemporizador = () => {
       if (temporizador !== null) window.clearTimeout(temporizador);
       temporizador = null;
     };
     const agendar = (atraso: number) => {
-      if (encerrado || autenticacaoExpiradaAtual.current) return;
+      if (
+        encerrado
+        || autenticacaoExpiradaAtual.current
+        || ["FINALIZADA", "ENCERRADA"].includes(
+          estadoOperacionalDoPolling.current
+        )
+      ) return;
       limparTemporizador();
       temporizador = window.setTimeout(executar, atraso);
     };
@@ -1593,8 +1662,22 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         limiteDaRequisicao = null;
         agendar(250);
       }, 12_000);
+      let proximoAtraso = estadoOperacionalDoPolling.current === "PAUSADA"
+        ? 15_000
+        : 2_500;
       void carregar(contexto, true, false, { signal: controlador.signal })
+        .then(() => {
+          falhasConsecutivas = 0;
+          proximoAtraso = estadoOperacionalDoPolling.current === "PAUSADA"
+            ? 15_000
+            : 2_500;
+        })
         .catch((causa) => {
+          falhasConsecutivas += 1;
+          proximoAtraso = Math.min(
+            30_000,
+            2_500 * (2 ** Math.min(falhasConsecutivas, 4))
+          );
           if (autenticacaoExpiradaAtual.current) {
             setErro(
               "Sessão administrativa expirada. Autentique-se novamente; o contexto explícito deste Cockpit foi preservado."
@@ -1608,7 +1691,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           );
         })
         .finally(() => {
-          concluir(identificador, 2500);
+          concluir(identificador, proximoAtraso);
         });
     };
     const retomarAposAutenticacaoOuFoco = () => {
@@ -1637,6 +1720,16 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         "visibilitychange",
         retomarAposAutenticacaoOuFoco
       );
+      const parametros = new URLSearchParams({
+        organizacao: selecaoInicial.organizacao,
+        participante: selecaoInicial.participante,
+        sessao: selecaoInicial.sessao
+      });
+      void fetch(`/api/operacao-homologacao?${parametros}`, {
+        method: "DELETE",
+        cache: "no-store",
+        keepalive: true
+      }).catch(() => undefined);
     };
   }, [
     estado?.sessao.estado,
@@ -1655,6 +1748,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         ? identificador
         : String(atual?.identificador_da_organizacao ?? "");
       const participante = campo === "participante" ? identificador : "";
+      versaoDoCockpit.current = "";
       setEstado(null);
       await carregarOpcoesDeContexto(organizacao, participante);
       return;
@@ -1668,6 +1762,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     setOcupado("contexto");
     setErro("");
     try {
+      versaoDoCockpit.current = "";
       await carregar(proxima);
       const url = new URL(window.location.href);
       for (const chave of ["organizacao", "participante", "sessao"]) {

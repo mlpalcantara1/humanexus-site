@@ -123,43 +123,42 @@ function registro(valor: unknown): Registro {
 
 async function atualizacaoLeve(
   token: string,
-  selecao: SelecaoDeContexto
+  selecao: SelecaoDeContexto,
+  desdeVersao?: string
 ) {
   const sessaoId = String(selecao.identificador_da_sessao ?? "");
   if (!sessaoId) {
     throw new Error("Sessão é obrigatória para atualização operacional.");
   }
-  const dados = await consultarLote(token, [
-    {
-      chave: "conectores",
-      caminho: `/api/v1/conectores?identificador_da_sessao=${encodeURIComponent(sessaoId)}`
-    },
-    { chave: "fontes", caminho: "/api/v1/fontes-telemetria" },
-    {
-      chave: "telemetria",
-      caminho: `/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}?limite=120`
-    },
-    {
-      chave: "eventos_tecnicos",
-      caminho: `/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}/eventos?limite=60`
-    },
-    {
-      chave: "estado_operacional",
-      caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/estado-operacional`
-    },
-    {
-      chave: "cockpit_operacional",
-      caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional`
-    }
-  ], selecao.identificador_da_organizacao);
+  const parametros = new URLSearchParams();
+  if (desdeVersao) parametros.set("desde_versao", desdeVersao);
+  const dados = await consultar<{
+    contrato: string;
+    modo: "SNAPSHOT" | "DELTA" | "SEM_ALTERACAO";
+    versao: string;
+    campos_alterados: {
+      estado_operacional?: Registro;
+      cockpit_operacional?: Registro;
+    };
+    limites: {
+      contextos: number;
+      registros_por_fonte: number;
+      registros_residentes: number;
+    };
+  }>(
+    `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional-vivo${parametros.size ? `?${parametros}` : ""}`,
+    token,
+    {},
+    selecao.identificador_da_organizacao
+  );
   return {
     atualizacao_parcial: true,
-    conectores: dados.conectores,
-    fontes: dados.fontes,
-    telemetria: dados.telemetria,
-    eventos_tecnicos: dados.eventos_tecnicos,
-    estado_operacional: dados.estado_operacional,
-    cockpit_operacional: dados.cockpit_operacional
+    sem_alteracao: dados.modo === "SEM_ALTERACAO",
+    modo_da_atualizacao: dados.modo,
+    versao_do_cockpit: dados.versao,
+    limites_da_memoria_viva: dados.limites,
+    estado_operacional: dados.campos_alterados.estado_operacional,
+    cockpit_operacional: dados.campos_alterados.cockpit_operacional
   };
 }
 
@@ -669,7 +668,11 @@ export async function GET(request: Request) {
     };
     return NextResponse.json(
       url.searchParams.get("leve") === "1"
-        ? await atualizacaoLeve(token, selecao)
+        ? await atualizacaoLeve(
+            token,
+            selecao,
+            url.searchParams.get("versao") ?? undefined
+          )
         : await estado(token, selecao, {
             carregamentoInicial:
               url.searchParams.get("inicial") === "1",
@@ -680,6 +683,38 @@ export async function GET(request: Request) {
     );
   } catch (erro) {
     return NextResponse.json({ erro: { mensagem: erro instanceof Error ? erro.message : "Consulta operacional indisponível." } }, { status: 403 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { token } = await tokenAtual();
+    const url = new URL(request.url);
+    const sessao = String(url.searchParams.get("sessao") ?? "");
+    const organizacao = String(url.searchParams.get("organizacao") ?? "");
+    if (!sessao || !organizacao) {
+      throw new Error("Contexto explícito é obrigatório para liberar o Cockpit.");
+    }
+    const resposta = await consultar<Registro>(
+      `/api/v1/sessoes/${encodeURIComponent(sessao)}/cockpit-operacional-vivo`,
+      token,
+      { method: "DELETE" },
+      organizacao
+    );
+    return NextResponse.json(resposta, {
+      headers: { "cache-control": "private, no-store" }
+    });
+  } catch (erro) {
+    return NextResponse.json(
+      {
+        erro: {
+          mensagem: erro instanceof Error
+            ? erro.message
+            : "Não foi possível liberar o contexto vivo."
+        }
+      },
+      { status: 403 }
+    );
   }
 }
 

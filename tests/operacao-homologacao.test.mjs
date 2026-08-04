@@ -561,7 +561,37 @@ test("Polling oficial expira requisição travada e permite nova tentativa", asy
   assert.match(operacao, /signal: controlador\.signal/);
   assert.match(operacao, /nova tentativa automática em andamento/);
   assert.match(operacao, /controlador\.abort\(\)[\s\S]*agendar\(250\)/);
-  assert.match(operacao, /concluir\(identificador, 2500\)/);
+  assert.match(operacao, /concluir\(identificador, proximoAtraso\)/);
+  assert.match(operacao, /falhasConsecutivas \+= 1/);
+  assert.match(operacao, /Math\.min\([\s\S]*30_000/);
+});
+
+test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", async () => {
+  const operacao = await source("components/operacao-homologacao.tsx");
+  const rota = await source("app/api/operacao-homologacao/route.ts");
+
+  assert.match(rota, /cockpit-operacional-vivo/);
+  assert.match(rota, /desde_versao/);
+  assert.match(rota, /SEM_ALTERACAO/);
+  assert.doesNotMatch(
+    rota.match(/async function atualizacaoLeve[\s\S]*?\n}\n\nasync function estado/)?.[0] ?? "",
+    /telemetria\/sessoes|eventos\?limite|consultas-em-lote/
+  );
+  assert.match(operacao, /versaoDoCockpit\.current/);
+  assert.match(operacao, /mesclarAtualizacaoIncremental/);
+  assert.match(operacao, /dados\.sem_alteracao/);
+});
+
+test("polling reduz sessão pausada, para encerrada e libera memória ao sair", async () => {
+  const operacao = await source("components/operacao-homologacao.tsx");
+  const rota = await source("app/api/operacao-homologacao/route.ts");
+
+  assert.match(operacao, /estadoOperacionalDoPolling\.current === "PAUSADA"/);
+  assert.match(operacao, /15_000/);
+  assert.match(operacao, /\["FINALIZADA", "ENCERRADA"\]/);
+  assert.match(operacao, /method: "DELETE"/);
+  assert.match(operacao, /keepalive: true/);
+  assert.match(rota, /export async function DELETE/);
 });
 
 test("Polling autenticado preserva contexto, ordenação e ciclo único", async () => {
