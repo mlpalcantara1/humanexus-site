@@ -81,6 +81,23 @@ function texto(valor: unknown, padrao = "—") {
     : String(valor).replaceAll("_", " ");
 }
 
+function estadoDoIndicador(valor: unknown) {
+  const codigo = String(valor ?? "").toUpperCase();
+  return ({
+    PREPARANDO: "Aguardando requisitos oficiais",
+    QUALIDADE_ADEQUADA: "Fontes preparadas",
+    PRONTO_COM_RESSALVA_EEG: "Fontes preparadas com ressalva de EEG",
+    PRONTO_PARA_VALIDACAO: "Resultado aguardando validação profissional",
+    ENTREGAVEL: "Resultado validado e entregável"
+  } as Record<string, string>)[codigo] ?? texto(valor, "Aguardando requisitos oficiais");
+}
+
+function fontesDoIndicador(valor: unknown) {
+  return Array.isArray(valor) && valor.length
+    ? valor.map((item) => texto(item)).join(" · ")
+    : "Nenhuma";
+}
+
 function dataLegivel(valor: unknown) {
   if (!valor) return "Sem registro";
   const data = new Date(String(valor));
@@ -1196,8 +1213,25 @@ export function CockpitOperacionalVivo({
             {indicadores.map((item) => (
               <article key={texto(item.identificador ?? item.codigo)}>
                 <small>{texto(item.nome ?? item.codigo)}</small>
-                <strong>{texto(item.estado, "PREPARANDO")}</strong>
-                <span>{item.validado_profissionalmente ? "VALIDADO PROFISSIONALMENTE" : "Monitoramento de requisitos ativo"}</span>
+                <strong>{estadoDoIndicador(item.estado)}</strong>
+                <span>{item.validado_profissionalmente ? "VALIDADO PROFISSIONALMENTE" : texto(
+                  objeto(item.motivo_de_indisponibilidade).motivo,
+                  "Monitoramento dos requisitos oficiais em andamento."
+                )}</span>
+                <details>
+                  <summary>Dependências e rastreabilidade</summary>
+                  <dl>
+                    <div><dt>Fontes obrigatórias</dt><dd>{fontesDoIndicador(item.fontes_obrigatorias)}</dd></div>
+                    <div><dt>Fontes complementares</dt><dd>{fontesDoIndicador(item.fontes_complementares)}</dd></div>
+                    <div><dt>Janela mínima</dt><dd>{item.janela_temporal_minima_segundos == null ? "Não aplicável" : `${numero(item.janela_temporal_minima_segundos)} s`}</dd></div>
+                    <div><dt>Atualidade máxima</dt><dd>{item.atualidade_maxima_tecnica_segundos == null ? "Artefato canônico da fase" : `${numero(item.atualidade_maxima_tecnica_segundos)} s`}</dd></div>
+                    <div><dt>Confiança atual</dt><dd>{item.confianca_atual == null ? "Ainda não calculável" : percentual(item.confianca_atual)}</dd></div>
+                    <div><dt>Regra de ausência</dt><dd>Ausência permanece nula, sem zero e sem fallback</dd></div>
+                    <div><dt>Ação possível</dt><dd>{texto(objeto(item.motivo_de_indisponibilidade).acao_possivel, "Nenhuma ação pendente")}</dd></div>
+                    <div><dt>Versão científica</dt><dd>{texto(item.versao_cientifica)}</dd></div>
+                    <div><dt>Motor/contrato</dt><dd>{texto(item.versao_do_motor)}</dd></div>
+                  </dl>
+                </details>
               </article>
             ))}
           </div>

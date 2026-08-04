@@ -528,6 +528,26 @@ test("EPOC degradado gera ressalva sem bloquear o fluxo operacional", async () =
   assert.match(cockpit, /não bloqueia o fluxo da sessão/);
 });
 
+test("Cockpit expõe o contrato de dependência por indicador em português", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const demo = await source("components/cockpit-demonstracao-visual.tsx");
+
+  for (const item of [
+    "Fontes obrigatórias",
+    "Fontes complementares",
+    "Janela mínima",
+    "Atualidade máxima",
+    "Confiança atual",
+    "Ausência permanece nula, sem zero e sem fallback",
+    "Ação possível",
+    "Versão científica",
+    "Motor/contrato"
+  ]) assert.match(cockpit, new RegExp(item));
+  assert.match(cockpit, /Aguardando requisitos oficiais/);
+  assert.match(cockpit, /Resultado aguardando validação profissional/);
+  assert.match(demo, /DADOS DE TESTE — NÃO REAIS/);
+});
+
 test("Cockpit resolve vetores por UUID ou código e exibe rastreabilidade sob demanda", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
 

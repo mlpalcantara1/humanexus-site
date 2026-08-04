@@ -168,8 +168,8 @@ export function CockpitDemonstracaoVisual() {
     >
       <div className="hx-demo-safety" role="status">
         <div>
-          <strong>DEMONSTRAÇÃO VISUAL ISOLADA</strong>
-          <span>DADOS SINTÉTICOS · SEM API · SEM BANCO · SEM RELATÓRIOS · NÃO É RESULTADO HUMANO</span>
+          <strong>DADOS DE TESTE — NÃO REAIS</strong>
+          <span>DADOS SINTÉTICOS · SEM API · SEM BANCO · SEM RELATÓRIOS · DEMONSTRAÇÃO VISUAL ISOLADA · NÃO É RESULTADO HUMANO</span>
         </div>
         <ExperienceModeControl />
       </div>
