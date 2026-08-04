@@ -534,6 +534,112 @@ export function CockpitOperacionalVivo({
     ["RESULTANTE REGULATÓRIA", objeto(resultante.cobertura_cientifica)],
     ["TRAJETÓRIA REGULATÓRIA", objeto(trajetoria.cobertura_cientifica)]
   ] as const;
+  const cadeiaCientifica = objeto(cockpit.cadeia_cientifica);
+  const arrCadeia = objeto(cadeiaCientifica.arr);
+  const rroCadeia = objeto(cadeiaCientifica.rro);
+  const nraCadeia = objeto(cadeiaCientifica.nra);
+  const thxCadeia = objeto(cadeiaCientifica.thx);
+  const thxAerCadeia = objeto(cadeiaCientifica.thx_aer);
+  const ctrCadeia = objeto(cadeiaCientifica.ctr);
+  const validacaoCadeia = objeto(cadeiaCientifica.validacao_profissional);
+  const intervencaoCadeia = objeto(cadeiaCientifica.intervencao);
+  const etapasDaCadeia = [
+    {
+      codigo: "A",
+      nome: "Fontes atuais",
+      estado: fontes.some((fonte) => fonte.ao_vivo === true)
+        ? "EVIDÊNCIA AO VIVO"
+        : "AGUARDANDO FONTES REAIS",
+      motivo: fontes.some((fonte) => fonte.ao_vivo === true)
+        ? "Amostras atuais da sessão explícita."
+        : "Nenhuma fonte possui amostra real dentro da janela de atualidade."
+    },
+    {
+      codigo: "B",
+      nome: "Evidências",
+      estado: radarVetorial.some((vetor) => vetor.value != null)
+        ? "COBERTURA PARCIAL OU VÁLIDA"
+        : "SEM COBERTURA VETORIAL",
+      motivo: texto(
+        coberturaVetorial.motivo_objetivo,
+        "Os requisitos oficiais permanecem detalhados sob demanda."
+      )
+    },
+    {
+      codigo: "C",
+      nome: "Vetores oficiais",
+      estado: `${estadosVetoriais.filter((item) => item.magnitude != null).length}/10 calculáveis`,
+      motivo: "Ausência permanece ausência; VEV não é inferido."
+    },
+    {
+      codigo: "D1",
+      nome: "Resultante Regulatória",
+      estado: texto(resultante.estado, "NAO DEFINIDA"),
+      motivo: texto(
+        resultante.motivo,
+        "Fórmula autoral de composição ainda não operacionalizada."
+      )
+    },
+    {
+      codigo: "D2",
+      nome: "ARR",
+      estado: texto(arrCadeia.estado, "NAO CALCULAVEL"),
+      motivo: texto(arrCadeia.motivo, "Hipótese Tipo B ainda indisponível.")
+    },
+    {
+      codigo: "D3",
+      nome: "Reorganização da Rota Operacional — RRO",
+      estado: texto(rroCadeia.estado, "NAO CALCULAVEL"),
+      motivo: texto(rroCadeia.motivo, "Operacionalização autoral ainda ausente.")
+    },
+    {
+      codigo: "D4",
+      nome: "Nova Rota Adaptativa — NRA",
+      estado: texto(nraCadeia.estado, "NAO CALCULAVEL"),
+      motivo: texto(nraCadeia.motivo, "NRA ainda não vinculada à sessão.")
+    },
+    {
+      codigo: "E1",
+      nome: "THX",
+      estado: texto(thxCadeia.estado, "NAO AVALIAVEL"),
+      motivo: `${lista(thxCadeia.protocolos).length} sugestão(ões) documental(is) · catálogo ${numero(thxCadeia.total_no_catalogo_oficial)}`
+    },
+    {
+      codigo: "E2",
+      nome: "THX-AER",
+      estado: texto(thxAerCadeia.estado, "NAO AVALIAVEL"),
+      motivo: `${lista(thxAerCadeia.protocolos).length} sugestão(ões) documental(is) · catálogo ${numero(thxAerCadeia.total_no_catalogo_oficial)}`
+    },
+    {
+      codigo: "E3",
+      nome: "CTR",
+      estado: texto(ctrCadeia.estado, "SEM SUGESTAO"),
+      motivo: `${lista(ctrCadeia.sugestoes).length} sugestão(ões) · ${numero(ctrCadeia.total_disponivel)} disponível(is)`
+    },
+    {
+      codigo: "E4",
+      nome: "Validação profissional",
+      estado: texto(validacaoCadeia.estado, "PENDENTE"),
+      motivo: validacaoCadeia.decisao_automatica === false
+        ? "Aceitar, rejeitar, substituir e justificar permanecem atos profissionais."
+        : "Decisão profissional não confirmada pelo núcleo."
+    },
+    {
+      codigo: "E5",
+      nome: "Intervenção",
+      estado: texto(intervencaoCadeia.estado, "NAO INICIADA"),
+      motivo: texto(
+        intervencaoCadeia.motivo,
+        "Exige protocolo e CTR validados profissionalmente."
+      )
+    },
+    {
+      codigo: "F",
+      nome: "Longitudinal e VEV",
+      estado: texto(trajetoria.estado, "NAO INFERIVEL"),
+      motivo: "Trajetória exige estados comparáveis; VEV permanece não definido."
+    }
+  ];
 
   useEffect(() => {
     const id = window.setInterval(() => setAgora(Date.now()), 1000);
@@ -892,6 +998,42 @@ export function CockpitOperacionalVivo({
             ? "Estados sucessivos comparáveis"
             : "Um ponto isolado não produz trajetória"}</span>
         </article>
+      </section>
+
+      <section
+        className="hx-live-scientific-chain"
+        aria-label="Cadeia científica oficial da sessão"
+      >
+        <header>
+          <div>
+            <small>HOMOLOGAÇÃO CIENTÍFICA ÚNICA · A–F</small>
+            <strong>Cadeia operacional oficial</strong>
+          </div>
+          <span>Somente relações autorais rastreáveis · nenhuma decisão automática</span>
+        </header>
+        <div className="hx-live-scientific-chain__rail">
+          {etapasDaCadeia.map((etapa) => {
+            const estadoNormalizado = etapa.estado.toUpperCase();
+            const bloqueada = estadoNormalizado.includes("NAO")
+              || estadoNormalizado.includes("SEM ")
+              || estadoNormalizado.includes("PENDENTE")
+              || estadoNormalizado.includes("AGUARDANDO");
+            return (
+              <article className={bloqueada ? "is-blocked" : "is-ready"} key={etapa.codigo}>
+                <i>{etapa.codigo}</i>
+                <div>
+                  <small>{etapa.nome}</small>
+                  <strong>{etapa.estado}</strong>
+                  <span>{etapa.motivo}</span>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <details>
+          <summary>Rastreabilidade, dependências e candidatos documentais</summary>
+          <pre>{JSON.stringify(cadeiaCientifica, null, 2)}</pre>
+        </details>
       </section>
 
       <details

@@ -503,6 +503,29 @@ test("Cockpit resolve vetores por UUID ou código e exibe rastreabilidade sob de
   ]) assert.match(cockpit, new RegExp(item));
 });
 
+test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento automático", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+
+  for (const item of [
+    "Fontes atuais",
+    "Evidências",
+    "Vetores oficiais",
+    "Resultante Regulatória",
+    "ARR",
+    "Reorganização da Rota Operacional — RRO",
+    "Nova Rota Adaptativa — NRA",
+    "THX-AER",
+    "CTR",
+    "Validação profissional",
+    "Intervenção",
+    "Longitudinal e VEV"
+  ]) assert.match(cockpit, new RegExp(item));
+  assert.match(cockpit, /Somente relações autorais rastreáveis/);
+  assert.match(cockpit, /nenhuma decisão automática/);
+  assert.match(cockpit, /Rastreabilidade, dependências e candidatos documentais/);
+  assert.doesNotMatch(cockpit, /resultante\.valor\s*\?\?/);
+});
+
 test("Polling oficial expira requisição travada e permite nova tentativa", async () => {
   const operacao = await source("components/operacao-homologacao.tsx");
 
