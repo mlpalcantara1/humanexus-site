@@ -523,6 +523,14 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
   assert.match(cockpit, /Somente relações autorais rastreáveis/);
   assert.match(cockpit, /nenhuma decisão automática/);
   assert.match(cockpit, /Rastreabilidade, dependências e candidatos documentais/);
+  assert.match(
+    cockpit,
+    /radarVetorial\.filter\(\(item\) => item\.value != null\)\.length/
+  );
+  assert.doesNotMatch(
+    cockpit,
+    /estadosVetoriais\.filter\(\(item\) => item\.magnitude != null\)\.length/
+  );
   assert.doesNotMatch(cockpit, /resultante\.valor\s*\?\?/);
 });
 

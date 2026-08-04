@@ -568,7 +568,7 @@ export function CockpitOperacionalVivo({
     {
       codigo: "C",
       nome: "Vetores oficiais",
-      estado: `${estadosVetoriais.filter((item) => item.magnitude != null).length}/10 calculáveis`,
+      estado: `${radarVetorial.filter((item) => item.value != null).length}/10 calculáveis`,
       motivo: "Ausência permanece ausência; VEV não é inferido."
     },
     {
