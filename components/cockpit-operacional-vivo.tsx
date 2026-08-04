@@ -756,6 +756,12 @@ export function CockpitOperacionalVivo({
 
   return (
     <section className="hx-live-cockpit" data-cockpit-mode={cockpit.modo}>
+      <nav className="hx-live-levels" aria-label="Arquitetura do Centro de Comando">
+        <a href="#hx-command-level"><span>01</span><strong>Comando</strong></a>
+        <a href="#hx-regulation-level"><span>02</span><strong>Regulação</strong></a>
+        <a href="#hx-evidence-level"><span>03</span><strong>Evidências</strong></a>
+        <a href="#hx-inspection-level"><span>04</span><strong>Inspeção</strong></a>
+      </nav>
       <header className="hx-live-cockpit__masthead">
         <div className="hx-live-masthead-rail" aria-hidden="true"><i /><i /><i /></div>
         <div>
@@ -813,7 +819,7 @@ export function CockpitOperacionalVivo({
         <div><small>ESTADO DO POLAR</small><strong>{texto(polar.estado)}</strong><span>{polar.ao_vivo === true ? `Sequência atual ${numero(objeto(polar.metricas).ultima_sequencia)}` : "Sem leitura atual"}</span></div>
       </section>
 
-      <section className="hx-live-operation-focus" aria-label="Comando e progressão da sessão">
+      <section id="hx-command-level" className="hx-live-operation-focus" aria-label="Comando e progressão da sessão">
         <div className="hx-live-operation-flow">
           <small>FLUXO OPERACIONAL</small>
           <div>
@@ -854,7 +860,7 @@ export function CockpitOperacionalVivo({
         </div>
       </section>
 
-      <div className="hx-live-command-center">
+      <div id="hx-regulation-level" className="hx-live-command-center">
         {radarVetorial.length ? (
           <HxSurface as="section" className="hx-live-vector-stage">
             <HxSectionHeader
@@ -937,6 +943,7 @@ export function CockpitOperacionalVivo({
 
         <HxSurface
           as="section"
+          id="hx-evidence-level"
           className="hx-live-graphs"
           data-signal-state={modoHistorico ? "HISTORICO" : modoAguardando ? "AGUARDANDO" : "ATIVO"}
         >
@@ -1047,6 +1054,7 @@ export function CockpitOperacionalVivo({
       </section>
 
       <section
+        id="hx-inspection-level"
         className="hx-live-scientific-chain"
         aria-label="Cadeia científica oficial da sessão"
       >

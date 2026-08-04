@@ -400,7 +400,8 @@ test("composição executiva premium permanece isolada no front-end da plataform
   const navegacao = await source("components/platform-navigation.tsx");
   const painel = await source("components/painel-seguro.tsx");
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
-  const estilos = await source("app/operational.css");
+  const estilos = await source("app/humanexus-design-system.css");
+  const estilosOperacionais = await source("app/operational.css");
   const estilosGlobais = await source("app/globals.css");
   const designSystem = await source("components/hx-design-system.tsx");
 
@@ -425,25 +426,60 @@ test("composição executiva premium permanece isolada no front-end da plataform
       instrumentos > operacao
   );
 
-  assert.match(estilos, /composição executiva premium/);
-  assert.match(estilos, /Design System operacional único/);
+  assert.match(estilos, /HUMANEXUS DESIGN SYSTEM — Command Experience 1\.0/);
+  assert.doesNotMatch(estilosOperacionais, /composição executiva premium/);
   assert.match(designSystem, /export function HxPageHeader/);
   assert.match(designSystem, /export function HxSectionHeader/);
   assert.match(designSystem, /export function HxSurface/);
   assert.match(estilos, /\.hx-app--executive:has\(\.hx-nav--collapsed\)/);
-  assert.doesNotMatch(estilos, /\.hx-app--executive \.hx-live-hud/);
   assert.match(estilosGlobais, /\.hx-live-hud\{position:sticky;top:135px/);
   assert.match(estilosGlobais, /@media\(min-width:1600px\)\{\.hx-live-hud\{grid-template-columns:repeat\(9,minmax\(88px,1fr\)\)/);
   assert.match(estilosGlobais, /@media\(max-width:900px\)[\s\S]*\.hx-live-hud\{position:relative;top:auto;grid-template-columns:repeat\(3,1fr\)/);
   assert.match(estilosGlobais, /@media\(max-width:640px\)[\s\S]*\.hx-live-hud\{grid-template-columns:1fr 1fr\}/);
-  assert.match(estilos, /\.hx-live-vector-list\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(estilos, /\.hx-vector-radar-live \.hx-echart\s*\{[\s\S]*min-height: 480px/);
-  assert.match(estilos, /\.hx-app__identity b,[\s\S]*text-overflow: ellipsis/);
-  assert.match(estilos, /\.hx-secure-panel__grid > article:first-child dl\s*\{[\s\S]*grid-template-columns: 1fr/);
-  assert.match(estilos, /\.hx-app--executive \.hx-admin__forms\s*\{[\s\S]*min-width: 0/);
-  assert.match(estilos, /\.hx-app--executive \.hx-admin__form,[\s\S]*\.hx-app--executive \.hx-admin__directory\s*\{[\s\S]*min-width: 0/);
-  assert.match(estilos, /\.hx-app__header button,[\s\S]*\.hx-nav-toggle\s*\{[\s\S]*min-height: 44px/);
+  assert.match(estilos, /\.hx-app--executive \.hx-vector-radar-live\s*\{[\s\S]*min-height: clamp\(400px, 38vw, 580px\)/);
+  assert.match(estilos, /\.hx-app :where\(\.hx-management-context,[\s\S]*\.hx-admin__directory\)/);
+  assert.match(estilos, /\.hx-app :where\(input, select, textarea\):focus/);
+  assert.match(estilos, /@media \(max-width: 1080px\)[\s\S]*\.hx-nav-toggle/);
   assert.match(estilos, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
+test("HUMANEXUS Design System unifica módulos e separa profundidade sem alterar ciência", async () => {
+  const estilos = await source("app/humanexus-design-system.css");
+  const shell = await source("components/platform-shell.tsx");
+  const modo = await source("components/experience-mode-control.tsx");
+  const navegacao = await source("components/platform-navigation.tsx");
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const demonstracao = await source("components/cockpit-demonstracao-visual.tsx");
+
+  assert.match(estilos, /HUMANEXUS DESIGN SYSTEM — Command Experience 1\.0/);
+  assert.match(estilos, /--hx-gold: #a88443/);
+  assert.match(estilos, /--hx-signal: #72c6d3/);
+  assert.match(estilos, /\[data-hx-experience-mode="executivo"\] \.hx-live-scientific-chain/);
+  assert.match(estilos, /\[data-hx-experience-mode="executivo"\] \.hx-live-technical-drawer/);
+  assert.doesNotMatch(estilos, /\[data-hx-experience-mode="executivo"\][^{]*(hx-live-regulatory-readout|hx-live-hud)/);
+  assert.match(estilos, /@media \(max-width: 820px\)[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(estilos, /@media print[\s\S]*\.hx-report-view/);
+  assert.match(estilos, /@media \(prefers-reduced-motion: reduce\)/);
+
+  assert.match(shell, /CENTRO DE INTELIGÊNCIA OPERACIONAL/);
+  assert.match(shell, /ExperienceModeControl/);
+  assert.match(modo, /humanexus-experience-mode/);
+  assert.match(modo, /document\.documentElement\.dataset\.hxExperienceMode/);
+  assert.doesNotMatch(modo, /fetch\(|\/api\//);
+
+  for (const modulo of [
+    "Painel de Comando", "Organizações", "Participantes", "Anamnese Regulatória",
+    "Sessões", "Treinamentos", "Cockpit Vivo", "Arquitetura Vetorial", "Resultante",
+    "ARR · RRO · NRA", "CTR · THX · THX-AER", "Longitudinal", "Replay",
+    "Relatórios e exportação", "Administração", "Configurações"
+  ]) assert.match(navegacao, new RegExp(modulo.replaceAll("·", "\\·")));
+
+  assert.match(cockpit, /01<\/span>\s*<strong>Comando/);
+  assert.match(cockpit, /02<\/span>\s*<strong>Regulação/);
+  assert.match(cockpit, /03<\/span>\s*<strong>Evidências/);
+  assert.match(cockpit, /04<\/span>\s*<strong>Inspeção/);
+  assert.match(demonstracao, /SEM CÁLCULO · SEM FALLBACK/);
+  assert.match(demonstracao, /Ausência não convertida em zero/);
 });
 
 test("Cockpit não converte ausência de evidência em zero e explica cobertura", async () => {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BotaoSair } from "@/components/botao-sair";
 import { PlatformNavigation } from "@/components/platform-navigation";
+import { ExperienceModeControl } from "@/components/experience-mode-control";
 import { sessaoAtual } from "@/lib/portal-session";
 
 export async function PlatformShell({ children }: { children: React.ReactNode }) {
@@ -18,7 +19,12 @@ export async function PlatformShell({ children }: { children: React.ReactNode })
             <small>INTELIGÊNCIA REGULATÓRIA</small>
           </span>
         </Link>
+        <div className="hx-app__product-signature" aria-label="Identidade do produto">
+          <small>CENTRO DE INTELIGÊNCIA OPERACIONAL</small>
+          <strong>HUMANEXUS COMMAND</strong>
+        </div>
         <div className="hx-app__header-meta">
+          {sessao ? <ExperienceModeControl /> : null}
           <span className="hx-app__environment">AMBIENTE PROTEGIDO</span>
           <span className="hx-app__connection"><i />NÚCLEO CONECTADO</span>
           {sessao ? <span className="hx-app__identity"><b>{sessao.usuario.nome}</b><small>{sessao.usuario.perfil.replaceAll("_", " ")}</small></span> : null}
@@ -30,8 +36,8 @@ export async function PlatformShell({ children }: { children: React.ReactNode })
       ) : null}
       <main className={sessao ? "hx-app__content hx-app__content--signed" : "hx-app__content"}>{children}</main>
       <footer className="hx-app__footer">
-        <span>HUMANEXUS</span>
-        <small>Ciência, tecnologia e proteção de dados · plataforma regulatória.</small>
+        <span>HUMANEXUS / COMMAND</span>
+        <small>Inteligência Regulatória Humana · ambiente operacional protegido.</small>
       </footer>
     </div>
   );

@@ -8,6 +8,7 @@ import {
   type HxTrack,
   type HxVectorAxis
 } from "@/components/hx-command-visualizations";
+import { ExperienceModeControl } from "@/components/experience-mode-control";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 
 const VETORES = [
@@ -166,8 +167,11 @@ export function CockpitDemonstracaoVisual() {
       data-motion-reduced={movimentoEfetivamenteReduzido ? "true" : "false"}
     >
       <div className="hx-demo-safety" role="status">
-        <strong>DEMONSTRAÇÃO VISUAL ISOLADA</strong>
-        <span>DADOS SINTÉTICOS · SEM API · SEM BANCO · SEM RELATÓRIOS · NÃO É RESULTADO HUMANO</span>
+        <div>
+          <strong>DEMONSTRAÇÃO VISUAL ISOLADA</strong>
+          <span>DADOS SINTÉTICOS · SEM API · SEM BANCO · SEM RELATÓRIOS · NÃO É RESULTADO HUMANO</span>
+        </div>
+        <ExperienceModeControl />
       </div>
 
       <nav className="hx-demo-controls" aria-label="Controles da demonstração visual">
@@ -219,6 +223,13 @@ export function CockpitDemonstracaoVisual() {
         </button>
       </nav>
 
+      <nav className="hx-live-levels" aria-label="Níveis do Cockpit demonstrativo">
+        <a href="#hx-demo-command"><span>01</span><strong>Comando</strong></a>
+        <a href="#hx-demo-regulation"><span>02</span><strong>Regulação</strong></a>
+        <a href="#hx-demo-evidence"><span>03</span><strong>Evidências</strong></a>
+        <a href="#hx-demo-inspection"><span>04</span><strong>Inspeção</strong></a>
+      </nav>
+
       <header className="hx-live-cockpit__masthead">
         <div className="hx-live-masthead-rail" aria-hidden="true"><i /><i /><i /></div>
         <div>
@@ -253,7 +264,7 @@ export function CockpitDemonstracaoVisual() {
         <div><small>ESTADO DO POLAR</small><strong>{estadoTecnico(sensor)}</strong><span>Sequência demonstrativa {pulso}</span></div>
       </section>
 
-      <section className="hx-live-operation-focus" aria-label="Fluxo demonstrativo">
+      <section className="hx-live-operation-focus" id="hx-demo-command" aria-label="Fluxo demonstrativo">
         <div className="hx-live-operation-flow">
           <small>FLUXO VISUAL</small>
           <div>
@@ -277,7 +288,7 @@ export function CockpitDemonstracaoVisual() {
         </div>
       </section>
 
-      <div className="hx-live-command-center">
+      <div className="hx-live-command-center" id="hx-demo-regulation">
         <section className="hx-live-vector-stage">
           <header>
             <small>VETORES VIVOS · DEMONSTRAÇÃO VISUAL</small>
@@ -303,7 +314,7 @@ export function CockpitDemonstracaoVisual() {
           </div>
         </section>
 
-        <section className="hx-live-graphs" data-signal-state={estadoTecnico(sensor)}>
+        <section className="hx-live-graphs" id="hx-demo-evidence" data-signal-state={estadoTecnico(sensor)}>
           <header>
             <div><small>INSTRUMENTAÇÃO DEMONSTRATIVA</small><h2>Leitura temporal da sessão</h2></div>
             <span>Movimento local isolado · nenhum dado é transmitido ou persistido</span>
@@ -342,6 +353,27 @@ export function CockpitDemonstracaoVisual() {
           </footer>
         </section>
       </div>
+
+      <section className="hx-live-regulatory-readout" aria-label="Síntese regulatória demonstrativa">
+        <article><small>Estado geral</small><strong>DEMONSTRAÇÃO VISUAL</strong><span>Sem interpretação humana</span></article>
+        <article><small>IIRH</small><strong>NÃO CALCULADO</strong><span>Ausência preservada</span></article>
+        <article><small>Zona</small><strong>NÃO CLASSIFICADA</strong><span>Ausência preservada</span></article>
+        <article><small>Resultante</small><strong>NÃO CALCULADA</strong><span>Ausência preservada</span></article>
+        <article><small>ARR · RRO · NRA</small><strong>SEM PROJEÇÃO</strong><span>Nenhuma decisão automática</span></article>
+      </section>
+
+      <section className="hx-live-scientific-chain" id="hx-demo-inspection" aria-label="Inspeção científica demonstrativa">
+        <header>
+          <div><small>MODO CIENTÍFICO · RASTREABILIDADE</small><strong>Cadeia científica preservada</strong></div>
+          <span>SEM CÁLCULO · SEM FALLBACK</span>
+        </header>
+        <div className="hx-live-scientific-chain__rail">
+          <article className="is-blocked"><i /><div><small>FONTES</small><strong>DEMONSTRATIVAS</strong><span>Nenhuma evidência real</span></div></article>
+          <article className="is-blocked"><i /><div><small>COBERTURA</small><strong>INDISPONÍVEL</strong><span>Nenhuma regra executada</span></div></article>
+          <article className="is-blocked"><i /><div><small>CONFIANÇA</small><strong>INDISPONÍVEL</strong><span>Ausência não convertida em zero</span></div></article>
+          <article className="is-blocked"><i /><div><small>VERSÃO</small><strong>APENAS INTERFACE</strong><span>Sem persistência</span></div></article>
+        </div>
+      </section>
     </section>
   );
 }

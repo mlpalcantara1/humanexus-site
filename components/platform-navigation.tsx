@@ -2,33 +2,71 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-type Item = { label: string; href: string; mark: string; restricted?: "lab" | "admin" };
+type IconName = "command" | "building" | "people" | "anamnese" | "sessions" | "training" | "cockpit" | "vectors" | "resultant" | "routes" | "protocol" | "longitudinal" | "replay" | "reports" | "lab" | "admin" | "settings";
+type Item = { label: string; href: string; mark: string; icon: IconName; restricted?: "lab" | "admin" };
 type Group = { label: string; items: Item[] };
 
 const GROUPS: Group[] = [
   {
     label: "Operação",
     items: [
-      { label: "Painel de Comando", href: "/plataforma/painel", mark: "01" },
-      { label: "Organizações", href: "/plataforma/organizacoes", mark: "02" },
-      { label: "Clientes / Participantes", href: "/plataforma/clientes", mark: "03" },
-      { label: "Anamnese Regulatória", href: "/plataforma/anamnese-regulatoria", mark: "ANM" },
-      { label: "Sessões", href: "/plataforma/sessoes", mark: "04" },
-      { label: "Treinamentos", href: "/plataforma/treinamentos", mark: "05" },
-      { label: "Cockpit Vivo", href: "/plataforma/cockpit-vivo", mark: "06" }
+      { label: "Painel de Comando", href: "/plataforma/painel", mark: "01", icon: "command" },
+      { label: "Organizações", href: "/plataforma/organizacoes", mark: "02", icon: "building" },
+      { label: "Participantes", href: "/plataforma/clientes", mark: "03", icon: "people" },
+      { label: "Anamnese Regulatória", href: "/plataforma/anamnese-regulatoria", mark: "04", icon: "anamnese" },
+      { label: "Sessões", href: "/plataforma/sessoes", mark: "05", icon: "sessions" },
+      { label: "Treinamentos", href: "/plataforma/treinamentos", mark: "06", icon: "training" }
+    ]
+  },
+  {
+    label: "Inteligência",
+    items: [
+      { label: "Cockpit Vivo", href: "/plataforma/cockpit-vivo", mark: "07", icon: "cockpit" },
+      { label: "Arquitetura Vetorial", href: "/plataforma/cockpit-vivo?visao=matriz-vetorial", mark: "08", icon: "vectors" },
+      { label: "Resultante", href: "/plataforma/cockpit-vivo?visao=resultante", mark: "09", icon: "resultant" },
+      { label: "ARR · RRO · NRA", href: "/plataforma/cockpit-vivo?visao=rotas-regulatorias", mark: "10", icon: "routes" },
+      { label: "CTR · THX · THX-AER", href: "/plataforma/cockpit-vivo?visao=ctr-thx", mark: "11", icon: "protocol" },
+      { label: "Longitudinal", href: "/plataforma/cockpit-vivo?visao=longitudinal", mark: "12", icon: "longitudinal" },
+      { label: "Replay", href: "/plataforma/cockpit-vivo?visao=replay", mark: "13", icon: "replay" },
+      { label: "Relatórios e exportação", href: "/plataforma/cockpit-vivo?visao=relatorio", mark: "14", icon: "reports" }
     ]
   },
   {
     label: "Governança",
     items: [
-      { label: "HUMANEXUS LAB", href: "/plataforma/humanexus-lab", mark: "LAB", restricted: "lab" },
-      { label: "Administração", href: "/admin", mark: "ADM", restricted: "admin" },
-      { label: "Configurações", href: "/plataforma/configuracoes", mark: "CFG" }
+      { label: "HUMANEXUS LAB", href: "/plataforma/humanexus-lab", mark: "LAB", icon: "lab", restricted: "lab" },
+      { label: "Administração", href: "/admin", mark: "ADM", icon: "admin", restricted: "admin" },
+      { label: "Configurações", href: "/plataforma/configuracoes", mark: "CFG", icon: "settings" }
     ]
   }
 ];
+
+const ICON_PATHS: Record<IconName, ReactNode> = {
+  command: <><path d="M4 5.5h16M4 12h10M4 18.5h7" /><path d="m16 15 4 3.5-4 3.5" /></>,
+  building: <><path d="M5 21V5l7-3 7 3v16" /><path d="M2 21h20M9 8h2m4 0h1M9 12h2m4 0h1M9 16h2m4 0h1" /></>,
+  people: <><circle cx="9" cy="8" r="3" /><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 5v2" /></>,
+  anamnese: <><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h3" /><path d="M4 6H2v13h12v2" /></>,
+  sessions: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2M8 2v3m8-3v3" /></>,
+  training: <><path d="m3 7 9-4 9 4-9 4zM6 9v6c3 3 9 3 12 0V9M21 7v8" /></>,
+  cockpit: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="3" /><path d="M12 3v6m0 6v6M3 12h6m6 0h6" /></>,
+  vectors: <><path d="M12 3v18M3 12h18M5 5l14 14M19 5 5 19" /><circle cx="12" cy="12" r="8" /></>,
+  resultant: <><path d="M4 19 19 4M12 4h7v7" /><path d="M4 5v14h14" /></>,
+  routes: <><circle cx="5" cy="18" r="2" /><circle cx="19" cy="6" r="2" /><path d="M7 18c5 0 3-8 8-8h2" /></>,
+  protocol: <><path d="M4 4h16v16H4zM8 8h8M8 12h5M8 16h3" /><path d="m15 15 1.5 1.5L20 13" /></>,
+  longitudinal: <><path d="M3 19h18M4 16l5-5 4 3 7-9" /><circle cx="9" cy="11" r="1" /><circle cx="13" cy="14" r="1" /></>,
+  replay: <><path d="M4 11a8 8 0 1 1 2 6M4 11V5m0 6h6" /><path d="m10 8 6 4-6 4z" /></>,
+  reports: <><path d="M6 2h9l4 4v16H6zM15 2v5h5" /><path d="M9 17v-4m3 4V9m3 8v-6" /></>,
+  lab: <><path d="M9 2v6l-5 9a3 3 0 0 0 3 5h10a3 3 0 0 0 3-5l-5-9V2" /><path d="M7 15h10M8 2h8" /></>,
+  admin: <><circle cx="12" cy="8" r="4" /><path d="M4 22a8 8 0 0 1 16 0" /><path d="m17 13 2 2 3-3" /></>,
+  settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a2 2 0 0 0 .4 2.2l.1.1-2.6 2.6-.1-.1a2 2 0 0 0-2.2-.4 2 2 0 0 0-1.2 1.8V21h-3.6v-.2A2 2 0 0 0 9 19a2 2 0 0 0-2.2.4l-.1.1-2.6-2.6.1-.1A2 2 0 0 0 4.6 15 2 2 0 0 0 2.8 13H2v-3.6h.8A2 2 0 0 0 4.6 8a2 2 0 0 0-.4-2.2l-.1-.1 2.6-2.6.1.1A2 2 0 0 0 9 3.6 2 2 0 0 0 10.2 2h3.6A2 2 0 0 0 15 3.6a2 2 0 0 0 2.2-.4l.1-.1 2.6 2.6-.1.1A2 2 0 0 0 19.4 8a2 2 0 0 0 1.8 1.4H22V13h-.8a2 2 0 0 0-1.8 2Z" /></>
+};
+
+function NavigationIcon({ name }: { name: IconName }) {
+  return <svg className="hx-nav__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round">{ICON_PATHS[name]}</svg>;
+}
 
 function NavigationItems({ podeVerLab, podeAdministrar, close }: { podeVerLab: boolean; podeAdministrar: boolean; close?: () => void }) {
   const pathname = usePathname();
@@ -49,14 +87,23 @@ function NavigationItems({ podeVerLab, podeAdministrar, close }: { podeVerLab: b
           <section className="hx-nav__group" key={group.label}>
             <p>{group.label}</p>
             {items.map((item) => {
-              const active = pathname === item.href;
-              const href = item.href.startsWith("/plataforma") && contexto.size
-                ? `${item.href}?${contexto}`
+              const [path, query = ""] = item.href.split("?");
+              const itemQuery = new URLSearchParams(query);
+              const visaoDoItem = itemQuery.get("visao");
+              const visaoAtual = searchParams.get("visao");
+              const active = pathname === path && (visaoDoItem
+                ? visaoAtual === visaoDoItem
+                : path === "/plataforma/cockpit-vivo"
+                  ? !visaoAtual || visaoAtual === "visao-geral"
+                  : true);
+              for (const [chave, valor] of contexto) if (!itemQuery.has(chave)) itemQuery.set(chave, valor);
+              const href = item.href.startsWith("/plataforma") && itemQuery.size
+                ? `${path}?${itemQuery}`
                 : item.href;
               return (
                 <Link className={active ? "hx-nav__link hx-nav__link--active" : "hx-nav__link"} href={href} key={item.href} onClick={close}>
-                  <span className="hx-nav__mark">{item.mark}</span>
-                  <span>{item.label}</span>
+                  <span className="hx-nav__mark"><NavigationIcon name={item.icon} /><small>{item.mark}</small></span>
+                  <span className="hx-nav__label">{item.label}</span>
                   {active ? <i aria-hidden="true" /> : null}
                 </Link>
               );

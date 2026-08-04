@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./operational.css";
+import "./humanexus-design-system.css";
 import "./anamnese-operacional.css";
 import { PwaRuntime } from "@/components/pwa-runtime";
 
