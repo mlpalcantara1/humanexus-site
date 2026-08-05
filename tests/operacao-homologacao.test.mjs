@@ -100,9 +100,8 @@ test("conclusão formal, relatório PDF e módulo móvel permanecem integrados",
   assert.match(client, /ACESSO MÓVEL AUTENTICADO/);
   assert.match(pdf, /gerarPdfVisualHumanexus/);
   assert.match(pdf, /cache-control.*private, no-store/s);
-  assert.match(pdfVisual, /graficoFases/);
-  assert.match(pdfVisual, /graficoLinha/);
-  assert.match(pdfVisual, /Versão clara para impressão A4/);
+  assert.match(pdfVisual, /tirh-report-document/);
+  assert.match(pdf, /humanexus-relatorio-tirh/);
   assert.doesNotMatch(pdf, /PARTICIPANTE FICTÍCIO/);
 });
 
@@ -144,7 +143,7 @@ test("visualizações premium diferenciam dado, simulação, lacuna e bloqueio",
 test("Cockpit exibe somente indicadores contratados e prontidão acionável", async () => {
   const route = await source("app/api/operacao-homologacao/route.ts");
   const client = await source("components/operacao-homologacao.tsx");
-  const pdf = await source("lib/humanexus-report-pdf.ts");
+  const pdf = await source("lib/tirh-report-document.ts");
 
   assert.match(route, /contrato_cientifico/);
   assert.match(client, /CONTRATO DE ENTREGA CIENTÍFICA DA SESSÃO/);
