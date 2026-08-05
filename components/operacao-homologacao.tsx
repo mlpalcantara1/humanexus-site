@@ -2396,7 +2396,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       <ReferenciaBaselineResumo estado={estado} />
       <section className="hx-report-operation">
         <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
-        <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>{estado.relatorios.length ? <a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a> : null}</div>
+        <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
       </section>
       <div className="hx-report-charts" data-humanexus-report>
         <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
@@ -2695,7 +2695,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <Contexto estado={estado} />
         <section className="hx-report-operation">
           <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
-          <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>{estado.relatorios.length ? <a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a> : null}</div>
+          <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
         </section>
         <div className="hx-report-charts" data-humanexus-report>
           <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />

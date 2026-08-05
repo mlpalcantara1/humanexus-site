@@ -98,6 +98,10 @@ export async function POST(request: Request) {
       metodo = "PUT";
     } else if (acao === "operar-sessao") {
       caminho = `/api/v1/sessoes/${encodeURIComponent(String(corpo.identificador))}/operacoes`;
+    } else if (acao === "historico-sessao") {
+      caminho = `/api/v1/sessoes/${encodeURIComponent(String(corpo.identificador))}/operacoes`;
+      metodo = "GET";
+      dados = undefined;
     } else if (acao === "apresentar-consentimento") {
       caminho = "/api/v1/consentimentos/apresentacoes";
     } else if (acao === "apresentar-instrumento-integrado") {
@@ -111,6 +115,9 @@ export async function POST(request: Request) {
       caminho = `/api/v1/treinamentos/catalogo/${encodeURIComponent(String(corpo.identificador))}/${acao.startsWith("inativar") ? "inativar" : "reativar"}`;
     } else if (acao === "programar-treinamento") {
       caminho = "/api/v1/treinamentos/programacoes";
+    } else if (acao === "atualizar-programacao") {
+      caminho = `/api/v1/treinamentos/programacoes/${encodeURIComponent(String(corpo.identificador))}`;
+      metodo = "PUT";
     } else if (acao === "materializar-sugestao-pre-baseline") {
       caminho = `/api/v1/sessoes/${encodeURIComponent(String(corpo.identificador))}/sugestoes-pre-baseline`;
     } else if (acao === "decidir-recomendacao-thx") {
@@ -138,7 +145,7 @@ export async function POST(request: Request) {
         headers: organizacao
           ? { "x-humanexus-organization-id": organizacao }
           : undefined,
-        body: JSON.stringify(dados)
+        body: metodo === "GET" ? undefined : JSON.stringify(dados)
       }
     );
     return NextResponse.json(resultado, { status: metodo === "POST" ? 201 : 200 });

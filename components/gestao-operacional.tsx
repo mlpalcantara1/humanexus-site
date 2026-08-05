@@ -110,6 +110,14 @@ function atualizarContextoNaUrl(
   window.history.replaceState(window.history.state, "", url);
 }
 
+function valorDoCampoOperacional(nome: string, padrao = "") {
+  if (typeof document === "undefined") return padrao;
+  const campo = document.querySelector<
+    HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+  >(`[name="${nome}"]`);
+  return campo?.value ?? padrao;
+}
+
 function sessaoInicial() {
   return {
     nome_da_sessao: "",
@@ -140,6 +148,9 @@ export function GestaoOperacional({
   const [ocupado, setOcupado] = useState(false);
   const [organizacaoSelecionada, setOrganizacaoSelecionada] = useState("");
   const [novaOrganizacao, setNovaOrganizacao] = useState(false);
+  const [buscaOrganizacao, setBuscaOrganizacao] = useState("");
+  const [filtroOrganizacao, setFiltroOrganizacao] =
+    useState<"TODAS" | "ATIVAS" | "INATIVAS">("TODAS");
   const [organizacao, setOrganizacao] = useState({
     nome: "",
     razao_social: "",
@@ -216,6 +227,13 @@ export function GestaoOperacional({
     participante: string;
   } | null>(null);
   const [sessaoEmEdicao, setSessaoEmEdicao] = useState("");
+  const [historicoDaSessao, setHistoricoDaSessao] = useState<{
+    identificador: string;
+    eventos: Registro[];
+  } | null>(null);
+  const [sessaoParaCancelar, setSessaoParaCancelar] = useState("");
+  const [justificativaDoCancelamento, setJustificativaDoCancelamento] =
+    useState("");
   const [participanteDoCatalogo, setParticipanteDoCatalogo] = useState("");
   const [familiaThx, setFamiliaThx] = useState("");
   const [planejamentoThx, setPlanejamentoThx] = useState({
@@ -225,6 +243,17 @@ export function GestaoOperacional({
     duracao_minutos: "60",
     sequencia: "1"
   });
+  const [programacaoEmEdicao, setProgramacaoEmEdicao] = useState("");
+  const [edicaoDaProgramacao, setEdicaoDaProgramacao] = useState({
+    data_programada: "",
+    duracao_minutos: "60",
+    sequencia: "1",
+    justificativa: ""
+  });
+  const [historicoDaProgramacao, setHistoricoDaProgramacao] = useState("");
+  const [programacaoParaCancelar, setProgramacaoParaCancelar] = useState("");
+  const [justificativaDoCancelamentoDaProgramacao,
+    setJustificativaDoCancelamentoDaProgramacao] = useState("");
   const [contratoSelecionado, setContratoSelecionado] = useState("");
   const [contrato, setContrato] = useState({
     tipo: "ORGANIZACIONAL",
@@ -602,7 +631,23 @@ export function GestaoOperacional({
       );
       return;
     }
-    if (!planejamentoThx.data_programada) {
+    const identificadorDaSessao = valorDoCampoOperacional(
+      "identificador_da_sessao_do_treinamento",
+      planejamentoThx.identificador_da_sessao
+    );
+    const dataProgramada = valorDoCampoOperacional(
+      "data_programada_do_treinamento",
+      planejamentoThx.data_programada
+    );
+    const duracaoMinutos = valorDoCampoOperacional(
+      "duracao_do_treinamento",
+      planejamentoThx.duracao_minutos
+    );
+    const sequencia = valorDoCampoOperacional(
+      "sequencia_do_treinamento",
+      planejamentoThx.sequencia
+    );
+    if (!dataProgramada) {
       setErro("Informe a data programada.");
       return;
     }
@@ -613,14 +658,56 @@ export function GestaoOperacional({
       identificador_do_thx: protocolo.identificador,
       cronograma: [{
         inicio: new Date(
-          planejamentoThx.data_programada
+          dataProgramada
         ).toISOString(),
-        duracao_minutos: Number(planejamentoThx.duracao_minutos),
-        sequencia: Number(planejamentoThx.sequencia),
+        duracao_minutos: Number(duracaoMinutos),
+        sequencia: Number(sequencia),
         identificador_da_sessao:
-          planejamentoThx.identificador_da_sessao || null
+          identificadorDaSessao || null
       }]
     });
+  }
+
+  async function salvarEdicaoDaProgramacao(identificador: string) {
+    const justificativa = edicaoDaProgramacao.justificativa.trim();
+    if (!edicaoDaProgramacao.data_programada || !justificativa) {
+      setErro("A edição exige data programada e justificativa.");
+      return;
+    }
+    const resultado = await executar(
+      "atualizar-programacao",
+      {
+        cronograma: [{
+          inicio: new Date(
+            edicaoDaProgramacao.data_programada
+          ).toISOString(),
+          duracao_minutos: Number(
+            edicaoDaProgramacao.duracao_minutos
+          ),
+          sequencia: Number(edicaoDaProgramacao.sequencia)
+        }],
+        justificativa
+      },
+      identificador
+    );
+    if (resultado) setProgramacaoEmEdicao("");
+  }
+
+  async function cancelarProgramacao(identificador: string) {
+    const justificativa =
+      justificativaDoCancelamentoDaProgramacao.trim();
+    if (!justificativa) {
+      setErro("O cancelamento da programação exige justificativa.");
+      return;
+    }
+    const resultado = await executar(
+      "operar-programacao",
+      { acao: "CANCELAR", justificativa },
+      identificador
+    );
+    if (!resultado) return;
+    setProgramacaoParaCancelar("");
+    setJustificativaDoCancelamentoDaProgramacao("");
   }
 
   async function apresentarConsentimento(evento: FormEvent<HTMLFormElement>) {
@@ -774,6 +861,37 @@ export function GestaoOperacional({
     window.location.assign(`/plataforma/cockpit-vivo?${parametros}`);
   }
 
+  async function abrirHistoricoDaSessao(identificador: string) {
+    const resultado = await executar(
+      "historico-sessao",
+      {},
+      identificador,
+      false
+    );
+    if (!resultado) return;
+    setHistoricoDaSessao({
+      identificador,
+      eventos: lista(resultado.eventos)
+    });
+  }
+
+  async function cancelarSessaoCriada(identificador: string) {
+    const justificativa = justificativaDoCancelamento.trim();
+    if (!justificativa) {
+      setErro("Informe a justificativa do cancelamento da sessão.");
+      return;
+    }
+    const resultado = await executar(
+      "operar-sessao",
+      { acao: "CANCELAR", justificativa },
+      identificador
+    );
+    if (!resultado) return;
+    setSessaoParaCancelar("");
+    setJustificativaDoCancelamento("");
+    setSessaoCriada(null);
+  }
+
   const organizacaoAtual = dados?.organizacao;
   const podeAdministrar = [
     "ADMINISTRADOR_PROPRIETARIO",
@@ -792,6 +910,8 @@ export function GestaoOperacional({
   const podeConduzir = permissoesDoUsuario.includes("conduzir_sessao");
   const administradorProprietario =
     dados?.usuario.administrador_proprietario === true;
+  const podeCriarOrganizacao =
+    permissoesDoUsuario.includes("criar_organizacao");
   const participanteAtualSelecionado = dados?.participantes.find(
     (item) => String(item.identificador) === participanteSelecionado
   );
@@ -880,6 +1000,25 @@ export function GestaoOperacional({
       </label>
     </section>
   );
+
+  const organizacoesVisiveis = (dados?.organizacoes ?? []).filter((item) => {
+    const perfil = objeto(item.perfil_operacional);
+    const institucionais = objeto(perfil.dados_institucionais);
+    const ativa = item.ativa !== false;
+    const pertenceAoFiltro = filtroOrganizacao === "TODAS"
+      || (filtroOrganizacao === "ATIVAS" && ativa)
+      || (filtroOrganizacao === "INATIVAS" && !ativa);
+    const conjunto = normalizar([
+      item.nome,
+      institucionais.razao_social,
+      institucionais.nome_fantasia,
+      institucionais.cnpj,
+      institucionais.setor_de_atividade
+    ].join(" "));
+    return pertenceAoFiltro
+      && (!buscaOrganizacao.trim()
+        || conjunto.includes(normalizar(buscaOrganizacao.trim())));
+  });
 
   const participantesVisiveis = (dados?.participantes ?? []).filter((item) => {
     const perfil = objeto(item.perfil_operacional);
@@ -1075,6 +1214,27 @@ export function GestaoOperacional({
                   {acao === "ABRIR" ? "INICIAR SESSÃO" : texto(acao)}
                 </button>
               ) : <span>Histórico preservado</span>}
+              <button
+                type="button"
+                disabled={ocupado}
+                onClick={() => void abrirHistoricoDaSessao(
+                  String(item.identificador ?? "")
+                )}
+              >
+                Ver histórico
+              </button>
+              {operacional && estado === "CRIADA" ? (
+                <button
+                  type="button"
+                  disabled={ocupado || !podeConduzir}
+                  onClick={() => {
+                    setSessaoParaCancelar(String(item.identificador ?? ""));
+                    setJustificativaDoCancelamento("");
+                  }}
+                >
+                  Cancelar sessão
+                </button>
+              ) : null}
             </article>
           );
         })}
@@ -1368,7 +1528,7 @@ export function GestaoOperacional({
             <small>FICHA INSTITUCIONAL · EDIÇÃO VERSIONADA</small>
             <div className="hx-record-form__title">
               <h2>{novaOrganizacao ? "Nova organização" : "Dados da organização"}</h2>
-              {String(dados.usuario.perfil) === "ADMINISTRADOR_DO_SISTEMA" ? (
+              {podeCriarOrganizacao ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -1516,8 +1676,24 @@ export function GestaoOperacional({
             ) : null}
           </form>
           <section className="hx-management-table">
-            <header><div><small>ORGANIZAÇÕES</small><h2>Diretório autorizado</h2></div></header>
-            <div>{dados.organizacoes.map((item) => {
+            <header>
+              <div><small>ORGANIZAÇÕES</small><h2>Diretório autorizado</h2></div>
+              <span>{organizacoesVisiveis.length} registro(s)</span>
+            </header>
+            <div className="hx-management-actions">
+              <button type="button" onClick={() => setFiltroOrganizacao("TODAS")}>Todas</button>
+              <button type="button" onClick={() => setFiltroOrganizacao("ATIVAS")}>Ativas</button>
+              <button type="button" onClick={() => setFiltroOrganizacao("INATIVAS")}>Inativas</button>
+              <label>
+                Buscar organização
+                <input
+                  value={buscaOrganizacao}
+                  onChange={(evento) => setBuscaOrganizacao(evento.target.value)}
+                  placeholder="Nome, razão social, CNPJ ou setor"
+                />
+              </label>
+            </div>
+            <div>{organizacoesVisiveis.map((item) => {
               const perfil = objeto(item.perfil_operacional);
               const institucionais = objeto(perfil.dados_institucionais);
               return (
@@ -1550,6 +1726,19 @@ export function GestaoOperacional({
         <div className="hx-management-grid">
           <form className="hx-record-form" onSubmit={async (evento: FormEvent) => {
             evento.preventDefault();
+            const formulario = new FormData(
+              evento.currentTarget as HTMLFormElement
+            );
+            const senhaDoProprietario = String(
+              formulario.get("senha_do_proprietario")
+              ?? operacaoCritica.senha
+              ?? ""
+            );
+            const confirmacaoDoProprietario = String(
+              formulario.get("confirmacao_do_proprietario")
+              ?? operacaoCritica.confirmacao
+              ?? ""
+            );
             const resultado = await executar(
               participanteSelecionado
                 ? "atualizar-participante"
@@ -1606,11 +1795,11 @@ export function GestaoOperacional({
               justificativa: participante.justificativa,
               senha_do_proprietario:
                 administradorProprietario && participanteSelecionado
-                  ? operacaoCritica.senha
+                  ? senhaDoProprietario
                   : undefined,
               confirmacao_do_proprietario:
                 administradorProprietario && participanteSelecionado
-                  ? operacaoCritica.confirmacao
+                  ? confirmacaoDoProprietario
                   : undefined
             },
               participanteSelecionado || undefined,
@@ -1719,7 +1908,9 @@ export function GestaoOperacional({
                 <label>
                   Senha do Administrador Proprietário
                   <input
+                    name="senha_do_proprietario"
                     type="password"
+                    required
                     autoComplete="current-password"
                     value={operacaoCritica.senha}
                     onChange={(evento) => setOperacaoCritica({
@@ -1731,6 +1922,8 @@ export function GestaoOperacional({
                 <label>
                   Digite exatamente “{nomeDoParticipanteSelecionado}”
                   <input
+                    name="confirmacao_do_proprietario"
+                    required
                     value={operacaoCritica.confirmacao}
                     onChange={(evento) => setOperacaoCritica({
                       ...operacaoCritica,
@@ -1743,14 +1936,6 @@ export function GestaoOperacional({
             <button disabled={
               ocupado
               || !podeGerenciarParticipantes
-              || (
-                administradorProprietario
-                && Boolean(participanteSelecionado)
-                && (
-                  !operacaoCritica.senha
-                  || !operacaoCritica.confirmacao
-                )
-              )
             }>
               {participanteSelecionado ? "Salvar nova versão" : "Cadastrar participante"}
             </button>
@@ -2237,6 +2422,74 @@ export function GestaoOperacional({
             ) : null}
           </form>
           {tabelaSessoes}
+          {historicoDaSessao ? (
+            <section className="hx-module__notice" aria-live="polite">
+              <strong>Histórico operacional da sessão</strong>
+              {historicoDaSessao.eventos.length ? (
+                <ol>
+                  {historicoDaSessao.eventos.map((evento, indice) => (
+                    <li key={String(evento.identificador ?? indice)}>
+                      {dataLegivel(
+                        evento.criado_em
+                        ?? evento.registrado_em
+                        ?? evento.ocorrido_em
+                      )} · {texto(
+                        evento.acao
+                        ?? evento.tipo
+                        ?? evento.estado
+                        ?? evento.evento
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <span>Nenhum evento operacional registrado.</span>
+              )}
+              <button
+                type="button"
+                onClick={() => setHistoricoDaSessao(null)}
+              >
+                Fechar histórico
+              </button>
+            </section>
+          ) : null}
+          {sessaoParaCancelar ? (
+            <section className="hx-module__notice" aria-live="polite">
+              <strong>Cancelar sessão criada</strong>
+              <span>
+                O cancelamento preserva o cadastro e toda a rastreabilidade.
+              </span>
+              <label>
+                Justificativa do cancelamento
+                <textarea
+                  required
+                  value={justificativaDoCancelamento}
+                  onChange={(evento) => setJustificativaDoCancelamento(
+                    evento.target.value
+                  )}
+                />
+              </label>
+              <button
+                type="button"
+                disabled={ocupado || !justificativaDoCancelamento.trim()}
+                onClick={() => void cancelarSessaoCriada(
+                  sessaoParaCancelar
+                )}
+              >
+                Confirmar cancelamento
+              </button>
+              <button
+                type="button"
+                disabled={ocupado}
+                onClick={() => {
+                  setSessaoParaCancelar("");
+                  setJustificativaDoCancelamento("");
+                }}
+              >
+                Manter sessão
+              </button>
+            </section>
+          ) : null}
         </div>
       ) : null}
 
@@ -2322,6 +2575,7 @@ export function GestaoOperacional({
               <label>
                 Sessão vinculada
                 <select
+                  name="identificador_da_sessao_do_treinamento"
                   value={planejamentoThx.identificador_da_sessao}
                   onChange={(evento) => setPlanejamentoThx({
                     ...planejamentoThx,
@@ -2344,6 +2598,7 @@ export function GestaoOperacional({
               <label>
                 Justificativa profissional
                 <textarea
+                  name="justificativa_do_treinamento"
                   value={planejamentoThx.justificativa}
                   onChange={(evento) => setPlanejamentoThx({
                     ...planejamentoThx,
@@ -2355,6 +2610,7 @@ export function GestaoOperacional({
               <label>
                 Data programada
                 <input
+                  name="data_programada_do_treinamento"
                   type="datetime-local"
                   value={planejamentoThx.data_programada}
                   onChange={(evento) => setPlanejamentoThx({
@@ -2366,6 +2622,7 @@ export function GestaoOperacional({
               <label>
                 Duração (min)
                 <input
+                  name="duracao_do_treinamento"
                   type="number"
                   min="1"
                   value={planejamentoThx.duracao_minutos}
@@ -2378,6 +2635,7 @@ export function GestaoOperacional({
               <label>
                 Sequência
                 <input
+                  name="sequencia_do_treinamento"
                   type="number"
                   min="1"
                   value={planejamentoThx.sequencia}
@@ -2789,13 +3047,75 @@ export function GestaoOperacional({
                   <h2>Programações existentes</h2>
                 </div>
               </header>
-              <div>{dados.programacoes.map((item) => (
-                <article key={String(item.identificador)}>
+              <div>{dados.programacoes.map((item) => {
+                const identificador = String(item.identificador ?? "");
+                const cronograma = lista(item.cronograma_json);
+                const primeiraExecucao = objeto(cronograma[0]);
+                const historico = lista(item.historico);
+                return (
+                <article key={identificador}>
                   <div><small>Estado</small><strong>{texto(item.estado)}</strong></div>
                   <div><small>Participante</small><strong>{texto(item.identificador_do_participante)}</strong></div>
-                  <div><small>Histórico</small><strong>{lista(item.historico).length} evento(s)</strong></div>
+                  <div><small>CTR</small><strong>{texto(item.identificador_do_ctr)}</strong></div>
+                  <div><small>THX</small><strong>{texto(item.identificador_do_thx)}</strong></div>
+                  <div><small>Agendamento</small><strong>{dataLegivel(primeiraExecucao.inicio)}</strong></div>
+                  <div><small>Histórico</small><strong>{historico.length} evento(s)</strong></div>
+                  {item.estado === "PROGRAMADA" ? (
+                    <>
+                      <button type="button" onClick={() => {
+                        const inicio = String(primeiraExecucao.inicio ?? "");
+                        const data = inicio ? new Date(inicio) : null;
+                        setProgramacaoEmEdicao(identificador);
+                        setEdicaoDaProgramacao({
+                          data_programada: data && !Number.isNaN(data.getTime())
+                            ? data.toISOString().slice(0, 16)
+                            : "",
+                          duracao_minutos: String(
+                            primeiraExecucao.duracao_minutos ?? "60"
+                          ),
+                          sequencia: String(primeiraExecucao.sequencia ?? "1"),
+                          justificativa: ""
+                        });
+                      }}>Editar programação</button>
+                      <button type="button" onClick={() => {
+                        setProgramacaoParaCancelar(identificador);
+                        setJustificativaDoCancelamentoDaProgramacao("");
+                      }}>Inativar programação</button>
+                    </>
+                  ) : null}
+                  <button type="button" onClick={() => setHistoricoDaProgramacao(
+                    historicoDaProgramacao === identificador ? "" : identificador
+                  )}>Ver histórico</button>
+                  {programacaoEmEdicao === identificador ? (
+                    <section className="hx-module__notice">
+                      <strong>Editar programação</strong>
+                      <label>Nova data<input type="datetime-local" value={edicaoDaProgramacao.data_programada} onChange={(evento) => setEdicaoDaProgramacao({ ...edicaoDaProgramacao, data_programada: evento.target.value })} /></label>
+                      <label>Duração<input type="number" min="1" value={edicaoDaProgramacao.duracao_minutos} onChange={(evento) => setEdicaoDaProgramacao({ ...edicaoDaProgramacao, duracao_minutos: evento.target.value })} /></label>
+                      <label>Sequência<input type="number" min="1" value={edicaoDaProgramacao.sequencia} onChange={(evento) => setEdicaoDaProgramacao({ ...edicaoDaProgramacao, sequencia: evento.target.value })} /></label>
+                      <label>Justificativa<textarea value={edicaoDaProgramacao.justificativa} onChange={(evento) => setEdicaoDaProgramacao({ ...edicaoDaProgramacao, justificativa: evento.target.value })} /></label>
+                      <button type="button" onClick={() => void salvarEdicaoDaProgramacao(identificador)}>Salvar edição da programação</button>
+                      <button type="button" onClick={() => setProgramacaoEmEdicao("")}>Cancelar edição</button>
+                    </section>
+                  ) : null}
+                  {programacaoParaCancelar === identificador ? (
+                    <section className="hx-module__notice">
+                      <strong>Inativar programação</strong>
+                      <label>Justificativa<textarea value={justificativaDoCancelamentoDaProgramacao} onChange={(evento) => setJustificativaDoCancelamentoDaProgramacao(evento.target.value)} /></label>
+                      <button type="button" onClick={() => void cancelarProgramacao(identificador)}>Confirmar inativação</button>
+                      <button type="button" onClick={() => setProgramacaoParaCancelar("")}>Manter programação</button>
+                    </section>
+                  ) : null}
+                  {historicoDaProgramacao === identificador ? (
+                    <ol>
+                      {historico.map((evento, indice) => (
+                        <li key={String(evento.identificador ?? indice)}>
+                          {dataLegivel(evento.criado_em)} · {texto(evento.acao)} · {texto(evento.estado_atual)}
+                        </li>
+                      ))}
+                    </ol>
+                  ) : null}
                 </article>
-              ))}</div>
+              );})}</div>
             </section>
           ) : null}
         </div>

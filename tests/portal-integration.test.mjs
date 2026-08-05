@@ -310,6 +310,11 @@ test("novos cadastros preservam escopo e proprietário reautentica ações crít
   assert.match(management, /Autonomia exclusiva do proprietário/);
   assert.match(management, /Confirmação da edição proprietária/);
   assert.match(management, /autoComplete="current-password"/);
+  assert.match(management, /new FormData\(/);
+  assert.match(management, /name="senha_do_proprietario"/);
+  assert.match(management, /name="confirmacao_do_proprietario"/);
+  assert.match(management, /formulario\.get\("senha_do_proprietario"\)/);
+  assert.match(management, /formulario\.get\("confirmacao_do_proprietario"\)/);
   assert.match(management, /senha_do_proprietario/);
   assert.match(management, /confirmacao_do_proprietario/);
   assert.match(management, /Verificar impacto da exclusão/);
@@ -363,13 +368,22 @@ test("operações legadas permanecem compatíveis sem reabrir cadastro oficial",
     "inativar-treinamento",
     "reativar-treinamento",
     "operar-programacao",
-    "programar-treinamento"
+    "programar-treinamento",
+    "atualizar-programacao",
+    "historico-sessao"
   ]) {
     assert.match(route, new RegExp(action));
   }
   assert.doesNotMatch(management, /criar-treinamento/);
   assert.doesNotMatch(management, /inativar-treinamento/);
   assert.match(management, /Programações existentes/);
+  assert.match(management, /Editar programação/);
+  assert.match(management, /historico\.length/);
+  assert.match(management, /Inativar programação/);
+  assert.match(management, /Cancelar sessão/);
+  assert.match(management, /Ver histórico/);
+  assert.match(route, /metodo = "GET"/);
+  assert.match(route, /metodo = "PUT"/);
   assert.match(management, /atualizar-contrato/);
   assert.match(management, /Ficha contratual/);
   assert.match(management, /Histórico/);
@@ -472,4 +486,17 @@ test("sessão exige nome, decisão explícita e comandos completos no Cockpit", 
   assert.match(operation, /RETOMAR_PRE: "Retomar PRÉ"/);
   assert.match(operation, /ENCERRAR SESSÃO/);
   assert.match(operation, /rotuloDoComandoCentral/);
+});
+
+test("relatório oferece PDF para download e impressão autenticada", async () => {
+  const operation = await source("components/operacao-homologacao.tsx");
+  const pdf = await source("app/api/operacao-homologacao/pdf/route.ts");
+
+  assert.match(operation, /Baixar PDF A4 claro/);
+  assert.match(operation, /Abrir para impressão/);
+  assert.match(operation, /modo=impressao/);
+  assert.match(pdf, /modoImpressao/);
+  assert.match(pdf, /inline/);
+  assert.match(pdf, /attachment/);
+  assert.match(pdf, /cache-control.*private, no-store/s);
 });

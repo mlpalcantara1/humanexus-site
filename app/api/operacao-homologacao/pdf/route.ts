@@ -13,6 +13,7 @@ export async function GET(request: Request) {
     if (!token) throw new Error("Sessão ausente.");
     const usuario = await requisitarNucleoAutenticado<Registro>("/api/v1/autenticacao/usuario-atual", token);
     const url = new URL(request.url);
+    const modoImpressao = url.searchParams.get("modo") === "impressao";
     const organizacaoId = String(
       usuario.identificador_da_organizacao
       ?? url.searchParams.get("organizacao")
@@ -94,7 +95,7 @@ export async function GET(request: Request) {
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
         "content-type": "application/pdf",
-        "content-disposition": `attachment; filename="humanexus-homologacao-visual-${String(relatorio.identificador).slice(0, 8)}.pdf"`,
+        "content-disposition": `${modoImpressao ? "inline" : "attachment"}; filename="humanexus-homologacao-visual-${String(relatorio.identificador).slice(0, 8)}.pdf"`,
         "cache-control": "private, no-store"
       }
     });
