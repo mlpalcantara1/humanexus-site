@@ -488,6 +488,44 @@ test("sessão exige nome, decisão explícita e comandos completos no Cockpit", 
   assert.match(operation, /rotuloDoComandoCentral/);
 });
 
+test("fechamento da Fase 1 preserva contexto e remove bloqueios cadastrais", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  const invites = await source("components/painel-profissional.tsx");
+  const session = await source("components/session-continuity.tsx");
+  const renewal = await source("app/api/sessao/renovar/route.ts");
+  const login = await source("components/formulario-entrada.tsx");
+  const cep = await source("app/api/endereco/cep/[cep]/route.ts");
+  const design = await source("app/humanexus-design-system.css");
+
+  assert.match(management, /profissionalPadrao/);
+  assert.match(management, /corpo\.profissionais\?\.length === 1/);
+  assert.match(management, /rotuloDoParticipante/);
+  assert.match(management, /elegibilidade_anterior/);
+  assert.match(management, /elegibilidade_nova/);
+  assert.match(management, /Organização de vínculo reutilizada/);
+  assert.match(management, /replay: false/);
+  assert.match(management, /relatorio: false/);
+  assert.match(management, /longitudinal: false/);
+
+  assert.match(invites, /selecionarParticipanteExistente/);
+  assert.match(invites, /telefone: cadastrais\?\.telefone/);
+  assert.match(invites, /funcao: profissionais\?\.funcao/);
+  assert.match(invites, /não alteram a ficha original/);
+  assert.doesNotMatch(invites, /disabled=\{form\.modo === "EXISTENTE"\}/);
+
+  assert.match(cep, /viacep\.com\.br/);
+  assert.match(cep, /AbortSignal\.timeout\(4_000\)/);
+  assert.match(cep, /Preencha o endereço manualmente/);
+  assert.match(session, /8 \* 60 \* 60/);
+  assert.match(session, /Continuar conectado/);
+  assert.match(session, /x-humanexus-csrf/);
+  assert.match(renewal, /expira_em_segundos/);
+  assert.match(renewal, /COOKIE_CSRF/);
+  assert.match(login, /retorno\.startsWith\("\/plataforma\/"\)/);
+  assert.match(design, /grid-template-columns: minmax\(250px/);
+  assert.match(design, /flex-wrap: wrap/);
+});
+
 test("relatório oferece PDF para download e impressão autenticada", async () => {
   const operation = await source("components/operacao-homologacao.tsx");
   const pdf = await source("app/api/operacao-homologacao/pdf/route.ts");

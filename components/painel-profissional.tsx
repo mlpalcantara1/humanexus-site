@@ -36,10 +36,18 @@ type RegistroParticipante = {
   referencia_externa: string;
   ativo: boolean;
   perfil_operacional?: {
+    tipo_de_vinculo?: "PARTICULAR" | "ORGANIZACIONAL" | "MISTO";
     dados_cadastrais?: {
       nome_completo?: string;
       nome_social?: string;
+      email?: string;
+      telefone?: string;
     };
+    dados_profissionais?: {
+      cargo?: string;
+      funcao?: string;
+    };
+    contatos?: Array<{ telefone?: string; email?: string }>;
   };
 };
 type ContextoParticipantes = {
@@ -206,6 +214,25 @@ export function PainelProfissional() {
     } finally {
       setOcupado(false);
     }
+  }
+
+  function selecionarParticipanteExistente(identificador: string) {
+    const registro = contexto?.participantes.find(
+      (item) => item.identificador === identificador
+    );
+    const perfil = registro?.perfil_operacional;
+    const cadastrais = perfil?.dados_cadastrais;
+    const profissionais = perfil?.dados_profissionais;
+    const contato = perfil?.contatos?.[0];
+    setForm((atual) => ({
+      ...atual,
+      participante: identificador,
+      nome: cadastrais?.nome_social || cadastrais?.nome_completo || "",
+      email: cadastrais?.email || contato?.email || "",
+      telefone: cadastrais?.telefone || contato?.telefone || "",
+      funcao: profissionais?.funcao || profissionais?.cargo || "",
+      tipo_vinculo: perfil?.tipo_de_vinculo || atual.tipo_vinculo
+    }));
   }
 
   async function copiar(value: string, mensagem: string) {
@@ -398,13 +425,14 @@ export function PainelProfissional() {
       <div className="hx-invites__workspace">
         <form onSubmit={criar} className="hx-invite-form">
           <header><small>GERAR CONVITE DE ANAMNESE</small><h3>Participante persistido</h3></header>
-          <label><span>Organização</span><select required value={form.organizacao} onChange={(event) => { const organizacao = event.target.value; setForm({ ...form, organizacao, participante: "" }); void Promise.all([carregarParticipantes(organizacao), carregar(organizacao)]).catch((erro) => setStatus(erro instanceof Error ? erro.message : "Organização indisponível.")); }}><option value="">Selecione</option>{(contexto?.organizacoes ?? []).filter((item) => item.ativa !== false).map((item) => <option key={item.identificador} value={item.identificador}>{item.nome}</option>)}</select></label>
-          <label><span>Origem do cadastro</span><select value={form.modo} onChange={(event) => setForm({ ...form, modo: event.target.value, participante: "" })}><option value="NOVO">Novo participante</option><option value="EXISTENTE">Participante existente</option></select></label>
-          {form.modo === "EXISTENTE" ? <label><span>Participante</span><select required value={form.participante} onChange={(event) => setForm({ ...form, participante: event.target.value })}><option value="">Selecione</option>{(contexto?.participantes ?? []).filter((item) => item.ativo !== false).map((item) => { const cadastrais = item.perfil_operacional?.dados_cadastrais; const nome = cadastrais?.nome_social || cadastrais?.nome_completo || item.referencia_externa; return <option key={item.identificador} value={item.identificador}>{nome}</option>; })}</select></label> : <>
+          <label><span>Organização</span><select required value={form.organizacao} onChange={(event) => { const organizacao = event.target.value; setForm({ ...form, organizacao, participante: "", nome: "", email: "", telefone: "", funcao: "" }); void Promise.all([carregarParticipantes(organizacao), carregar(organizacao)]).catch((erro) => setStatus(erro instanceof Error ? erro.message : "Organização indisponível.")); }}><option value="">Selecione</option>{(contexto?.organizacoes ?? []).filter((item) => item.ativa !== false).map((item) => <option key={item.identificador} value={item.identificador}>{item.nome}</option>)}</select></label>
+          <label><span>Origem do cadastro</span><select value={form.modo} onChange={(event) => setForm({ ...form, modo: event.target.value, participante: "", nome: "", email: "", telefone: "", funcao: "" })}><option value="NOVO">Novo participante</option><option value="EXISTENTE">Participante existente</option></select></label>
+          {form.modo === "EXISTENTE" ? <label><span>Participante</span><select required value={form.participante} onChange={(event) => selecionarParticipanteExistente(event.target.value)}><option value="">Selecione</option>{(contexto?.participantes ?? []).filter((item) => item.ativo !== false).map((item) => { const cadastrais = item.perfil_operacional?.dados_cadastrais; const nome = cadastrais?.nome_social || cadastrais?.nome_completo || item.referencia_externa; const rotulo = item.referencia_externa && item.referencia_externa !== nome ? `${nome} — ${item.referencia_externa}` : nome; return <option key={item.identificador} value={item.identificador}>{rotulo}</option>; })}</select></label> : <>
             <label><span>Nome</span><input required value={form.nome} onChange={(event) => setForm({ ...form, nome: event.target.value })} /></label>
             <label><span>E-mail</span><input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
           </>}
-          <div><label><span>Telefone</span><input disabled={form.modo === "EXISTENTE"} value={form.telefone} onChange={(event) => setForm({ ...form, telefone: event.target.value })} /></label><label><span>Função</span><input value={form.funcao} onChange={(event) => setForm({ ...form, funcao: event.target.value })} /></label></div>
+          <div><label><span>Telefone</span><input value={form.telefone} onChange={(event) => setForm({ ...form, telefone: event.target.value })} /></label><label><span>Função</span><input value={form.funcao} onChange={(event) => setForm({ ...form, funcao: event.target.value })} /></label></div>
+          {form.modo === "EXISTENTE" && form.participante ? <small>Telefone, função e vínculo foram reutilizados do cadastro. Ajustes valem somente para este convite e não alteram a ficha original.</small> : null}
           <div><label><span>Vínculo</span><select value={form.tipo_vinculo} onChange={(event) => setForm({ ...form, tipo_vinculo: event.target.value })}>{["PARTICULAR", "ORGANIZACIONAL", "MISTO"].map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Nicho</span><select value={form.nicho} onChange={(event) => setForm({ ...form, nicho: event.target.value })}>{NICHOS.map((item) => <option key={item}>{item}</option>)}</select></label></div>
           <label><span>Validade</span><select value={form.validade_horas} onChange={(event) => setForm({ ...form, validade_horas: Number(event.target.value) })}><option value={24}>24 horas</option><option value={72}>72 horas</option><option value={168}>7 dias</option></select></label>
           <button disabled={ocupado || !form.organizacao || (form.modo === "EXISTENTE" && !form.participante)}>{ocupado ? "Processando…" : "Gerar convite seguro"}</button>

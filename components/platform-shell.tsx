@@ -3,6 +3,7 @@ import { BotaoSair } from "@/components/botao-sair";
 import { PlatformNavigation } from "@/components/platform-navigation";
 import { ExperienceModeControl } from "@/components/experience-mode-control";
 import { NucleoConnectionBadge } from "@/components/nucleo-connection-badge";
+import { SessionContinuity } from "@/components/session-continuity";
 import { sessaoAtual } from "@/lib/portal-session";
 import { ErroDoNucleo } from "@/lib/humanexus-core";
 
@@ -47,6 +48,7 @@ export async function PlatformShell({ children }: { children: React.ReactNode })
           {sessao ? <BotaoSair csrf={sessao.csrf} /> : null}
         </div>
       </header>
+      {sessao ? <SessionContinuity csrf={sessao.csrf} /> : null}
       {contextoPreservado ? (
         <PlatformNavigation
           podeVerLab={podeVerLab}

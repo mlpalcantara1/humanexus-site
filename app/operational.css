@@ -634,6 +634,67 @@
   gap: .8rem;
 }
 
+.hx-field-origin {
+  grid-column: 1 / -1;
+  margin: 0 0 10px;
+  color: #829695;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.hx-eligibility-history {
+  display: grid;
+  gap: 8px;
+  padding: 15px;
+  border: 1px solid rgba(210, 179, 109, 0.2);
+  background: rgba(210, 179, 109, 0.035);
+}
+
+.hx-eligibility-history > strong {
+  color: #ddd7c9;
+  font: 15px Georgia, serif;
+}
+
+.hx-eligibility-history article {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) minmax(170px, 1fr) minmax(220px, 2fr) minmax(150px, auto);
+  gap: 10px;
+  align-items: start;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.hx-eligibility-history :where(span, small) {
+  color: #718584;
+  font: 7px var(--font-geist-mono), monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hx-eligibility-history b {
+  color: #d2b36d;
+  font-size: 9px;
+}
+
+.hx-eligibility-history p {
+  margin: 0;
+  color: #9dacab;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+@media (max-width: 920px) {
+  .hx-eligibility-history article {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .hx-eligibility-history article {
+    grid-template-columns: 1fr;
+  }
+}
+
 .hx-management-table > header > div,
 .hx-management-table article > div {
   display: grid;

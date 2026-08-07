@@ -92,6 +92,25 @@ function listaDeTextos(valor: unknown): string[] {
   }
 }
 
+function nomeDoParticipante(registro: Registro | null | undefined) {
+  const perfil = objeto(registro?.perfil_operacional);
+  const cadastrais = objeto(perfil.dados_cadastrais);
+  return String(
+    cadastrais.nome_social
+    ?? cadastrais.nome_completo
+    ?? registro?.referencia_externa
+    ?? "Participante"
+  );
+}
+
+function rotuloDoParticipante(registro: Registro | null | undefined) {
+  const nome = nomeDoParticipante(registro);
+  const referencia = String(registro?.referencia_externa ?? "").trim();
+  return referencia && referencia !== nome
+    ? `${nome} — ${referencia}`
+    : nome;
+}
+
 function normalizar(valor: unknown) {
   return String(valor ?? "")
     .normalize("NFD")
@@ -180,6 +199,7 @@ export function GestaoOperacional({
     justificativa: "",
     organizacao_base: false
   });
+  const [estadoDoCep, setEstadoDoCep] = useState("");
   const [participanteSelecionado, setParticipanteSelecionado] = useState("");
   const [grupoParticipante, setGrupoParticipante] =
     useState<"TODOS" | "PARTICULAR" | "ORGANIZACIONAL">("TODOS");
@@ -274,9 +294,9 @@ export function GestaoOperacional({
     telemetria: false,
     audio: false,
     video: false,
-    replay: true,
-    relatorio: true,
-    longitudinal: true,
+    replay: false,
+    relatorio: false,
+    longitudinal: false,
     coletivo: false,
     pesquisa: false
   });
@@ -326,10 +346,19 @@ export function GestaoOperacional({
     });
   }
 
-  function preencherParticipante(registro: Registro | null) {
+  function preencherParticipante(
+    registro: Registro | null,
+    organizacaoDeOrigem: Registro | null = dados?.organizacao ?? null
+  ) {
     const perfil = objeto(registro?.perfil_operacional);
     const cadastrais = objeto(perfil.dados_cadastrais);
     const profissionais = objeto(perfil.dados_profissionais);
+    const perfilDaOrganizacao = objeto(
+      organizacaoDeOrigem?.perfil_operacional
+    );
+    const institucionais = objeto(
+      perfilDaOrganizacao.dados_institucionais
+    );
     const contato = lista(perfil.contatos)[0] ?? {};
     const documentos = lista(perfil.documentos);
     const cpf = documentos.find((item) => item.tipo === "CPF") ?? {};
@@ -347,7 +376,16 @@ export function GestaoOperacional({
       cpf: String(cpf.numero ?? ""),
       documento_de_identidade: String(identidade.numero ?? ""),
       profissao: String(profissionais.profissao ?? ""),
-      empresa: String(profissionais.empresa ?? ""),
+      empresa: String(
+        profissionais.empresa
+        ?? (
+          registro
+            ? ""
+            : institucionais.nome_fantasia
+              ?? organizacaoDeOrigem?.nome
+              ?? ""
+        )
+      ),
       cargo: String(profissionais.cargo ?? ""),
       funcao: String(profissionais.funcao ?? ""),
       matricula: String(profissionais.matricula ?? ""),
@@ -368,6 +406,49 @@ export function GestaoOperacional({
       justificativa: ""
     });
   }
+
+  useEffect(() => {
+    if (modulo !== "organizacoes" || !novaOrganizacao) return;
+    const cep = organizacao.cep.replace(/\D/g, "");
+    if (cep.length !== 8) {
+      setEstadoDoCep("");
+      return;
+    }
+    const controlador = new AbortController();
+    const temporizador = window.setTimeout(async () => {
+      setEstadoDoCep("Consultando CEP…");
+      try {
+        const resposta = await fetch(`/api/endereco/cep/${cep}`, {
+          signal: controlador.signal,
+          cache: "no-store"
+        });
+        if (!resposta.ok) throw new Error("CEP não localizado");
+        const endereco = await resposta.json() as Record<string, string>;
+        setOrganizacao((atual) => atual.cep.replace(/\D/g, "") === cep
+          ? {
+              ...atual,
+              logradouro: endereco.logradouro || atual.logradouro,
+              bairro: endereco.bairro || atual.bairro,
+              cidade: endereco.cidade || atual.cidade,
+              uf: endereco.uf || atual.uf
+            }
+          : atual);
+        setEstadoDoCep(
+          "Endereço sugerido pelo CEP. Revise e ajuste os campos se necessário."
+        );
+      } catch (erro) {
+        if (!controlador.signal.aborted) {
+          setEstadoDoCep(
+            "Consulta de CEP indisponível. O endereço pode ser preenchido manualmente."
+          );
+        }
+      }
+    }, 350);
+    return () => {
+      window.clearTimeout(temporizador);
+      controlador.abort();
+    };
+  }, [modulo, novaOrganizacao, organizacao.cep]);
 
   async function carregar(organizacaoId = organizacaoSelecionada) {
     setEntregaDeConsentimento(null);
@@ -399,7 +480,9 @@ export function GestaoOperacional({
       preencherParticipante(participanteAberto);
     } else if (participanteSelecionado) {
       setParticipanteSelecionado("");
-      preencherParticipante(null);
+      preencherParticipante(null, corpo.organizacao ?? null);
+    } else if (modulo === "clientes") {
+      preencherParticipante(null, corpo.organizacao ?? null);
     }
     setSessao((estado) => {
       const participanteAtual = corpo.participantes?.find(
@@ -412,6 +495,8 @@ export function GestaoOperacional({
         (item: Registro) =>
           String(item.identificador) === estado.identificador_do_profissional
       );
+      const profissionalPadrao = profissionalAtual
+        ?? (corpo.profissionais?.length === 1 ? corpo.profissionais[0] : null);
       const anamneses = Array.isArray(participanteAtual?.anamneses)
         ? participanteAtual.anamneses as Registro[]
         : [];
@@ -436,7 +521,7 @@ export function GestaoOperacional({
         identificador_do_participante:
           String(participanteAtual?.identificador ?? ""),
         identificador_do_profissional:
-          String(profissionalAtual?.identificador ?? ""),
+          String(profissionalPadrao?.identificador ?? ""),
         identificador_da_anamnese:
           String(anamneseAtual?.identificador ?? ""),
         codigo_do_ctr: String(ctrAtual?.codigo_do_ctr ?? ""),
@@ -1072,7 +1157,7 @@ export function GestaoOperacional({
             <article key={String(item.identificador)}>
               <div>
                 <small>Participante</small>
-                <strong>{texto(cadastrais.nome_completo, texto(item.referencia_externa))}</strong>
+                <strong>{rotuloDoParticipante(item)}</strong>
               </div>
               <div><small>Vínculo</small><strong>{texto(perfil.tipo_de_vinculo)}</strong></div>
               <div><small>Organização / unidade</small><strong>{texto(profissionais.empresa, texto(dados?.organizacao?.nome))} · {texto(profissionais.unidade)}</strong></div>
@@ -1561,7 +1646,7 @@ export function GestaoOperacional({
                 <label>E-mail institucional<input type="email" value={organizacao.email} onChange={(evento) => setOrganizacao({ ...organizacao, email: evento.target.value })} /></label>
                 <label>Telefone<input type="tel" value={organizacao.telefone} onChange={(evento) => setOrganizacao({ ...organizacao, telefone: evento.target.value })} /></label>
                 <label>Site<input type="url" value={organizacao.site} onChange={(evento) => setOrganizacao({ ...organizacao, site: evento.target.value })} /></label>
-                <label>CEP<input inputMode="numeric" value={organizacao.cep} onChange={(evento) => setOrganizacao({ ...organizacao, cep: evento.target.value })} /></label>
+                <label>CEP<input inputMode="numeric" autoComplete="postal-code" value={organizacao.cep} onChange={(evento) => setOrganizacao({ ...organizacao, cep: evento.target.value })} /><small aria-live="polite">{estadoDoCep}</small></label>
                 <label>Logradouro<input value={organizacao.logradouro} onChange={(evento) => setOrganizacao({ ...organizacao, logradouro: evento.target.value })} /></label>
                 <label>Número<input value={organizacao.numero} onChange={(evento) => setOrganizacao({ ...organizacao, numero: evento.target.value })} /></label>
                 <label>Complemento<input value={organizacao.complemento} onChange={(evento) => setOrganizacao({ ...organizacao, complemento: evento.target.value })} /></label>
@@ -1848,7 +1933,7 @@ export function GestaoOperacional({
                   type="button"
                   onClick={() => {
                     setParticipanteSelecionado("");
-                    preencherParticipante(null);
+                    preencherParticipante(null, organizacaoAtual ?? null);
                   }}
                 >
                   Novo participante
@@ -1878,6 +1963,12 @@ export function GestaoOperacional({
             </fieldset>
             <fieldset className="hx-record-section">
               <legend>Dados profissionais</legend>
+              {!participanteSelecionado && participante.empresa ? (
+                <p className="hx-field-origin">
+                  Organização de vínculo reutilizada do cadastro institucional.
+                  Este campo permanece editável e não altera dados pessoais.
+                </p>
+              ) : null}
               <div className="hx-fields-grid">
                 <label>Profissão<input value={participante.profissao} onChange={(evento) => setParticipante({ ...participante, profissao: evento.target.value })} /></label>
                 <label>Empresa ou organização de vínculo<input value={participante.empresa} onChange={(evento) => setParticipante({ ...participante, empresa: evento.target.value })} /></label>
@@ -1940,18 +2031,55 @@ export function GestaoOperacional({
               {participanteSelecionado ? "Salvar nova versão" : "Cadastrar participante"}
             </button>
             {participanteSelecionado ? (
-              <p>
-                Histórico preservado: {
-                  Number(
-                    objeto(
-                      dados.participantes.find(
-                        (item) =>
-                          item.identificador === participanteSelecionado
-                      )?.perfil_operacional
-                    ).numero_da_versao ?? 0
-                  )
-                } versão(ões).
-              </p>
+              <section className="hx-eligibility-history">
+                <strong>
+                  Histórico preservado: {
+                    Number(
+                      objeto(
+                        dados.participantes.find(
+                          (item) =>
+                            item.identificador === participanteSelecionado
+                        )?.perfil_operacional
+                      ).numero_da_versao ?? 0
+                    )
+                  } versão(ões).
+                </strong>
+                {lista(
+                  dados.participantes.find(
+                    (item) => item.identificador === participanteSelecionado
+                  )?.historico
+                ).slice().reverse().map((versao) => {
+                  const estado = objeto(versao.estado);
+                  const operador = objeto(versao.operador);
+                  return (
+                    <article key={String(versao.identificador)}>
+                      <span>
+                        v{texto(versao.numero_da_versao)} · {
+                          dataLegivel(versao.criado_em)
+                        }
+                      </span>
+                      <b>
+                        {texto(
+                          versao.elegibilidade_anterior,
+                          "SEM ESTADO ANTERIOR"
+                        )} → {texto(
+                          versao.elegibilidade_nova,
+                          texto(estado.elegibilidade)
+                        )}
+                      </b>
+                      <p>
+                        {texto(
+                          estado.justificativa_da_elegibilidade,
+                          texto(versao.justificativa)
+                        )}
+                      </p>
+                      <small>
+                        {texto(operador.nome)} · {texto(operador.perfil)}
+                      </small>
+                    </article>
+                  );
+                })}
+              </section>
             ) : null}
             {administradorProprietario && participanteSelecionado ? (
               <fieldset className="hx-record-section">
@@ -2058,7 +2186,7 @@ export function GestaoOperacional({
                   key={String(item.identificador)}
                   value={String(item.identificador)}
                 >
-                  {texto(item.referencia_externa)} · {String(item.identificador)}
+                  {rotuloDoParticipante(item)}
                 </option>
               ))}
             </select></label>
@@ -2237,6 +2365,13 @@ export function GestaoOperacional({
               setSessao({
                 ...sessaoInicial(),
                 identificador_do_participante: participanteId,
+                identificador_do_profissional:
+                  sessao.identificador_do_profissional
+                  || (
+                    dados.profissionais.length === 1
+                      ? String(dados.profissionais[0].identificador)
+                      : ""
+                  ),
                 modalidade: sessao.modalidade,
                 tipo_de_sessao: sessao.tipo_de_sessao
               });
@@ -2246,7 +2381,7 @@ export function GestaoOperacional({
                 sessao: "",
                 thx: ""
               });
-            }}><option value="">Selecione</option>{dados.participantes.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.referencia_externa)}</option>)}</select></label>
+            }}><option value="">Selecione</option>{dados.participantes.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{rotuloDoParticipante(item)}</option>)}</select></label>
             <label>Profissional responsável<select required value={sessao.identificador_do_profissional} onChange={(evento) => setSessao({ ...sessao, identificador_do_profissional: evento.target.value })}><option value="">Selecione</option>{dados.profissionais.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.nome)}</option>)}</select></label>
             <label>Anamnese concluída<select required value={sessao.identificador_da_anamnese} onChange={(evento) => setSessao({
               ...sessao,
@@ -2532,7 +2667,7 @@ export function GestaoOperacional({
                     key={String(item.identificador)}
                     value={String(item.identificador)}
                   >
-                    {texto(item.referencia_externa)}
+                    {rotuloDoParticipante(item)}
                   </option>
                 ))}
               </select>

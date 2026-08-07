@@ -62,7 +62,18 @@ export function FormularioEntrada() {
         setEnviando(false);
         return;
       }
-      router.replace(dados.destino);
+      const retorno = new URLSearchParams(window.location.search).get("retorno");
+      const destinoSeguro = retorno
+        && retorno.startsWith("/")
+        && !retorno.startsWith("//")
+        && (
+          retorno.startsWith("/plataforma/")
+          || retorno === "/admin"
+          || retorno.startsWith("/admin?")
+        )
+        ? retorno
+        : dados.destino;
+      router.replace(destinoSeguro);
       router.refresh();
     } catch (erro) {
       setMensagem(

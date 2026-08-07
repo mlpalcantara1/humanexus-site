@@ -84,6 +84,9 @@
 /* Product shell */
 
 .hx-app--executive .hx-app__header {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) minmax(260px, auto) minmax(430px, 1.6fr);
+  align-items: center;
   min-height: 92px;
   padding: 13px clamp(22px, 2.6vw, 46px);
   border-bottom-color: var(--hx-line);
@@ -120,13 +123,12 @@
 }
 
 .hx-app__product-signature {
-  position: absolute;
-  left: 50%;
+  position: static;
   display: grid;
   gap: 4px;
   min-width: 280px;
   text-align: center;
-  transform: translateX(-50%);
+  transform: none;
 }
 
 .hx-app__product-signature small {
@@ -143,7 +145,56 @@
 }
 
 .hx-app__header-meta {
+  min-width: 0;
+  justify-self: end;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 15px;
+}
+
+.hx-app__identity {
+  min-width: 0;
+  max-width: 190px;
+}
+
+.hx-app__identity b,
+.hx-app__identity small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hx-session-continuity {
+  position: fixed;
+  z-index: 45;
+  top: 102px;
+  right: clamp(16px, 3vw, 42px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(540px, calc(100vw - 32px));
+  padding: 11px 13px;
+  border: 1px solid var(--hx-line-gold);
+  background: rgba(4, 12, 16, 0.97);
+  box-shadow: var(--hx-shadow-soft);
+  color: var(--hx-steel);
+  font-size: 0.72rem;
+}
+
+.hx-session-continuity[data-state="EXPIRADA"] {
+  border-color: rgba(201, 111, 104, 0.5);
+}
+
+.hx-session-continuity :where(button, a) {
+  flex: none;
+  padding: 8px 10px;
+  border: 1px solid rgba(210, 179, 109, 0.45);
+  background: rgba(210, 179, 109, 0.07);
+  color: var(--hx-gold-hi);
+  cursor: pointer;
+  font: 0.58rem var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .hx-experience-mode {
@@ -715,6 +766,10 @@
     display: none;
   }
 
+  .hx-app--executive .hx-app__header {
+    grid-template-columns: minmax(230px, 1fr) minmax(0, 2fr);
+  }
+
   .hx-app--executive .hx-live-command-center {
     grid-template-columns: minmax(300px, 0.9fr) minmax(460px, 1.45fr);
   }
@@ -725,6 +780,9 @@
 }
 
 @media (max-width: 1080px) {
+  .hx-app--executive .hx-app__header {
+    grid-template-columns: minmax(210px, 1fr) auto;
+  }
   .hx-app--executive .hx-nav {
     display: none;
   }
@@ -752,6 +810,7 @@
 
 @media (max-width: 820px) {
   .hx-app--executive .hx-app__header {
+    grid-template-columns: minmax(0, 1fr) auto;
     min-height: 74px;
     padding: 10px 15px;
   }
@@ -789,6 +848,14 @@
   .hx-experience-mode button small,
   .hx-experience-mode button strong {
     display: none;
+  }
+
+  .hx-session-continuity {
+    top: 82px;
+    left: 16px;
+    right: 16px;
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .hx-live-levels {

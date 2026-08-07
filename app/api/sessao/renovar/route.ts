@@ -11,7 +11,10 @@ export async function POST(request: Request) {
     const token = armazenamento.get(COOKIE_SESSAO)?.value;
     if (!token) throw new Error("Sessão ausente.");
     const sessao = await renovarNoNucleo(token);
-    const resposta = NextResponse.json({ renovada: true });
+    const resposta = NextResponse.json({
+      renovada: true,
+      expira_em_segundos: sessao.expiraEmSegundos
+    });
     resposta.cookies.set(COOKIE_SESSAO, sessao.token, {
       httpOnly: true,
       path: "/",
@@ -19,6 +22,17 @@ export async function POST(request: Request) {
       secure: new URL(request.url).protocol === "https:",
       maxAge: sessao.expiraEmSegundos
     });
+    resposta.cookies.set(
+      COOKIE_CSRF,
+      armazenamento.get(COOKIE_CSRF)?.value ?? "",
+      {
+        httpOnly: false,
+        path: "/",
+        sameSite: "strict",
+        secure: new URL(request.url).protocol === "https:",
+        maxAge: sessao.expiraEmSegundos
+      }
+    );
     return resposta;
   } catch {
     return NextResponse.json(
