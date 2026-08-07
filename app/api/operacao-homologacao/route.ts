@@ -785,6 +785,7 @@ export async function POST(request: Request) {
       identificador_do_participante?: string;
       identificador_da_sessao?: string;
       comando?: string;
+      chave_de_idempotencia?: string;
       justificativa?: string;
       categoria?: string;
       texto?: string;
@@ -867,7 +868,8 @@ export async function POST(request: Request) {
         throw new Error("O estado canônico não possui ação operacional disponível.");
       }
       const estadoCanonico = registro(contexto.estado_operacional);
-      const chaveDeIdempotencia = createHash("sha256")
+      const chaveFornecida = String(corpo.chave_de_idempotencia ?? "").trim();
+      const chaveDeIdempotencia = chaveFornecida || createHash("sha256")
         .update([
           String(contexto.sessao.identificador),
           comando,

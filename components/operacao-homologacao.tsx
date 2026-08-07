@@ -1856,10 +1856,18 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     }
   };
 
+  const novaChaveDeTentativa = () => crypto.randomUUID();
+
   const comandos = useMemo(() => ({
-    principal: () => enviar("acao-principal"),
+    principal: () => enviar("acao-principal", {
+      chave_de_idempotencia: novaChaveDeTentativa()
+    }),
     operacional: (comando: string, justificativa?: string) =>
-      enviar("acao-operacional", { comando, justificativa }),
+      enviar("acao-operacional", {
+        comando,
+        justificativa,
+        chave_de_idempotencia: novaChaveDeTentativa()
+      }),
     evento: () => enviar("evento", { momento: "TREINO" }),
     intervencao: () => enviar("intervencao"),
     desconectar: () => enviar("desconectar"),

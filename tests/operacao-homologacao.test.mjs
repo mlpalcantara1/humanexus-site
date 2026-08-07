@@ -121,7 +121,10 @@ test("frontend não reconstrói a máquina de estados e exibe uma ação princip
   const client = await source("components/operacao-homologacao.tsx");
   assert.match(route, /estadoOperacional/);
   assert.match(route, /chaveDeIdempotencia/);
+  assert.match(route, /corpo\.chave_de_idempotencia/);
   assert.match(route, /ultima_atualizacao/);
+  assert.match(client, /crypto\.randomUUID\(\)/);
+  assert.match(client, /chave_de_idempotencia: novaChaveDeTentativa\(\)/);
   assert.match(client, /proxima_acao_principal/);
   assert.match(client, /acoes_secundarias_permitidas/);
   assert.match(client, /COMANDO CONTEXTUAL/);
