@@ -1288,6 +1288,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const ocupadoAtual = useRef("");
   const autenticacaoExpiradaAtual = useRef(false);
   const versaoDoCockpit = useRef("");
+  const sequenciasDoCockpit = useRef<Record<string, number>>({});
   const estadoOperacionalDoPolling = useRef("");
   const [autenticacaoExpirada, setAutenticacaoExpirada] = useState(false);
   const [cortexClientId, setCortexClientId] = useState("");
@@ -1397,6 +1398,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       sem_alteracao?: boolean;
       modo_da_atualizacao?: "SNAPSHOT" | "DELTA" | "SEM_ALTERACAO";
       versao_do_cockpit?: string;
+      sequencias_do_cockpit?: Record<string, number>;
       erro?: { mensagem?: string };
     };
     try {
@@ -1460,7 +1462,30 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       if (dados.versao_do_cockpit) {
         versaoDoCockpit.current = dados.versao_do_cockpit;
       }
-      if (dados.sem_alteracao) return contextoExplicito;
+      const sequenciasRecebidas = dados.sequencias_do_cockpit ?? {};
+      const respostaRegressiva = Object.entries(sequenciasRecebidas).some(
+        ([fonte, sequencia]) => Number(sequencia) < Number(
+          sequenciasDoCockpit.current[fonte] ?? 0
+        )
+      );
+      if (respostaRegressiva) return contextoExplicito;
+      sequenciasDoCockpit.current = Object.fromEntries(
+        Object.entries({
+          ...sequenciasDoCockpit.current,
+          ...sequenciasRecebidas
+        }).map(([fonte, sequencia]) => [fonte, Number(sequencia)])
+      );
+      const pollingConfirmadoEm = new Date().toISOString();
+      if (dados.sem_alteracao) {
+        setEstado((atual) => atual ? {
+          ...atual,
+          cockpit_operacional: {
+            ...objeto(atual.cockpit_operacional),
+            polling_confirmado_em: pollingConfirmadoEm
+          }
+        } : atual);
+        return contextoExplicito;
+      }
       const estadoRecebido = String(
         objeto(dados.estado_operacional).estado_da_sessao ?? ""
       ).toUpperCase();
@@ -1476,19 +1501,24 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         estadoOperacionalDoPolling.current = String(
           estadoOperacional.estado_da_sessao ?? ""
         ).toUpperCase();
+        const cockpitOperacional = mesclarAtualizacaoIncremental(
+          atual.cockpit_operacional,
+          dados.cockpit_operacional
+        ) as Registro;
         return {
           ...atual,
           estado_operacional: estadoOperacional,
-          cockpit_operacional: mesclarAtualizacaoIncremental(
-            atual.cockpit_operacional,
-            dados.cockpit_operacional
-          ) as Registro
+          cockpit_operacional: {
+            ...cockpitOperacional,
+            polling_confirmado_em: pollingConfirmadoEm
+          }
         };
       });
       return contextoExplicito;
     }
     setEstado(dados);
     versaoDoCockpit.current = "";
+    sequenciasDoCockpit.current = {};
     estadoOperacionalDoPolling.current = String(
       objeto(dados.estado_operacional).estado_da_sessao ?? ""
     ).toUpperCase();
@@ -1553,6 +1583,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     setErro("");
     try {
       versaoDoCockpit.current = "";
+      sequenciasDoCockpit.current = {};
       const contexto = await carregar(selecaoPendente, false, true);
       await carregar(contexto);
       setContextoParaSelecao(null);
@@ -1642,8 +1673,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         return;
       }
       if (
-        document.visibilityState !== "visible"
-        || ocupadoAtual.current
+        ocupadoAtual.current
         || atualizacaoEmAndamento.current
       ) {
         agendar(500);
@@ -1698,6 +1728,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       if (document.visibilityState !== "visible") return;
       autenticacaoExpiradaAtual.current = false;
       setAutenticacaoExpirada(false);
+      limparTemporizador();
       agendar(0);
     };
 
@@ -1749,6 +1780,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         : String(atual?.identificador_da_organizacao ?? "");
       const participante = campo === "participante" ? identificador : "";
       versaoDoCockpit.current = "";
+      sequenciasDoCockpit.current = {};
       setEstado(null);
       await carregarOpcoesDeContexto(organizacao, participante);
       return;
@@ -1763,6 +1795,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     setErro("");
     try {
       versaoDoCockpit.current = "";
+      sequenciasDoCockpit.current = {};
       await carregar(proxima);
       const url = new URL(window.location.href);
       for (const chave of ["organizacao", "participante", "sessao"]) {

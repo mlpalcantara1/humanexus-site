@@ -482,7 +482,9 @@ export function CockpitOperacionalVivo({
   const ctr = objeto(estado.ctr_individual);
   const thx = objeto(estado.thx_individual);
   const execucao = objeto(estado.execucao);
-  const atualizadoEm = new Date(String(cockpit.atualizado_em ?? "")).getTime();
+  const atualizadoEm = new Date(String(
+    cockpit.polling_confirmado_em ?? cockpit.atualizado_em ?? ""
+  )).getTime();
   const limiteDaProjecaoMs = (
     Number(cockpit.limite_de_recencia_segundos ?? 15) + 5
   ) * 1000;
@@ -494,7 +496,10 @@ export function CockpitOperacionalVivo({
     ? fontesRecebidas
     : fontesRecebidas.map((fonte) => ({
         ...fonte,
-        estado: "RECONECTANDO",
+        // A expiração da projeção do portal prova somente interrupção da
+        // atualização HTTP; ela não prova desconexão física da fonte. O núcleo
+        // permanece a única autoridade para classificar RECONECTANDO.
+        estado: "ATUALIZAÇÃO INTERROMPIDA",
         ao_vivo: false,
         valores: {},
         metricas: {},

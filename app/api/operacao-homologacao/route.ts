@@ -136,6 +136,7 @@ async function atualizacaoLeve(
     contrato: string;
     modo: "SNAPSHOT" | "DELTA" | "SEM_ALTERACAO";
     versao: string;
+    sequencias_por_fonte: Record<string, number>;
     campos_alterados: {
       estado_operacional?: Registro;
       cockpit_operacional?: Registro;
@@ -156,6 +157,7 @@ async function atualizacaoLeve(
     sem_alteracao: dados.modo === "SEM_ALTERACAO",
     modo_da_atualizacao: dados.modo,
     versao_do_cockpit: dados.versao,
+    sequencias_do_cockpit: dados.sequencias_por_fonte,
     limites_da_memoria_viva: dados.limites,
     estado_operacional: dados.campos_alterados.estado_operacional,
     cockpit_operacional: dados.campos_alterados.cockpit_operacional

@@ -522,6 +522,28 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /const projecaoOperacionalAtual = Number\.isFinite/);
   assert.match(cockpit, /projecaoOperacionalAtual[\s\S]*ao_vivo: false/);
   assert.match(cockpit, /valores: \{\}[\s\S]*metricas: \{\}[\s\S]*series: \{\}/);
+  assert.match(cockpit, /ATUALIZAÇÃO INTERROMPIDA/);
+  assert.doesNotMatch(
+    cockpit.match(/const fontes = projecaoOperacionalAtual[\s\S]*?const replay/)?.[0] ?? "",
+    /estado: "RECONECTANDO"/
+  );
+});
+
+test("polling vivo não para em segundo plano e retoma imediatamente no foco", async () => {
+  const operacao = await source("components/operacao-homologacao.tsx");
+  const ciclo = operacao.match(
+    /useEffect\(\(\) => \{[\s\S]*?contextoDoPolling\.current = \{[\s\S]*?\}, \[[\s\S]*?\]\);/
+  )?.[0] ?? operacao;
+
+  assert.doesNotMatch(
+    ciclo,
+    /document\.visibilityState !== "visible"[\s\S]{0,120}agendar\(500\)/
+  );
+  assert.match(ciclo, /visibilitychange/);
+  assert.match(ciclo, /limparTemporizador\(\);[\s\S]*agendar\(0\)/);
+  assert.match(operacao, /polling_confirmado_em/);
+  assert.match(operacao, /sequenciasDoCockpit\.current/);
+  assert.match(operacao, /respostaRegressiva/);
 });
 
 test("EPOC degradado gera ressalva sem bloquear o fluxo operacional", async () => {
@@ -647,6 +669,7 @@ test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", asy
   assert.match(rota, /cockpit-operacional-vivo/);
   assert.match(rota, /desde_versao/);
   assert.match(rota, /SEM_ALTERACAO/);
+  assert.match(rota, /sequencias_do_cockpit: dados\.sequencias_por_fonte/);
   assert.doesNotMatch(
     rota.match(/async function atualizacaoLeve[\s\S]*?\n}\n\nasync function estado/)?.[0] ?? "",
     /telemetria\/sessoes|eventos\?limite|consultas-em-lote/
@@ -654,6 +677,12 @@ test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", asy
   assert.match(operacao, /versaoDoCockpit\.current/);
   assert.match(operacao, /mesclarAtualizacaoIncremental/);
   assert.match(operacao, /dados\.sem_alteracao/);
+  assert.match(
+    operacao,
+    /dados\.sem_alteracao[\s\S]*polling_confirmado_em: pollingConfirmadoEm/
+  );
+  assert.match(operacao, /respostaRegressiva/);
+  assert.match(operacao, /sequenciasDoCockpit\.current = \{\}/);
 });
 
 test("polling reduz sessão pausada, para encerrada e libera memória ao sair", async () => {
