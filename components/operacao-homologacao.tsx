@@ -2018,13 +2018,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     ? fluxoOperacional.acoes_secundarias_permitidas.map(String)
     : [];
   const executarPrincipal = () => {
-    if ([
-      "DEFINIR_REFERENCIA_BASELINE",
-      "INICIAR_BASELINE",
-      "PAUSAR_BASELINE",
-      "RETOMAR_BASELINE",
-      "ENCERRAR_BASELINE"
-    ].includes(acaoPrincipal)) {
+    if (acaoPrincipal === "DEFINIR_REFERENCIA_BASELINE") {
       document
         .getElementById("referencia-baseline")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });

@@ -132,6 +132,25 @@ test("frontend não reconstrói a máquina de estados e exibe uma ação princip
   assert.doesNotMatch(route, /async function preservarSnapshot/);
 });
 
+test("comando principal inicia e mantém o Baseline pela rota canônica", async () => {
+  const client = await source("components/operacao-homologacao.tsx");
+  const trecho = client.slice(
+    client.indexOf("const executarPrincipal = () =>"),
+    client.indexOf("const executarSecundaria =")
+  );
+
+  assert.match(trecho, /acaoPrincipal === "DEFINIR_REFERENCIA_BASELINE"/);
+  assert.match(trecho, /void comandos\.principal\(\)/);
+  for (const comando of [
+    "INICIAR_BASELINE",
+    "PAUSAR_BASELINE",
+    "RETOMAR_BASELINE",
+    "ENCERRAR_BASELINE"
+  ]) {
+    assert.doesNotMatch(trecho, new RegExp(`"${comando}"`));
+  }
+});
+
 test("visualizações premium diferenciam dado, simulação, lacuna e bloqueio", async () => {
   const chart = await source("components/hx-command-visualizations.tsx");
   const client = await source("components/operacao-homologacao.tsx");
