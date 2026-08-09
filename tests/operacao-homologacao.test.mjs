@@ -670,6 +670,7 @@ test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", asy
   assert.match(rota, /desde_versao/);
   assert.match(rota, /SEM_ALTERACAO/);
   assert.match(rota, /sequencias_do_cockpit: dados\.sequencias_por_fonte/);
+  assert.match(rota, /geracoes_do_cockpit: dados\.geracoes_por_fonte/);
   assert.doesNotMatch(
     rota.match(/async function atualizacaoLeve[\s\S]*?\n}\n\nasync function estado/)?.[0] ?? "",
     /telemetria\/sessoes|eventos\?limite|consultas-em-lote/
@@ -682,7 +683,27 @@ test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", asy
     /dados\.sem_alteracao[\s\S]*polling_confirmado_em: pollingConfirmadoEm/
   );
   assert.match(operacao, /respostaRegressiva/);
+  assert.match(operacao, /geracaoAtual === geracaoRecebida/);
+  assert.match(
+    operacao,
+    /mesmaGeracao && Number\(sequencia\) < Number/
+  );
+  assert.match(operacao, /geracoesDoCockpit\.current = \{\}/);
   assert.match(operacao, /sequenciasDoCockpit\.current = \{\}/);
+});
+
+test("cronômetro do Baseline começa somente no início canônico do Baseline", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+
+  assert.match(cockpit, /const registroBaseline = objeto\(baselineBruto\.registro\)/);
+  assert.match(
+    cockpit,
+    /const inicioDoCronometro = sessaoBaseline[\s\S]*?registroBaseline\.iniciado_em[\s\S]*?: sessao\.tempo_total_inicio/
+  );
+  assert.match(
+    cockpit,
+    /duracao\(inicioDoCronometro, fimDoCronometro, agora\)/
+  );
 });
 
 test("polling reduz sessão pausada, para encerrada e libera memória ao sair", async () => {

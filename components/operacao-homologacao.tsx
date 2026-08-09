@@ -1289,6 +1289,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const autenticacaoExpiradaAtual = useRef(false);
   const versaoDoCockpit = useRef("");
   const sequenciasDoCockpit = useRef<Record<string, number>>({});
+  const geracoesDoCockpit = useRef<Record<string, string>>({});
   const estadoOperacionalDoPolling = useRef("");
   const [autenticacaoExpirada, setAutenticacaoExpirada] = useState(false);
   const [cortexClientId, setCortexClientId] = useState("");
@@ -1399,6 +1400,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       modo_da_atualizacao?: "SNAPSHOT" | "DELTA" | "SEM_ALTERACAO";
       versao_do_cockpit?: string;
       sequencias_do_cockpit?: Record<string, number>;
+      geracoes_do_cockpit?: Record<string, string>;
       erro?: { mensagem?: string };
     };
     try {
@@ -1463,10 +1465,18 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         versaoDoCockpit.current = dados.versao_do_cockpit;
       }
       const sequenciasRecebidas = dados.sequencias_do_cockpit ?? {};
+      const geracoesRecebidas = dados.geracoes_do_cockpit ?? {};
       const respostaRegressiva = Object.entries(sequenciasRecebidas).some(
-        ([fonte, sequencia]) => Number(sequencia) < Number(
-          sequenciasDoCockpit.current[fonte] ?? 0
-        )
+        ([fonte, sequencia]) => {
+          const geracaoAtual = geracoesDoCockpit.current[fonte];
+          const geracaoRecebida = geracoesRecebidas[fonte];
+          const mesmaGeracao = !geracaoAtual
+            || !geracaoRecebida
+            || geracaoAtual === geracaoRecebida;
+          return mesmaGeracao && Number(sequencia) < Number(
+            sequenciasDoCockpit.current[fonte] ?? 0
+          );
+        }
       );
       if (respostaRegressiva) return contextoExplicito;
       sequenciasDoCockpit.current = Object.fromEntries(
@@ -1475,6 +1485,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           ...sequenciasRecebidas
         }).map(([fonte, sequencia]) => [fonte, Number(sequencia)])
       );
+      geracoesDoCockpit.current = {
+        ...geracoesDoCockpit.current,
+        ...geracoesRecebidas
+      };
       const pollingConfirmadoEm = new Date().toISOString();
       if (dados.sem_alteracao) {
         setEstado((atual) => atual ? {
@@ -1519,6 +1533,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     setEstado(dados);
     versaoDoCockpit.current = "";
     sequenciasDoCockpit.current = {};
+    geracoesDoCockpit.current = {};
     estadoOperacionalDoPolling.current = String(
       objeto(dados.estado_operacional).estado_da_sessao ?? ""
     ).toUpperCase();
@@ -1584,6 +1599,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     try {
       versaoDoCockpit.current = "";
       sequenciasDoCockpit.current = {};
+      geracoesDoCockpit.current = {};
       const contexto = await carregar(selecaoPendente, false, true);
       await carregar(contexto);
       setContextoParaSelecao(null);
@@ -1781,6 +1797,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       const participante = campo === "participante" ? identificador : "";
       versaoDoCockpit.current = "";
       sequenciasDoCockpit.current = {};
+      geracoesDoCockpit.current = {};
       setEstado(null);
       await carregarOpcoesDeContexto(organizacao, participante);
       return;
@@ -1796,6 +1813,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     try {
       versaoDoCockpit.current = "";
       sequenciasDoCockpit.current = {};
+      geracoesDoCockpit.current = {};
       await carregar(proxima);
       const url = new URL(window.location.href);
       for (const chave of ["organizacao", "participante", "sessao"]) {

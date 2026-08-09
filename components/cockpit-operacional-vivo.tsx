@@ -523,7 +523,15 @@ export function CockpitOperacionalVivo({
     () => trilhas(fontes.filter((fonte) => fonte.ao_vivo === true)),
     [fontes]
   );
-  const baseline = referenciaDeBaseline(objeto(estado.gravacao).baseline);
+  const baselineBruto = objeto(objeto(estado.gravacao).baseline);
+  const registroBaseline = objeto(baselineBruto.registro);
+  const baseline = referenciaDeBaseline(baselineBruto);
+  const inicioDoCronometro = sessaoBaseline
+    ? registroBaseline.iniciado_em
+    : sessao.tempo_total_inicio;
+  const fimDoCronometro = sessaoBaseline
+    ? registroBaseline.finalizado_em
+    : sessao.tempo_total_fim;
   const ciencia = objeto(estado.ciencia);
   const leituraCientifica = objeto(cockpit.leitura_cientifica);
   const iirh = objeto(leituraCientifica.iirh);
@@ -845,7 +853,7 @@ export function CockpitOperacionalVivo({
         <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? texto(zona.nome ?? zona.codigo) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? "Classificação canônica" : texto(zona.motivo, "IIRH oficial indisponível")}</span></div>
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
-        <div><small>TEMPO</small><strong>{duracao(sessao.tempo_total_inicio, sessao.tempo_total_fim, agora)}</strong><span>Sessão</span></div>
+        <div><small>TEMPO</small><strong>{duracao(inicioDoCronometro, fimDoCronometro, agora)}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
         <div><small>FREQUÊNCIA CARDÍACA</small><strong>{polar.ao_vivo === true ? <LeituraNumerica valor={objeto(polar.valores).hr_bpm} sufixo=" bpm" /> : "Sem leitura atual"}</strong><span>{texto(polar.estado)}</span></div>
         <div><small>RMSSD</small><strong>{polar.ao_vivo === true ? <LeituraNumerica valor={objeto(polar.valores).rmssd_tecnico_ms} casas={1} sufixo=" ms" /> : "Sem leitura atual"}</strong><span>{texto(polar.estado)}</span></div>
         <div><small>ESTADO DO EEG</small><strong>{texto(eeg.estado)}</strong><span>{eeg.ao_vivo === true ? `Atual ${percentual(objeto(eeg.valores).qualidade_global)} · mediana ${percentual(objeto(eeg.valores).qualidade_mediana_da_janela)}` : "Sem leitura atual"}</span></div>
