@@ -524,7 +524,16 @@ export function CockpitOperacionalVivo({
     [fontes]
   );
   const baselineBruto = objeto(objeto(estado.gravacao).baseline);
-  const registroBaseline = objeto(baselineBruto.registro);
+  const referenciaBaselineCanonica = objeto(
+    estadoOperacional.referencia_de_baseline
+  );
+  const registroBaselineCanonico = objeto(
+    referenciaBaselineCanonica.baseline
+  );
+  const registroBaselineDaGravacao = objeto(baselineBruto.registro);
+  const registroBaseline = Object.keys(registroBaselineCanonico).length > 0
+    ? registroBaselineCanonico
+    : registroBaselineDaGravacao;
   const baseline = referenciaDeBaseline(baselineBruto);
   const inicioDoCronometro = sessaoBaseline
     ? registroBaseline.iniciado_em
@@ -532,6 +541,9 @@ export function CockpitOperacionalVivo({
   const fimDoCronometro = sessaoBaseline
     ? registroBaseline.finalizado_em
     : sessao.tempo_total_fim;
+  const estadoDoBaseline = registroBaseline.estado === "INICIADO"
+    ? "EM EXECUÇÃO"
+    : texto(registroBaseline.estado, texto(contextoSessao.estado));
   const ciencia = objeto(estado.ciencia);
   const leituraCientifica = objeto(cockpit.leitura_cientifica);
   const iirh = objeto(leituraCientifica.iirh);
@@ -852,7 +864,7 @@ export function CockpitOperacionalVivo({
         <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{iirhCalculado ? `${numero(iirh.valor, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong><span>{iirhCalculado ? "Resultado canônico" : texto(iirh.motivo, "Evidência insuficiente")}</span></div>
         <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? texto(zona.nome ?? zona.codigo) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? "Classificação canônica" : texto(zona.motivo, "IIRH oficial indisponível")}</span></div>
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
-        <div><small>FASE</small><strong>{fase}</strong><span>{texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
+        <div><small>FASE</small><strong>{fase}</strong><span>{sessaoBaseline ? estadoDoBaseline : texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
         <div><small>TEMPO</small><strong>{duracao(inicioDoCronometro, fimDoCronometro, agora)}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
         <div><small>FREQUÊNCIA CARDÍACA</small><strong>{polar.ao_vivo === true ? <LeituraNumerica valor={objeto(polar.valores).hr_bpm} sufixo=" bpm" /> : "Sem leitura atual"}</strong><span>{texto(polar.estado)}</span></div>
         <div><small>RMSSD</small><strong>{polar.ao_vivo === true ? <LeituraNumerica valor={objeto(polar.valores).rmssd_tecnico_ms} casas={1} sufixo=" ms" /> : "Sem leitura atual"}</strong><span>{texto(polar.estado)}</span></div>

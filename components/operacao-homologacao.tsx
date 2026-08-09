@@ -248,6 +248,10 @@ function comandoPermitido(estado: Estado, comando: string) {
 const ROTULOS_DOS_COMANDOS: Record<string, string> = {
   PREPARAR_SESSAO: "Preparar sessão",
   DEFINIR_REFERENCIA_BASELINE: "Definir referência de baseline",
+  INICIAR_BASELINE: "Iniciar Baseline",
+  PAUSAR_BASELINE: "Pausar Baseline",
+  RETOMAR_BASELINE: "Retomar Baseline",
+  ENCERRAR_BASELINE: "Encerrar Baseline",
   INICIAR_PRE: "Iniciar PRÉ",
   PAUSAR_PRE: "Pausar PRÉ",
   RETOMAR_PRE: "Retomar PRÉ",
@@ -271,10 +275,15 @@ const ROTULOS_DOS_COMANDOS: Record<string, string> = {
 
 function rotuloDoComandoCentral(comando: string) {
   if (comando === "PREPARAR_SESSAO") return "PREPARAR SESSÃO";
-  if (comando.startsWith("INICIAR_") || comando.startsWith("PAUSAR_") || comando.startsWith("RETOMAR_")) {
+  if (
+    comando.startsWith("INICIAR_")
+    || comando.startsWith("PAUSAR_")
+    || comando.startsWith("RETOMAR_")
+    || comando.startsWith("ENCERRAR_")
+  ) {
     return (ROTULOS_DOS_COMANDOS[comando] ?? texto(comando)).toUpperCase();
   }
-  if (comando.startsWith("ENCERRAR_") || comando === "CONCLUIR_SESSAO") {
+  if (comando === "CONCLUIR_SESSAO") {
     return "ENCERRAR SESSÃO";
   }
   return ROTULOS_DOS_COMANDOS[comando] ?? texto(comando);

@@ -149,6 +149,15 @@ test("comando principal inicia e mantém o Baseline pela rota canônica", async 
   ]) {
     assert.doesNotMatch(trecho, new RegExp(`"${comando}"`));
   }
+  assert.match(client, /ENCERRAR_BASELINE: "Encerrar Baseline"/);
+  assert.match(
+    client,
+    /comando\.startsWith\("ENCERRAR_"\)[\s\S]*?toUpperCase\(\)/
+  );
+  assert.match(
+    client,
+    /if \(comando === "CONCLUIR_SESSAO"\) \{[\s\S]*?return "ENCERRAR SESSÃO"/
+  );
 });
 
 test("visualizações premium diferenciam dado, simulação, lacuna e bloqueio", async () => {
@@ -714,7 +723,18 @@ test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", asy
 test("cronômetro do Baseline começa somente no início canônico do Baseline", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
 
-  assert.match(cockpit, /const registroBaseline = objeto\(baselineBruto\.registro\)/);
+  assert.match(
+    cockpit,
+    /const referenciaBaselineCanonica = objeto\([\s\S]*?estadoOperacional\.referencia_de_baseline/
+  );
+  assert.match(
+    cockpit,
+    /const registroBaselineCanonico = objeto\([\s\S]*?referenciaBaselineCanonica\.baseline/
+  );
+  assert.match(
+    cockpit,
+    /Object\.keys\(registroBaselineCanonico\)\.length > 0[\s\S]*?registroBaselineCanonico[\s\S]*?: registroBaselineDaGravacao/
+  );
   assert.match(
     cockpit,
     /const inicioDoCronometro = sessaoBaseline[\s\S]*?registroBaseline\.iniciado_em[\s\S]*?: sessao\.tempo_total_inicio/
@@ -722,6 +742,10 @@ test("cronômetro do Baseline começa somente no início canônico do Baseline",
   assert.match(
     cockpit,
     /duracao\(inicioDoCronometro, fimDoCronometro, agora\)/
+  );
+  assert.match(
+    cockpit,
+    /registroBaseline\.estado === "INICIADO"[\s\S]*?"EM EXECUÇÃO"/
   );
 });
 
