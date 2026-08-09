@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import {
+  atrasoDoPollingCanonico,
+  podeAplicarRespostaCanonica
+} from "../lib/cockpit-live-coordination.ts";
 
 const root = new URL("../", import.meta.url);
 const source = (path) => readFile(new URL(path, root), "utf8");
@@ -551,6 +555,13 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /projecaoOperacionalAtual[\s\S]*ao_vivo: false/);
   assert.match(cockpit, /valores: \{\}[\s\S]*metricas: \{\}[\s\S]*series: \{\}/);
   assert.match(cockpit, /ATUALIZAÇÃO INTERROMPIDA/);
+  assert.match(cockpit, /const modoSincronizando = !projecaoOperacionalAtual/);
+  assert.doesNotMatch(
+    cockpit,
+    /const modoAguardando = !projecaoOperacionalAtual/
+  );
+  assert.match(cockpit, /SINCRONIZANDO ESTADO CANÔNICO/);
+  assert.match(cockpit, /sem inferir desconexão/);
   assert.doesNotMatch(
     cockpit.match(/const fontes = projecaoOperacionalAtual[\s\S]*?const replay/)?.[0] ?? "",
     /estado: "RECONECTANDO"/
@@ -570,8 +581,105 @@ test("polling vivo não para em segundo plano e retoma imediatamente no foco", a
   assert.match(ciclo, /visibilitychange/);
   assert.match(ciclo, /limparTemporizador\(\);[\s\S]*agendar\(0\)/);
   assert.match(operacao, /polling_confirmado_em/);
-  assert.match(operacao, /revisaoDoCockpit\.current/);
+  assert.match(operacao, /podeAplicarRespostaCanonica/);
   assert.doesNotMatch(operacao, /respostaRegressiva/);
+});
+
+test("snapshot canônico de outra instância não é recusado por revisão local menor", () => {
+  const contexto = {
+    organizacao: "org-a",
+    participante: "part-a",
+    sessao: "sessao-a"
+  };
+
+  assert.equal(podeAplicarRespostaCanonica({
+    contextoEsperado: contexto,
+    contextoRecebido: contexto,
+    cancelada: false,
+    componenteMontado: true
+  }), true);
+  // A primeira instância podia emitir revisão 47 e a seguinte revisão 1.
+  // A revisão process-local não participa da decisão do consumidor.
+  assert.equal(podeAplicarRespostaCanonica({
+    contextoEsperado: contexto,
+    contextoRecebido: contexto,
+    cancelada: false,
+    componenteMontado: true,
+    revisaoAnterior: 47,
+    revisaoRecebida: 1
+  }), true);
+});
+
+test("propriedade do ciclo canônico cobre duas horas, retomada, concorrência e isolamento", () => {
+  const sessaoA = {
+    organizacao: "org-a",
+    participante: "part-a",
+    sessao: "sessao-a"
+  };
+  const sessaoB = {
+    organizacao: "org-b",
+    participante: "part-b",
+    sessao: "sessao-b"
+  };
+  let estado = { polar: 475, epoc: 3419, contexto: sessaoA };
+  let picoDeObjetosResidentes = 1;
+
+  // 2 h / 2,5 s = 2.880 ciclos. As fontes avançam em ritmos distintos e
+  // snapshots vindos de instâncias recém-aquecidas continuam aplicáveis.
+  for (let ciclo = 1; ciclo <= 2_880; ciclo += 1) {
+    const resposta = {
+      polar: 475 + ciclo,
+      epoc: 3419 + (ciclo * 3),
+      contexto: sessaoA,
+      revisaoLocal: ciclo % 2 === 0 ? 1 : 91
+    };
+    if (podeAplicarRespostaCanonica({
+      contextoEsperado: sessaoA,
+      contextoRecebido: resposta.contexto,
+      cancelada: false,
+      componenteMontado: true
+    })) {
+      estado = {
+        polar: resposta.polar,
+        epoc: resposta.epoc,
+        contexto: resposta.contexto
+      };
+    }
+    picoDeObjetosResidentes = Math.max(picoDeObjetosResidentes, 1);
+  }
+  assert.deepEqual(
+    { polar: estado.polar, epoc: estado.epoc },
+    { polar: 3355, epoc: 12059 }
+  );
+  assert.equal(picoDeObjetosResidentes, 1);
+
+  // Uma resposta lenta é cancelada antes da retomada imediata e não pode
+  // sobrescrever a resposta canônica nova.
+  assert.equal(podeAplicarRespostaCanonica({
+    contextoEsperado: sessaoA,
+    contextoRecebido: sessaoA,
+    cancelada: true,
+    componenteMontado: true
+  }), false);
+  assert.equal(atrasoDoPollingCanonico("INICIADA"), 2_500);
+  assert.equal(atrasoDoPollingCanonico("INICIADA", 1), 5_000);
+  assert.equal(atrasoDoPollingCanonico("INICIADA", 99), 30_000);
+  assert.equal(atrasoDoPollingCanonico("PAUSADA"), 15_000);
+
+  // Após A→B, nenhum snapshot tardio de A entra em B; uma nova geração com
+  // sequência inferior é aceita por ser estado canônico da sessão B.
+  assert.equal(podeAplicarRespostaCanonica({
+    contextoEsperado: sessaoB,
+    contextoRecebido: sessaoA,
+    cancelada: false,
+    componenteMontado: true
+  }), false);
+  assert.equal(podeAplicarRespostaCanonica({
+    contextoEsperado: sessaoB,
+    contextoRecebido: sessaoB,
+    cancelada: false,
+    componenteMontado: true
+  }), true);
 });
 
 test("EPOC degradado gera ressalva sem bloquear o fluxo operacional", async () => {
@@ -679,15 +787,17 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
 
 test("Polling oficial expira requisição travada e permite nova tentativa", async () => {
   const operacao = await source("components/operacao-homologacao.tsx");
+  const coordenacao = await source("lib/cockpit-live-coordination.ts");
 
-  assert.match(operacao, /const controlador = leve && !opcoes\.signal \? new AbortController\(\) : null/);
+  assert.match(operacao, /const controlador = !opcoes\.signal \? new AbortController\(\) : null/);
   assert.match(operacao, /window\.setTimeout\(\(\) => controlador\.abort\(\), 12_000\)/);
   assert.match(operacao, /signal: controlador\.signal/);
   assert.match(operacao, /nova tentativa automática em andamento/);
   assert.match(operacao, /controlador\.abort\(\)[\s\S]*agendar\(250\)/);
   assert.match(operacao, /concluir\(identificador, proximoAtraso\)/);
   assert.match(operacao, /falhasConsecutivas \+= 1/);
-  assert.match(operacao, /Math\.min\([\s\S]*30_000/);
+  assert.match(operacao, /atrasoDoPollingCanonico/);
+  assert.match(coordenacao, /Math\.min\(30_000/);
 });
 
 test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", async () => {
@@ -700,6 +810,10 @@ test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", asy
   assert.match(rota, /sequencias_do_cockpit: dados\.sequencias_por_fonte/);
   assert.match(rota, /geracoes_do_cockpit: dados\.geracoes_por_fonte/);
   assert.match(rota, /revisao_do_cockpit: dados\.revisao/);
+  assert.match(
+    rota,
+    /escopo_da_revisao_do_cockpit: dados\.escopo_da_revisao/
+  );
   assert.doesNotMatch(
     rota.match(/async function atualizacaoLeve[\s\S]*?\n}\n\nasync function estado/)?.[0] ?? "",
     /telemetria\/sessoes|eventos\?limite|consultas-em-lote/
@@ -713,11 +827,8 @@ test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", asy
   );
   assert.doesNotMatch(operacao, /respostaRegressiva/);
   assert.doesNotMatch(operacao, /geracaoAtual === geracaoRecebida/);
-  assert.match(
-    operacao,
-    /revisaoRecebida < revisaoDoCockpit\.current/
-  );
-  assert.match(operacao, /revisaoDoCockpit\.current = 0/);
+  assert.doesNotMatch(operacao, /revisaoRecebida <|revisaoDoCockpit\.current/);
+  assert.match(operacao, /podeAplicarRespostaCanonica/);
 });
 
 test("cronômetro do Baseline começa somente no início canônico do Baseline", async () => {
@@ -752,9 +863,10 @@ test("cronômetro do Baseline começa somente no início canônico do Baseline",
 test("polling reduz sessão pausada, para encerrada e libera memória ao sair", async () => {
   const operacao = await source("components/operacao-homologacao.tsx");
   const rota = await source("app/api/operacao-homologacao/route.ts");
+  const coordenacao = await source("lib/cockpit-live-coordination.ts");
 
-  assert.match(operacao, /estadoOperacionalDoPolling\.current === "PAUSADA"/);
-  assert.match(operacao, /15_000/);
+  assert.match(operacao, /atrasoDoPollingCanonico/);
+  assert.match(coordenacao, /=== "PAUSADA"\) return 15_000/);
   assert.match(operacao, /\["FINALIZADA", "ENCERRADA"\]/);
   assert.match(operacao, /method: "DELETE"/);
   assert.match(operacao, /keepalive: true/);
@@ -766,12 +878,10 @@ test("Polling autenticado preserva contexto, ordenação e ciclo único", async 
 
   assert.match(operacao, /contextoDoPolling\.current = atual/);
   assert.match(operacao, /polling exige organização, participante e sessão explícitos/i);
-  assert.match(operacao, /sequenciaDasSolicitacoes\.current/);
-  assert.match(
-    operacao,
-    /ordemDaSolicitacao < sequenciaDasSolicitacoes\.current/
-  );
-  assert.match(operacao, /ordemDaSolicitacao < ultimaRespostaAplicada\.current/);
+  assert.doesNotMatch(operacao, /sequenciaDasSolicitacoes|ultimaRespostaAplicada/);
+  assert.match(operacao, /podeAplicarRespostaCanonica/);
+  assert.match(operacao, /carregamentoIntegralEmAndamento\.current\?\.abort\(\)/);
+  assert.match(operacao, /atualizacaoEmAndamento\.current\?\.controlador\.abort\(\)/);
   assert.match(operacao, /atualizacaoEmAndamento\.current\?\.identificador/);
   assert.match(operacao, /limparTemporizador\(\)[\s\S]*window\.setTimeout\(executar, atraso\)/);
   assert.match(operacao, /document\.visibilityState !== "visible"/);

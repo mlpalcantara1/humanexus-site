@@ -18,6 +18,11 @@ import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multimodal";
 import { CockpitOperacionalVivo } from "@/components/cockpit-operacional-vivo";
 import { HxSectionHeader } from "@/components/hx-design-system";
+import {
+  atrasoDoPollingCanonico,
+  chaveDoContextoVivo,
+  podeAplicarRespostaCanonica
+} from "@/lib/cockpit-live-coordination";
 
 type Registro = Record<string, unknown>;
 type OpcoesDeCarregamento = {
@@ -110,6 +115,10 @@ type ContextoParaSelecao = {
 };
 
 const AVISO = "SIMULAÇÃO TÉCNICA — NÃO É RESULTADO HUMANO";
+const ABORTAR_POR_SINCRONIZACAO_INTEGRAL =
+  "HUMANEXUS_SINCRONIZACAO_INTEGRAL";
+const ABORTAR_POR_NOVO_CARREGAMENTO =
+  "HUMANEXUS_NOVO_CARREGAMENTO_INTEGRAL";
 const FASES = ["PRE", "TREINO", "POS"] as const;
 type VisaoCockpit =
   | "visao-geral"
@@ -1290,14 +1299,12 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     identificador: number;
     controlador: AbortController;
   } | null>(null);
+  const carregamentoIntegralEmAndamento = useRef<AbortController | null>(null);
   const sequenciaDoPolling = useRef(0);
-  const sequenciaDasSolicitacoes = useRef(0);
-  const ultimaRespostaAplicada = useRef(0);
   const componenteMontado = useRef(false);
   const ocupadoAtual = useRef("");
   const autenticacaoExpiradaAtual = useRef(false);
   const versaoDoCockpit = useRef("");
-  const revisaoDoCockpit = useRef(0);
   const estadoOperacionalDoPolling = useRef("");
   const [autenticacaoExpirada, setAutenticacaoExpirada] = useState(false);
   const [cortexClientId, setCortexClientId] = useState("");
@@ -1309,6 +1316,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       componenteMontado.current = false;
       atualizacaoEmAndamento.current?.controlador.abort();
       atualizacaoEmAndamento.current = null;
+      carregamentoIntegralEmAndamento.current?.abort();
+      carregamentoIntegralEmAndamento.current = null;
     };
   }, []);
 
@@ -1354,7 +1363,6 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     inicial = false,
     opcoes: OpcoesDeCarregamento = {}
   ) => {
-    const ordemDaSolicitacao = ++sequenciaDasSolicitacoes.current;
     const contextoExplicito = {
       organizacao: String(selecao.organizacao ?? ""),
       participante: String(selecao.participante ?? ""),
@@ -1370,11 +1378,15 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         "O polling exige organização, participante e sessão explícitos."
       );
     }
-    const chaveSolicitada = [
-      contextoExplicito.organizacao,
-      contextoExplicito.participante,
-      contextoExplicito.sessao
-    ].join(":");
+    if (
+      !leve
+      && contextoExplicito.organizacao
+      && contextoExplicito.participante
+      && contextoExplicito.sessao
+    ) {
+      contextoDoPolling.current = contextoExplicito;
+    }
+    const chaveSolicitada = chaveDoContextoVivo(contextoExplicito);
     const parametros = new URLSearchParams({ modulo });
     const visaoSolicitada = new URLSearchParams(
       window.location.search
@@ -1396,9 +1408,18 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         );
       }
     }
-    const controlador = leve && !opcoes.signal ? new AbortController() : null;
+    const controlador = !opcoes.signal ? new AbortController() : null;
     const signal = opcoes.signal ?? controlador?.signal;
-    const limiteDaAtualizacao = controlador
+    if (!leve && controlador) {
+      carregamentoIntegralEmAndamento.current?.abort(
+        ABORTAR_POR_NOVO_CARREGAMENTO
+      );
+      carregamentoIntegralEmAndamento.current = controlador;
+      atualizacaoEmAndamento.current?.controlador.abort(
+        ABORTAR_POR_SINCRONIZACAO_INTEGRAL
+      );
+    }
+    const limiteDaAtualizacao = leve && controlador
       ? window.setTimeout(() => controlador.abort(), 12_000)
       : null;
     let resposta: Response;
@@ -1408,6 +1429,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       modo_da_atualizacao?: "SNAPSHOT" | "DELTA" | "SEM_ALTERACAO";
       versao_do_cockpit?: string;
       revisao_do_cockpit?: number;
+      escopo_da_revisao_do_cockpit?: "INSTANCIA_LOCAL_NAO_ORDENAVEL";
       sequencias_do_cockpit?: Record<string, number>;
       geracoes_do_cockpit?: Record<string, string>;
       erro?: { mensagem?: string };
@@ -1423,6 +1445,13 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       dados = await resposta.json();
     } catch (causa) {
       if (
+        !leve
+        && signal?.aborted
+        && signal?.reason === ABORTAR_POR_NOVO_CARREGAMENTO
+      ) {
+        return contextoExplicito;
+      }
+      if (
         leve
         && causa instanceof DOMException
         && causa.name === "AbortError"
@@ -1435,6 +1464,13 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     } finally {
       if (limiteDaAtualizacao !== null) {
         window.clearTimeout(limiteDaAtualizacao);
+      }
+      if (
+        !leve
+        && controlador
+        && carregamentoIntegralEmAndamento.current === controlador
+      ) {
+        carregamentoIntegralEmAndamento.current = null;
       }
     }
     const mensagemDaFalha = dados?.erro?.mensagem
@@ -1450,15 +1486,19 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       }
       throw new Error(mensagemDaFalha);
     }
-    if (
-      !componenteMontado.current
-      || signal?.aborted
-      || ordemDaSolicitacao < sequenciaDasSolicitacoes.current
-      || ordemDaSolicitacao < ultimaRespostaAplicada.current
-    ) {
+    const contextoEsperado = contextoDoPolling.current;
+    if (!podeAplicarRespostaCanonica({
+      contextoEsperado: {
+        organizacao: String(contextoEsperado.organizacao ?? ""),
+        participante: String(contextoEsperado.participante ?? ""),
+        sessao: String(contextoEsperado.sessao ?? "")
+      },
+      contextoRecebido: contextoExplicito,
+      cancelada: Boolean(signal?.aborted),
+      componenteMontado: componenteMontado.current
+    })) {
       return contextoExplicito;
     }
-    ultimaRespostaAplicada.current = ordemDaSolicitacao;
     autenticacaoExpiradaAtual.current = false;
     setAutenticacaoExpirada(false);
     setErro("");
@@ -1470,18 +1510,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       ) {
         return selecao;
       }
-      const revisaoRecebida = Number(dados.revisao_do_cockpit ?? 0);
-      if (
-        revisaoRecebida > 0
-        && revisaoRecebida < revisaoDoCockpit.current
-      ) {
-        return contextoExplicito;
-      }
       if (dados.versao_do_cockpit) {
         versaoDoCockpit.current = dados.versao_do_cockpit;
-      }
-      if (revisaoRecebida > 0) {
-        revisaoDoCockpit.current = revisaoRecebida;
       }
       const pollingConfirmadoEm = new Date().toISOString();
       if (dados.sem_alteracao) {
@@ -1526,7 +1556,6 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     }
     setEstado(dados);
     versaoDoCockpit.current = "";
-    revisaoDoCockpit.current = 0;
     estadoOperacionalDoPolling.current = String(
       objeto(dados.estado_operacional).estado_da_sessao ?? ""
     ).toUpperCase();
@@ -1591,7 +1620,6 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     setErro("");
     try {
       versaoDoCockpit.current = "";
-      revisaoDoCockpit.current = 0;
       const contexto = await carregar(selecaoPendente, false, true);
       await carregar(contexto);
       setContextoParaSelecao(null);
@@ -1682,6 +1710,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       }
       if (
         ocupadoAtual.current
+        || carregamentoIntegralEmAndamento.current
         || atualizacaoEmAndamento.current
       ) {
         agendar(500);
@@ -1700,21 +1729,30 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         limiteDaRequisicao = null;
         agendar(250);
       }, 12_000);
-      let proximoAtraso = estadoOperacionalDoPolling.current === "PAUSADA"
-        ? 15_000
-        : 2_500;
+      let proximoAtraso = atrasoDoPollingCanonico(
+        estadoOperacionalDoPolling.current
+      );
       void carregar(contexto, true, false, { signal: controlador.signal })
         .then(() => {
           falhasConsecutivas = 0;
-          proximoAtraso = estadoOperacionalDoPolling.current === "PAUSADA"
-            ? 15_000
-            : 2_500;
+          proximoAtraso = atrasoDoPollingCanonico(
+            estadoOperacionalDoPolling.current
+          );
         })
         .catch((causa) => {
+          if (
+            controlador.signal.aborted
+            && controlador.signal.reason
+              === ABORTAR_POR_SINCRONIZACAO_INTEGRAL
+          ) {
+            falhasConsecutivas = 0;
+            proximoAtraso = 250;
+            return;
+          }
           falhasConsecutivas += 1;
-          proximoAtraso = Math.min(
-            30_000,
-            2_500 * (2 ** Math.min(falhasConsecutivas, 4))
+          proximoAtraso = atrasoDoPollingCanonico(
+            estadoOperacionalDoPolling.current,
+            falhasConsecutivas
           );
           if (autenticacaoExpiradaAtual.current) {
             setErro(
@@ -1788,7 +1826,6 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         : String(atual?.identificador_da_organizacao ?? "");
       const participante = campo === "participante" ? identificador : "";
       versaoDoCockpit.current = "";
-      revisaoDoCockpit.current = 0;
       setEstado(null);
       await carregarOpcoesDeContexto(organizacao, participante);
       return;
@@ -1803,7 +1840,6 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     setErro("");
     try {
       versaoDoCockpit.current = "";
-      revisaoDoCockpit.current = 0;
       await carregar(proxima);
       const url = new URL(window.location.href);
       for (const chave of ["organizacao", "participante", "sessao"]) {

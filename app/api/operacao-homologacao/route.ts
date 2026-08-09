@@ -137,6 +137,7 @@ async function atualizacaoLeve(
     modo: "SNAPSHOT" | "DELTA" | "SEM_ALTERACAO";
     versao: string;
     revisao: number;
+    escopo_da_revisao: "INSTANCIA_LOCAL_NAO_ORDENAVEL";
     sequencias_por_fonte: Record<string, number>;
     geracoes_por_fonte?: Record<string, string>;
     campos_alterados: {
@@ -160,6 +161,7 @@ async function atualizacaoLeve(
     modo_da_atualizacao: dados.modo,
     versao_do_cockpit: dados.versao,
     revisao_do_cockpit: dados.revisao,
+    escopo_da_revisao_do_cockpit: dados.escopo_da_revisao,
     sequencias_do_cockpit: dados.sequencias_por_fonte,
     geracoes_do_cockpit: dados.geracoes_por_fonte,
     limites_da_memoria_viva: dados.limites,

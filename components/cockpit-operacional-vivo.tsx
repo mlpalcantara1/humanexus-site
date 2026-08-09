@@ -513,8 +513,9 @@ export function CockpitOperacionalVivo({
   const itensReplay = lista(replayCompleto.itens);
   const fases = objeto(sessao.estados_das_fases);
   const modoHistorico = cockpit.modo === "REPLAY_HISTORICO";
-  const modoAguardando = !projecaoOperacionalAtual
-    || cockpit.modo === "MODO_OPERACIONAL_AGUARDANDO_CONEXAO";
+  const modoSincronizando = !projecaoOperacionalAtual && !modoHistorico;
+  const modoAguardando =
+    cockpit.modo === "MODO_OPERACIONAL_AGUARDANDO_CONEXAO";
   const leituraAoVivo = projecaoOperacionalAtual
     && cockpit.ao_vivo === true
     && !modoHistorico;
@@ -621,9 +622,13 @@ export function CockpitOperacionalVivo({
       nome: "Fontes atuais",
       estado: fontes.some((fonte) => fonte.ao_vivo === true)
         ? "EVIDÊNCIA AO VIVO"
+        : modoSincronizando
+          ? "SINCRONIZANDO COM O NÚCLEO"
         : "AGUARDANDO FONTES REAIS",
       motivo: fontes.some((fonte) => fonte.ao_vivo === true)
         ? "Amostras atuais da sessão explícita."
+        : modoSincronizando
+          ? "O portal aguarda a projeção canônica; não inferiu desconexão das fontes."
         : "Nenhuma fonte possui amostra real dentro da janela de atualidade."
     },
     {
@@ -821,6 +826,8 @@ export function CockpitOperacionalVivo({
           <span className="hx-live-eyebrow">
             {modoHistorico
               ? "MODO OPERACIONAL — REPLAY HISTÓRICO"
+              : modoSincronizando
+                ? "MODO OPERACIONAL — SINCRONIZANDO COM O NÚCLEO"
               : modoAguardando
                 ? "MODO OPERACIONAL — AGUARDANDO CONEXÃO"
                 : "MODO OPERACIONAL AO VIVO"}
@@ -835,9 +842,11 @@ export function CockpitOperacionalVivo({
           </p>
         </div>
         <div className="hx-live-mode-actions">
-          <span className={modoHistorico ? "is-history" : modoAguardando ? "is-waiting" : "is-live"}>
+          <span className={modoHistorico ? "is-history" : modoSincronizando || modoAguardando ? "is-waiting" : "is-live"}>
             {modoHistorico
               ? "REPLAY HISTÓRICO"
+              : modoSincronizando
+                ? "SINCRONIZANDO ESTADO CANÔNICO"
               : modoAguardando
                 ? "AGUARDANDO CONEXÃO"
                 : "TELEMETRIA AO VIVO"}
@@ -998,12 +1007,12 @@ export function CockpitOperacionalVivo({
           as="section"
           id="hx-evidence-level"
           className="hx-live-graphs"
-          data-signal-state={modoHistorico ? "HISTORICO" : modoAguardando ? "AGUARDANDO" : "ATIVO"}
+          data-signal-state={modoHistorico ? "HISTORICO" : modoSincronizando ? "SINCRONIZANDO" : modoAguardando ? "AGUARDANDO" : "ATIVO"}
         >
           <HxSectionHeader
-            eyebrow={modoHistorico ? "DADOS PRESERVADOS" : modoAguardando ? "AGUARDANDO FONTES" : "ATIVIDADE AO VIVO"}
+            eyebrow={modoHistorico ? "DADOS PRESERVADOS" : modoSincronizando ? "SINCRONIZANDO COM O NÚCLEO" : modoAguardando ? "AGUARDANDO FONTES" : "ATIVIDADE AO VIVO"}
             title="Leitura temporal da sessão"
-            aside={<span>{modoHistorico ? "Dados físicos históricos · sem transmissão atual" : modoAguardando ? "Nenhum dado é simulado enquanto os sensores não conectam" : "Atualização contínua sem recarregar a página"}</span>}
+            aside={<span>{modoHistorico ? "Dados físicos históricos · sem transmissão atual" : modoSincronizando ? "Aguardando a autoridade canônica · sem inferir desconexão" : modoAguardando ? "Nenhum dado é simulado enquanto os sensores não conectam" : "Atualização contínua sem recarregar a página"}</span>}
           />
           <div className="hx-live-temporal-rail" aria-label={sessaoBaseline ? "Linha temporal do Baseline" : "Linha temporal PRÉ TREINO PÓS"}>
             {passosDoFluxo.map((passo) => (
