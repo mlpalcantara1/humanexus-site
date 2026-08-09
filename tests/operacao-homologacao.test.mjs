@@ -570,8 +570,8 @@ test("polling vivo não para em segundo plano e retoma imediatamente no foco", a
   assert.match(ciclo, /visibilitychange/);
   assert.match(ciclo, /limparTemporizador\(\);[\s\S]*agendar\(0\)/);
   assert.match(operacao, /polling_confirmado_em/);
-  assert.match(operacao, /sequenciasDoCockpit\.current/);
-  assert.match(operacao, /respostaRegressiva/);
+  assert.match(operacao, /revisaoDoCockpit\.current/);
+  assert.doesNotMatch(operacao, /respostaRegressiva/);
 });
 
 test("EPOC degradado gera ressalva sem bloquear o fluxo operacional", async () => {
@@ -699,6 +699,7 @@ test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", asy
   assert.match(rota, /SEM_ALTERACAO/);
   assert.match(rota, /sequencias_do_cockpit: dados\.sequencias_por_fonte/);
   assert.match(rota, /geracoes_do_cockpit: dados\.geracoes_por_fonte/);
+  assert.match(rota, /revisao_do_cockpit: dados\.revisao/);
   assert.doesNotMatch(
     rota.match(/async function atualizacaoLeve[\s\S]*?\n}\n\nasync function estado/)?.[0] ?? "",
     /telemetria\/sessoes|eventos\?limite|consultas-em-lote/
@@ -710,14 +711,13 @@ test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", asy
     operacao,
     /dados\.sem_alteracao[\s\S]*polling_confirmado_em: pollingConfirmadoEm/
   );
-  assert.match(operacao, /respostaRegressiva/);
-  assert.match(operacao, /geracaoAtual === geracaoRecebida/);
+  assert.doesNotMatch(operacao, /respostaRegressiva/);
+  assert.doesNotMatch(operacao, /geracaoAtual === geracaoRecebida/);
   assert.match(
     operacao,
-    /mesmaGeracao && Number\(sequencia\) < Number/
+    /revisaoRecebida < revisaoDoCockpit\.current/
   );
-  assert.match(operacao, /geracoesDoCockpit\.current = \{\}/);
-  assert.match(operacao, /sequenciasDoCockpit\.current = \{\}/);
+  assert.match(operacao, /revisaoDoCockpit\.current = 0/);
 });
 
 test("cronômetro do Baseline começa somente no início canônico do Baseline", async () => {
