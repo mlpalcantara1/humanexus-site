@@ -99,6 +99,76 @@ function fontesDoIndicador(valor: unknown) {
     : "Nenhuma";
 }
 
+function itensExplicaveis(valor: unknown) {
+  if (!Array.isArray(valor)) return [];
+  return valor.map((item) => {
+    if (item && typeof item === "object") {
+      const registro = item as Registro;
+      return texto(
+        registro.codigo
+        ?? registro.componente
+        ?? registro.definicao
+        ?? registro.identificador
+        ?? registro.motivo,
+        "Registro rastreável"
+      );
+    }
+    return texto(item);
+  });
+}
+
+function PorQueEsteResultado({
+  valor,
+  fallback
+}: {
+  valor: unknown;
+  fallback: string;
+}) {
+  const explicacao = objeto(valor);
+  const utilizadas = itensExplicaveis(
+    explicacao.evidencias_utilizadas
+    ?? explicacao.componentes_utilizados
+    ?? explicacao.vetores_contribuintes
+  );
+  const ausentes = itensExplicaveis(
+    explicacao.evidencias_ausentes
+    ?? explicacao.componentes_ausentes
+    ?? explicacao.vetores_ausentes
+    ?? explicacao.codigos_ausentes
+  );
+  const regra = objeto(explicacao.regra);
+  return (
+    <details className="hx-live-vector-trace hx-why-result">
+      <summary>Por que este resultado?</summary>
+      <dl>
+        <div><dt>Estado científico</dt><dd>{texto(
+          explicacao.estado_de_apresentacao,
+          "NÃO CALCULÁVEL"
+        )}</dd></div>
+        <div><dt>Fundamento</dt><dd>{texto(
+          explicacao.resumo ?? explicacao.motivo,
+          fallback
+        )}</dd></div>
+        <div><dt>Evidências ou componentes utilizados</dt><dd>{
+          utilizadas.join(" · ") || "Nenhum"
+        }</dd></div>
+        <div><dt>Requisitos ainda ausentes</dt><dd>{
+          ausentes.join(" · ") || "Nenhum"
+        }</dd></div>
+        {Object.keys(regra).length ? (
+          <div><dt>Regra rastreável</dt><dd>{[
+            texto(regra.versao, ""),
+            texto(regra.arquivo, ""),
+            texto(regra.funcao, ""),
+            texto(regra.linhas, "")
+          ].filter(Boolean).join(" · ")}</dd></div>
+        ) : null}
+        <div><dt>Ausência</dt><dd>Preservada como nula; zero e fallback são proibidos.</dd></div>
+      </dl>
+    </details>
+  );
+}
+
 function dataLegivel(valor: unknown) {
   if (!valor) return "Sem registro";
   const data = new Date(String(valor));
@@ -616,10 +686,22 @@ export function CockpitOperacionalVivo({
   const ctrCadeia = objeto(cadeiaCientifica.ctr);
   const validacaoCadeia = objeto(cadeiaCientifica.validacao_profissional);
   const intervencaoCadeia = objeto(cadeiaCientifica.intervencao);
+  const anamneseCadeia = objeto(cadeiaCientifica.anamnese_e_contexto);
+  const evidenciasCadeia = objeto(cadeiaCientifica.evidencias);
+  const vetoresCadeia = objeto(cadeiaCientifica.vetores);
+  const iirhCadeia = objeto(cadeiaCientifica.iirh);
+  const zonaCadeia = objeto(cadeiaCientifica.zona);
+  const gatilhosCadeia = objeto(cadeiaCientifica.gatilhos);
+  const rotasCadeia = objeto(cadeiaCientifica.rotas_regulatorias);
+  const rotaDominanteCadeia = objeto(cadeiaCientifica.rota_dominante);
+  const cicloCadeia = objeto(cadeiaCientifica.pre_treino_pos);
+  const ganhosCadeia = objeto(cadeiaCientifica.resposta_e_ganhos);
+  const longitudinalCadeia = objeto(cadeiaCientifica.longitudinal);
+  const relatoriosCadeia = objeto(cadeiaCientifica.relatorios);
   const etapasDaCadeia = [
     {
-      codigo: "A",
-      nome: "Fontes atuais",
+      codigo: "01",
+      nome: "Fontes atuais · Polar H10, EPOC X e indicadores primários",
       estado: fontes.some((fonte) => fonte.ao_vivo === true)
         ? "EVIDÊNCIA AO VIVO"
         : modoSincronizando
@@ -632,24 +714,33 @@ export function CockpitOperacionalVivo({
         : "Nenhuma fonte possui amostra real dentro da janela de atualidade."
     },
     {
-      codigo: "B",
-      nome: "Evidências",
-      estado: radarVetorial.some((vetor) => vetor.value != null)
-        ? "COBERTURA PARCIAL OU VÁLIDA"
-        : "SEM COBERTURA VETORIAL",
-      motivo: texto(
-        coberturaVetorial.motivo_objetivo,
-        "Os requisitos oficiais permanecem detalhados sob demanda."
-      )
+      codigo: "02",
+      nome: "Cockpit Vivo e contexto canônico",
+      estado: modoSincronizando ? "SINCRONIZANDO" : "ATUALIZADO",
+      motivo: modoSincronizando
+        ? "Aguardando projeção canônica; nenhum estado local substitui o núcleo."
+        : "Projeção da sessão, organização, participante e fase explícitos."
     },
     {
-      codigo: "C",
-      nome: "Vetores oficiais",
-      estado: `${radarVetorial.filter((item) => item.value != null).length}/10 calculáveis`,
-      motivo: "Ausência permanece ausência; VEV não é inferido."
+      codigo: "03",
+      nome: "Anamnese e contexto",
+      estado: texto(anamneseCadeia.estado, "CONTEXTO PARCIAL"),
+      motivo: texto(anamneseCadeia.motivo, "Contexto humano admissível ainda parcial.")
     },
     {
-      codigo: "D1",
+      codigo: "04",
+      nome: "Evidências admissíveis",
+      estado: texto(evidenciasCadeia.estado, "EVIDÊNCIA ESTRUTURADA AUSENTE"),
+      motivo: texto(evidenciasCadeia.motivo, "Somente evidência rastreável pode alimentar o motor.")
+    },
+    {
+      codigo: "05",
+      nome: "Vetores oficiais · dez vetores e radar",
+      estado: `${Number(vetoresCadeia.calculaveis ?? radarVetorial.filter((item) => item.value != null).length)}/10 calculáveis`,
+      motivo: texto(vetoresCadeia.motivo, "Ausência permanece ausência; VEV não é inferido.")
+    },
+    {
+      codigo: "06",
       nome: "Resultante Regulatória",
       estado: texto(resultante.estado, "NAO DEFINIDA"),
       motivo: texto(
@@ -658,43 +749,79 @@ export function CockpitOperacionalVivo({
       )
     },
     {
-      codigo: "D2",
+      codigo: "07",
+      nome: "IIRH",
+      estado: texto(iirhCadeia.estado, "NAO CALCULAVEL"),
+      motivo: texto(
+        objeto(iirhCadeia.por_que_este_resultado).resumo,
+        "Exige amplitude e cobertura humana suficientes."
+      )
+    },
+    {
+      codigo: "08",
+      nome: "Zona Operacional",
+      estado: texto(zonaCadeia.estado, "NAO CALCULAVEL"),
+      motivo: texto(
+        objeto(zonaCadeia.por_que_este_resultado).resumo ?? zonaCadeia.motivo,
+        "A Zona depende de IIRH admissível e precondições multifonte."
+      )
+    },
+    {
+      codigo: "09",
+      nome: "Gatilhos regulatórios",
+      estado: texto(gatilhosCadeia.estado, "SEM GATILHOS ADMISSÍVEIS"),
+      motivo: texto(gatilhosCadeia.motivo, "Nenhum gatilho foi inferido automaticamente.")
+    },
+    {
+      codigo: "10",
+      nome: "Rotas regulatórias possíveis",
+      estado: texto(rotasCadeia.estado, "NAO CALCULAVEL"),
+      motivo: texto(rotasCadeia.motivo, "Sem rota documental admissível.")
+    },
+    {
+      codigo: "11",
+      nome: "Rota dominante",
+      estado: texto(rotaDominanteCadeia.estado, "NAO CALCULAVEL"),
+      motivo: texto(rotaDominanteCadeia.motivo, "Nenhuma rota dominante é escolhida automaticamente.")
+    },
+    {
+      codigo: "12",
       nome: "ARR",
       estado: texto(arrCadeia.estado, "NAO CALCULAVEL"),
       motivo: texto(arrCadeia.motivo, "Hipótese Tipo B ainda indisponível.")
     },
     {
-      codigo: "D3",
+      codigo: "13",
       nome: "Reorganização da Rota Operacional — RRO",
       estado: texto(rroCadeia.estado, "NAO CALCULAVEL"),
       motivo: texto(rroCadeia.motivo, "Operacionalização autoral ainda ausente.")
     },
     {
-      codigo: "D4",
+      codigo: "14",
       nome: "Nova Rota Adaptativa — NRA",
       estado: texto(nraCadeia.estado, "NAO CALCULAVEL"),
       motivo: texto(nraCadeia.motivo, "NRA ainda não vinculada à sessão.")
     },
     {
-      codigo: "E1",
-      nome: "THX",
-      estado: texto(thxCadeia.estado, "NAO AVALIAVEL"),
-      motivo: `${lista(thxCadeia.protocolos).length} sugestão(ões) documental(is) · catálogo ${numero(thxCadeia.total_no_catalogo_oficial)}`
-    },
-    {
-      codigo: "E2",
-      nome: "THX-AER",
-      estado: texto(thxAerCadeia.estado, "NAO AVALIAVEL"),
-      motivo: `${lista(thxAerCadeia.protocolos).length} sugestão(ões) documental(is) · catálogo ${numero(thxAerCadeia.total_no_catalogo_oficial)}`
-    },
-    {
-      codigo: "E3",
+      codigo: "15",
       nome: "CTR",
       estado: texto(ctrCadeia.estado, "SEM SUGESTAO"),
       motivo: `${lista(ctrCadeia.sugestoes).length} sugestão(ões) · ${numero(ctrCadeia.total_disponivel)} disponível(is)`
     },
     {
-      codigo: "E4",
+      codigo: "16",
+      nome: "THX",
+      estado: texto(thxCadeia.estado, "NAO AVALIAVEL"),
+      motivo: `${lista(thxCadeia.protocolos).length} sugestão(ões) documental(is) · catálogo ${numero(thxCadeia.total_no_catalogo_oficial)}`
+    },
+    {
+      codigo: "17",
+      nome: "THX-AER",
+      estado: texto(thxAerCadeia.estado, "NAO AVALIAVEL"),
+      motivo: `${lista(thxAerCadeia.protocolos).length} sugestão(ões) documental(is) · catálogo ${numero(thxAerCadeia.total_no_catalogo_oficial)}`
+    },
+    {
+      codigo: "18",
       nome: "Validação profissional",
       estado: texto(validacaoCadeia.estado, "PENDENTE"),
       motivo: validacaoCadeia.decisao_automatica === false
@@ -702,21 +829,72 @@ export function CockpitOperacionalVivo({
         : "Decisão profissional não confirmada pelo núcleo."
     },
     {
-      codigo: "E5",
-      nome: "Intervenção",
+      codigo: "19",
+      nome: "PRÉ → TREINO → PÓS · Intervenção",
       estado: texto(intervencaoCadeia.estado, "NAO INICIADA"),
       motivo: texto(
-        intervencaoCadeia.motivo,
-        "Exige protocolo e CTR validados profissionalmente."
+        cicloCadeia.motivo ?? intervencaoCadeia.motivo,
+        "Cada fase exige fronteira própria e protocolo validado profissionalmente."
       )
     },
     {
-      codigo: "F",
+      codigo: "20",
+      nome: "Resposta e ganhos regulatórios",
+      estado: texto(ganhosCadeia.estado, "NAO CALCULAVEL"),
+      motivo: texto(ganhosCadeia.motivo, "Variação isolada não é ganho regulatório.")
+    },
+    {
+      codigo: "21",
       nome: "Longitudinal e VEV",
-      estado: texto(trajetoria.estado, "NAO INFERIVEL"),
-      motivo: "Trajetória exige estados comparáveis; VEV permanece não definido."
+      estado: texto(objeto(longitudinalCadeia.trajetoria).estado ?? trajetoria.estado, "NAO INFERIVEL"),
+      motivo: texto(
+        objeto(longitudinalCadeia.por_que_este_resultado).resumo,
+        "Trajetória exige estados comparáveis; VEV permanece não definido."
+      )
+    },
+    {
+      codigo: "22",
+      nome: "Relatório rastreável",
+      estado: texto(relatoriosCadeia.estado, "NAO GERADO"),
+      motivo: texto(relatoriosCadeia.motivo, "Nenhum relatório da sessão foi gerado.")
     }
   ];
+  const detalhesDaEtapa: Record<string, unknown> = {
+    "01": fontes.map((fonte) => ({
+      codigo: fonte.codigo,
+      estado: fonte.estado,
+      ao_vivo: fonte.ao_vivo,
+      sequencia: objeto(fonte.metricas).sequencia,
+      timestamp: objeto(fonte.metricas).ultima_amostra_em
+    })),
+    "02": {
+      organizacao: organizacao.identificador,
+      participante: participante.identificador,
+      sessao: sessao.identificador,
+      fase: sessao.fase_atual,
+      atualizado_em: cockpit.atualizado_em
+    },
+    "03": anamneseCadeia,
+    "04": evidenciasCadeia,
+    "05": { resumo: vetoresCadeia, vetores: estadosVetoriais },
+    "06": resultante,
+    "07": iirhCadeia,
+    "08": zonaCadeia,
+    "09": gatilhosCadeia,
+    "10": rotasCadeia,
+    "11": rotaDominanteCadeia,
+    "12": arrCadeia,
+    "13": rroCadeia,
+    "14": nraCadeia,
+    "15": ctrCadeia,
+    "16": thxCadeia,
+    "17": thxAerCadeia,
+    "18": validacaoCadeia,
+    "19": { ciclo: cicloCadeia, intervencao: intervencaoCadeia },
+    "20": ganhosCadeia,
+    "21": longitudinalCadeia,
+    "22": relatoriosCadeia
+  };
 
   useEffect(() => {
     const id = window.setInterval(() => setAgora(Date.now()), 1000);
@@ -881,6 +1059,25 @@ export function CockpitOperacionalVivo({
         <div><small>ESTADO DO POLAR</small><strong>{texto(polar.estado)}</strong><span>{polar.ao_vivo === true ? `Sequência atual ${numero(objeto(polar.metricas).ultima_sequencia)}` : "Sem leitura atual"}</span></div>
       </section>
 
+      <section className="hx-live-scientific-explanations" aria-label="Explicação dos resultados científicos">
+        <PorQueEsteResultado
+          valor={iirh.por_que_este_resultado}
+          fallback={texto(iirh.motivo, "Evidência humana insuficiente para o IIRH.")}
+        />
+        <PorQueEsteResultado
+          valor={zona.por_que_este_resultado}
+          fallback={texto(zona.motivo, "As precondições científicas da Zona não foram satisfeitas.")}
+        />
+        <PorQueEsteResultado
+          valor={resultante.por_que_este_resultado}
+          fallback={texto(resultante.justificativa ?? resultante.motivo, "Configuração vetorial insuficiente.")}
+        />
+        <PorQueEsteResultado
+          valor={trajetoria.por_que_este_resultado}
+          fallback={texto(trajetoria.motivo, "Sessões comparáveis insuficientes para trajetória e VEV.")}
+        />
+      </section>
+
       <section id="hx-command-level" className="hx-live-operation-focus" aria-label="Comando e progressão da sessão">
         <div className="hx-live-operation-flow">
           <small>FLUXO OPERACIONAL</small>
@@ -968,7 +1165,7 @@ export function CockpitOperacionalVivo({
                         : <i style={{ width: `${vetor.value * 100}%` }} />}
                     </span>
                     <details className="hx-live-vector-trace">
-                      <summary>Rastreabilidade científica</summary>
+                      <summary>Por que este resultado? · Rastreabilidade científica</summary>
                       <dl>
                         <div><dt>Estado</dt><dd>{texto(estadoVetorial?.estado, "NAO_DEFINIDO")}</dd></div>
                         <div><dt>Cobertura</dt><dd>{percentual(estadoVetorial?.cobertura)}</dd></div>
@@ -1083,7 +1280,7 @@ export function CockpitOperacionalVivo({
           <span>Cobertura {numero(resultante.cobertura, 2)} · Qualidade {numero(resultante.qualidade, 2)} · Confiança {numero(resultante.confianca, 2)}</span>
           <span>Validação profissional obrigatória · nenhuma decisão ou intervenção automática</span>
           <details className="hx-live-vector-trace">
-            <summary>Estrutura científica e rastreabilidade</summary>
+            <summary>Por que este resultado?</summary>
             <dl>
               <div><dt>Estado</dt><dd>{texto(resultante.estado, "NAO_CALCULAVEL")}</dd></div>
               <div><dt>Magnitude</dt><dd>{numero(resultante.magnitude_global, 4)}</dd></div>
@@ -1141,13 +1338,19 @@ export function CockpitOperacionalVivo({
                   <small>{etapa.nome}</small>
                   <strong>{etapa.estado}</strong>
                   <span>{etapa.motivo}</span>
+                  <details className="hx-chain-why">
+                    <summary>Por que este resultado?</summary>
+                    <p>{etapa.motivo}</p>
+                    <em>Ausência permanece nula; nenhuma decisão ou intervenção é automática.</em>
+                    <pre>{JSON.stringify(detalhesDaEtapa[etapa.codigo], null, 2)}</pre>
+                  </details>
                 </div>
               </article>
             );
           })}
         </div>
         <details>
-          <summary>Rastreabilidade, dependências e candidatos documentais</summary>
+          <summary>Por que este resultado? — Rastreabilidade, dependências e candidatos documentais · cadeia completa</summary>
           <pre>{JSON.stringify(cadeiaCientifica, null, 2)}</pre>
         </details>
       </section>

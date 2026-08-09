@@ -774,6 +774,21 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
     "Incertezas"
   ]) assert.match(cockpit, new RegExp(item));
   assert.match(cockpit, /Rastreabilidade, dependências e candidatos documentais/);
+  for (const item of [
+    "Anamnese e contexto",
+    "Vetores oficiais · dez vetores e radar",
+    "IIRH",
+    "Zona Operacional",
+    "Gatilhos regulatórios",
+    "Rotas regulatórias possíveis",
+    "Rota dominante",
+    "PRÉ → TREINO → PÓS",
+    "Resposta e ganhos regulatórios",
+    "Relatório rastreável"
+  ]) assert.match(cockpit, new RegExp(item));
+  assert.match(cockpit, /detalhesDaEtapa/);
+  assert.match(cockpit, /Por que este resultado\?/);
+  assert.match(cockpit, /Ausência permanece nula/);
   assert.match(
     cockpit,
     /radarVetorial\.filter\(\(item\) => item\.value != null\)\.length/

@@ -1319,6 +1319,9 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
   background: rgba(7, 9, 10, .96);
 }
 .hx-live-vector-list > div:has(.hx-live-vector-trace){flex-wrap:wrap}.hx-live-vector-trace{flex:1 0 100%;border-top:1px solid rgba(193,163,98,.12);padding-top:6px}.hx-live-vector-trace>summary{cursor:pointer;color:#8d9a97;letter-spacing:.08em;font:6px var(--font-geist-mono),monospace}.hx-live-vector-trace>dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:8px 0 0}.hx-live-vector-trace>dl>div{min-width:0}.hx-live-vector-trace dt{color:#687573;letter-spacing:.06em;text-transform:uppercase;font:5px var(--font-geist-mono),monospace}.hx-live-vector-trace dd{margin:2px 0 0;color:#b8c4c0;overflow-wrap:anywhere;font:6px/1.45 var(--font-geist-mono),monospace}
+.hx-live-scientific-explanations{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.hx-live-scientific-explanations>.hx-why-result{margin:0;border:1px solid rgba(193,163,98,.18);background:rgba(5,13,17,.82);padding:10px}.hx-live-scientific-explanations>.hx-why-result>summary{color:#d2b15f;font-size:7px}.hx-live-scientific-explanations>.hx-why-result>dl{grid-template-columns:1fr}
+@media(max-width:1000px){.hx-live-scientific-explanations{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.hx-live-scientific-explanations{grid-template-columns:1fr}}
 
 .hx-live-vector-list span {
   font-size: 6px;
@@ -1586,6 +1589,36 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 .hx-live-scientific-chain__rail article span {
   color: #788380;
   font: 8px/1.55 var(--font-geist-mono), monospace;
+}
+
+.hx-chain-why {
+  min-width: 0;
+  border-top: 1px solid rgba(205, 178, 116, .12);
+  padding-top: 7px;
+}
+
+.hx-chain-why summary {
+  cursor: pointer;
+  color: #cdb274;
+  font: 7px/1.4 var(--font-geist-mono), monospace;
+}
+
+.hx-chain-why p,
+.hx-chain-why em {
+  display: block;
+  margin: 8px 0 0;
+  color: #899491;
+  font: normal 8px/1.5 var(--font-geist-mono), monospace;
+}
+
+.hx-chain-why pre {
+  max-height: 240px;
+  overflow: auto;
+  margin: 8px 0 0;
+  color: #aab4b1;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 7px/1.45 var(--font-geist-mono), monospace;
 }
 
 .hx-live-scientific-chain > details {
