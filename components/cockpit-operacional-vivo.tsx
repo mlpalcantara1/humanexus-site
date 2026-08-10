@@ -137,6 +137,7 @@ function PorQueEsteResultado({
     ?? explicacao.componentes_ausentes
     ?? explicacao.vetores_ausentes
     ?? explicacao.codigos_ausentes
+    ?? explicacao.precondicoes_nao_atendidas
   );
   const familias = Array.isArray(explicacao.familias_independentes)
     ? explicacao.familias_independentes.map(String)
@@ -1164,7 +1165,10 @@ export function CockpitOperacionalVivo({
                 <div key={texto(vetor.codigo)}>
                   <dt>{texto(vetor.codigo)} · {texto(vetor.nome)}</dt>
                   <dd>
-                    {texto(vetor.estado)} · Magnitude {vetor.magnitude == null
+                    {texto(
+                      vetor.estado_do_contrato_operacional,
+                      texto(vetor.estado)
+                    )} · Magnitude {vetor.magnitude == null
                       ? "não calculável"
                       : numero(vetor.magnitude, 2)} · Cobertura {percentual(vetor.cobertura)} · Confiança {percentual(vetor.confianca)} · {texto(
                       vetor.motivo,
@@ -1186,6 +1190,9 @@ export function CockpitOperacionalVivo({
                     {lista(vetor.evidencias_utilizadas).length
                       ? ` · Evidências ${lista(vetor.evidencias_utilizadas).map((item) => texto(item.codigo)).join(" · ")}`
                       : " · Evidências: nenhuma"}
+                    {vetor.mecanismo_operacional
+                      ? ` · Regra ${texto(vetor.mecanismo_operacional)}`
+                      : ""}
                   </dd>
                 </div>
               ))}
