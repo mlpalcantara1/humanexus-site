@@ -1109,7 +1109,7 @@ export function CockpitOperacionalVivo({
 
       <section className="hx-live-hud" aria-label="HUD operacional fixo">
         <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{iirhCalculado ? `${numero(iirh.valor, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong><span>{iirhCalculado ? "Resultado canônico" : texto(iirh.motivo, "Evidência insuficiente")}</span></div>
-        <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? texto(zona.nome ?? zona.codigo) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? "Classificação canônica" : texto(zona.motivo, "IIRH oficial indisponível")}</span></div>
+        <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? texto(zona.nome ?? zona.codigo) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? `Taxonomia canônica · ${texto(zona.versao_da_taxonomia, "versão não informada")}` : `${texto(zona.motivo, "IIRH oficial indisponível")} · ${texto(zona.versao_da_taxonomia, "taxonomia não informada")}`}</span></div>
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{sessaoBaseline ? estadoDoBaseline : texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
         <div><small>TEMPO</small><strong>{duracao(inicioDoCronometro, fimDoCronometro, agora)}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
@@ -1166,12 +1166,17 @@ export function CockpitOperacionalVivo({
                 <span>Magnitude somente quando sustentada por regra autoral e evidência admissível.</span>
               </div>
             </article>
-            <article className={snapshotBasal.estado === "ELEGIVEL_PARA_PERSISTENCIA_AO_ENCERRAR_BASELINE" ? "is-ready" : "is-blocked"}>
+            <article className={["PERSISTIDO", "ELEGIVEL_PARA_PERSISTENCIA_AO_ENCERRAR_BASELINE"].includes(texto(snapshotBasal.estado)) ? "is-ready" : "is-blocked"}>
               <i>03</i>
               <div>
                 <small>Snapshot basal canônico</small>
                 <strong>{texto(snapshotBasal.estado, "NÃO PERSISTIDO")}</strong>
-                <span>{texto(snapshotBasal.motivo, "Nenhum snapshot científico foi fabricado.")}</span>
+                <span>
+                  {texto(snapshotBasal.motivo, "Nenhum snapshot científico foi fabricado.")}
+                  {snapshotBasal.identificador ? ` · ID ${texto(snapshotBasal.identificador)}` : ""}
+                  {snapshotBasal.timestamp ? ` · ${texto(snapshotBasal.timestamp)}` : ""}
+                  {snapshotBasal.versao_da_biblioteca ? ` · Biblioteca ${texto(snapshotBasal.versao_da_biblioteca)}` : ""}
+                </span>
               </div>
             </article>
           </div>
