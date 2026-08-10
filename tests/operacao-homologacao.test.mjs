@@ -358,8 +358,8 @@ test("Cockpit abre progressivamente e preserva os dez vetores visíveis", async 
 test("Cockpit apresenta a configuração basal sem fabricar magnitude", async () => {
   const operacional = await source("components/cockpit-operacional-vivo.tsx");
   assert.match(operacional, /Configuração regulatória basal/);
-  assert.match(operacional, /Repouso não significa ausência de funcionamento/);
-  assert.match(operacional, /Fonte estruturante reconhecida sem transformar texto livre em escore/);
+  assert.match(operacional, /FORMALIZAÇÃO AUTORAL IMPLEMENTADA · VALIDAÇÃO COMPUTACIONAL/);
+  assert.match(operacional, /texto livre não convertido/);
   assert.match(operacional, /Magnitude somente quando sustentada por regra autoral e evidência admissível/);
   assert.match(operacional, /Nenhum snapshot científico foi fabricado/);
   assert.match(operacional, /vetor\.magnitude/);
@@ -559,8 +559,9 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /eeg\.ao_vivo === true[\s\S]*Sem leitura atual/);
   assert.match(cockpit, /Última leitura registrada/);
   assert.match(cockpit, /leituraAoVivo \? valorNormalizado/);
-  assert.match(cockpit, /const iirhCalculado = leituraAoVivo/);
-  assert.match(cockpit, /const resultanteCalculada = leituraAoVivo/);
+  assert.match(cockpit, /const cienciaAtualAdmissivel = leituraAoVivo \|\| configuracaoBasalCanonica/);
+  assert.match(cockpit, /const iirhCalculado = cienciaAtualAdmissivel/);
+  assert.match(cockpit, /const resultanteCalculada = cienciaAtualAdmissivel/);
   assert.match(cockpit, /const trajetoriaCalculada = leituraAoVivo/);
   assert.match(cockpit, /const projecaoOperacionalAtual = Number\.isFinite/);
   assert.match(cockpit, /projecaoOperacionalAtual[\s\S]*ao_vivo: false/);
@@ -577,6 +578,21 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
     cockpit.match(/const fontes = projecaoOperacionalAtual[\s\S]*?const replay/)?.[0] ?? "",
     /estado: "RECONECTANDO"/
   );
+});
+
+test("Baseline canônico aparece sem ser rotulado como telemetria viva", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+
+  assert.match(cockpit, /const configuracaoBasalCanonica = sessaoBaseline/);
+  assert.match(cockpit, /projecaoOperacionalAtual[\s\S]*!modoHistorico/);
+  assert.match(
+    cockpit,
+    /configuracaoBasal\.identificador_da_sessao[\s\S]*identificadorDaSessao/
+  );
+  assert.match(cockpit, /VETORES BASAIS CANÔNICOS · MATRIZ VETORIAL/);
+  assert.match(cockpit, /FORMALIZAÇÃO AUTORAL IMPLEMENTADA · VALIDAÇÃO COMPUTACIONAL/);
+  assert.match(cockpit, /texto livre não convertido/);
+  assert.match(cockpit, /zero e fallback são proibidos/);
 });
 
 test("polling vivo não para em segundo plano e retoma imediatamente no foco", async () => {
@@ -727,7 +743,7 @@ test("Cockpit expõe o contrato de dependência por indicador em português", as
 test("Cockpit resolve vetores por UUID ou código e exibe rastreabilidade sob demanda", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
 
-  assert.match(cockpit, /estadosVetoriaisPorDefinicao\.get\(identificador\)[\s\S]*codigoVetorial\(definicao\)/);
+  assert.match(cockpit, /const codigo = codigoVetorial\(definicao\)[\s\S]*estadosVetoriaisPorDefinicao\.get\(identificador\)[\s\S]*estadosVetoriaisPorDefinicao\.get\(codigo\)/);
   assert.match(cockpit, /estadosVetoriaisPorDefinicao\.get\(vetor\.code\)/);
   assert.match(cockpit, /valor <= 1 \? valor : valor \/ 100/);
   assert.match(cockpit, /Rastreabilidade científica/);

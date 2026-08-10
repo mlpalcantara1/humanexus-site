@@ -127,15 +127,23 @@ function PorQueEsteResultado({
   const explicacao = objeto(valor);
   const utilizadas = itensExplicaveis(
     explicacao.evidencias_utilizadas
+    ?? explicacao.evidencias_basais_aceitas
     ?? explicacao.componentes_utilizados
     ?? explicacao.vetores_contribuintes
   );
   const ausentes = itensExplicaveis(
     explicacao.evidencias_ausentes
+    ?? explicacao.evidencias_basais_rejeitadas
     ?? explicacao.componentes_ausentes
     ?? explicacao.vetores_ausentes
     ?? explicacao.codigos_ausentes
   );
+  const familias = Array.isArray(explicacao.familias_independentes)
+    ? explicacao.familias_independentes.map(String)
+    : [];
+  const limitacoes = Array.isArray(explicacao.limitacoes)
+    ? explicacao.limitacoes.map(String)
+    : [];
   const regra = objeto(explicacao.regra);
   return (
     <details className="hx-live-vector-trace hx-why-result">
@@ -162,6 +170,12 @@ function PorQueEsteResultado({
             texto(regra.funcao, ""),
             texto(regra.linhas, "")
           ].filter(Boolean).join(" · ")}</dd></div>
+        ) : null}
+        {familias.length ? (
+          <div><dt>Famílias independentes</dt><dd>{familias.join(" · ")}</dd></div>
+        ) : null}
+        {limitacoes.length ? (
+          <div><dt>Limitações científicas</dt><dd>{limitacoes.map((item) => texto(item)).join(" · ")}</dd></div>
         ) : null}
         <div><dt>Ausência</dt><dd>Preservada como nula; zero e fallback são proibidos.</dd></div>
       </dl>
@@ -626,7 +640,18 @@ export function CockpitOperacionalVivo({
   );
   const anamneseBasal = objeto(configuracaoBasal.anamnese);
   const vetoresBasais = lista(configuracaoBasal.vetores);
+  const vetoresBasaisPorCodigo = new Map(
+    vetoresBasais.map((item) => [String(item.codigo ?? ""), item])
+  );
   const snapshotBasal = objeto(configuracaoBasal.snapshot_basal);
+  const identificadorDaSessao = texto(
+    contextoSessao.identificador ?? sessao.identificador,
+    ""
+  );
+  const configuracaoBasalCanonica = sessaoBaseline
+    && projecaoOperacionalAtual
+    && !modoHistorico
+    && texto(configuracaoBasal.identificador_da_sessao, "") === identificadorDaSessao;
   const coberturaVetorial = objeto(leituraCientifica.cobertura_vetorial);
   const definicoesVetoriais = lista(ciencia.vetores);
   const estadosVetoriais = lista(leituraCientifica.vetores);
@@ -635,19 +660,25 @@ export function CockpitOperacionalVivo({
   );
   const radarVetorial: HxVectorAxis[] = definicoesVetoriais.map((definicao) => {
     const identificador = identificadorVetorial(definicao);
+    const codigo = codigoVetorial(definicao);
     const estadoVetorial = estadosVetoriaisPorDefinicao.get(identificador)
-      ?? estadosVetoriaisPorDefinicao.get(codigoVetorial(definicao));
+      ?? estadosVetoriaisPorDefinicao.get(codigo);
+    const vetorBasal = vetoresBasaisPorCodigo.get(codigo);
     return {
-      code: codigoVetorial(definicao),
+      code: codigo,
       name: nomeVetorial(definicao),
-      value: leituraAoVivo ? valorNormalizado(estadoVetorial?.magnitude) : null
+      value: leituraAoVivo ? valorNormalizado(estadoVetorial?.magnitude)
+        : configuracaoBasalCanonica
+          ? valorNormalizado(vetorBasal?.magnitude)
+          : null
     };
   });
   const radarCompleto = radarVetorial.length === 10
     && radarVetorial.every((item) => item.value != null);
-  const iirhCalculado = leituraAoVivo && iirh.estado === "CALCULADO"
+  const cienciaAtualAdmissivel = leituraAoVivo || configuracaoBasalCanonica;
+  const iirhCalculado = cienciaAtualAdmissivel && iirh.estado === "CALCULADO"
     && typeof iirh.valor === "number";
-  const resultanteCalculada = leituraAoVivo
+  const resultanteCalculada = cienciaAtualAdmissivel
     && (resultante.estado === "CALCULAVEL" || resultante.estado === "CONFLITANTE")
     && typeof resultante.valor === "number";
   const seloDaResultante = texto(
@@ -669,7 +700,9 @@ export function CockpitOperacionalVivo({
   const incertezasDaResultante = Array.isArray(resultante.incertezas)
     ? resultante.incertezas.map(String)
     : [];
-  const zonaCalculada = iirhCalculado && Boolean(zona.nome ?? zona.codigo);
+  const zonaCalculada = cienciaAtualAdmissivel
+    && iirhCalculado
+    && Boolean(zona.nome ?? zona.codigo);
   const trajetoriaCalculada = leituraAoVivo && trajetoria.valor != null;
   const leituraCientificaVisivel = iirhCalculado
     || zonaCalculada
@@ -1093,7 +1126,7 @@ export function CockpitOperacionalVivo({
           <HxSectionHeader
             eyebrow={texto(configuracaoBasal.versao, "BASELINE REGULATÓRIO AUTORAL")}
             title="Configuração regulatória basal"
-            aside={<span>Repouso não significa ausência de funcionamento</span>}
+            aside={<span>FORMALIZAÇÃO AUTORAL IMPLEMENTADA · VALIDAÇÃO COMPUTACIONAL</span>}
           />
           <div className="hx-live-scientific-chain__rail">
             <article className={anamneseBasal.estado === "FONTE_ESTRUTURANTE_ADMISSIVEL" ? "is-ready" : "is-blocked"}>
@@ -1101,7 +1134,7 @@ export function CockpitOperacionalVivo({
               <div>
                 <small>Anamnese Regulatória</small>
                 <strong>{texto(anamneseBasal.estado, "FONTE ESTRUTURANTE AUSENTE")}</strong>
-                <span>Fonte estruturante reconhecida sem transformar texto livre em escore.</span>
+                <span>{numero(anamneseBasal.evidencias_basais_aceitas)} evidências estruturadas aceitas · {lista(anamneseBasal.familias_humanas_independentes).length || (Array.isArray(anamneseBasal.familias_humanas_independentes) ? anamneseBasal.familias_humanas_independentes.length : 0)} família independente · texto livre não convertido.</span>
               </div>
             </article>
             <article className={Number(configuracaoBasal.vetores_calculaveis) > 0 ? "is-ready" : "is-blocked"}>
@@ -1130,13 +1163,16 @@ export function CockpitOperacionalVivo({
                   <dd>
                     {texto(vetor.estado)} · Magnitude {vetor.magnitude == null
                       ? "não calculável"
-                      : numero(vetor.magnitude, 2)} · {texto(
+                      : numero(vetor.magnitude, 2)} · Cobertura {percentual(vetor.cobertura)} · Confiança {percentual(vetor.confianca)} · {texto(
                       vetor.motivo,
                       texto(
                         vetor.decisao_autoral_pendente,
                         "Sem composição basal admissível."
                       )
                     )}
+                    {lista(vetor.evidencias_utilizadas).length
+                      ? ` · Evidências ${lista(vetor.evidencias_utilizadas).map((item) => texto(item.codigo)).join(" · ")}`
+                      : " · Evidências: nenhuma"}
                   </dd>
                 </div>
               ))}
@@ -1194,7 +1230,9 @@ export function CockpitOperacionalVivo({
         {radarVetorial.length ? (
           <HxSurface as="section" className="hx-live-vector-stage">
             <HxSectionHeader
-              eyebrow="VETORES VIVOS · MATRIZ VETORIAL"
+              eyebrow={configuracaoBasalCanonica
+                ? "VETORES BASAIS CANÔNICOS · MATRIZ VETORIAL"
+                : "VETORES VIVOS · MATRIZ VETORIAL"}
               title="Dez vetores oficiais"
             />
             <VectorRadarChart vectors={radarVetorial} />
@@ -1206,16 +1244,20 @@ export function CockpitOperacionalVivo({
                 const estadoVetorial = estadosVetoriaisPorDefinicao.get(
                   identificadorVetorial(definicao ?? {})
                 ) ?? estadosVetoriaisPorDefinicao.get(vetor.code);
+                const vetorBasal = vetoresBasaisPorCodigo.get(vetor.code);
+                const estadoVetorialExibido = configuracaoBasalCanonica
+                  ? vetorBasal
+                  : estadoVetorial;
                 const evidenciasUtilizadas = lista(
-                  estadoVetorial?.evidencias_utilizadas
+                  estadoVetorialExibido?.evidencias_utilizadas
                 );
                 const evidenciasAusentes = Array.isArray(
-                  estadoVetorial?.evidencias_ausentes
+                  estadoVetorialExibido?.evidencias_ausentes
                 )
-                  ? estadoVetorial.evidencias_ausentes.map(String)
+                  ? estadoVetorialExibido.evidencias_ausentes.map(String)
                   : [];
                 const origemMatematica = objeto(
-                  estadoVetorial?.origem_matematica
+                  estadoVetorialExibido?.origem_matematica
                 );
                 return (
                   <div className={vetor.value == null ? "is-missing" : "has-value"} key={vetor.code}>
@@ -1224,7 +1266,7 @@ export function CockpitOperacionalVivo({
                       <strong>
                         {vetor.value == null
                           ? texto(
-                              estadoVetorial?.estado,
+                              estadoVetorialExibido?.estado,
                               "AGUARDANDO EVIDÊNCIA"
                             )
                           : `${(vetor.value * 100).toFixed(1)}%`}
@@ -1238,14 +1280,14 @@ export function CockpitOperacionalVivo({
                     <details className="hx-live-vector-trace">
                       <summary>Por que este resultado? · Rastreabilidade científica</summary>
                       <dl>
-                        <div><dt>Estado</dt><dd>{texto(estadoVetorial?.estado, "NAO_DEFINIDO")}</dd></div>
-                        <div><dt>Cobertura</dt><dd>{percentual(estadoVetorial?.cobertura)}</dd></div>
-                        <div><dt>Qualidade</dt><dd>{percentual(estadoVetorial?.qualidade)}</dd></div>
-                        <div><dt>Confiança</dt><dd>{percentual(estadoVetorial?.confiabilidade)}</dd></div>
-                        <div><dt>Sessão</dt><dd>{texto(estadoVetorial?.identificador_da_sessao)}</dd></div>
-                        <div><dt>Fase</dt><dd>{texto(estadoVetorial?.fase)}</dd></div>
-                        <div><dt>Timestamp</dt><dd>{dataLegivel(estadoVetorial?.timestamp)}</dd></div>
-                        <div><dt>Biblioteca</dt><dd>{texto(estadoVetorial?.versao_da_biblioteca)}</dd></div>
+                        <div><dt>Estado</dt><dd>{texto(estadoVetorialExibido?.estado, "NAO_DEFINIDO")}</dd></div>
+                        <div><dt>Cobertura</dt><dd>{percentual(estadoVetorialExibido?.cobertura)}</dd></div>
+                        <div><dt>Qualidade</dt><dd>{percentual(estadoVetorialExibido?.qualidade)}</dd></div>
+                        <div><dt>Confiança</dt><dd>{percentual(estadoVetorialExibido?.confiabilidade ?? estadoVetorialExibido?.confianca)}</dd></div>
+                        <div><dt>Sessão</dt><dd>{texto(estadoVetorialExibido?.identificador_da_sessao ?? configuracaoBasal.identificador_da_sessao)}</dd></div>
+                        <div><dt>Fase</dt><dd>{texto(estadoVetorialExibido?.fase ?? configuracaoBasal.contexto_temporal)}</dd></div>
+                        <div><dt>Timestamp</dt><dd>{dataLegivel(estadoVetorialExibido?.timestamp ?? configuracaoBasal.calculado_em)}</dd></div>
+                        <div><dt>Biblioteca</dt><dd>{texto(estadoVetorialExibido?.versao_da_biblioteca ?? configuracaoBasal.versao)}</dd></div>
                         <div><dt>Origem matemática</dt><dd>{[
                           texto(origemMatematica.versao),
                           texto(origemMatematica.arquivo),
@@ -1258,7 +1300,7 @@ export function CockpitOperacionalVivo({
                         <div><dt>Evidências ausentes</dt><dd>{evidenciasAusentes.join(" · ") || "Nenhuma"}</dd></div>
                         {vetor.value == null ? (
                           <div><dt>Requisito ausente</dt><dd>{texto(
-                            estadoVetorial?.motivo,
+                            estadoVetorialExibido?.motivo,
                             "EVIDÊNCIA ABAIXO DO MÍNIMO AUTORAL"
                           )}</dd></div>
                         ) : null}
