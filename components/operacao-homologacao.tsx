@@ -2044,6 +2044,12 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     ? fluxoOperacional.acoes_secundarias_permitidas.map(String)
     : [];
   const executarPrincipal = () => {
+    if (acaoPrincipal === "PREPARAR_SESSAO") {
+      document
+        .getElementById("preparar-sessao")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     if (acaoPrincipal === "DEFINIR_REFERENCIA_BASELINE") {
       document
         .getElementById("referencia-baseline")
@@ -2574,6 +2580,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     />
   );
   const controleDeBaseline = [
+    "PREPARAR_SESSAO",
     "DEFINIR_REFERENCIA_BASELINE",
     "INICIAR_BASELINE",
     "PAUSAR_BASELINE",

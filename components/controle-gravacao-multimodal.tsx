@@ -539,7 +539,8 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
 
   const prontidao = painel?.prontidao;
   const configuracaoDivergente =
-    modo !== prontidao?.modo_de_midia
+    !painel?.configuracoes.length
+    || modo !== prontidao?.modo_de_midia
     || fontes.slice().sort().join("|")
       !== (prontidao?.fontes_selecionadas ?? []).slice().sort().join("|");
   const modoComMidia = modo !== "NENHUM";
@@ -561,7 +562,11 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
   const referenciaJaDefinida = Boolean(decisaoPersistida);
 
   return (
-    <section className="hx-media-control" aria-label="Preparar sessão">
+    <section
+      id="preparar-sessao"
+      className="hx-media-control"
+      aria-label="Preparar sessão"
+    >
       <header className="hx-media-control__header">
         <div>
           <small>PREPARAR SESSÃO · {painel?.versao ?? "CARREGANDO"}</small>
