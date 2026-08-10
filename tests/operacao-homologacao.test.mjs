@@ -583,7 +583,10 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
 test("Baseline canônico aparece sem ser rotulado como telemetria viva", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
 
-  assert.match(cockpit, /const configuracaoBasalCanonica = sessaoBaseline/);
+  assert.match(
+    cockpit,
+    /const configuracaoBasalCanonica = \(sessaoBaseline \|\| \([\s\S]*!sessaoFinalizada && !faseCientificaAtual/
+  );
   assert.match(cockpit, /projecaoOperacionalAtual[\s\S]*!modoHistorico/);
   assert.match(
     cockpit,
@@ -593,6 +596,18 @@ test("Baseline canônico aparece sem ser rotulado como telemetria viva", async (
   assert.match(cockpit, /FORMALIZAÇÃO AUTORAL IMPLEMENTADA · VALIDAÇÃO COMPUTACIONAL/);
   assert.match(cockpit, /texto livre não convertido/);
   assert.match(cockpit, /zero e fallback são proibidos/);
+});
+
+test("configuração basal canônica aparece antes do PRÉ na sessão integral", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+
+  assert.match(cockpit, /const faseCientificaAtual = String\(sessao\.fase_atual \?\? ""\)/);
+  assert.match(cockpit, /!sessaoFinalizada && !faseCientificaAtual/);
+  assert.match(cockpit, /const faseAtual = faseCientificaAtual/);
+  assert.doesNotMatch(
+    cockpit,
+    /const configuracaoBasalCanonica = leituraAoVivo/
+  );
 });
 
 test("polling vivo não para em segundo plano e retoma imediatamente no foco", async () => {

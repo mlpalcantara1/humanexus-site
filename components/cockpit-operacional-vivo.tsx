@@ -648,7 +648,10 @@ export function CockpitOperacionalVivo({
     contextoSessao.identificador ?? sessao.identificador,
     ""
   );
-  const configuracaoBasalCanonica = sessaoBaseline
+  const faseCientificaAtual = String(sessao.fase_atual ?? "");
+  const configuracaoBasalCanonica = (sessaoBaseline || (
+    !sessaoFinalizada && !faseCientificaAtual
+  ))
     && projecaoOperacionalAtual
     && !modoHistorico
     && texto(configuracaoBasal.identificador_da_sessao, "") === identificadorDaSessao;
@@ -985,7 +988,7 @@ export function CockpitOperacionalVivo({
     : sessaoFinalizada
       ? "SESSÃO ENCERRADA"
       : "SEM FASE ATIVA";
-  const faseAtual = String(sessao.fase_atual ?? "");
+  const faseAtual = faseCientificaAtual;
   const passosDoFluxo = (
     sessaoBaseline ? ["BASELINE"] : ["PRE", "TREINO", "POS"]
   ).map((codigo) => {
