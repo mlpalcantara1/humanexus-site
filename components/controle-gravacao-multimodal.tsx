@@ -560,6 +560,20 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
     tipoPersistido === "REALIZAR_NOVO_BASELINE"
     && !baselineAtual;
   const referenciaJaDefinida = Boolean(decisaoPersistida);
+  const fontesIndisponiveis = prontidao?.fontes_indisponiveis ?? [];
+  const aguardandoHardware = Boolean(
+    sessaoPreparada
+    && fontesIndisponiveis.length
+    && fontesIndisponiveis.every((codigoDaFonte) => {
+      const estado = prontidao?.fontes.find(
+        (fonte) => fonte.codigo === codigoDaFonte
+      )?.estado;
+      return [
+        "AGUARDANDO_FONTE_OPCIONAL",
+        "DISPOSITIVO FÍSICO AUSENTE — HOMOLOGAÇÃO PENDENTE"
+      ].includes(String(estado ?? ""));
+    })
+  );
 
   return (
     <section
@@ -1102,7 +1116,15 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
         </button>
       </div>
 
-      {prontidao?.fontes_indisponiveis.length ? (
+      {aguardandoHardware ? (
+        <div className="hx-recovery-actions">
+          <strong>AGUARDANDO HARDWARE</strong>
+          <span>
+            As fontes foram vinculadas à sessão e a estação permanece preparada.
+            Nenhuma ausência é tratada como falha ou evidência atual.
+          </span>
+        </div>
+      ) : prontidao?.fontes_indisponiveis.length ? (
         <div className="hx-recovery-actions">
           <strong>FALHA TÉCNICA RECUPERÁVEL</strong>
           <button onClick={() => void carregar()}>TENTAR NOVAMENTE</button>

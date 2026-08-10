@@ -28,6 +28,18 @@ test("preparação modular possui ação explícita e não inicia baseline", () 
   assert.doesNotMatch(preparar, /executar\("baseline"/);
 });
 
+test("preparação sem hardware não é classificada como falha técnica", () => {
+  const componente = ler("components/controle-gravacao-multimodal.tsx");
+  assert.match(componente, /const aguardandoHardware = Boolean\(/);
+  assert.match(componente, /AGUARDANDO_FONTE_OPCIONAL/);
+  assert.match(componente, /DISPOSITIVO FÍSICO AUSENTE — HOMOLOGAÇÃO PENDENTE/);
+  assert.match(componente, />AGUARDANDO HARDWARE</);
+  assert.match(
+    componente,
+    /Nenhuma ausência é tratada como falha ou evidência atual\./
+  );
+});
+
 test("baseline é referência opcional separada do fluxo científico", () => {
   const componente = ler("components/controle-gravacao-multimodal.tsx");
   const cockpit = ler("components/operacao-homologacao.tsx");
