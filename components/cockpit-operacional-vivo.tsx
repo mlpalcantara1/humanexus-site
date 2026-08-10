@@ -117,6 +117,23 @@ function itensExplicaveis(valor: unknown) {
   });
 }
 
+function referenciaCientificaLegivel(valor: unknown) {
+  if (Array.isArray(valor)) {
+    return valor.map((item) => texto(item)).filter(Boolean).join(" · ");
+  }
+  const referencia = objeto(valor);
+  if (Object.keys(referencia).length) {
+    return [
+      referencia.versao,
+      referencia.arquivo,
+      referencia.funcao,
+      referencia.linhas,
+      referencia.base_operacional_humanexus_12
+    ].map((item) => texto(item, "")).filter(Boolean).join(" · ");
+  }
+  return texto(valor, "");
+}
+
 function PorQueEsteResultado({
   valor,
   fallback
@@ -1191,7 +1208,9 @@ export function CockpitOperacionalVivo({
                       ? ` · Evidências ${lista(vetor.evidencias_utilizadas).map((item) => texto(item.codigo)).join(" · ")}`
                       : " · Evidências: nenhuma"}
                     {vetor.mecanismo_operacional
-                      ? ` · Regra ${texto(vetor.mecanismo_operacional)}`
+                      ? ` · Regra ${referenciaCientificaLegivel(
+                          vetor.mecanismo_operacional
+                        )}`
                       : ""}
                   </dd>
                 </div>

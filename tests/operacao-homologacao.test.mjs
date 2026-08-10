@@ -832,6 +832,7 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
   assert.match(cockpit, /Por que este resultado\?/);
   assert.match(cockpit, /estado_do_contrato_operacional/);
   assert.match(cockpit, /mecanismo_operacional/);
+  assert.match(cockpit, /referenciaCientificaLegivel/);
   assert.match(cockpit, /precondicoes_nao_atendidas/);
   assert.match(cockpit, /Ausência permanece nula/);
   assert.match(
