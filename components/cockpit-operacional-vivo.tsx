@@ -1173,6 +1173,16 @@ export function CockpitOperacionalVivo({
                         "Sem composição basal admissível."
                       )
                     )}
+                    {vetor.magnitude == null && vetor.classificacao_da_ausencia
+                      ? ` · Classificação ${texto(vetor.classificacao_da_ausencia)} — ${texto(
+                          vetor.classificacao_da_ausencia
+                        ) === "A"
+                          ? "ausência real de evidência"
+                          : texto(vetor.classificacao_da_ausencia) === "B"
+                            ? "limite científico formal"
+                            : "lacuna autoral real"
+                        }`
+                      : ""}
                     {lista(vetor.evidencias_utilizadas).length
                       ? ` · Evidências ${lista(vetor.evidencias_utilizadas).map((item) => texto(item.codigo)).join(" · ")}`
                       : " · Evidências: nenhuma"}
