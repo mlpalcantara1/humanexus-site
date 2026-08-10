@@ -621,6 +621,12 @@ export function CockpitOperacionalVivo({
   const zona = objeto(leituraCientifica.zona);
   const resultante = objeto(leituraCientifica.resultante);
   const trajetoria = objeto(leituraCientifica.trajetoria);
+  const configuracaoBasal = objeto(
+    leituraCientifica.configuracao_regulatoria_basal
+  );
+  const anamneseBasal = objeto(configuracaoBasal.anamnese);
+  const vetoresBasais = lista(configuracaoBasal.vetores);
+  const snapshotBasal = objeto(configuracaoBasal.snapshot_basal);
   const coberturaVetorial = objeto(leituraCientifica.cobertura_vetorial);
   const definicoesVetoriais = lista(ciencia.vetores);
   const estadosVetoriais = lista(leituraCientifica.vetores);
@@ -1077,6 +1083,71 @@ export function CockpitOperacionalVivo({
           fallback={texto(trajetoria.motivo, "Sessões comparáveis insuficientes para trajetória e VEV.")}
         />
       </section>
+
+      {Object.keys(configuracaoBasal).length ? (
+        <HxSurface
+          as="section"
+          className="hx-live-scientific-chain"
+          aria-label="Configuração regulatória basal"
+        >
+          <HxSectionHeader
+            eyebrow={texto(configuracaoBasal.versao, "BASELINE REGULATÓRIO AUTORAL")}
+            title="Configuração regulatória basal"
+            aside={<span>Repouso não significa ausência de funcionamento</span>}
+          />
+          <div className="hx-live-scientific-chain__rail">
+            <article className={anamneseBasal.estado === "FONTE_ESTRUTURANTE_ADMISSIVEL" ? "is-ready" : "is-blocked"}>
+              <i>01</i>
+              <div>
+                <small>Anamnese Regulatória</small>
+                <strong>{texto(anamneseBasal.estado, "FONTE ESTRUTURANTE AUSENTE")}</strong>
+                <span>Fonte estruturante reconhecida sem transformar texto livre em escore.</span>
+              </div>
+            </article>
+            <article className={Number(configuracaoBasal.vetores_calculaveis) > 0 ? "is-ready" : "is-blocked"}>
+              <i>02</i>
+              <div>
+                <small>Dez vetores basais</small>
+                <strong>{numero(configuracaoBasal.vetores_calculaveis)}/10 calculáveis</strong>
+                <span>Magnitude somente quando sustentada por regra autoral e evidência admissível.</span>
+              </div>
+            </article>
+            <article className={snapshotBasal.estado === "ELEGIVEL_PARA_PERSISTENCIA_AO_ENCERRAR_BASELINE" ? "is-ready" : "is-blocked"}>
+              <i>03</i>
+              <div>
+                <small>Snapshot basal canônico</small>
+                <strong>{texto(snapshotBasal.estado, "NÃO PERSISTIDO")}</strong>
+                <span>{texto(snapshotBasal.motivo, "Nenhum snapshot científico foi fabricado.")}</span>
+              </div>
+            </article>
+          </div>
+          <details className="hx-live-vector-trace">
+            <summary>Por que este resultado? · Vetores basais e decisões pendentes</summary>
+            <dl>
+              {vetoresBasais.map((vetor) => (
+                <div key={texto(vetor.codigo)}>
+                  <dt>{texto(vetor.codigo)} · {texto(vetor.nome)}</dt>
+                  <dd>
+                    {texto(vetor.estado)} · Magnitude {vetor.magnitude == null
+                      ? "não calculável"
+                      : numero(vetor.magnitude, 2)} · {texto(
+                      vetor.motivo,
+                      texto(
+                        vetor.decisao_autoral_pendente,
+                        "Sem composição basal admissível."
+                      )
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </details>
+          <PorQueEsteResultado
+            valor={configuracaoBasal.por_que_este_resultado}
+            fallback="A configuração basal permanece limitada às regras autorais formalizadas."
+          />
+        </HxSurface>
+      ) : null}
 
       <section id="hx-command-level" className="hx-live-operation-focus" aria-label="Comando e progressão da sessão">
         <div className="hx-live-operation-flow">

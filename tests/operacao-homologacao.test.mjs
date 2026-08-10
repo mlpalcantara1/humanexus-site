@@ -355,6 +355,17 @@ test("Cockpit abre progressivamente e preserva os dez vetores visíveis", async 
   );
 });
 
+test("Cockpit apresenta a configuração basal sem fabricar magnitude", async () => {
+  const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  assert.match(operacional, /Configuração regulatória basal/);
+  assert.match(operacional, /Repouso não significa ausência de funcionamento/);
+  assert.match(operacional, /Fonte estruturante reconhecida sem transformar texto livre em escore/);
+  assert.match(operacional, /Magnitude somente quando sustentada por regra autoral e evidência admissível/);
+  assert.match(operacional, /Nenhum snapshot científico foi fabricado/);
+  assert.match(operacional, /vetor\.magnitude/);
+  assert.match(operacional, /vetor\.decisao_autoral_pendente|vetor\.motivo/);
+});
+
 test("telemetria real é contínua, histórica quando encerrada e não cria simulação", async () => {
   const client = await source("components/operacao-homologacao.tsx");
   const operacional = await source("components/cockpit-operacional-vivo.tsx");
