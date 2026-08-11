@@ -601,6 +601,9 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   assert.match(operacao, /Governança científica, suficiência e proveniência/);
   assert.match(operacao, /elegibilidade_temporal/);
   assert.match(operacao, /rastreabilidade_do_motor/);
+  assert.match(operacao, /visao !== "visao-geral"/);
+  assert.doesNotMatch(cockpit, /fontes e cobertura vêm do núcleo/);
+  assert.match(cockpit, /o contexto operacional vem do núcleo/);
   assert.match(css, /Cockpit operacional = decisão/);
   assert.match(css, /\.hx-live-cockpit > \.hx-live-scientific-chain[\s\S]*display: none/);
   assert.match(css, /\.hx-live-command-center--premium > \.hx-live-temporal-disclosure/);

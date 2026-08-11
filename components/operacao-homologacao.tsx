@@ -776,8 +776,12 @@ function ContextoPersistente({ estado, visao }: { estado: Estado; visao: VisaoCo
         <div><small>CTR / THX</small><strong>{texto(estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador)} · {texto(estado.thx_individual?.codigo)}</strong></div>
         <div><small>Fase atual</small><strong>{faseAtual(estado)}</strong></div>
         <div><small>Próxima ação</small><strong>{texto(objeto(estado.estado_operacional).proxima_acao_principal, "SEM AÇÃO PENDENTE")}</strong></div>
-        <div><small>Versão científica</small><strong>{texto(valorDoRegistro(estado.ciencia.versao, "code", "codigo"))}</strong></div>
-        <div><small>Visão interna</small><strong>{VISOES_COCKPIT.find((item) => item.id === visao)?.nome}</strong></div>
+        {visao !== "visao-geral" ? (
+          <>
+            <div><small>Versão científica</small><strong>{texto(valorDoRegistro(estado.ciencia.versao, "code", "codigo"))}</strong></div>
+            <div><small>Visão interna</small><strong>{VISOES_COCKPIT.find((item) => item.id === visao)?.nome}</strong></div>
+          </>
+        ) : null}
       </section>
       {finalizada ? (
         <section className="hx-session-final">

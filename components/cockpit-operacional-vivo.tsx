@@ -1882,7 +1882,7 @@ export function CockpitOperacionalVivo({
             />
             <button type="button" onClick={() => void enviarRegistro()} disabled={sessaoFinalizada || ocupado || !permitirOperacao || !registro.trim()}>Registrar</button>
           </div>
-          <span>{permitirOperacao ? "Atalho: ⌘/Ctrl + Enter · organização, participante, sessão, fase, horário, THX, fontes e cobertura vêm do núcleo." : "Consulta administrativa: registros e comandos operacionais exigem o profissional responsável."}</span>
+          <span>{permitirOperacao ? "Atalho: ⌘/Ctrl + Enter · o contexto operacional vem do núcleo." : "Consulta administrativa: registros e comandos operacionais exigem o profissional responsável."}</span>
         </div>
 
         <div className="hx-live-events">
