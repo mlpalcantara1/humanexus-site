@@ -3,6 +3,7 @@
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 import { HumanexusChart } from "@/components/hx-echarts";
+import { estadoGeometricoVetorial } from "@/lib/cockpit-vector-views";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 
 export type HxDataPoint = {
@@ -181,7 +182,27 @@ export type HxVectorAxis = {
   code: string;
   name: string;
   value: number | null;
+  macrofield?: string | null;
+  trend?: string | null;
 };
+
+function pontoNoEixo(indice: number, total: number, raio: number) {
+  const quantidade = Math.max(1, total);
+  const angulo = -Math.PI / 2 + (indice * Math.PI * 2) / quantidade;
+  return {
+    x: 200 + Math.cos(angulo) * raio,
+    y: 200 + Math.sin(angulo) * raio,
+    angulo
+  };
+}
+
+function pontosDoAnel(total: number, raio: number) {
+  if (total < 3) return "";
+  return Array.from({ length: total }, (_, indice) => {
+    const ponto = pontoNoEixo(indice, total, raio);
+    return `${ponto.x.toFixed(2)},${ponto.y.toFixed(2)}`;
+  }).join(" ");
+}
 
 export function VectorRadarChart({
   vectors,
@@ -192,104 +213,75 @@ export function VectorRadarChart({
   ariaLabel?: string;
   reducedMotion?: boolean;
 }) {
-  const completos = vectors.length === 10
-    && vectors.every((item) => item.value != null && Number.isFinite(item.value));
-  const option = useMemo(() => ({
-    animation: true,
-    animationDuration: 680,
-    animationDurationUpdate: 760,
-    animationEasing: "cubicOut",
-    animationEasingUpdate: "cubicOut",
-    radar: {
-      center: ["50%", "51%"],
-      radius: "64%",
-      splitNumber: 5,
-      shape: "polygon",
-      indicator: vectors.map((item) => ({
-        name: `${item.code}\n${item.name}`,
-        max: 1
-      })),
-      axisName: {
-        color: C.warmWhite,
-        fontFamily: MONO,
-        fontSize: 8,
-        lineHeight: 13,
-        textShadowBlur: 8,
-        textShadowColor: "rgba(0,0,0,.72)"
-      },
-      axisLine: {
-        lineStyle: {
-          color: "rgba(201,170,99,.26)",
-          width: 1,
-          shadowBlur: 5,
-          shadowColor: "rgba(201,170,99,.12)"
-        }
-      },
-      splitLine: {
-        lineStyle: {
-          color: [
-            "rgba(183,194,190,.075)",
-            "rgba(183,194,190,.09)",
-            "rgba(201,170,99,.11)",
-            "rgba(183,194,190,.12)",
-            "rgba(201,170,99,.17)"
-          ]
-        }
-      },
-      splitArea: {
-        areaStyle: {
-          color: [
-            "rgba(255,255,255,.008)",
-            "rgba(69,109,112,.018)",
-            "rgba(201,170,99,.018)"
-          ]
-        }
-      }
-    },
-    tooltip: completos ? {
-      trigger: "item",
-      formatter: () => vectors.map((item) =>
-        `${item.code} · ${item.name}: ${(Number(item.value) * 100).toFixed(1)}%`
-      ).join("<br/>")
-    } : { show: false },
-    series: completos ? [{
-      name: "Configuração vetorial oficial",
-      type: "radar",
-      data: [{ value: vectors.map((item) => item.value), name: "Estado vetorial" }],
-      symbol: "circle",
-      symbolSize: 6,
-      lineStyle: {
-        color: C.gold,
-        width: 2,
-        shadowBlur: 12,
-        shadowColor: "rgba(201,170,99,.45)"
-      },
-      itemStyle: {
-        color: C.gold,
-        borderColor: C.warmWhite,
-        borderWidth: 1,
-        shadowBlur: 8,
-        shadowColor: "rgba(201,170,99,.45)"
-      },
-      areaStyle: {
-        color: "rgba(201,170,99,.19)",
-        shadowBlur: 18,
-        shadowColor: "rgba(201,170,99,.16)"
-      },
-      emphasis: {
-        lineStyle: { width: 2.5 },
-        areaStyle: { color: "rgba(201,170,99,.25)" }
-      }
-    }] : []
-  }) as EChartsOption, [completos, vectors]);
+  const geometria = estadoGeometricoVetorial(vectors);
+  const pontosCalculados = useMemo(() => vectors.flatMap((vetor, indice) => {
+    if (vetor.value == null || !Number.isFinite(vetor.value)) return [];
+    const valor = Math.max(0, Math.min(1, vetor.value));
+    return [{ vetor, indice, valor, ...pontoNoEixo(indice, vectors.length, valor * 124) }];
+  }), [vectors]);
+  const poligono = geometria.permitePoligono
+    ? pontosCalculados.map((ponto) => `${ponto.x.toFixed(2)},${ponto.y.toFixed(2)}`).join(" ")
+    : "";
 
   return (
-    <div className="hx-vector-radar-live" data-vector-coverage={completos ? "complete" : "insufficient"}>
-      <HumanexusChart option={option} height={390} ariaLabel={ariaLabel} reducedMotion={reducedMotion} />
-      {!completos ? (
+    <div
+      className="hx-vector-radar-live"
+      data-vector-coverage={geometria.completo ? "complete" : "partial"}
+      data-calculated-vectors={geometria.calculados}
+      data-total-vectors={geometria.total}
+      data-false-geometry="none"
+      data-reduced-motion={reducedMotion ? "true" : "false"}
+    >
+      <svg className="hx-vector-radar-live__svg" viewBox="0 0 400 400" role="img" aria-label={ariaLabel}>
+        <title>{ariaLabel}</title>
+        {[1, 2, 3, 4, 5].map((nivel) => vectors.length >= 3 ? (
+          <polygon
+            className="hx-vector-radar-live__ring"
+            key={nivel}
+            points={pontosDoAnel(vectors.length, (124 * nivel) / 5)}
+          />
+        ) : (
+          <circle
+            className="hx-vector-radar-live__ring"
+            key={nivel}
+            cx="200"
+            cy="200"
+            r={(124 * nivel) / 5}
+          />
+        ))}
+        {vectors.map((vetor, indice) => {
+          const fim = pontoNoEixo(indice, vectors.length, 124);
+          const rotulo = pontoNoEixo(indice, vectors.length, 151);
+          const ancora = Math.cos(rotulo.angulo) > .25
+            ? "start"
+            : Math.cos(rotulo.angulo) < -.25
+              ? "end"
+              : "middle";
+          return (
+            <g className={vetor.value == null ? "is-missing" : "has-value"} key={vetor.code}>
+              <line className="hx-vector-radar-live__axis" x1="200" y1="200" x2={fim.x} y2={fim.y} />
+              <text className="hx-vector-radar-live__label" x={rotulo.x} y={rotulo.y} textAnchor={ancora}>
+                <tspan x={rotulo.x} dy="0">{vetor.code}</tspan>
+                <tspan className="hx-vector-radar-live__label-state" x={rotulo.x} dy="13">
+                  {vetor.value == null ? "AUSENTE" : `${(vetor.value * 100).toFixed(1)}%`}
+                </tspan>
+              </text>
+            </g>
+          );
+        })}
+        {poligono ? <polygon className="hx-vector-radar-live__polygon" points={poligono} /> : null}
+        {pontosCalculados.map(({ vetor, x, y }) => (
+          <g className="hx-vector-radar-live__point" key={`point-${vetor.code}`}>
+            <circle cx={x} cy={y} r="7" />
+            <circle cx={x} cy={y} r="3" />
+          </g>
+        ))}
+        <circle className="hx-vector-radar-live__center" cx="200" cy="200" r="3" />
+      </svg>
+      {!geometria.completo ? (
         <div className="hx-vector-radar-live__block">
-          <strong>CONFIGURAÇÃO VETORIAL NÃO CALCULÁVEL</strong>
-          <span>Os dez eixos oficiais permanecem visíveis; nenhuma ausência foi convertida em zero.</span>
+          <strong>{geometria.calculados} DE {geometria.total} VETORES CALCULADOS</strong>
+          <span>Pontos independentes mostram somente magnitudes canônicas; ausências não formam geometria.</span>
         </div>
       ) : null}
     </div>

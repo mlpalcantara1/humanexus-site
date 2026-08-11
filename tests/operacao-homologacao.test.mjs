@@ -102,7 +102,12 @@ test("gráficos e Replay usam registros do núcleo e expõem controles exigidos"
   assert.match(chart, /markArea/);
   assert.match(chart, /connectNulls: false/);
   assert.match(chart, /sampling:.*lttb/s);
-  assert.doesNotMatch(chart, /<svg|polyline/);
+  const radarVetorial = chart.match(
+    /export function VectorRadarChart[\s\S]*?export function CockpitSignalStack/
+  )?.[0] ?? "";
+  assert.match(radarVetorial, /<svg/);
+  assert.match(radarVetorial, /data-false-geometry="none"/);
+  assert.doesNotMatch(chart.replace(radarVetorial, ""), /<svg|polyline/);
 });
 
 test("conclusão formal, relatório PDF e módulo móvel permanecem integrados", async () => {
@@ -433,8 +438,8 @@ test("Cockpit Vivo Premium anima instrumentos sem fabricar dado operacional", as
   assert.match(operacional, /LeituraNumerica/);
   assert.match(operacional, /hx-live-vector-meter/);
   assert.match(operacional, /vetor\.value == null[\s\S]*<em \/>/);
-  assert.match(graficos, /animationDurationUpdate: 760/);
-  assert.match(graficos, /animationEasingUpdate: "cubicOut"/);
+  assert.match(graficos, /data-reduced-motion/);
+  assert.match(estilos, /transition: cx 760ms/);
   assert.match(runtime, /prefers-reduced-motion: reduce/);
   assert.match(runtime, /animationDurationUpdate: 0/);
   assert.match(estilos, /Cockpit Vivo Premium — instrumentação, movimento e demonstração visual isolada/);
@@ -620,7 +625,8 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /polar\.ao_vivo === true[\s\S]*Sem leitura atual/);
   assert.match(cockpit, /eeg\.ao_vivo === true[\s\S]*Sem leitura atual/);
   assert.match(cockpit, /Última leitura registrada/);
-  assert.match(cockpit, /leituraAoVivo \? valorNormalizado/);
+  assert.match(cockpit, /const vetorCanonicoDoContexto = leituraAoVivo/);
+  assert.match(cockpit, /valorNormalizado\(vetorCanonicoDoContexto\?\.magnitude\)/);
   assert.match(cockpit, /const cienciaAtualAdmissivel = leituraAoVivo \|\| configuracaoBasalCanonica/);
   assert.match(cockpit, /const iirhCanonicoCalculado = cienciaAtualAdmissivel/);
   assert.match(cockpit, /ativo: cienciaAtualAdmissivel/);

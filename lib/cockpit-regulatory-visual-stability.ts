@@ -6,6 +6,8 @@ export type VetorRegulatorioVisual = {
   code: string;
   name: string;
   value: number | null;
+  macrofield?: string | null;
+  trend?: string | null;
 };
 
 export type RevisaoRegulatoriaVisual = {
@@ -30,7 +32,9 @@ function vetoresIguais(
     const comparado = direita[indice];
     return vetor.code === comparado?.code
       && vetor.name === comparado?.name
-      && vetor.value === comparado?.value;
+      && vetor.value === comparado?.value
+      && vetor.macrofield === comparado?.macrofield
+      && vetor.trend === comparado?.trend;
   });
 }
 

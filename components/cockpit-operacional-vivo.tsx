@@ -17,6 +17,11 @@ import {
   estabilizarApresentacaoRegulatoria,
   type RevisaoRegulatoriaVisual
 } from "@/lib/cockpit-regulatory-visual-stability";
+import {
+  tendenciaVetorialCanonica,
+  vetoresDaVisao,
+  type VisaoVetorial
+} from "@/lib/cockpit-vector-views";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 
 type Registro = Record<string, unknown>;
@@ -371,6 +376,15 @@ function codigoVetorial(definicao: Registro) {
 
 function nomeVetorial(definicao: Registro) {
   return texto(definicao.name ?? definicao.nome, "Vetor regulatório");
+}
+
+function macrocampoVetorial(definicao: Registro) {
+  return texto(
+    definicao.macrofield_code
+      ?? definicao.codigo_do_macrocampo
+      ?? definicao.macrocampo,
+    ""
+  );
 }
 
 function FonteEstado({ estado }: { estado: unknown }) {
@@ -732,13 +746,17 @@ export function CockpitOperacionalVivo({
     const estadoVetorial = estadosVetoriaisPorDefinicao.get(identificador)
       ?? estadosVetoriaisPorDefinicao.get(codigo);
     const vetorBasal = vetoresBasaisPorCodigo.get(codigo);
+    const vetorCanonicoDoContexto = leituraAoVivo
+      ? estadoVetorial
+      : configuracaoBasalCanonica
+        ? vetorBasal
+        : undefined;
     return {
       code: codigo,
       name: nomeVetorial(definicao),
-      value: leituraAoVivo ? valorNormalizado(estadoVetorial?.magnitude)
-        : configuracaoBasalCanonica
-          ? valorNormalizado(vetorBasal?.magnitude)
-          : null
+      macrofield: macrocampoVetorial(definicao),
+      trend: tendenciaVetorialCanonica(vetorCanonicoDoContexto),
+      value: valorNormalizado(vetorCanonicoDoContexto?.magnitude)
     };
   });
   const cienciaAtualAdmissivel = leituraAoVivo || configuracaoBasalCanonica;
@@ -790,7 +808,12 @@ export function CockpitOperacionalVivo({
     revisaoRegulatoriaVisual.iirh,
     revisaoRegulatoriaVisual.zona,
     radarVetorialCanonico
-      .map((item) => `${item.code}:${item.value == null ? "nulo" : item.value}`)
+      .map((item) => [
+        item.code,
+        item.macrofield,
+        item.value == null ? "nulo" : item.value,
+        item.trend ?? "sem-tendencia"
+      ].join(":"))
       .join("|")
   ].join("::");
   useEffect(() => {
@@ -830,6 +853,8 @@ export function CockpitOperacionalVivo({
     };
   }, []);
   const radarVetorial = apresentacaoRegulatoria.vetores as HxVectorAxis[];
+  const [visaoVetorial, setVisaoVetorial] = useState<VisaoVetorial>("SINTESE");
+  const vetoresDaVisaoAtual = vetoresDaVisao(radarVetorial, visaoVetorial);
   const radarCompleto = radarVetorial.length === 10
     && radarVetorial.every((item) => item.value != null);
   const iirhCalculado = apresentacaoRegulatoria.iirh != null;
@@ -1463,11 +1488,31 @@ export function CockpitOperacionalVivo({
                 ? "VETORES BASAIS CANÔNICOS · MATRIZ VETORIAL"
                 : "VETORES VIVOS · MATRIZ VETORIAL"}
               title="Dez vetores oficiais"
-              aside={<span>Estado atual</span>}
+              aside={<span>Estado atual · atualização canônica</span>}
             />
-            <VectorRadarChart vectors={radarVetorial} />
-            <div className="hx-live-vector-list" aria-label="Estado dos dez vetores oficiais">
-              {radarVetorial.map((vetor) => {
+            <div className="hx-live-vector-tabs" role="tablist" aria-label="Visões do gráfico vetorial">
+              {(["HUMANO", "TAREFA", "SINTESE"] as const).map((visao) => (
+                <button
+                  aria-controls="hx-live-vector-panel"
+                  aria-selected={visaoVetorial === visao}
+                  className={visaoVetorial === visao ? "is-active" : ""}
+                  key={visao}
+                  onClick={() => setVisaoVetorial(visao)}
+                  role="tab"
+                  type="button"
+                >
+                  {visao === "SINTESE" ? "SÍNTESE" : visao}
+                </button>
+              ))}
+            </div>
+            <div id="hx-live-vector-panel" className="hx-live-vector-graph" role="tabpanel">
+              <VectorRadarChart
+                ariaLabel={`Gráfico vetorial vivo — visão ${visaoVetorial.toLocaleLowerCase("pt-BR")}`}
+                vectors={vetoresDaVisaoAtual}
+              />
+            </div>
+            <div className="hx-live-vector-list" aria-label={`Estado vetorial — visão ${visaoVetorial}`}>
+              {vetoresDaVisaoAtual.map((vetor) => {
                 return (
                   <div className={vetor.value == null ? "is-missing" : "has-value"} key={vetor.code}>
                     <div>
@@ -1477,6 +1522,7 @@ export function CockpitOperacionalVivo({
                           ? "NÃO CALCULÁVEL"
                           : `${(vetor.value * 100).toFixed(1)}%`}
                       </strong>
+                      {vetor.trend ? <em>Tendência: {vetor.trend}</em> : null}
                     </div>
                     <span className="hx-live-vector-meter" aria-hidden="true">
                       {vetor.value == null

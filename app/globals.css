@@ -1610,6 +1610,42 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
   grid-column: 1 / -1;
 }
 
+.hx-live-vector-tabs {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid rgba(205, 178, 116, .22);
+  background: rgba(205, 178, 116, .12);
+}
+
+.hx-live-vector-tabs button {
+  min-height: 40px;
+  border: 0;
+  background: #061014;
+  color: #7d8a87;
+  letter-spacing: .14em;
+  font: 7px var(--font-geist-mono), monospace;
+  cursor: pointer;
+}
+
+.hx-live-vector-tabs button:hover,
+.hx-live-vector-tabs button:focus-visible {
+  color: #e8e2d2;
+  outline: 1px solid rgba(205, 178, 116, .42);
+  outline-offset: -2px;
+}
+
+.hx-live-vector-tabs button.is-active {
+  background: linear-gradient(90deg, rgba(205, 178, 116, .18), rgba(31, 68, 70, .2));
+  color: #e7ce8a;
+  box-shadow: inset 0 -2px #cdb274;
+}
+
+.hx-live-vector-graph {
+  min-width: 0;
+}
+
 .hx-live-vector-revision {
   color: #7f8c89;
   text-align: right;
@@ -1618,10 +1654,67 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 }
 
 .hx-live-vector-stage .hx-vector-radar-live,
-.hx-live-vector-stage .hx-vector-radar-live .hx-echart {
+.hx-live-vector-stage .hx-vector-radar-live__svg {
   width: 100%;
   min-height: clamp(460px, 38vw, 640px);
   height: clamp(460px, 38vw, 640px) !important;
+}
+
+.hx-vector-radar-live__svg {
+  display: block;
+  overflow: visible;
+}
+
+.hx-vector-radar-live__ring {
+  fill: rgba(69, 109, 112, .012);
+  stroke: rgba(183, 194, 190, .11);
+  stroke-width: .8;
+}
+
+.hx-vector-radar-live__axis {
+  stroke: rgba(201, 170, 99, .28);
+  stroke-width: 1;
+}
+
+.hx-vector-radar-live__label {
+  fill: #e6e2d8;
+  font: 700 9px var(--font-geist-mono), monospace;
+}
+
+.hx-vector-radar-live__label-state {
+  fill: #71807d;
+  font-size: 7px;
+  font-weight: 400;
+}
+
+.hx-vector-radar-live .has-value .hx-vector-radar-live__label-state {
+  fill: #d3b66d;
+}
+
+.hx-vector-radar-live__polygon {
+  fill: rgba(201, 170, 99, .16);
+  stroke: #c9aa63;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 8px rgba(201, 170, 99, .28));
+}
+
+.hx-vector-radar-live__point circle:first-child {
+  fill: rgba(201, 170, 99, .2);
+  stroke: rgba(201, 170, 99, .5);
+  stroke-width: 1;
+}
+
+.hx-vector-radar-live__point circle {
+  transition: cx 760ms cubic-bezier(.22, .61, .36, 1),
+    cy 760ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.hx-vector-radar-live__point circle:last-child {
+  fill: #ead596;
+}
+
+.hx-vector-radar-live__center {
+  fill: #738b87;
 }
 
 .hx-live-vector-stage .hx-live-vector-list {
@@ -1646,6 +1739,13 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 .hx-live-regulatory-readout--primary strong,
 .hx-live-vector-stage .hx-live-vector-list strong {
   transition: color 180ms ease, opacity 180ms ease;
+}
+
+.hx-live-vector-stage .hx-live-vector-list em {
+  display: block;
+  margin-top: 3px;
+  color: #798784;
+  font: normal 6px var(--font-geist-mono), monospace;
 }
 
 .hx-live-temporal-disclosure {
@@ -1727,6 +1827,10 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
     grid-column: auto;
   }
 
+  .hx-live-vector-tabs {
+    grid-column: auto;
+  }
+
   .hx-live-vector-stage .hx-live-vector-list {
     grid-template-columns: 1fr 1fr;
   }
@@ -1743,7 +1847,7 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
   }
 
   .hx-live-vector-stage .hx-vector-radar-live,
-  .hx-live-vector-stage .hx-vector-radar-live .hx-echart {
+  .hx-live-vector-stage .hx-vector-radar-live__svg {
     min-height: 320px;
     height: 320px !important;
   }
