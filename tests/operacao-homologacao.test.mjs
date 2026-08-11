@@ -614,7 +614,7 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   assert.doesNotMatch(cockpit, /fontes e cobertura vêm do núcleo/);
   assert.match(
     design,
-    /\.hx-app--executive \.hx-live-cockpit > #hx-inspection-level/
+    /\[data-hx-experience-mode="executivo"\] \.hx-live-cockpit > #hx-inspection-level/
   );
   assert.doesNotMatch(
     design,

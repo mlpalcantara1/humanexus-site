@@ -982,10 +982,10 @@
 }
 
 /* Missão pós-radar: decisão primeiro, ciência sob inspeção, operação legível. */
-.hx-app--executive .hx-live-cockpit > #hx-inspection-level,
-.hx-app--executive .hx-live-cockpit > .hx-live-scientific-coverage,
-.hx-app--executive .hx-live-cockpit > .hx-live-technical-drawer,
-.hx-app--executive .hx-live-cockpit > .hx-live-indicators {
+[data-hx-experience-mode="executivo"] .hx-live-cockpit > #hx-inspection-level,
+[data-hx-experience-mode="executivo"] .hx-live-cockpit > .hx-live-scientific-coverage,
+[data-hx-experience-mode="executivo"] .hx-live-cockpit > .hx-live-technical-drawer,
+[data-hx-experience-mode="executivo"] .hx-live-cockpit > .hx-live-indicators {
   display: none;
 }
 
