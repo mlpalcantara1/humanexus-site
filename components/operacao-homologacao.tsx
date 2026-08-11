@@ -27,6 +27,7 @@ import {
 type Registro = Record<string, unknown>;
 type OpcoesDeCarregamento = {
   signal?: AbortSignal;
+  identificadorDaConsulta?: number;
 };
 type Estado = {
   carregamento_progressivo?: boolean;
@@ -1301,6 +1302,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   } | null>(null);
   const carregamentoIntegralEmAndamento = useRef<AbortController | null>(null);
   const sequenciaDoPolling = useRef(0);
+  const ultimaConsultaAplicada = useRef(0);
   const componenteMontado = useRef(false);
   const ocupadoAtual = useRef("");
   const autenticacaoExpiradaAtual = useRef(false);
@@ -1495,9 +1497,16 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       },
       contextoRecebido: contextoExplicito,
       cancelada: Boolean(signal?.aborted),
-      componenteMontado: componenteMontado.current
+      componenteMontado: componenteMontado.current,
+      consultaSolicitada: opcoes.identificadorDaConsulta,
+      ultimaConsultaAplicada: ultimaConsultaAplicada.current
     })) {
       return contextoExplicito;
+    }
+    if (Number.isFinite(opcoes.identificadorDaConsulta)) {
+      ultimaConsultaAplicada.current = Number(opcoes.identificadorDaConsulta);
+    } else if (!leve) {
+      ultimaConsultaAplicada.current = 0;
     }
     autenticacaoExpiradaAtual.current = false;
     setAutenticacaoExpirada(false);
@@ -1732,7 +1741,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       let proximoAtraso = atrasoDoPollingCanonico(
         estadoOperacionalDoPolling.current
       );
-      void carregar(contexto, true, false, { signal: controlador.signal })
+      void carregar(contexto, true, false, {
+        signal: controlador.signal,
+        identificadorDaConsulta: identificador
+      })
         .then(() => {
           falhasConsecutivas = 0;
           proximoAtraso = atrasoDoPollingCanonico(

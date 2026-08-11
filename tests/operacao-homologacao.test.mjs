@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   atrasoDoPollingCanonico,
+  fonteDuranteSincronizacao,
   podeAplicarRespostaCanonica
 } from "../lib/cockpit-live-coordination.ts";
 
@@ -28,7 +29,7 @@ test("Cockpit agrega leituras e atualiza telemetria sem recarregar o contexto in
   assert.match(client, /atualizacao_parcial/);
   assert.match(
     client,
-    /carregar\(contexto, true, false, \{ signal: controlador\.signal \}\)/
+    /carregar\(contexto, true, false, \{[\s\S]*?signal: controlador\.signal,[\s\S]*?identificadorDaConsulta: identificador[\s\S]*?\}\)/
   );
   assert.match(client, /parametros\.set\("_t", String\(Date\.now\(\)\)\)/);
 });
@@ -564,9 +565,9 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /const resultanteCalculada = cienciaAtualAdmissivel/);
   assert.match(cockpit, /const trajetoriaCalculada = leituraAoVivo/);
   assert.match(cockpit, /const projecaoOperacionalAtual = Number\.isFinite/);
-  assert.match(cockpit, /projecaoOperacionalAtual[\s\S]*ao_vivo: false/);
-  assert.match(cockpit, /valores: \{\}[\s\S]*metricas: \{\}[\s\S]*series: \{\}/);
-  assert.match(cockpit, /ATUALIZAÇÃO INTERROMPIDA/);
+  assert.match(cockpit, /fontesRecebidas\.map\(fonteDuranteSincronizacao\)/);
+  assert.match(cockpit, /Última projeção canônica · não é leitura atual/);
+  assert.match(cockpit, /não são tratados como leitura atual nem alimentam cálculos científicos/);
   assert.match(cockpit, /const modoSincronizando = !projecaoOperacionalAtual/);
   assert.doesNotMatch(
     cockpit,
@@ -578,6 +579,65 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
     cockpit.match(/const fontes = projecaoOperacionalAtual[\s\S]*?const replay/)?.[0] ?? "",
     /estado: "RECONECTANDO"/
   );
+});
+
+test("sincronização preserva a projeção identificada sem convertê-la em leitura atual", () => {
+  const fonte = fonteDuranteSincronizacao({
+    codigo: "POLAR_H10",
+    estado: "CAPTURANDO",
+    ao_vivo: true,
+    valores: { hr_bpm: 71, rmssd_tecnico_ms: 11.4 },
+    metricas: { ultima_sequencia: 1444 },
+    series: { hr: [{ valor: 71 }] }
+  });
+
+  assert.equal(fonte.ao_vivo, false);
+  assert.equal(fonte.projecao_em_verificacao, true);
+  assert.equal(fonte.estado, "PROJEÇÃO CANÔNICA EM VERIFICAÇÃO");
+  assert.deepEqual(fonte.valores, { hr_bpm: 71, rmssd_tecnico_ms: 11.4 });
+  assert.equal(fonte.metricas.ultima_sequencia, 1444);
+});
+
+test("resposta fora de ordem não sobrescreve a projeção canônica mais recente", () => {
+  const contexto = {
+    organizacao: "org-a",
+    participante: "part-a",
+    sessao: "sessao-a"
+  };
+  assert.equal(podeAplicarRespostaCanonica({
+    contextoEsperado: contexto,
+    contextoRecebido: contexto,
+    cancelada: false,
+    componenteMontado: true,
+    consultaSolicitada: 14,
+    ultimaConsultaAplicada: 15
+  }), false);
+  assert.equal(podeAplicarRespostaCanonica({
+    contextoEsperado: contexto,
+    contextoRecebido: contexto,
+    cancelada: false,
+    componenteMontado: true,
+    consultaSolicitada: 16,
+    ultimaConsultaAplicada: 15
+  }), true);
+});
+
+test("snapshot e neurotelemetria têm projeção visual completa e separada da qualidade EEG", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const gravacao = await source("components/controle-gravacao-multimodal.tsx");
+
+  assert.match(cockpit, /Inspecionar snapshot basal imutável/);
+  for (const item of [
+    "Identificador", "Timestamp", "Organização", "Participante", "Sessão",
+    "Versão científica", "Biblioteca", "Taxonomia de Zona", "Cobertura",
+    "Qualidade", "Confiança", "Fontes", "Proveniência", "Regra longitudinal"
+  ]) assert.match(cockpit, new RegExp(item));
+  assert.match(cockpit, /NEUROTELEMETRIA REGULATÓRIA · STREAM MET CORTEX/);
+  assert.match(cockpit, /Separada da qualidade do sinal EEG/);
+  assert.match(cockpit, /Stream MET real sem valor canônico atual/);
+  assert.match(gravacao, /snapshot_canonico/);
+  assert.match(gravacao, /Snapshot basal imutável/);
+  assert.match(gravacao, /fontesBasaisCanonicas/);
 });
 
 test("Baseline canônico aparece sem ser rotulado como telemetria viva", async () => {

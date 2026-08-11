@@ -12,6 +12,7 @@ import {
   type HxVectorAxis
 } from "@/components/hx-command-visualizations";
 import { HxSectionHeader, HxSurface } from "@/components/hx-design-system";
+import { fonteDuranteSincronizacao } from "@/lib/cockpit-live-coordination";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 
 type Registro = Record<string, unknown>;
@@ -27,6 +28,7 @@ type Fonte = Registro & {
   janela_de_qualidade?: Registro;
   series?: Record<string, Registro[]>;
   ultima_leitura_registrada?: Registro;
+  projecao_em_verificacao?: boolean;
 };
 
 type Props = {
@@ -55,6 +57,10 @@ const METRICAS_DE_DESEMPENHO_VISIVEIS = [
 
 function metricasDeDesempenhoVisiveis(fonte: Fonte) {
   if (fonte.ao_vivo !== true) return [];
+  return metricasDeDesempenhoDaFonte(fonte);
+}
+
+function metricasDeDesempenhoDaFonte(fonte: Fonte) {
   return (Array.isArray(fonte.metricas_de_desempenho)
     ? fonte.metricas_de_desempenho
     : []).filter((item) =>
@@ -473,19 +479,26 @@ function trilhas(fontes: Fonte[]): HxTrack[] {
 
 function FontePolar({ fonte }: { fonte: Fonte }) {
   const aoVivo = fonte.ao_vivo === true;
-  const valores = aoVivo ? objeto(fonte.valores) : {};
-  const metricas = aoVivo ? objeto(fonte.metricas) : {};
+  const emVerificacao = fonte.projecao_em_verificacao === true;
+  const valores = aoVivo || emVerificacao ? objeto(fonte.valores) : {};
+  const metricas = aoVivo || emVerificacao ? objeto(fonte.metricas) : {};
   const ultimaRegistrada = objeto(fonte.ultima_leitura_registrada);
   const valoresRegistrados = objeto(ultimaRegistrada.valores);
   return (
     <article className="hx-live-source-card" data-source="polar">
       <header><div><small>POLAR H10</small><strong>Sinal cardiovascular</strong></div><FonteEstado estado={fonte.estado} /></header>
       <div className="hx-live-source-values">
-        <span><small>Frequência cardíaca</small><b>{aoVivo ? `${numero(valores.hr_bpm)} bpm` : "Sem leitura atual"}</b></span>
-        <span><small>RMSSD</small><b>{aoVivo ? `${numero(valores.rmssd_tecnico_ms, 1)} ms` : "Sem leitura atual"}</b></span>
-        <span><small>Qualidade</small><b>{aoVivo ? percentual(metricas.qualidade) : "Sem leitura atual"}</b></span>
-        <span><small>Bateria</small><b>{aoVivo ? percentual(valores.bateria_percentual) : "Sem leitura atual"}</b></span>
+        <span><small>Frequência cardíaca</small><b>{aoVivo || emVerificacao ? `${numero(valores.hr_bpm)} bpm` : "Sem leitura atual"}</b></span>
+        <span><small>RMSSD</small><b>{aoVivo || emVerificacao ? `${numero(valores.rmssd_tecnico_ms, 1)} ms` : "Sem leitura atual"}</b></span>
+        <span><small>Qualidade</small><b>{aoVivo || emVerificacao ? percentual(metricas.qualidade) : "Sem leitura atual"}</b></span>
+        <span><small>Bateria</small><b>{aoVivo || emVerificacao ? percentual(valores.bateria_percentual) : "Sem leitura atual"}</b></span>
       </div>
+      {emVerificacao ? (
+        <div className="hx-live-source-advisory" role="status">
+          <strong>ÚLTIMA PROJEÇÃO CANÔNICA — VALIDADE EM VERIFICAÇÃO</strong>
+          <span>Os números permanecem visíveis para continuidade operacional, mas não são tratados como leitura atual nem alimentam cálculos científicos.</span>
+        </div>
+      ) : null}
       <Sparkline pontos={aoVivo ? lista(fonte.series?.hr) : []} cor={C.gold} />
       <footer>
         <span>{aoVivo ? `Pacote atual ${dataLegivel(metricas.ultimo_pacote)}` : "Sem pacote atual"}</span>
@@ -503,21 +516,31 @@ function FontePolar({ fonte }: { fonte: Fonte }) {
 
 function FonteEpoc({ fonte }: { fonte: Fonte }) {
   const aoVivo = fonte.ao_vivo === true;
-  const valores = aoVivo ? objeto(fonte.valores) : {};
-  const metricas = aoVivo ? objeto(fonte.metricas) : {};
-  const janela = aoVivo ? objeto(fonte.janela_de_qualidade) : {};
-  const desempenho = metricasDeDesempenhoVisiveis(fonte);
+  const emVerificacao = fonte.projecao_em_verificacao === true;
+  const valores = aoVivo || emVerificacao ? objeto(fonte.valores) : {};
+  const metricas = aoVivo || emVerificacao ? objeto(fonte.metricas) : {};
+  const janela = aoVivo || emVerificacao ? objeto(fonte.janela_de_qualidade) : {};
+  const desempenho = metricasDeDesempenhoDaFonte(fonte);
+  const desempenhoPorNome = new Map(
+    desempenho.map((metrica) => [String(metrica.nome ?? ""), metrica])
+  );
   const ultimaRegistrada = objeto(fonte.ultima_leitura_registrada);
   const valoresRegistrados = objeto(ultimaRegistrada.valores);
   return (
     <article className="hx-live-source-card hx-live-source-card--epoc" data-source="epoc-x">
       <header><div><small>EPOC X</small><strong>Desempenho e qualidade</strong></div><FonteEstado estado={fonte.estado} /></header>
       <div className="hx-live-source-values">
-        <span><small>Qualidade atual</small><b>{aoVivo ? percentual(valores.qualidade_global) : "Sem leitura atual"}</b></span>
-        <span><small>Mediana da janela</small><b>{aoVivo ? percentual(valores.qualidade_mediana_da_janela) : "Sem leitura atual"}</b></span>
-        <span><small>Confiança do EEG</small><b>{aoVivo ? texto(valores.nivel_de_confianca_eeg) : "Indisponível"}</b></span>
-        <span><small>Sequência atual</small><b>{aoVivo ? numero(metricas.ultima_sequencia) : "Sem leitura atual"}</b></span>
+        <span><small>Qualidade atual do sinal EEG</small><b>{aoVivo || emVerificacao ? percentual(valores.qualidade_global) : "Sem leitura atual"}</b></span>
+        <span><small>Mediana da qualidade EEG</small><b>{aoVivo || emVerificacao ? percentual(valores.qualidade_mediana_da_janela) : "Sem leitura atual"}</b></span>
+        <span><small>Confiança do EEG</small><b>{aoVivo || emVerificacao ? texto(valores.nivel_de_confianca_eeg) : "Indisponível"}</b></span>
+        <span><small>Sequência atual</small><b>{aoVivo || emVerificacao ? numero(metricas.ultima_sequencia) : "Sem leitura atual"}</b></span>
       </div>
+      {emVerificacao ? (
+        <div className="hx-live-source-advisory" role="status">
+          <strong>ÚLTIMA PROJEÇÃO CANÔNICA — VALIDADE EM VERIFICAÇÃO</strong>
+          <span>Qualidade e neurotelemetria permanecem identificadas como não atuais até a próxima confirmação do núcleo.</span>
+        </div>
+      ) : null}
       {aoVivo && janela.estado_da_qualidade === "QUALIDADE_MUITO_DEGRADADA" ? (
         <div className="hx-live-source-advisory" role="status">
           <strong>QUALIDADE MUITO DEGRADADA</strong>
@@ -525,17 +548,27 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
         </div>
       ) : null}
       <Sparkline pontos={aoVivo ? lista(fonte.series?.qualidade) : []} cor={C.green} />
-      {desempenho.length ? (
-        <div className="hx-live-performance-grid">
-          {desempenho.map((metrica) => (
-            <span key={texto(metrica.nome)}>
-              <small>{texto(metrica.nome)}</small>
-              <b>{percentual(metrica.valor_atual)}</b>
-              <em>{texto(metrica.tendencia)} · {texto(metrica.estado_da_aquisicao)}</em>
+      <div className="hx-live-performance-heading">
+        <small>NEUROTELEMETRIA REGULATÓRIA · STREAM MET CORTEX</small>
+        <span>Separada da qualidade do sinal EEG · sem estimativa e sem derivação por qualidade.</span>
+      </div>
+      <div className="hx-live-performance-grid">
+        {METRICAS_DE_DESEMPENHO_VISIVEIS.map((nome) => {
+          const metrica = desempenhoPorNome.get(nome);
+          const leituraAtual = aoVivo && metrica?.valor_atual != null;
+          return (
+            <span key={nome}>
+              <small>{nome}</small>
+              <b>{leituraAtual ? percentual(metrica?.valor_atual) : "SEM LEITURA ATUAL"}</b>
+              <em>{leituraAtual
+                ? `${texto(metrica?.tendencia)} · ${texto(metrica?.estado_da_aquisicao)} · ATUAL · ${dataLegivel(metrica?.ultima_atualizacao)}`
+                : emVerificacao && metrica?.valor_atual != null
+                  ? `Última projeção ${percentual(metrica.valor_atual)} · validade em verificação`
+                  : "Stream MET real sem valor canônico atual"}</em>
             </span>
-          ))}
-        </div>
-      ) : null}
+          );
+        })}
+      </div>
       {!aoVivo && ultimaRegistrada.timestamp ? (
         <details className="hx-live-recorded-reading">
           <summary>Última leitura registrada</summary>
@@ -596,17 +629,7 @@ export function CockpitOperacionalVivo({
   const fontesRecebidas = lista(cockpit.fontes) as Fonte[];
   const fontes = projecaoOperacionalAtual
     ? fontesRecebidas
-    : fontesRecebidas.map((fonte) => ({
-        ...fonte,
-        // A expiração da projeção do portal prova somente interrupção da
-        // atualização HTTP; ela não prova desconexão física da fonte. O núcleo
-        // permanece a única autoridade para classificar RECONECTANDO.
-        estado: "ATUALIZAÇÃO INTERROMPIDA",
-        ao_vivo: false,
-        valores: {},
-        metricas: {},
-        series: {}
-      }));
+    : fontesRecebidas.map(fonteDuranteSincronizacao);
   const replay = objeto(cockpit.replay);
   const indicadores = lista(cockpit.indicadores_contratados);
   const alertas = lista(cockpit.alertas_acionaveis);
@@ -662,6 +685,11 @@ export function CockpitOperacionalVivo({
     vetoresBasais.map((item) => [String(item.codigo ?? ""), item])
   );
   const snapshotBasal = objeto(configuracaoBasal.snapshot_basal);
+  const vetoresDoSnapshot = Object.entries(objeto(snapshotBasal.vetores));
+  const iirhDoSnapshot = objeto(snapshotBasal.iirh);
+  const zonaDoSnapshot = objeto(snapshotBasal.zona);
+  const resultanteDoSnapshot = objeto(snapshotBasal.resultante);
+  const motivosNulosDoSnapshot = objeto(snapshotBasal.motivos_dos_nulos);
   const identificadorDaSessao = texto(
     contextoSessao.identificador ?? sessao.identificador,
     ""
@@ -999,6 +1027,11 @@ export function CockpitOperacionalVivo({
   const trilhasVisiveis = [...new Set(timelineItems.map((item) => item.track))];
   const polar = fontes.find((item) => item.codigo === "POLAR_H10") ?? {};
   const eeg = fontes.find((item) => item.codigo === "EMOTIV_EPOC_X") ?? {};
+  const polarEmVerificacao = polar.projecao_em_verificacao === true;
+  const eegEmVerificacao = eeg.projecao_em_verificacao === true;
+  const polarValoresHud = objeto(polar.valores);
+  const polarMetricasHud = objeto(polar.metricas);
+  const eegValoresHud = objeto(eeg.valores);
   const fase = sessaoBaseline
     ? `BASELINE · ${baseline.estado}`
     : sessao.fase_atual
@@ -1113,10 +1146,10 @@ export function CockpitOperacionalVivo({
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{sessaoBaseline ? estadoDoBaseline : texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
         <div><small>TEMPO</small><strong>{duracao(inicioDoCronometro, fimDoCronometro, agora)}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
-        <div><small>FREQUÊNCIA CARDÍACA</small><strong>{polar.ao_vivo === true ? <LeituraNumerica valor={objeto(polar.valores).hr_bpm} sufixo=" bpm" /> : "Sem leitura atual"}</strong><span>{texto(polar.estado)}</span></div>
-        <div><small>RMSSD</small><strong>{polar.ao_vivo === true ? <LeituraNumerica valor={objeto(polar.valores).rmssd_tecnico_ms} casas={1} sufixo=" ms" /> : "Sem leitura atual"}</strong><span>{texto(polar.estado)}</span></div>
-        <div><small>ESTADO DO EEG</small><strong>{texto(eeg.estado)}</strong><span>{eeg.ao_vivo === true ? `Atual ${percentual(objeto(eeg.valores).qualidade_global)} · mediana ${percentual(objeto(eeg.valores).qualidade_mediana_da_janela)}` : "Sem leitura atual"}</span></div>
-        <div><small>ESTADO DO POLAR</small><strong>{texto(polar.estado)}</strong><span>{polar.ao_vivo === true ? `Sequência atual ${numero(objeto(polar.metricas).ultima_sequencia)}` : "Sem leitura atual"}</span></div>
+        <div><small>FREQUÊNCIA CARDÍACA</small><strong>{polar.ao_vivo === true || polarEmVerificacao ? <LeituraNumerica valor={polarValoresHud.hr_bpm} sufixo=" bpm" /> : "Sem leitura atual"}</strong><span>{polarEmVerificacao ? "Última projeção canônica · não é leitura atual" : texto(polar.estado)}</span></div>
+        <div><small>RMSSD</small><strong>{polar.ao_vivo === true || polarEmVerificacao ? <LeituraNumerica valor={polarValoresHud.rmssd_tecnico_ms} casas={1} sufixo=" ms" /> : "Sem leitura atual"}</strong><span>{polarEmVerificacao ? "Última projeção canônica · validade em verificação" : texto(polar.estado)}</span></div>
+        <div><small>ESTADO DO EEG</small><strong>{texto(eeg.estado)}</strong><span>{eeg.ao_vivo === true ? `Atual ${percentual(eegValoresHud.qualidade_global)} · mediana ${percentual(eegValoresHud.qualidade_mediana_da_janela)}` : eegEmVerificacao ? `Última projeção ${percentual(eegValoresHud.qualidade_global)} · não atual` : "Sem leitura atual"}</span></div>
+        <div><small>ESTADO DO POLAR</small><strong>{texto(polar.estado)}</strong><span>{polar.ao_vivo === true ? `Sequência atual ${numero(polarMetricasHud.ultima_sequencia)}` : polarEmVerificacao ? `Última sequência canônica ${numero(polarMetricasHud.ultima_sequencia)} · não atual` : "Sem leitura atual"}</span></div>
       </section>
 
       <section className="hx-live-scientific-explanations" aria-label="Explicação dos resultados científicos">
@@ -1180,6 +1213,48 @@ export function CockpitOperacionalVivo({
               </div>
             </article>
           </div>
+          {snapshotBasal.estado === "PERSISTIDO" ? (
+            <details className="hx-live-vector-trace hx-live-snapshot-inspection">
+              <summary>Inspecionar snapshot basal imutável</summary>
+              <dl>
+                <div><dt>Identificador</dt><dd>{texto(snapshotBasal.identificador)}</dd></div>
+                <div><dt>Timestamp</dt><dd>{dataLegivel(snapshotBasal.timestamp)}</dd></div>
+                <div><dt>Organização</dt><dd>{texto(snapshotBasal.identificador_da_organizacao ?? organizacao.identificador)}</dd></div>
+                <div><dt>Participante</dt><dd>{texto(snapshotBasal.identificador_do_participante ?? participante.identificador)}</dd></div>
+                <div><dt>Sessão</dt><dd>{texto(snapshotBasal.identificador_da_sessao ?? snapshotBasal.identificador_da_sessao_de_origem)}</dd></div>
+                <div><dt>Versão científica</dt><dd>{texto(snapshotBasal.versao_cientifica)}</dd></div>
+                <div><dt>Biblioteca</dt><dd>{texto(snapshotBasal.versao_da_biblioteca)}</dd></div>
+                <div><dt>Taxonomia de Zona</dt><dd>{texto(snapshotBasal.versao_da_taxonomia_de_zona)}</dd></div>
+                <div><dt>Cobertura</dt><dd>{percentual(snapshotBasal.cobertura)}</dd></div>
+                <div><dt>Qualidade</dt><dd>{percentual(snapshotBasal.qualidade)}</dd></div>
+                <div><dt>Confiança</dt><dd>{percentual(snapshotBasal.confianca)}</dd></div>
+                <div><dt>Fontes</dt><dd>{lista(snapshotBasal.fontes).length
+                  ? lista(snapshotBasal.fontes).map((item) => texto(item.codigo ?? item.nome ?? item)).join(" · ")
+                  : Array.isArray(snapshotBasal.fontes)
+                    ? snapshotBasal.fontes.map((item) => texto(item)).join(" · ") || "Nenhuma"
+                    : "Nenhuma"}</dd></div>
+                <div><dt>Famílias</dt><dd>{Array.isArray(snapshotBasal.familias) ? snapshotBasal.familias.map((item) => texto(item)).join(" · ") || "Nenhuma" : "Nenhuma"}</dd></div>
+                <div><dt>IIRH</dt><dd>{iirhDoSnapshot.valor == null ? `NULO · ${texto(iirhDoSnapshot.motivo)}` : `${numero(iirhDoSnapshot.valor, 1)} · qualidade ${percentual(iirhDoSnapshot.qualidade)} · confiança ${percentual(iirhDoSnapshot.confiabilidade ?? snapshotBasal.confianca)}`}</dd></div>
+                <div><dt>Zona</dt><dd>{texto(zonaDoSnapshot.nome ?? zonaDoSnapshot.codigo, `NULA · ${texto(zonaDoSnapshot.motivo, "Precondições não atendidas no snapshot")}`)}</dd></div>
+                <div><dt>Resultante</dt><dd>{resultanteDoSnapshot.valor == null ? `NULA/PARCIAL · ${texto(resultanteDoSnapshot.motivo ?? resultanteDoSnapshot.justificativa)}` : `${numero(resultanteDoSnapshot.valor, 2)} · ${texto(resultanteDoSnapshot.estado)}`}</dd></div>
+                <div><dt>Proveniência</dt><dd>{referenciaCientificaLegivel(snapshotBasal.proveniencia) || "Proveniência preservada no snapshot"}</dd></div>
+                <div><dt>Regra longitudinal</dt><dd>{texto(snapshotBasal.regra_de_comparacao_longitudinal)}</dd></div>
+                {vetoresDoSnapshot.map(([codigo, valor]) => {
+                  const vetor = objeto(valor);
+                  return (
+                    <div key={codigo}>
+                      <dt>{codigo} · {texto(vetor.nome, "Vetor oficial")}</dt>
+                      <dd>{vetor.magnitude == null
+                        ? `NULO · ${texto(vetor.motivo ?? vetor.motivo_da_ausencia ?? motivosNulosDoSnapshot[codigo], "Evidência admissível ausente")}`
+                        : `${numero(vetor.magnitude, 2)} · cobertura ${percentual(vetor.cobertura)} · confiança ${percentual(vetor.confianca)}`}</dd>
+                    </div>
+                  );
+                })}
+                <div><dt>Integridade</dt><dd>{texto(snapshotBasal.integridade_sha256)}</dd></div>
+                <div><dt>Regra de ausência</dt><dd>Valores nulos permanecem nulos; zero e fallback são proibidos.</dd></div>
+              </dl>
+            </details>
+          ) : null}
           <details className="hx-live-vector-trace">
             <summary>Por que este resultado? · Vetores basais e decisões pendentes</summary>
             <dl>

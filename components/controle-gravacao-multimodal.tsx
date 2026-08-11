@@ -86,6 +86,7 @@ type Painel = {
   preparacao: Registro | null;
   baseline: {
     registro: Registro | null;
+    snapshot_canonico?: Registro | null;
     dispensa: Registro | null;
     iniciado_automaticamente: false;
     fluxo_cientifico: string[];
@@ -133,8 +134,11 @@ const ROTULOS_DOS_MODOS: Record<Modo, string> = {
   AUDIO_E_VIDEO: "ÁUDIO E VÍDEO"
 };
 const ROTULOS_DAS_FONTES: Record<string, string> = {
+  ANAMNESE_REGULATORIA: "Anamnese Regulatória",
+  ANAMNESE_REGULATORIA_ESTRUTURADA: "Anamnese Regulatória",
   POLAR_H10: "Polar H10",
   EPOC_X: "EPOC X",
+  EMOTIV_EPOC_X: "EPOC X",
   OUTRO_EEG_HOMOLOGADO: "Outro EEG homologado",
   IPHONE_INTEGRADO: "iPhone integrado ao Mac",
   CAMERA_MAC: "Câmera do Mac",
@@ -553,6 +557,16 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
     ? preparacaoOperacional.servicos as Registro[]
     : [];
   const baselineAtual = painel?.baseline.registro;
+  const snapshotBasalCanonico = painel?.baseline.snapshot_canonico ?? null;
+  const coberturaBasalCanonica = snapshotBasalCanonico?.cobertura;
+  const fontesBasaisCanonicas = Array.isArray(snapshotBasalCanonico?.fontes)
+    ? snapshotBasalCanonico.fontes.map((item) => {
+      const codigo = typeof item === "string"
+        ? item
+        : String((item as Registro).codigo ?? (item as Registro).nome ?? "");
+      return ROTULOS_DAS_FONTES[codigo] ?? codigo.replaceAll("_", " ");
+    }).filter(Boolean)
+    : [];
   const estadoDoBaseline = String(baselineAtual?.estado ?? "");
   const decisaoPersistida = painel?.baseline.referencia.decisao;
   const tipoPersistido = String(decisaoPersistida?.tipo ?? "");
@@ -918,8 +932,11 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
             <div>
               <small>Cobertura</small>
               <strong>
-                {Math.round(Number(baselineAtual.cobertura ?? 0) * 100)}%
+                {coberturaBasalCanonica == null
+                  ? `${Math.round(Number(baselineAtual.cobertura ?? 0) * 100)}%`
+                  : `${Math.round(Number(coberturaBasalCanonica) * 100)}%`}
               </strong>
+              {snapshotBasalCanonico ? <span>Snapshot basal imutável</span> : null}
             </div>
             <div>
               <small>Duração</small>
@@ -930,11 +947,20 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
             <div>
               <small>Fontes reais</small>
               <strong>
-                {Array.isArray(baselineAtual.fontes_disponiveis_json)
+                {fontesBasaisCanonicas.length
+                  ? fontesBasaisCanonicas.join(" · ")
+                  : Array.isArray(baselineAtual.fontes_disponiveis_json)
                   ? baselineAtual.fontes_disponiveis_json.join(" · ")
                   : String(baselineAtual.fontes_disponiveis_json ?? "—")}
               </strong>
             </div>
+            {snapshotBasalCanonico ? (
+              <div>
+                <small>Snapshot canônico</small>
+                <strong>{String(snapshotBasalCanonico.identificador ?? "—")}</strong>
+                <span>{new Date(String(snapshotBasalCanonico.timestamp ?? "")).toLocaleString("pt-BR")} · qualidade {Math.round(Number(snapshotBasalCanonico.qualidade ?? 0) * 100)}% · confiança {Math.round(Number(snapshotBasalCanonico.confianca ?? 0) * 100)}%</span>
+              </div>
+            ) : null}
             <div>
               <small>Mídia</small>
               <strong>{ROTULOS_DOS_MODOS[modo]}</strong>
