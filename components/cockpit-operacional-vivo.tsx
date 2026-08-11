@@ -1216,7 +1216,7 @@ export function CockpitOperacionalVivo({
             {texto(participante.nome ?? participante.referencia_externa, "Participante")} · {
               sessaoBaseline
                 ? "Baseline"
-                : `THX ${texto(thx.codigo)} · ${texto(execucao.estado)}`
+                : texto(execucao.estado, "Sessão em preparação")
             }
           </p>
         </div>
@@ -1245,10 +1245,29 @@ export function CockpitOperacionalVivo({
         <div><small>ORGANIZAÇÃO</small><strong>{texto(organizacao.nome)}</strong></div>
         <div><small>PROFISSIONAL</small><strong>{texto(profissional.nome)}</strong></div>
         <div><small>TIPO DA SESSÃO</small><strong>{sessaoBaseline ? "BASELINE" : "PRÉ → TREINO → PÓS"}</strong></div>
-        <div><small>{sessaoBaseline ? "FLUXO" : "CTR / PROTOCOLO"}</small><strong>{sessaoBaseline ? "INDEPENDENTE" : `${texto(ctr.codigo)} · ${texto(thx.codigo)}`}</strong></div>
+        <div><small>{sessaoBaseline ? "FLUXO" : "CTR"}</small><strong>{sessaoBaseline ? "INDEPENDENTE" : texto(ctr.codigo)}</strong></div>
       </section>
 
-      <section className="hx-live-hud" aria-label="HUD operacional fixo">
+      <section id="hx-decision-level" className="hx-live-hud" aria-label="Barra operacional decisória">
+        <div className="is-decision" data-regulatory-state={zonaCalculada ? "CLASSIFICADA" : "NAO_CLASSIFICAVEL"}>
+          <small>ZONA OPERACIONAL</small>
+          <strong>{zonaCalculada ? rotuloDaZona(zonaApresentada) : "NÃO CLASSIFICÁVEL"}</strong>
+          {zonaCalculada
+            ? <span>Estado regulatório atual</span>
+            : <button className="hx-live-hud__detail" type="button" onClick={abrirAnalitico}>Ver motivo</button>}
+        </div>
+        <div className="is-decision">
+          <small>IIRH</small>
+          <strong>{iirhCalculado ? `${numero(iirhApresentado, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong>
+          <span>Índice regulatório atual</span>
+        </div>
+        <div className="is-decision">
+          <small>RESULTANTE</small>
+          <strong>{resultanteCalculada
+            ? `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`
+            : texto(resultante.estado, "NÃO CALCULÁVEL")}</strong>
+          <span>{trajetoriaCalculada ? `Tendência ${texto(trajetoria.valor)}` : "Tendência ainda não inferível"}</span>
+        </div>
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{sessaoBaseline ? estadoDoBaseline : texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
         <div><small>TEMPO</small><strong>{duracao(inicioDoCronometro, fimDoCronometro, agora)}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
@@ -1446,38 +1465,6 @@ export function CockpitOperacionalVivo({
             </strong>
           )}
         </div>
-      </section>
-
-      <section
-        id="hx-decision-level"
-        className="hx-live-regulatory-readout hx-live-regulatory-readout--primary"
-        aria-label="Decisão regulatória atual"
-      >
-        <article data-regulatory-state={zonaCalculada ? "CLASSIFICADA" : "NAO_CLASSIFICAVEL"}>
-          <small>ZONA OPERACIONAL</small>
-          <strong>{zonaCalculada
-            ? rotuloDaZona(zonaApresentada)
-            : "NÃO CLASSIFICÁVEL"}</strong>
-          {!zonaCalculada ? <button type="button" onClick={abrirAnalitico}>Ver motivo</button> : null}
-        </article>
-        <article>
-          <small>IIRH</small>
-          <strong>{iirhCalculado
-            ? `${numero(iirhApresentado, 1)} ${texto(iirh.unidade, "")}`
-            : "NÃO CALCULÁVEL"}</strong>
-        </article>
-        <article>
-          <small>RESULTANTE REGULATÓRIA</small>
-          <strong>{resultanteCalculada
-            ? `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`
-            : texto(resultante.estado, "NÃO CALCULÁVEL")}</strong>
-        </article>
-        {trajetoriaCalculada ? (
-          <article>
-            <small>TRAJETÓRIA / TENDÊNCIA</small>
-            <strong>{texto(trajetoria.valor)}</strong>
-          </article>
-        ) : null}
       </section>
 
       <div id="hx-regulation-level" className="hx-live-command-center hx-live-command-center--premium">
@@ -1865,7 +1852,8 @@ export function CockpitOperacionalVivo({
       ) : null}
 
       {alertas.length ? (
-        <section className="hx-live-alerts">
+        <details className="hx-live-alerts hx-live-alerts--compact">
+          <summary>{alertas.length} alerta(s) operacional(is) · ver detalhes</summary>
           {alertas.map((alerta, indice) => (
             <article key={`${texto(alerta.titulo)}-${indice}`}>
               <small>{texto(alerta.titulo, "ALERTA OPERACIONAL")}</small>
@@ -1875,7 +1863,7 @@ export function CockpitOperacionalVivo({
               <b>Ação: {texto(alerta.acao)}</b>
             </article>
           ))}
-        </section>
+        </details>
       ) : null}
 
       <section id="hx-intervention-level" className="hx-live-conduction" aria-label="Condução profissional da sessão">

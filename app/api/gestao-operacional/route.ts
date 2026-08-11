@@ -10,11 +10,26 @@ type Registro = Record<string, unknown>;
 async function contexto(
   token: string,
   organizacaoSolicitada?: string,
-  modulo = "governanca"
+  modulo = "governanca",
+  filtros?: URLSearchParams
 ) {
   const parametros = new URLSearchParams({ modulo });
   if (organizacaoSolicitada) {
     parametros.set("organizacao", organizacaoSolicitada);
+  }
+  for (const chave of [
+    "empresa",
+    "base",
+    "funcao",
+    "qualificacao",
+    "status",
+    "periodo_inicio",
+    "periodo_fim",
+    "treinamento",
+    "dominio"
+  ]) {
+    const valor = filtros?.get(chave)?.trim();
+    if (valor) parametros.set(chave, valor);
   }
   return requisitarNucleoAutenticado<Registro>(
     `/api/v1/gestao/contexto?${parametros}`,
@@ -36,7 +51,8 @@ export async function GET(request: Request) {
       await contexto(
         token,
         url.searchParams.get("organizacao") ?? undefined,
-        url.searchParams.get("modulo") ?? "governanca"
+        url.searchParams.get("modulo") ?? "governanca",
+        url.searchParams
       )
     );
   } catch (erro) {

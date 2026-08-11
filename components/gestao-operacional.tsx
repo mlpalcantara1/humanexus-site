@@ -6,6 +6,15 @@ import { consultarJson } from "@/lib/client-request";
 import { PlatformErrorState } from "@/components/platform-error-state";
 
 type Registro = Record<string, unknown>;
+type BaseOperacional = {
+  identificador: string;
+  nome: string;
+  codigo: string;
+  cidade: string;
+  uf: string;
+  pais: string;
+  situacao: "ATIVA" | "INATIVA";
+};
 type ProtocoloClassificado = Registro & {
   classificacao_operacional: "RECOMENDADO" | "COMPATIVEL" | "OUTRO_OFICIAL";
   recomendacao_operacional: Registro | null;
@@ -26,7 +35,20 @@ type Dados = {
   vinculos_ctr_thx_validados: Registro[];
   evidencias_regulatorias_treinamento: Registro;
   modelos_consentimento: Registro[];
+  painel_organizacional: Registro;
 };
+
+function baseOperacionalVazia(): BaseOperacional {
+  return {
+    identificador: "",
+    nome: "",
+    codigo: "",
+    cidade: "",
+    uf: "",
+    pais: "Brasil",
+    situacao: "ATIVA"
+  };
+}
 
 function csrf() {
   return document.cookie
@@ -51,6 +73,12 @@ function dataLegivel(valor: unknown) {
         timeStyle: "short",
         timeZone: "America/Manaus"
       }).format(data);
+}
+
+function percentualCanonico(valor: unknown) {
+  const convertido = Number(valor);
+  if (!Number.isFinite(convertido)) return "Não informado";
+  return `${Math.round(convertido <= 1 ? convertido * 100 : convertido)}%`;
 }
 
 function objeto(valor: unknown): Registro {
@@ -170,6 +198,17 @@ export function GestaoOperacional({
   const [buscaOrganizacao, setBuscaOrganizacao] = useState("");
   const [filtroOrganizacao, setFiltroOrganizacao] =
     useState<"TODAS" | "ATIVAS" | "INATIVAS">("TODAS");
+  const [filtrosOrganizacionais, setFiltrosOrganizacionais] = useState({
+    empresa: "",
+    base: "",
+    funcao: "",
+    qualificacao: "",
+    status: "",
+    periodo_inicio: "",
+    periodo_fim: "",
+    treinamento: "",
+    dominio: ""
+  });
   const [organizacao, setOrganizacao] = useState({
     nome: "",
     razao_social: "",
@@ -197,7 +236,8 @@ export function GestaoOperacional({
     observacoes: "",
     ativa: true,
     justificativa: "",
-    organizacao_base: false
+    organizacao_base: false,
+    unidades: [] as BaseOperacional[]
   });
   const [estadoDoCep, setEstadoDoCep] = useState("");
   const [participanteSelecionado, setParticipanteSelecionado] = useState("");
@@ -315,6 +355,20 @@ export function GestaoOperacional({
     const endereco = objeto(perfil.endereco);
     const contato = lista(perfil.contatos)[0] ?? {};
     const responsavel = lista(perfil.responsaveis)[0] ?? {};
+    const unidades = (Array.isArray(perfil.unidades) ? perfil.unidades : [])
+      .filter((item): item is Registro => Boolean(
+        item && typeof item === "object" && !Array.isArray(item)
+      ))
+      .map((item): BaseOperacional => ({
+        identificador: String(item.identificador ?? ""),
+        nome: String(item.nome ?? ""),
+        codigo: String(item.codigo ?? ""),
+        cidade: String(item.cidade ?? ""),
+        uf: String(item.uf ?? ""),
+        pais: String(item.pais ?? "Brasil"),
+        situacao: String(item.situacao ?? item.status ?? "ATIVA").toUpperCase()
+          === "INATIVA" ? "INATIVA" : "ATIVA"
+      }));
     setOrganizacao({
       nome: String(registro?.nome ?? ""),
       razao_social: String(institucionais.razao_social ?? ""),
@@ -342,7 +396,8 @@ export function GestaoOperacional({
       observacoes: String(institucionais.observacoes ?? ""),
       ativa: registro?.ativa !== false,
       justificativa: "",
-      organizacao_base: Boolean(perfil.organizacao_base)
+      organizacao_base: Boolean(perfil.organizacao_base),
+      unidades
     });
   }
 
@@ -450,10 +505,18 @@ export function GestaoOperacional({
     };
   }, [modulo, novaOrganizacao, organizacao.cep]);
 
-  async function carregar(organizacaoId = organizacaoSelecionada) {
+  async function carregar(
+    organizacaoId = organizacaoSelecionada,
+    filtros = filtrosOrganizacionais
+  ) {
     setEntregaDeConsentimento(null);
     const parametros = new URLSearchParams({ modulo });
     if (organizacaoId) parametros.set("organizacao", organizacaoId);
+    if (modulo === "organizacoes") {
+      for (const [chave, valor] of Object.entries(filtros)) {
+        if (valor.trim()) parametros.set(chave, valor.trim());
+      }
+    }
     const corpo = await consultarJson<Dados>(
       `/api/gestao-operacional${parametros.size ? `?${parametros}` : ""}`
     );
@@ -978,6 +1041,12 @@ export function GestaoOperacional({
   }
 
   const organizacaoAtual = dados?.organizacao;
+  const perfilDaOrganizacaoAtual = objeto(
+    organizacaoAtual?.perfil_operacional
+  );
+  const basesDaOrganizacao = (Array.isArray(perfilDaOrganizacaoAtual.unidades)
+    ? perfilDaOrganizacaoAtual.unidades
+    : []) as Registro[];
   const podeAdministrar = [
     "ADMINISTRADOR_PROPRIETARIO",
     "ADMINISTRADOR_DO_SISTEMA",
@@ -1334,6 +1403,18 @@ export function GestaoOperacional({
     programacoes: dados?.programacoes.length ?? 0,
     contratos: dados?.contratos.length ?? 0
   }), [dados]);
+  const painelOrganizacional = objeto(dados?.painel_organizacional);
+  const totaisOrganizacionais = objeto(painelOrganizacional.totais);
+  const distribuicoesOrganizacionais = objeto(
+    painelOrganizacional.distribuicoes
+  );
+  const facetasOrganizacionais = objeto(painelOrganizacional.facetas);
+  const condicaoOrganizacional = objeto(
+    painelOrganizacional.condicao_organizacional
+  );
+  const consolidacaoVetorial = objeto(
+    painelOrganizacional.consolidacao_vetorial
+  );
   const ctrsValidados = useMemo(() => Array.from(new Map(
     (dados?.vinculos_ctr_thx_validados ?? []).map((item) => [String(item.codigo_do_ctr), item])
   ).values()), [dados]);
@@ -1543,6 +1624,7 @@ export function GestaoOperacional({
       </section>
 
       {modulo === "organizacoes" ? (
+        <>
         <div className="hx-management-grid">
           <form className="hx-record-form" onSubmit={async (evento: FormEvent) => {
             evento.preventDefault();
@@ -1585,6 +1667,7 @@ export function GestaoOperacional({
                   email: organizacao.responsavel_email,
                   telefone: organizacao.responsavel_telefone
                 }],
+                unidades: organizacao.unidades,
                 justificativa: organizacao.justificativa,
                 senha_do_proprietario:
                   administradorProprietario && !novaOrganizacao
@@ -1664,6 +1747,67 @@ export function GestaoOperacional({
                 <label>E-mail<input type="email" value={organizacao.responsavel_email} onChange={(evento) => setOrganizacao({ ...organizacao, responsavel_email: evento.target.value })} /></label>
                 <label>Telefone<input type="tel" value={organizacao.responsavel_telefone} onChange={(evento) => setOrganizacao({ ...organizacao, responsavel_telefone: evento.target.value })} /></label>
               </div>
+            </fieldset>
+            <fieldset className="hx-record-section hx-operational-bases">
+              <legend>Bases operacionais</legend>
+              <p>
+                Estrutura auditável da empresa. Participantes podem ser vinculados
+                a uma destas bases sem criar outra organização.
+              </p>
+              {organizacao.unidades.map((base, indice) => (
+                <div className="hx-operational-base" key={
+                  base.identificador || `nova-base-${indice}`
+                }>
+                  <label>Nome da base<input required value={base.nome} onChange={(evento) => {
+                    const unidades = [...organizacao.unidades];
+                    unidades[indice] = { ...base, nome: evento.target.value };
+                    setOrganizacao({ ...organizacao, unidades });
+                  }} /></label>
+                  <label>Código<input value={base.codigo} onChange={(evento) => {
+                    const unidades = [...organizacao.unidades];
+                    unidades[indice] = { ...base, codigo: evento.target.value };
+                    setOrganizacao({ ...organizacao, unidades });
+                  }} /></label>
+                  <label>Cidade<input value={base.cidade} onChange={(evento) => {
+                    const unidades = [...organizacao.unidades];
+                    unidades[indice] = { ...base, cidade: evento.target.value };
+                    setOrganizacao({ ...organizacao, unidades });
+                  }} /></label>
+                  <label>UF<input maxLength={2} value={base.uf} onChange={(evento) => {
+                    const unidades = [...organizacao.unidades];
+                    unidades[indice] = {
+                      ...base,
+                      uf: evento.target.value.toUpperCase()
+                    };
+                    setOrganizacao({ ...organizacao, unidades });
+                  }} /></label>
+                  <label>País<input value={base.pais} onChange={(evento) => {
+                    const unidades = [...organizacao.unidades];
+                    unidades[indice] = { ...base, pais: evento.target.value };
+                    setOrganizacao({ ...organizacao, unidades });
+                  }} /></label>
+                  <label>Situação<select value={base.situacao} onChange={(evento) => {
+                    const unidades = [...organizacao.unidades];
+                    unidades[indice] = {
+                      ...base,
+                      situacao: evento.target.value as "ATIVA" | "INATIVA"
+                    };
+                    setOrganizacao({ ...organizacao, unidades });
+                  }}><option value="ATIVA">Ativa</option><option value="INATIVA">Inativa</option></select></label>
+                  {!base.identificador ? (
+                    <button type="button" onClick={() => setOrganizacao({
+                      ...organizacao,
+                      unidades: organizacao.unidades.filter((_, posicao) => (
+                        posicao !== indice
+                      ))
+                    })}>Remover base não salva</button>
+                  ) : null}
+                </div>
+              ))}
+              <button type="button" onClick={() => setOrganizacao({
+                ...organizacao,
+                unidades: [...organizacao.unidades, baseOperacionalVazia()]
+              })}>Adicionar base operacional</button>
             </fieldset>
             <label>Outros dados institucionais<textarea value={organizacao.observacoes} onChange={(evento) => setOrganizacao({ ...organizacao, observacoes: evento.target.value })} /></label>
             <div className="hx-fields-grid">
@@ -1805,6 +1949,97 @@ export function GestaoOperacional({
             ) : null}
           </section>
         </div>
+        <section className="hx-organizational-panel" aria-label="Painel organizacional consolidado">
+          <header>
+            <div>
+              <small>ORGANIZAÇÃO → BASE → FUNÇÃO</small>
+              <h2>Painel organizacional</h2>
+            </div>
+            <span>Somente agregados reais do escopo autorizado</span>
+          </header>
+          <form className="hx-organizational-filters" onSubmit={(evento) => {
+            evento.preventDefault();
+            void carregar(organizacaoSelecionada, filtrosOrganizacionais)
+              .catch((causa) => setErro(causa.message));
+          }}>
+            <label>Empresa<select value={filtrosOrganizacionais.empresa} onChange={(evento) => setFiltrosOrganizacionais({ ...filtrosOrganizacionais, empresa: evento.target.value })}>
+              <option value="">Todas</option>
+              {(Array.isArray(facetasOrganizacionais.empresas) ? facetasOrganizacionais.empresas : []).map((valor) => <option key={String(valor)} value={String(valor)}>{texto(valor)}</option>)}
+            </select></label>
+            <label>Base<select value={filtrosOrganizacionais.base} onChange={(evento) => setFiltrosOrganizacionais({ ...filtrosOrganizacionais, base: evento.target.value })}>
+              <option value="">Todas</option>
+              {lista(facetasOrganizacionais.bases).map((base) => <option key={String(base.identificador ?? base.nome)} value={String(base.identificador ?? base.nome)}>{texto(base.nome)}</option>)}
+            </select></label>
+            <label>Função<select value={filtrosOrganizacionais.funcao} onChange={(evento) => setFiltrosOrganizacionais({ ...filtrosOrganizacionais, funcao: evento.target.value })}>
+              <option value="">Todas</option>
+              {(Array.isArray(facetasOrganizacionais.funcoes) ? facetasOrganizacionais.funcoes : []).map((valor) => <option key={String(valor)} value={String(valor)}>{texto(valor)}</option>)}
+            </select></label>
+            <label>Qualificação<select value={filtrosOrganizacionais.qualificacao} onChange={(evento) => setFiltrosOrganizacionais({ ...filtrosOrganizacionais, qualificacao: evento.target.value })}>
+              <option value="">Todas</option>
+              {(Array.isArray(facetasOrganizacionais.qualificacoes) ? facetasOrganizacionais.qualificacoes : []).map((valor) => <option key={String(valor)} value={String(valor)}>{texto(valor)}</option>)}
+            </select></label>
+            <label>Status<select value={filtrosOrganizacionais.status} onChange={(evento) => setFiltrosOrganizacionais({ ...filtrosOrganizacionais, status: evento.target.value })}>
+              <option value="">Todos</option><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option>
+            </select></label>
+            <label>Período inicial<input type="date" value={filtrosOrganizacionais.periodo_inicio} onChange={(evento) => setFiltrosOrganizacionais({ ...filtrosOrganizacionais, periodo_inicio: evento.target.value })} /></label>
+            <label>Período final<input type="date" value={filtrosOrganizacionais.periodo_fim} onChange={(evento) => setFiltrosOrganizacionais({ ...filtrosOrganizacionais, periodo_fim: evento.target.value })} /></label>
+            <label>Treinamento<select value={filtrosOrganizacionais.treinamento} onChange={(evento) => setFiltrosOrganizacionais({ ...filtrosOrganizacionais, treinamento: evento.target.value })}>
+              <option value="">Todos</option>
+              {(Array.isArray(facetasOrganizacionais.treinamentos) ? facetasOrganizacionais.treinamentos : []).map((valor) => <option key={String(valor)} value={String(valor)}>{texto(valor)}</option>)}
+            </select></label>
+            <label>Domínio<select value={filtrosOrganizacionais.dominio} onChange={(evento) => setFiltrosOrganizacionais({ ...filtrosOrganizacionais, dominio: evento.target.value })}>
+              <option value="">Todos</option>
+              {(Array.isArray(facetasOrganizacionais.dominios) ? facetasOrganizacionais.dominios : []).map((valor) => <option key={String(valor)} value={String(valor)}>{texto(valor)}</option>)}
+            </select></label>
+            <div className="hx-organizational-filters__actions">
+              <button disabled={ocupado}>Aplicar filtros</button>
+              <button type="button" disabled={ocupado} onClick={() => {
+                const vazios = {
+                  empresa: "", base: "", funcao: "", qualificacao: "",
+                  status: "", periodo_inicio: "", periodo_fim: "",
+                  treinamento: "", dominio: ""
+                };
+                setFiltrosOrganizacionais(vazios);
+                void carregar(organizacaoSelecionada, vazios)
+                  .catch((causa) => setErro(causa.message));
+              }}>Limpar</button>
+            </div>
+          </form>
+          <div className="hx-organizational-summary">
+            <article><small>Colaboradores</small><strong>{Number(totaisOrganizacionais.participantes ?? 0)}</strong><span>{Number(totaisOrganizacionais.participantes_ativos ?? 0)} ativos</span></article>
+            <article><small>Sessões</small><strong>{Number(totaisOrganizacionais.sessoes ?? 0)}</strong><span>No recorte selecionado</span></article>
+            <article><small>Treinamentos</small><strong>{Number(totaisOrganizacionais.treinamentos ?? 0)}</strong><span>Programações reais</span></article>
+            <article><small>Relatórios</small><strong>{Number(totaisOrganizacionais.relatorios ?? 0)}</strong><span>Registros consolidados</span></article>
+          </div>
+          <div className="hx-organizational-columns">
+            <section>
+              <small>BASES OPERACIONAIS</small>
+              <h3>Distribuição por base</h3>
+              {lista(painelOrganizacional.bases).length ? lista(painelOrganizacional.bases).map((base) => (
+                <div className="hx-organizational-row" key={String(base.identificador ?? base.nome)}>
+                  <span>{texto(base.nome)} · {texto(base.cidade, "cidade não informada")}</span>
+                  <strong>{Number(base.participantes ?? 0)}</strong>
+                </div>
+              )) : <p>Nenhuma base operacional cadastrada.</p>}
+              {Number(painelOrganizacional.participantes_sem_base ?? 0) > 0 ? <div className="hx-organizational-row"><span>Sem base vinculada</span><strong>{Number(painelOrganizacional.participantes_sem_base)}</strong></div> : null}
+            </section>
+            <section>
+              <small>FUNÇÕES E QUALIFICAÇÕES</small>
+              <h3>Composição do escopo</h3>
+              {lista(distribuicoesOrganizacionais.funcoes).slice(0, 6).map((item) => <div className="hx-organizational-row" key={`funcao-${String(item.valor)}`}><span>{texto(item.valor)}</span><strong>{Number(item.total ?? 0)}</strong></div>)}
+              {lista(distribuicoesOrganizacionais.qualificacoes).slice(0, 6).map((item) => <div className="hx-organizational-row" key={`qualificacao-${String(item.valor)}`}><span>{texto(item.valor)}</span><strong>{Number(item.total ?? 0)}</strong></div>)}
+            </section>
+            <section>
+              <small>CONDIÇÃO ORGANIZACIONAL</small>
+              <h3>{condicaoOrganizacional.estado ? texto(condicaoOrganizacional.estado) : "Ainda não consolidada"}</h3>
+              {condicaoOrganizacional.estado ? (
+                <p>Cobertura {percentualCanonico(condicaoOrganizacional.cobertura)} · confiança {percentualCanonico(condicaoOrganizacional.confiabilidade)} · período {dataLegivel(condicaoOrganizacional.inicio_do_periodo)} — {dataLegivel(condicaoOrganizacional.fim_do_periodo)}</p>
+              ) : <p>Não existe indicador coletivo canônico no recorte. Ausência preservada.</p>}
+              {!consolidacaoVetorial.disponivel ? <p>{texto(consolidacaoVetorial.motivo, "Consolidação vetorial organizacional indisponível.")}</p> : null}
+            </section>
+          </div>
+        </section>
+        </>
       ) : null}
 
       {modulo === "clientes" ? (
@@ -1975,7 +2210,22 @@ export function GestaoOperacional({
                 <label>Cargo ou função<input value={participante.cargo} onChange={(evento) => setParticipante({ ...participante, cargo: evento.target.value })} /></label>
                 <label>Função operacional<input value={participante.funcao} onChange={(evento) => setParticipante({ ...participante, funcao: evento.target.value })} /></label>
                 <label>Matrícula<input value={participante.matricula} onChange={(evento) => setParticipante({ ...participante, matricula: evento.target.value })} /></label>
-                <label>Unidade<input value={participante.unidade} onChange={(evento) => setParticipante({ ...participante, unidade: evento.target.value })} /></label>
+                <label>Base operacional<select value={participante.unidade} onChange={(evento) => setParticipante({ ...participante, unidade: evento.target.value })}>
+                  <option value="">Sem base vinculada</option>
+                  {participante.unidade && !basesDaOrganizacao.some((base) => (
+                    String(base.identificador ?? base.nome ?? "")
+                    === participante.unidade
+                  )) ? <option value={participante.unidade}>{participante.unidade} · vínculo legado</option> : null}
+                  {basesDaOrganizacao.map((base) => (
+                    <option
+                      key={String(base.identificador ?? base.nome)}
+                      value={String(base.identificador ?? base.nome)}
+                      disabled={String(base.situacao ?? "ATIVA") === "INATIVA"}
+                    >
+                      {texto(base.nome)}{base.codigo ? ` · ${texto(base.codigo)}` : ""}{String(base.situacao ?? "ATIVA") === "INATIVA" ? " · inativa" : ""}
+                    </option>
+                  ))}
+                </select></label>
                 <label>Setor<input value={participante.setor} onChange={(evento) => setParticipante({ ...participante, setor: evento.target.value })} /></label>
                 <label>Equipe<input value={participante.equipe} onChange={(evento) => setParticipante({ ...participante, equipe: evento.target.value })} /></label>
                 <label>Registro profissional<input value={participante.registro_profissional} onChange={(evento) => setParticipante({ ...participante, registro_profissional: evento.target.value })} /></label>

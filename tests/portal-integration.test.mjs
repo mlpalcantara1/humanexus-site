@@ -295,6 +295,29 @@ test("organização e participante usam ficha completa, versionada e reabrível"
   assert.doesNotMatch(route, /\/api\/v1\/usuarios/);
 });
 
+test("organização possui bases estruturadas e painel agregado com filtros B2B", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  const route = await source("app/api/gestao-operacional/route.ts");
+  const styles = await source("app/humanexus-design-system.css");
+
+  assert.match(management, /type BaseOperacional/);
+  assert.match(management, /Bases operacionais/);
+  assert.match(management, /Adicionar base operacional/);
+  assert.match(management, /Base operacional<select/);
+  assert.match(management, /Painel organizacional/);
+  assert.match(management, /Somente agregados reais do escopo autorizado/);
+  for (const filtro of [
+    "empresa", "base", "funcao", "qualificacao", "status",
+    "periodo_inicio", "periodo_fim", "treinamento", "dominio"
+  ]) {
+    assert.match(management, new RegExp(filtro));
+    assert.match(route, new RegExp(`"${filtro}"`));
+  }
+  assert.match(management, /Consolidação vetorial organizacional indisponível/);
+  assert.match(styles, /hx-organizational-filters/);
+  assert.match(styles, /hx-organizational-columns/);
+});
+
 test("novos cadastros preservam escopo e proprietário reautentica ações críticas", async () => {
   const management = await source("components/gestao-operacional.tsx");
   const route = await source("app/api/gestao-operacional/route.ts");
