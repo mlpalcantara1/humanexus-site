@@ -1027,6 +1027,17 @@ test("polling do Cockpit publica o estado real de conexão do núcleo", async ()
   );
 });
 
+test("perfil de latência do polling é opt-in e não altera o fluxo comum", async () => {
+  const rota = await source("app/api/operacao-homologacao/route.ts");
+  const cockpit = await source("components/operacao-homologacao.tsx");
+
+  assert.match(cockpit, /get\("medir_latencia"\) === "1"/);
+  assert.match(cockpit, /parametros\.set\("medir_latencia", "1"\)/);
+  assert.match(rota, /HXP_LATENCIA_COCKPIT_VIVO/);
+  assert.match(rota, /atualizacaoLeveSolicitada && medirLatencia/);
+  assert.match(rota, /payload_bytes: payloadBytes/);
+});
+
 test("Polling autenticado preserva contexto, ordenação e ciclo único", async () => {
   const operacao = await source("components/operacao-homologacao.tsx");
 

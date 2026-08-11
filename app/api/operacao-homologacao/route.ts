@@ -126,7 +126,8 @@ function registro(valor: unknown): Registro {
 async function atualizacaoLeve(
   token: string,
   selecao: SelecaoDeContexto,
-  desdeVersao?: string
+  desdeVersao?: string,
+  medirLatencia = false
 ) {
   const sessaoId = String(selecao.identificador_da_sessao ?? "");
   if (!sessaoId) {
@@ -134,6 +135,7 @@ async function atualizacaoLeve(
   }
   const parametros = new URLSearchParams();
   if (desdeVersao) parametros.set("desde_versao", desdeVersao);
+  const inicioDaConsultaAoNucleo = Date.now();
   const dados = await consultar<{
     contrato: string;
     modo: "SNAPSHOT" | "DELTA" | "SEM_ALTERACAO";
@@ -164,6 +166,7 @@ async function atualizacaoLeve(
       tempoLimiteMs: 10_000
     }
   );
+  const latenciaDoNucleoMs = Date.now() - inicioDaConsultaAoNucleo;
   return {
     atualizacao_parcial: true,
     sem_alteracao: dados.modo === "SEM_ALTERACAO",
@@ -175,7 +178,10 @@ async function atualizacaoLeve(
     geracoes_do_cockpit: dados.geracoes_por_fonte,
     limites_da_memoria_viva: dados.limites,
     estado_operacional: dados.campos_alterados.estado_operacional,
-    cockpit_operacional: dados.campos_alterados.cockpit_operacional
+    cockpit_operacional: dados.campos_alterados.cockpit_operacional,
+    diagnostico_de_latencia: medirLatencia
+      ? { nucleo_ms: latenciaDoNucleoMs }
+      : undefined
   };
 }
 
@@ -673,8 +679,11 @@ async function estado(
 
 export async function GET(request: Request) {
   try {
+    const inicioDaRota = Date.now();
     const { token } = await tokenAtual();
     const url = new URL(request.url);
+    const atualizacaoLeveSolicitada = url.searchParams.get("leve") === "1";
+    const medirLatencia = url.searchParams.get("medir_latencia") === "1";
     const selecao = {
       identificador_da_organizacao:
         url.searchParams.get("organizacao") ?? undefined,
@@ -683,19 +692,34 @@ export async function GET(request: Request) {
       identificador_da_sessao:
         url.searchParams.get("sessao") ?? undefined
     };
-    return NextResponse.json(
-      url.searchParams.get("leve") === "1"
+    const resultado = atualizacaoLeveSolicitada
         ? await atualizacaoLeve(
             token,
             selecao,
-            url.searchParams.get("versao") ?? undefined
+            url.searchParams.get("versao") ?? undefined,
+            medirLatencia
           )
         : await estado(token, selecao, {
             carregamentoInicial:
               url.searchParams.get("inicial") === "1",
             incluirFormulacoesNoEscopo:
               url.searchParams.get("visao") === "formulacao"
-          }),
+          });
+    if (atualizacaoLeveSolicitada && medirLatencia) {
+      const resultadoLeve = resultado as Awaited<
+        ReturnType<typeof atualizacaoLeve>
+      >;
+      const payloadBytes = Buffer.byteLength(JSON.stringify(resultado));
+      console.info(JSON.stringify({
+        evento: "HXP_LATENCIA_COCKPIT_VIVO",
+        rota_total_ms: Date.now() - inicioDaRota,
+        nucleo_ms: resultadoLeve.diagnostico_de_latencia?.nucleo_ms,
+        payload_bytes: payloadBytes,
+        modo: resultadoLeve.modo_da_atualizacao
+      }));
+    }
+    return NextResponse.json(
+      resultado,
       { headers: { "cache-control": "private, no-store" } }
     );
   } catch (erro) {
