@@ -1496,7 +1496,7 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 }
 
 .hx-live-regulatory-readout--primary {
-  grid-template-columns: minmax(230px, 1.2fr) minmax(190px, .72fr) minmax(260px, 1fr) minmax(230px, .9fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .hx-live-regulatory-readout--primary article {
@@ -1516,6 +1516,75 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 
 .hx-live-regulatory-readout--primary strong {
   font-size: clamp(18px, 1.55vw, 25px);
+}
+
+.hx-live-regulatory-readout--primary article:first-child strong {
+  color: #f4e5b7;
+  font-size: clamp(28px, 2.7vw, 46px);
+}
+
+.hx-live-regulatory-readout--primary article:nth-child(2) strong {
+  font-size: clamp(24px, 2.2vw, 38px);
+}
+
+.hx-live-regulatory-readout--primary button {
+  margin-top: 10px;
+  border: 0;
+  padding: 0;
+  color: #cdb274;
+  background: transparent;
+  cursor: pointer;
+  font: 7px var(--font-geist-mono), monospace;
+  text-transform: uppercase;
+}
+
+.hx-live-command-center--premium {
+  display: block;
+}
+
+.hx-live-neuro-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 1px;
+  border: 1px solid rgba(205, 178, 116, .18);
+  background: rgba(205, 178, 116, .12);
+}
+
+.hx-live-neuro-strip > div {
+  min-width: 0;
+  padding: 10px 12px;
+  background: rgba(5, 10, 12, .96);
+}
+
+.hx-live-neuro-strip small,
+.hx-live-neuro-strip strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hx-live-neuro-strip small {
+  color: #788684;
+  letter-spacing: .1em;
+  font: 6px var(--font-geist-mono), monospace;
+  text-transform: uppercase;
+}
+
+.hx-live-neuro-strip strong {
+  margin-top: 5px;
+  color: #e4dfd2;
+  font: 400 15px Georgia, serif;
+}
+
+/* Cockpit operacional = decisão. Ciência e prova ficam nas visões próprias. */
+.hx-live-cockpit > .hx-live-scientific-disclosure,
+.hx-live-cockpit > .hx-live-scientific-chain,
+.hx-live-cockpit > .hx-live-scientific-coverage,
+.hx-live-cockpit > .hx-live-technical-drawer,
+.hx-live-cockpit > .hx-live-indicators,
+.hx-live-command-center--premium > .hx-live-temporal-disclosure {
+  display: none;
 }
 
 .hx-live-vector-stage {
@@ -2028,6 +2097,10 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
   .hx-live-hud > div {
     border-bottom: 1px solid var(--live-border);
   }
+
+  .hx-live-neuro-strip {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
 }
 
 @media (max-width: 900px) {
@@ -2109,6 +2182,14 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 
   .hx-live-hud > div {
     min-height: 64px;
+  }
+
+  .hx-live-neuro-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hx-live-regulatory-readout--primary {
+    grid-template-columns: 1fr;
   }
 
   .hx-live-cockpit button,

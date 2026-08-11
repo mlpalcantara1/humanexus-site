@@ -304,17 +304,23 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
   assert.doesNotMatch(client, /<small>INSPEÇÃO<\/small>\s*<strong>Inspeção TIRH<\/strong>/);
   assert.match(client, /<small>ANÁLISE<\/small>\s*<strong>Inspeção TIRH<\/strong>/);
   for (const item of [
-    "ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA",
-    "ZONA OPERACIONAL",
     "THX",
     "FASE",
     "TEMPO",
     "FREQUÊNCIA CARDÍACA",
     "RMSSD",
-    "ESTADO DO EEG",
-    "ESTADO DO POLAR"
+    "EPOC X",
+    "POLAR H10"
   ]) assert.match(hud, new RegExp(item));
-  for (const item of ["TEMPO TOTAL", "QUALIDADE", "COBERTURA", "SESSÃO"]) {
+  for (const item of [
+    "ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA",
+    "ZONA OPERACIONAL",
+    "SEQUÊNCIA",
+    "TEMPO TOTAL",
+    "QUALIDADE",
+    "COBERTURA",
+    "SESSÃO"
+  ]) {
     assert.doesNotMatch(hud, new RegExp(`<small>${item}</small>`));
   }
   assert.match(operacional, /acaoPrincipal/);
@@ -333,7 +339,7 @@ test("Cockpit cinematográfico prioriza HUD, leitura viva e condução sem alter
 
   const hud = operacional.indexOf('className="hx-live-hud"');
   const comando = operacional.indexOf('className="hx-live-operation-focus"');
-  const vetores = operacional.indexOf('className="hx-live-command-center"');
+  const vetores = operacional.indexOf('className="hx-live-command-center hx-live-command-center--premium"');
   assert.ok(hud >= 0 && comando > hud && vetores > comando);
   assert.match(operacional, /hx-live-temporal-rail/);
   assert.match(operacional, /AGUARDANDO EVIDÊNCIA REAL/);
@@ -479,7 +485,7 @@ test("composição executiva premium permanece isolada no front-end da plataform
   const hud = cockpit.indexOf('className="hx-live-hud"');
   const operacao = cockpit.indexOf('className="hx-live-operation-focus"');
   const contexto = cockpit.indexOf('className="hx-live-context-strip"');
-  const instrumentos = cockpit.indexOf('className="hx-live-command-center"');
+  const instrumentos = cockpit.indexOf('className="hx-live-command-center hx-live-command-center--premium"');
   assert.ok(
     masthead >= 0 &&
       contexto > masthead &&
@@ -536,10 +542,10 @@ test("HUMANEXUS Design System unifica módulos e separa profundidade sem alterar
     "Relatórios e exportação", "Administração", "Configurações"
   ]) assert.match(navegacao, new RegExp(modulo.replaceAll("·", "\\·")));
 
-  assert.match(cockpit, /01<\/span>\s*<strong>Comando/);
-  assert.match(cockpit, /02<\/span>\s*<strong>Regulação/);
-  assert.match(cockpit, /03<\/span>\s*<strong>Evidências/);
-  assert.match(cockpit, /04<\/span>\s*<strong>Inspeção/);
+  assert.match(cockpit, /01<\/span>\s*<strong>Decisão/);
+  assert.match(cockpit, /02<\/span>\s*<strong>Vetores/);
+  assert.match(cockpit, /03<\/span>\s*<strong>Comando/);
+  assert.match(cockpit, /04<\/span>\s*<strong>Intervenção/);
   assert.match(demonstracao, /SEM CÁLCULO · SEM FALLBACK/);
   assert.match(demonstracao, /Ausência não convertida em zero/);
 });
@@ -564,6 +570,8 @@ test("Cockpit não converte ausência de evidência em zero e explica cobertura"
 
 test("Cockpit operacional permanece limpo e envia governança científica à inspeção", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const operacao = await source("components/operacao-homologacao.tsx");
+  const css = await source("app/globals.css");
   const hud = cockpit.match(
     /<section className="hx-live-hud"[\s\S]*?<\/section>/
   )?.[0] ?? "";
@@ -573,17 +581,12 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   const vetores = cockpit.match(
     /<HxSurface as="section" className="hx-live-vector-stage">[\s\S]*?<\/HxSurface>/
   )?.[0] ?? "";
-  const inspecao = cockpit.match(
-    /id="hx-inspection-level"[\s\S]*?hx-live-technical-drawer/
-  )?.[0] ?? "";
-
-  assert.match(hud, /ZONA OPERACIONAL/);
-  assert.match(hud, /Ver motivo/);
+  assert.doesNotMatch(hud, /ZONA OPERACIONAL|IIRH|Ver motivo|Sequência/);
   assert.match(leituraPrincipal, /IIRH/);
   assert.match(leituraPrincipal, /RESULTANTE REGULATÓRIA/);
   assert.match(leituraPrincipal, /TRAJETÓRIA \/ TENDÊNCIA/);
   assert.match(vetores, /Dez vetores oficiais/);
-  assert.match(vetores, /Ausência permanece ausência/);
+  assert.match(vetores, /Estado atual/);
   assert.doesNotMatch(vetores, /Por que este resultado/);
   for (const metadado of [
     "maturidade_da_evidencia",
@@ -595,10 +598,12 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
     assert.doesNotMatch(leituraPrincipal, new RegExp(metadado));
     assert.doesNotMatch(vetores, new RegExp(metadado));
   }
-  assert.match(inspecao, /Inspeção científica dos resultados/);
-  assert.match(inspecao, /elegibilidade_temporal/);
-  assert.match(inspecao, /precondicoes_da_zona/);
-  assert.match(inspecao, /proveniencia/);
+  assert.match(operacao, /Governança científica, suficiência e proveniência/);
+  assert.match(operacao, /elegibilidade_temporal/);
+  assert.match(operacao, /rastreabilidade_do_motor/);
+  assert.match(css, /Cockpit operacional = decisão/);
+  assert.match(css, /\.hx-live-cockpit > \.hx-live-scientific-chain[\s\S]*display: none/);
+  assert.match(css, /\.hx-live-command-center--premium > \.hx-live-temporal-disclosure/);
 });
 
 test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async () => {
@@ -929,8 +934,7 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
   ]) assert.match(cockpit, new RegExp(item));
   assert.match(cockpit, /Somente relações autorais rastreáveis/);
   assert.match(cockpit, /nenhuma decisão automática/);
-  assert.match(cockpit, /HIPÓTESE OPERACIONAL v0\.1 — EM VALIDAÇÃO EMPÍRICA/);
-  assert.match(cockpit, /Validação profissional obrigatória/);
+  assert.doesNotMatch(cockpit, /hx-live-regulatory-readout__seal/);
   assert.match(cockpit, /resultante\.estado === "CALCULAVEL"/);
   assert.match(cockpit, /resultante\.estado === "CONFLITANTE"/);
   assert.match(cockpit, /Cobertura[\s\S]*Qualidade[\s\S]*Confiança/);
@@ -982,7 +986,7 @@ test("Cockpit prioriza os dez vetores sem expor parâmetros de estabilização",
   const estabilizacao = await source("lib/cockpit-regulatory-visual-stability.ts");
 
   assert.match(cockpit, /VETORES BASAIS CANÔNICOS/);
-  assert.match(cockpit, /Ausência permanece ausência/);
+  assert.match(cockpit, /Estado atual/);
   assert.match(cockpit, /ZONA OPERACIONAL/);
   assert.match(cockpit, /Ver motivo/);
   assert.doesNotMatch(cockpit, /Apresentação \{JANELA_VISUAL_REGULATORIA_MS/);

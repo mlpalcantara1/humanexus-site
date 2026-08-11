@@ -925,6 +925,12 @@ function ReferenciaBaselineResumo({ estado }: { estado: Estado }) {
 
 function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
   const evidencias = estado.leitura_regulatoria.evidencias;
+  const leituraCientifica = objeto(
+    objeto(estado.cockpit_operacional).leitura_cientifica
+  );
+  const configuracaoBasal = objeto(
+    leituraCientifica.configuracao_regulatoria_basal
+  );
   return (
     <section className="hx-cockpit-panel">
       <TituloDaVisao
@@ -948,6 +954,18 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
           </div>
         )) : <div className="hx-evidence-table__empty">Nenhuma evidência foi disponibilizada para esta sessão.</div>}
       </div>
+      <details className="hx-technical-details">
+        <summary>Governança científica, suficiência e proveniência</summary>
+        <pre>{JSON.stringify({
+          elegibilidade_temporal: leituraCientifica.elegibilidade_temporal_da_zona,
+          iirh: leituraCientifica.iirh,
+          zona: leituraCientifica.zona,
+          resultante: leituraCientifica.resultante,
+          trajetoria: leituraCientifica.trajetoria,
+          configuracao_regulatoria_basal: configuracaoBasal,
+          rastreabilidade_do_motor: leituraCientifica.rastreabilidade_do_motor
+        }, null, 2)}</pre>
+      </details>
       <div className="hx-limit-consolidated">
         <strong>LIMITAÇÃO CONSOLIDADA</strong>
         <span>As observações disponíveis pertencem à homologação técnica. Não constituem evidência humana suficiente para produzir vetor, Resultante, IIRH, Zona, trajetória ou rota regulatória.</span>

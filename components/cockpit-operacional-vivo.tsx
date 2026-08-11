@@ -747,10 +747,6 @@ export function CockpitOperacionalVivo({
   const resultanteCalculada = cienciaAtualAdmissivel
     && (resultante.estado === "CALCULAVEL" || resultante.estado === "CONFLITANTE")
     && typeof resultante.valor === "number";
-  const seloDaResultante = texto(
-    resultante.selo,
-    "HIPÓTESE OPERACIONAL v0.1 — EM VALIDAÇÃO EMPÍRICA"
-  );
   const zonaCanonicaCalculada = cienciaAtualAdmissivel
     && iirhCanonicoCalculado
     && Boolean(zona.nome ?? zona.codigo);
@@ -1118,8 +1114,6 @@ export function CockpitOperacionalVivo({
   const polarEmVerificacao = polar.projecao_em_verificacao === true;
   const eegEmVerificacao = eeg.projecao_em_verificacao === true;
   const polarValoresHud = objeto(polar.valores);
-  const polarMetricasHud = objeto(polar.metricas);
-  const eegValoresHud = objeto(eeg.valores);
   const fase = sessaoBaseline
     ? `BASELINE · ${baseline.estado}`
     : sessao.fase_atual
@@ -1170,14 +1164,15 @@ export function CockpitOperacionalVivo({
     await registrar(categoria, registro.trim());
     setRegistro("");
   };
+  const neurotelemetriaOperacional = metricasDeDesempenhoVisiveis(eeg);
 
   return (
     <section className="hx-live-cockpit" data-cockpit-mode={cockpit.modo}>
       <nav className="hx-live-levels" aria-label="Arquitetura do Centro de Comando">
-        <a href="#hx-command-level"><span>01</span><strong>Comando</strong></a>
-        <a href="#hx-regulation-level"><span>02</span><strong>Regulação</strong></a>
-        <a href="#hx-evidence-level"><span>03</span><strong>Evidências</strong></a>
-        <a href="#hx-inspection-level"><span>04</span><strong>Inspeção</strong></a>
+        <a href="#hx-decision-level"><span>01</span><strong>Decisão</strong></a>
+        <a href="#hx-regulation-level"><span>02</span><strong>Vetores</strong></a>
+        <a href="#hx-command-level"><span>03</span><strong>Comando</strong></a>
+        <a href="#hx-intervention-level"><span>04</span><strong>Intervenção</strong></a>
       </nav>
       <header className="hx-live-cockpit__masthead">
         <div className="hx-live-masthead-rail" aria-hidden="true"><i /><i /><i /></div>
@@ -1229,16 +1224,27 @@ export function CockpitOperacionalVivo({
       </section>
 
       <section className="hx-live-hud" aria-label="HUD operacional fixo">
-        <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{iirhCalculado ? `${numero(iirhApresentado, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong><span>{iirhCalculado ? "Leitura regulatória atual" : "Evidência insuficiente"}</span></div>
-        <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? rotuloDaZona(zonaApresentada) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? "Estado operacional atual" : "Evidência insuficiente"} · <a href="#hx-inspection-level">Ver motivo</a></span></div>
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{sessaoBaseline ? estadoDoBaseline : texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
         <div><small>TEMPO</small><strong>{duracao(inicioDoCronometro, fimDoCronometro, agora)}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
         <div><small>FREQUÊNCIA CARDÍACA</small><strong>{polar.ao_vivo === true || polarEmVerificacao ? <LeituraNumerica valor={polarValoresHud.hr_bpm} sufixo=" bpm" /> : "Sem leitura atual"}</strong><span>{polarEmVerificacao ? "Última projeção canônica · não é leitura atual" : texto(polar.estado)}</span></div>
         <div><small>RMSSD</small><strong>{polar.ao_vivo === true || polarEmVerificacao ? <LeituraNumerica valor={polarValoresHud.rmssd_tecnico_ms} casas={1} sufixo=" ms" /> : "Sem leitura atual"}</strong><span>{polarEmVerificacao ? "Última projeção canônica · validade em verificação" : texto(polar.estado)}</span></div>
-        <div><small>ESTADO DO EEG</small><strong>{texto(eeg.estado)}</strong><span>{eeg.ao_vivo === true ? `Atual ${percentual(eegValoresHud.qualidade_global)} · mediana ${percentual(eegValoresHud.qualidade_mediana_da_janela)}` : eegEmVerificacao ? `Última projeção ${percentual(eegValoresHud.qualidade_global)} · não atual` : "Sem leitura atual"}</span></div>
-        <div><small>ESTADO DO POLAR</small><strong>{texto(polar.estado)}</strong><span>{polar.ao_vivo === true ? `Sequência atual ${numero(polarMetricasHud.ultima_sequencia)}` : polarEmVerificacao ? `Última sequência canônica ${numero(polarMetricasHud.ultima_sequencia)} · não atual` : "Sem leitura atual"}</span></div>
+        <div><small>EPOC X</small><strong>{texto(eeg.estado)}</strong><span>{eeg.ao_vivo === true ? "Capturando" : eegEmVerificacao ? "Atualização interrompida" : "Sem leitura atual"}</span></div>
+        <div><small>POLAR H10</small><strong>{texto(polar.estado)}</strong><span>{polar.ao_vivo === true ? "Capturando" : polarEmVerificacao ? "Atualização interrompida" : "Sem leitura atual"}</span></div>
       </section>
+
+      {neurotelemetriaOperacional.length ? (
+        <section className="hx-live-neuro-strip" aria-label="Neurotelemetria operacional atual">
+          {neurotelemetriaOperacional.map((metrica) => (
+            <div key={texto(metrica.nome)}>
+              <small>{texto(metrica.nome)}</small>
+              <strong>{metrica.valor_atual == null
+                ? "SEM LEITURA ATUAL"
+                : percentual(metrica.valor_atual)}</strong>
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       {Object.keys(configuracaoBasal).length ? (
         <details className="hx-live-scientific-disclosure">
@@ -1418,6 +1424,7 @@ export function CockpitOperacionalVivo({
       </section>
 
       <section
+        id="hx-decision-level"
         className="hx-live-regulatory-readout hx-live-regulatory-readout--primary"
         aria-label="Decisão regulatória atual"
       >
@@ -1426,40 +1433,29 @@ export function CockpitOperacionalVivo({
           <strong>{zonaCalculada
             ? rotuloDaZona(zonaApresentada)
             : "NÃO CLASSIFICÁVEL"}</strong>
-          <span>{zonaCalculada ? "Estado regulatório atual" : "Evidência insuficiente para classificação"}</span>
-          <a href="#hx-inspection-level">Ver motivo</a>
+          {!zonaCalculada ? <button type="button" onClick={abrirAnalitico}>Ver motivo</button> : null}
         </article>
         <article>
           <small>IIRH</small>
           <strong>{iirhCalculado
             ? `${numero(iirhApresentado, 1)} ${texto(iirh.unidade, "")}`
             : "NÃO CALCULÁVEL"}</strong>
-          <span>{iirhCalculado ? "Integração regulatória atual" : "Evidência humana admissível insuficiente"}</span>
-          <a href="#hx-inspection-level">Ver detalhes</a>
         </article>
         <article>
           <small>RESULTANTE REGULATÓRIA</small>
-          <em className="hx-live-regulatory-readout__seal">{seloDaResultante}</em>
           <strong>{resultanteCalculada
             ? `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`
             : texto(resultante.estado, "NÃO CALCULÁVEL")}</strong>
-          <span>{resultanteCalculada
-            ? `Direção ${texto(resultante.vetor_dominante, "não dominante")} · Sentido ${texto(resultante.sentido_contextual, "não determinável")}`
-            : texto(resultante.justificativa ?? resultante.motivo, "Configuração vetorial insuficiente")}</span>
-          <span>Validação profissional obrigatória · nenhuma decisão automática</span>
-          <a href="#hx-inspection-level">Ver detalhes</a>
         </article>
-        <article>
-          <small>TRAJETÓRIA / TENDÊNCIA</small>
-          <strong>{trajetoriaCalculada ? texto(trajetoria.valor) : "NÃO INFERÍVEL"}</strong>
-          <span>{trajetoriaCalculada
-            ? "Estados sucessivos comparáveis"
-            : "Um ponto isolado não produz trajetória"}</span>
-          <a href="#hx-inspection-level">Ver detalhes</a>
-        </article>
+        {trajetoriaCalculada ? (
+          <article>
+            <small>TRAJETÓRIA / TENDÊNCIA</small>
+            <strong>{texto(trajetoria.valor)}</strong>
+          </article>
+        ) : null}
       </section>
 
-      <div id="hx-regulation-level" className="hx-live-command-center">
+      <div id="hx-regulation-level" className="hx-live-command-center hx-live-command-center--premium">
         {radarVetorial.length ? (
           <HxSurface as="section" className="hx-live-vector-stage">
             <HxSectionHeader
@@ -1467,7 +1463,7 @@ export function CockpitOperacionalVivo({
                 ? "VETORES BASAIS CANÔNICOS · MATRIZ VETORIAL"
                 : "VETORES VIVOS · MATRIZ VETORIAL"}
               title="Dez vetores oficiais"
-              aside={<span>Ausência permanece ausência</span>}
+              aside={<span>Estado atual</span>}
             />
             <VectorRadarChart vectors={radarVetorial} />
             <div className="hx-live-vector-list" aria-label="Estado dos dez vetores oficiais">
@@ -1836,7 +1832,7 @@ export function CockpitOperacionalVivo({
         </section>
       ) : null}
 
-      <section className="hx-live-conduction" aria-label="Condução profissional da sessão">
+      <section id="hx-intervention-level" className="hx-live-conduction" aria-label="Condução profissional da sessão">
         <div className="hx-live-intervention">
           <header><small>{sessaoBaseline ? "CONDUÇÃO DO BASELINE" : "INTERVENÇÃO SELECIONADA · EM APLICAÇÃO"}</small><strong>{sessaoBaseline ? "Referência regulatória independente" : texto(thx.nome, "Treinamento selecionado")}</strong></header>
           <div>
