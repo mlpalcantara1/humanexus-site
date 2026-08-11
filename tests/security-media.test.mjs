@@ -92,6 +92,20 @@ test("preparação da sessão oferece mídia opcional, cobertura e baseline expl
   assert.match(cockpit, /Inspeção TIRH/);
 });
 
+test("seleção profissional consolida aliases da mesma fonte sem duplicar controles", async () => {
+  const controle = await fonte("components/controle-gravacao-multimodal.tsx");
+  assert.match(controle, /fontesUnicasParaSelecao\(prontidao, fontes\)/);
+  assert.match(
+    controle,
+    /ANAMNESE_REGULATORIA_ESTRUTURADA:\s*"ANAMNESE_REGULATORIA"/
+  );
+  assert.match(controle, /EMOTIV_EPOC_X:\s*"EPOC_X"/);
+  assert.doesNotMatch(
+    controle,
+    /Object\.entries\(ROTULOS_DAS_FONTES\)\.map\(\(\[codigoDaFonte, rotulo\]\)/
+  );
+});
+
 test("falha de mídia sempre apresenta saídas recuperáveis", async () => {
   const captura = await fonte("components/captura-multimodal.tsx");
   for (const acao of [

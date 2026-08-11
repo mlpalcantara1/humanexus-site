@@ -157,6 +157,10 @@ const ROTULOS_DAS_FONTES: Record<string, string> = {
   TELEMETRIA_TAREFA: "Telemetria de tarefa",
   REPLAY: "Replay"
 };
+const CHAVES_VISUAIS_DAS_FONTES: Record<string, string> = {
+  ANAMNESE_REGULATORIA_ESTRUTURADA: "ANAMNESE_REGULATORIA",
+  EMOTIV_EPOC_X: "EPOC_X"
+};
 const ROTULOS_DA_RETENCAO: Record<string, string> = {
   NAO_ARMAZENAR: "Não armazenar mídia",
   DURANTE_A_SESSAO: "Somente durante a sessão",
@@ -171,6 +175,32 @@ function csrf() {
     .split("; ")
     .find((item) => item.startsWith("humanexus_csrf="))
     ?.split("=")[1] ?? "";
+}
+
+function fontesUnicasParaSelecao(
+  prontidao: Prontidao | undefined,
+  selecionadas: string[]
+) {
+  const porChaveVisual = new Map<
+    string,
+    { codigo: string; rotulo: string; fonte?: Fonte; pontuacao: number }
+  >();
+
+  for (const [codigo, rotulo] of Object.entries(ROTULOS_DAS_FONTES)) {
+    const chaveVisual = CHAVES_VISUAIS_DAS_FONTES[codigo] ?? codigo;
+    const fonte = prontidao?.fontes.find((item) => item.codigo === codigo);
+    const pontuacao =
+      (selecionadas.includes(codigo) ? 8 : 0)
+      + (fonte ? 4 : 0)
+      + (fonte?.disponivel ? 2 : 0)
+      + (codigo === chaveVisual ? 1 : 0);
+    const atual = porChaveVisual.get(chaveVisual);
+    if (!atual || pontuacao > atual.pontuacao) {
+      porChaveVisual.set(chaveVisual, { codigo, rotulo, fonte, pontuacao });
+    }
+  }
+
+  return [...porChaveVisual.values()];
 }
 
 function proximoModoSemFonte(modo: Modo, fonte: string): Modo {
@@ -577,6 +607,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
     && !baselineAtual;
   const referenciaJaDefinida = Boolean(decisaoPersistida);
   const fontesIndisponiveis = prontidao?.fontes_indisponiveis ?? [];
+  const fontesParaSelecao = fontesUnicasParaSelecao(prontidao, fontes);
   const aguardandoHardware = Boolean(
     sessaoPreparada
     && fontesIndisponiveis.length
@@ -698,10 +729,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
           <small>FONTES DA SESSÃO</small>
           <h4>Seleção profissional</h4>
           <div className="hx-source-options">
-            {Object.entries(ROTULOS_DAS_FONTES).map(([codigoDaFonte, rotulo]) => {
-              const fonte = prontidao?.fontes.find(
-                (item) => item.codigo === codigoDaFonte
-              );
+            {fontesParaSelecao.map(({ codigo: codigoDaFonte, rotulo, fonte }) => {
               const controladaPeloModo = ["AUDIO", "VIDEO"].includes(codigoDaFonte);
               const selecionada = controladaPeloModo
                 ? codigoDaFonte === "AUDIO"
