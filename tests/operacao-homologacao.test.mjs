@@ -931,6 +931,8 @@ test("Cockpit prioriza os dez vetores e estabiliza somente a apresentação", as
   assert.match(cockpit, /Zona canônica [\s\S]* em confirmação visual/);
   assert.match(cockpit, /Magnitude canônica/);
   assert.match(cockpit, /Magnitude apresentada/);
+  assert.match(cockpit, /magnitudeCanonica == null[\s\S]*\? "AUSENTE"/);
+  assert.match(cockpit, /zonaOperacionalBasal \? "ZONA OPERACIONAL BASAL"/);
   assert.match(cockpit, /TELEMETRIA DETALHADA/);
   assert.match(css, /grid-template-columns:\s*minmax\(500px,\s*1\.55fr\)/);
   assert.match(css, /transition: width 720ms/);

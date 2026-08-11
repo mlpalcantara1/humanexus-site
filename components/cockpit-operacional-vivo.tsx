@@ -866,6 +866,8 @@ export function CockpitOperacionalVivo({
   const zonaCanonica = zonaCanonicaCalculada
     ? String(zona.codigo ?? zona.nome)
     : null;
+  const zonaOperacionalBasal = String(zona.natureza_da_zona ?? "").toUpperCase()
+    === "ZONA_OPERACIONAL_BASAL";
   const divergenciaVisualDoIirh = iirhCanonico !== iirhApresentado;
   const trajetoriaCalculada = leituraAoVivo && trajetoria.valor != null;
   const precondicoesDaZonaNaoAtendidas = Array.isArray(
@@ -1291,7 +1293,7 @@ export function CockpitOperacionalVivo({
 
       <section className="hx-live-hud" aria-label="HUD operacional fixo">
         <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{iirhCalculado ? `${numero(iirhApresentado, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong><span>{iirhCalculado ? "Apresentação estabilizada de valor canônico" : texto(iirh.motivo, "Evidência insuficiente")}</span></div>
-        <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? rotuloDaZona(zonaApresentada) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? `Taxonomia canônica · ${texto(zona.versao_da_taxonomia, "versão não informada")}` : `${iirhCalculado ? "IIRH calculável; Zona sem convergência suficiente" : "IIRH oficial indisponível"} · ${causaDaZona}`}</span></div>
+        <div><small>{zonaOperacionalBasal ? "ZONA OPERACIONAL BASAL" : "ZONA OPERACIONAL"}</small><strong>{zonaCalculada ? rotuloDaZona(zonaApresentada) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? `Taxonomia canônica · ${texto(zona.versao_da_taxonomia, "versão não informada")}` : `${iirhCalculado ? "IIRH calculável; Zona sem convergência suficiente" : "IIRH oficial indisponível"} · ${causaDaZona}`}</span></div>
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{sessaoBaseline ? estadoDoBaseline : texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
         <div><small>TEMPO</small><strong>{duracao(inicioDoCronometro, fimDoCronometro, agora)}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
@@ -1499,7 +1501,7 @@ export function CockpitOperacionalVivo({
         aria-label="Decisão regulatória atual"
       >
         <article data-regulatory-state={zonaCalculada ? "CLASSIFICADA" : "NAO_CLASSIFICAVEL"}>
-          <small>ZONA OPERACIONAL</small>
+          <small>{zonaOperacionalBasal ? "ZONA OPERACIONAL BASAL" : "ZONA OPERACIONAL"}</small>
           <strong>{zonaCalculada
             ? rotuloDaZona(zonaApresentada)
             : "NÃO CLASSIFICÁVEL"}</strong>
@@ -1592,6 +1594,9 @@ export function CockpitOperacionalVivo({
                 const estadoVetorialExibido = configuracaoBasalCanonica
                   ? vetorBasal
                   : estadoVetorial;
+                const magnitudeCanonica = valorNormalizado(
+                  estadoVetorialExibido?.magnitude
+                );
                 const evidenciasUtilizadas = lista(
                   estadoVetorialExibido?.evidencias_utilizadas
                 );
@@ -1609,10 +1614,7 @@ export function CockpitOperacionalVivo({
                       <span><b>{vetor.code}</b>{vetor.name}</span>
                       <strong>
                         {vetor.value == null
-                          ? texto(
-                              estadoVetorialExibido?.estado,
-                              "AGUARDANDO EVIDÊNCIA"
-                            )
+                          ? "NÃO CALCULÁVEL"
                           : `${(vetor.value * 100).toFixed(1)}%`}
                       </strong>
                     </div>
@@ -1625,9 +1627,9 @@ export function CockpitOperacionalVivo({
                       <summary>Por que este resultado? · Rastreabilidade científica</summary>
                       <dl>
                         <div><dt>Estado</dt><dd>{texto(estadoVetorialExibido?.estado, "NAO_DEFINIDO")}</dd></div>
-                        <div><dt>Magnitude canônica</dt><dd>{estadoVetorialExibido?.magnitude == null
+                        <div><dt>Magnitude canônica</dt><dd>{magnitudeCanonica == null
                           ? "AUSENTE"
-                          : `${numero(estadoVetorialExibido.magnitude, 2)} / 100`}</dd></div>
+                          : `${numero(magnitudeCanonica * 100, 2)} / 100`}</dd></div>
                         <div><dt>Magnitude apresentada</dt><dd>{vetor.value == null
                           ? "AUSENTE"
                           : `${numero(vetor.value * 100, 2)} / 100`}</dd></div>
