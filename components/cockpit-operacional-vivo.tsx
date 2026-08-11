@@ -739,7 +739,6 @@ export function CockpitOperacionalVivo({
   const configuracaoBasalCanonica = (sessaoBaseline || (
     !sessaoFinalizada && !faseCientificaAtual
   ))
-    && projecaoOperacionalAtual
     && !modoHistorico
     && texto(configuracaoBasal.identificador_da_sessao, "") === identificadorDaSessao;
   const coberturaVetorial = objeto(leituraCientifica.cobertura_vetorial);

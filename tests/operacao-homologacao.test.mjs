@@ -659,7 +659,11 @@ test("Baseline canônico aparece sem ser rotulado como telemetria viva", async (
     cockpit,
     /const configuracaoBasalCanonica = \(sessaoBaseline \|\| \([\s\S]*!sessaoFinalizada && !faseCientificaAtual/
   );
-  assert.match(cockpit, /projecaoOperacionalAtual[\s\S]*!modoHistorico/);
+  const contratoBasal = cockpit.match(
+    /const configuracaoBasalCanonica =[\s\S]*?identificadorDaSessao;/
+  )?.[0] ?? "";
+  assert.match(contratoBasal, /!modoHistorico/);
+  assert.doesNotMatch(contratoBasal, /projecaoOperacionalAtual/);
   assert.match(
     cockpit,
     /configuracaoBasal\.identificador_da_sessao[\s\S]*identificadorDaSessao/
@@ -680,6 +684,19 @@ test("configuração basal canônica aparece antes do PRÉ na sessão integral",
     cockpit,
     /const configuracaoBasalCanonica = leituraAoVivo/
   );
+});
+
+test("interrupção transitória do polling não apaga a projeção basal canônica", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const contratoBasal = cockpit.match(
+    /const configuracaoBasalCanonica =[\s\S]*?identificadorDaSessao;/
+  )?.[0] ?? "";
+
+  assert.match(contratoBasal, /!sessaoFinalizada && !faseCientificaAtual/);
+  assert.match(contratoBasal, /!modoHistorico/);
+  assert.match(contratoBasal, /configuracaoBasal\.identificador_da_sessao/);
+  assert.doesNotMatch(contratoBasal, /projecaoOperacionalAtual/);
+  assert.match(cockpit, /const cienciaAtualAdmissivel = leituraAoVivo \|\| configuracaoBasalCanonica/);
 });
 
 test("polling vivo não para em segundo plano e retoma imediatamente no foco", async () => {
