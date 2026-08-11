@@ -562,6 +562,45 @@ test("Cockpit não converte ausência de evidência em zero e explica cobertura"
   );
 });
 
+test("Cockpit operacional permanece limpo e envia governança científica à inspeção", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const hud = cockpit.match(
+    /<section className="hx-live-hud"[\s\S]*?<\/section>/
+  )?.[0] ?? "";
+  const leituraPrincipal = cockpit.match(
+    /className="hx-live-regulatory-readout hx-live-regulatory-readout--primary"[\s\S]*?<\/section>/
+  )?.[0] ?? "";
+  const vetores = cockpit.match(
+    /<HxSurface as="section" className="hx-live-vector-stage">[\s\S]*?<\/HxSurface>/
+  )?.[0] ?? "";
+  const inspecao = cockpit.match(
+    /id="hx-inspection-level"[\s\S]*?hx-live-technical-drawer/
+  )?.[0] ?? "";
+
+  assert.match(hud, /ZONA OPERACIONAL/);
+  assert.match(hud, /Ver motivo/);
+  assert.match(leituraPrincipal, /IIRH/);
+  assert.match(leituraPrincipal, /RESULTANTE REGULATÓRIA/);
+  assert.match(leituraPrincipal, /TRAJETÓRIA \/ TENDÊNCIA/);
+  assert.match(vetores, /Dez vetores oficiais/);
+  assert.match(vetores, /Ausência permanece ausência/);
+  assert.doesNotMatch(vetores, /Por que este resultado/);
+  for (const metadado of [
+    "maturidade_da_evidencia",
+    "denominador_da_cobertura",
+    "elegibilidade_temporal",
+    "proveniencia"
+  ]) {
+    assert.doesNotMatch(hud, new RegExp(metadado));
+    assert.doesNotMatch(leituraPrincipal, new RegExp(metadado));
+    assert.doesNotMatch(vetores, new RegExp(metadado));
+  }
+  assert.match(inspecao, /Inspeção científica dos resultados/);
+  assert.match(inspecao, /elegibilidade_temporal/);
+  assert.match(inspecao, /precondicoes_da_zona/);
+  assert.match(inspecao, /proveniencia/);
+});
+
 test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
 
@@ -844,13 +883,14 @@ test("Cockpit expõe o contrato de dependência por indicador em português", as
   assert.match(demo, /DADOS DE TESTE — NÃO REAIS/);
 });
 
-test("Cockpit resolve vetores por UUID ou código e exibe rastreabilidade sob demanda", async () => {
+test("Cockpit resolve vetores por UUID ou código e confina rastreabilidade à inspeção", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
 
   assert.match(cockpit, /const codigo = codigoVetorial\(definicao\)[\s\S]*estadosVetoriaisPorDefinicao\.get\(identificador\)[\s\S]*estadosVetoriaisPorDefinicao\.get\(codigo\)/);
-  assert.match(cockpit, /estadosVetoriaisPorDefinicao\.get\(vetor\.code\)/);
   assert.match(cockpit, /valor <= 1 \? valor : valor \/ 100/);
-  assert.match(cockpit, /Rastreabilidade científica/);
+  assert.match(cockpit, /Inspeção científica dos resultados/);
+  assert.match(cockpit, /elegibilidade_temporal/);
+  assert.match(cockpit, /proveniencia/);
   for (const item of [
     "Cobertura",
     "Qualidade",
@@ -861,9 +901,13 @@ test("Cockpit resolve vetores por UUID ou código e exibe rastreabilidade sob de
     "Biblioteca",
     "Origem matemática",
     "Evidências utilizadas",
-    "Evidências ausentes",
-    "Requisito ausente"
+    "Evidências ausentes"
   ]) assert.match(cockpit, new RegExp(item));
+  const listaVetorial = cockpit.match(
+    /className="hx-live-vector-list"[\s\S]*?<\/div>\s*<\/HxSurface>/
+  )?.[0] ?? "";
+  assert.doesNotMatch(listaVetorial, /Rastreabilidade científica/);
+  assert.doesNotMatch(listaVetorial, /Requisito ausente/);
 });
 
 test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento automático", async () => {
@@ -924,10 +968,7 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
   assert.match(cockpit, /referenciaCientificaLegivel/);
   assert.match(cockpit, /precondicoes_nao_atendidas/);
   assert.match(cockpit, /Ausência permanece nula/);
-  assert.match(
-    cockpit,
-    /radarVetorial\.filter\(\(item\) => item\.value != null\)\.length/
-  );
+  assert.match(cockpit, /radarVetorial\.every\(\(item\) => item\.value != null\)/);
   assert.doesNotMatch(
     cockpit,
     /estadosVetoriais\.filter\(\(item\) => item\.magnitude != null\)\.length/
@@ -935,21 +976,18 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
   assert.doesNotMatch(cockpit, /resultante\.valor\s*\?\?/);
 });
 
-test("Cockpit prioriza os dez vetores e estabiliza somente a apresentação", async () => {
+test("Cockpit prioriza os dez vetores sem expor parâmetros de estabilização", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
   const css = await source("app/globals.css");
   const estabilizacao = await source("lib/cockpit-regulatory-visual-stability.ts");
 
   assert.match(cockpit, /VETORES BASAIS CANÔNICOS/);
-  assert.match(
-    cockpit,
-    /Apresentação \{JANELA_VISUAL_REGULATORIA_MS \/ 1000\}s · cadência \{CADENCIA_VISUAL_REGULATORIA_MS \/ 1000\}s · Zona \{PERSISTENCIA_VISUAL_DA_ZONA_MS \/ 1000\}s/
-  );
-  assert.match(cockpit, /Zona canônica [\s\S]* em confirmação visual/);
-  assert.match(cockpit, /Magnitude canônica/);
-  assert.match(cockpit, /Magnitude apresentada/);
-  assert.match(cockpit, /magnitudeCanonica == null[\s\S]*\? "AUSENTE"/);
-  assert.match(cockpit, /zonaOperacionalBasal \? "ZONA OPERACIONAL BASAL"/);
+  assert.match(cockpit, /Ausência permanece ausência/);
+  assert.match(cockpit, /ZONA OPERACIONAL/);
+  assert.match(cockpit, /Ver motivo/);
+  assert.doesNotMatch(cockpit, /Apresentação \{JANELA_VISUAL_REGULATORIA_MS/);
+  assert.doesNotMatch(cockpit, /Zona canônica [\s\S]* em confirmação visual/);
+  assert.doesNotMatch(cockpit, /zonaOperacionalBasal \? "ZONA OPERACIONAL BASAL"/);
   assert.match(cockpit, /TELEMETRIA DETALHADA/);
   assert.match(css, /grid-template-columns:\s*minmax\(500px,\s*1\.55fr\)/);
   assert.match(css, /transition: width 720ms/);
