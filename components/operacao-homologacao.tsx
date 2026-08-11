@@ -2118,9 +2118,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     : [];
   const executarPrincipal = () => {
     if (acaoPrincipal === "PREPARAR_SESSAO") {
-      document
-        .getElementById("preparar-sessao")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.location.assign(`/plataforma/sessoes?${parametrosDoContexto}`);
       return;
     }
     if (acaoPrincipal === "DEFINIR_REFERENCIA_BASELINE") {
@@ -2712,7 +2710,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         ) : null}
         <main className="hx-cockpit-view" data-cockpit-view={visao}>
           {conteudoDaVisao}
-          {operacional ? controleDeBaseline : null}
+          {operacional && acaoPrincipal !== "PREPARAR_SESSAO"
+            ? controleDeBaseline
+            : null}
         </main>
         {!operacional && erro ? <p className="hx-module__error">{erro}</p> : null}
       </div>

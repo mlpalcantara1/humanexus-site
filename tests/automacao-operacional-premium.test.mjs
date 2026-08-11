@@ -8,6 +8,7 @@ const ler = (caminho) => readFileSync(new URL(caminho, raiz), "utf8");
 test("preparação modular possui ação explícita e não inicia baseline", () => {
   const componente = ler("components/controle-gravacao-multimodal.tsx");
   const cockpit = ler("components/operacao-homologacao.tsx");
+  const sessoes = ler("components/gestao-operacional.tsx");
   assert.match(componente, />\s*PREPARAR SESSÃO\s*</);
   assert.match(componente, /executar\("preparar"/);
   assert.match(componente, /Baseline nunca é iniciado automaticamente/);
@@ -15,8 +16,10 @@ test("preparação modular possui ação explícita e não inicia baseline", () 
   assert.match(componente, /!painel\?\.configuracoes\.length/);
   assert.match(
     cockpit,
-    /acaoPrincipal === "PREPARAR_SESSAO"[\s\S]*?getElementById\("preparar-sessao"\)/
+    /acaoPrincipal === "PREPARAR_SESSAO"[\s\S]*?\/plataforma\/sessoes\?\$\{parametrosDoContexto\}/
   );
+  assert.match(sessoes, /PREPARAR SESSÃO/);
+  assert.match(sessoes, /<ControleGravacaoMultimodal sessao=\{sessaoParaPreparar\}/);
   assert.match(
     cockpit,
     /const controleDeBaseline = \[[\s\S]*?"PREPARAR_SESSAO"/

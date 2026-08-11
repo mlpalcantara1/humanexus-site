@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   CockpitSignalStack,
   ReplayTimelineChart,
@@ -613,6 +613,71 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
   );
 }
 
+function InstrumentoSemLeitura({ mensagem }: { mensagem: string }) {
+  return (
+    <div className="hx-live-instrument-empty" role="status">
+      <i aria-hidden="true" />
+      <strong>SEM LEITURA ATUAL</strong>
+      <span>{mensagem}</span>
+    </div>
+  );
+}
+
+function DinamicaDaInteligenciaRegulatoria({
+  vetores,
+  resultante,
+  resultanteCalculada,
+  trajetoria,
+  trajetoriaCalculada
+}: {
+  vetores: HxVectorAxis[];
+  resultante: Registro;
+  resultanteCalculada: boolean;
+  trajetoria: Registro;
+  trajetoriaCalculada: boolean;
+}) {
+  const magnitude = resultanteCalculada
+    ? valorNormalizado(resultante.valor)
+    : null;
+  return (
+    <section className="hx-live-regulatory-dynamics" aria-label="Dinâmica da Inteligência Regulatória Humana">
+      <div className="hx-live-regulatory-dynamics__field" data-has-resultant={magnitude != null}>
+        <span className="hx-live-regulatory-dynamics__axis" aria-hidden="true" />
+        {vetores.map((vetor, indice) => (
+          <i
+            aria-hidden="true"
+            className={vetor.value == null ? "is-missing" : "has-value"}
+            key={vetor.code}
+            style={{
+              "--hx-vector-position": `${(indice + 1) * 100 / (vetores.length + 1)}%`,
+              "--hx-vector-intensity": vetor.value == null ? "0" : String(vetor.value)
+            } as CSSProperties}
+          />
+        ))}
+        {magnitude == null ? null : (
+          <span
+            className="hx-live-regulatory-dynamics__resultant"
+            style={{ "--hx-resultant": String(magnitude) } as CSSProperties}
+          >
+            <b aria-hidden="true" />
+          </span>
+        )}
+      </div>
+      <dl>
+        <div><dt>Resultante</dt><dd>{resultanteCalculada
+          ? `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`
+          : texto(resultante.estado, "NÃO CALCULÁVEL")}</dd></div>
+        <div><dt>Direção</dt><dd>{texto(resultante.vetor_dominante, "NÃO DETERMINÁVEL")}</dd></div>
+        <div><dt>Sentido</dt><dd>{texto(resultante.sentido_contextual, "NÃO DETERMINÁVEL")}</dd></div>
+        <div><dt>Tendência</dt><dd>{trajetoriaCalculada
+          ? texto(trajetoria.valor)
+          : "AINDA NÃO INFERÍVEL"}</dd></div>
+      </dl>
+      <p>Geometria de apresentação da Resultante canônica. Nenhuma composição científica é calculada no portal.</p>
+    </section>
+  );
+}
+
 export function CockpitOperacionalVivo({
   estado,
   ocupado,
@@ -630,6 +695,13 @@ export function CockpitOperacionalVivo({
   const [agora, setAgora] = useState(Date.now());
   const [categoria, setCategoria] = useState("EVENTO");
   const [registro, setRegistro] = useState("");
+  const [registroEmEnvio, setRegistroEmEnvio] = useState(false);
+  const [estadoDoRascunho, setEstadoDoRascunho] = useState("");
+  const [metricaNeuroSelecionada, setMetricaNeuroSelecionada] = useState<string>(
+    METRICAS_DE_DESEMPENHO_VISIVEIS[0]
+  );
+  const [sinalAutonomicoSelecionado, setSinalAutonomicoSelecionado] = useState("polar-hr");
+  const [sinalDaRespostaSelecionado, setSinalDaRespostaSelecionado] = useState("polar-hr");
   const cockpit = objeto(estado.cockpit_operacional);
   const sessao = objeto(cockpit.sessao);
   const contextoSessao = objeto(estado.sessao);
@@ -664,6 +736,7 @@ export function CockpitOperacionalVivo({
   const indicadores = lista(cockpit.indicadores_contratados);
   const alertas = lista(cockpit.alertas_acionaveis);
   const eventos = lista(estado.eventos);
+  const usuario = objeto(estado.usuario);
   const replayCompleto = objeto(estado.replay);
   const itensReplay = lista(replayCompleto.itens);
   const fases = objeto(sessao.estados_das_fases);
@@ -1184,12 +1257,65 @@ export function CockpitOperacionalVivo({
       ? "Polar H10 ativo. O EPOC X está indisponível ou reconectando; a sessão continua sem reutilizar dados EEG anteriores."
       : "Fontes autorizadas conectadas. A qualidade do EPOC modula somente a confiança do EEG e não bloqueia o fluxo da sessão.";
 
-  const enviarRegistro = async () => {
-    if (!registro.trim()) return;
-    await registrar(categoria, registro.trim());
-    setRegistro("");
-  };
   const neurotelemetriaOperacional = metricasDeDesempenhoVisiveis(eeg);
+  const trilhasNeuroregulatorias = graficos.filter((trilha) =>
+    METRICAS_DE_DESEMPENHO_VISIVEIS.includes(
+      trilha.name as typeof METRICAS_DE_DESEMPENHO_VISIVEIS[number]
+    )
+  );
+  const trilhaNeuroregulatoriaSelecionada = trilhasNeuroregulatorias.find(
+    (trilha) => trilha.name === metricaNeuroSelecionada
+  );
+  const trilhasAutonomicas = graficos.filter((trilha) =>
+    ["polar-hr", "polar-rmssd"].includes(trilha.id)
+  );
+  const trilhaAutonomicaSelecionada = trilhasAutonomicas.find(
+    (trilha) => trilha.id === sinalAutonomicoSelecionado
+  );
+  const trilhasDaResposta = [...trilhasAutonomicas, ...trilhasNeuroregulatorias];
+  const trilhaDaRespostaSelecionada = trilhasDaResposta.find(
+    (trilha) => trilha.id === sinalDaRespostaSelecionado
+  );
+  const chaveDoRascunho = [
+    "humanexus:registro-profissional:v1",
+    texto(usuario.identificador, "usuario"),
+    texto(organizacao.identificador, "organizacao"),
+    texto(participante.identificador, "participante"),
+    identificadorDaSessao || "sessao"
+  ].join(":");
+
+  useEffect(() => {
+    const rascunho = window.localStorage.getItem(chaveDoRascunho);
+    setRegistro(rascunho ?? "");
+    setEstadoDoRascunho(
+      rascunho ? "RASCUNHO RECUPERADO NESTE NAVEGADOR" : ""
+    );
+  }, [chaveDoRascunho]);
+
+  const enviarRegistro = async () => {
+    if (!registro.trim() || registroEmEnvio) return;
+    setRegistroEmEnvio(true);
+    try {
+      await registrar(categoria, registro.trim());
+      setRegistro("");
+      window.localStorage.removeItem(chaveDoRascunho);
+      setEstadoDoRascunho("REGISTRO CONCLUÍDO E PRESERVADO");
+    } finally {
+      setRegistroEmEnvio(false);
+    }
+  };
+
+  const salvarRascunho = () => {
+    if (!registro.trim()) return;
+    window.localStorage.setItem(chaveDoRascunho, registro.trim());
+    setEstadoDoRascunho("RASCUNHO SALVO NESTE NAVEGADOR");
+  };
+
+  const limparRegistro = () => {
+    setRegistro("");
+    window.localStorage.removeItem(chaveDoRascunho);
+    setEstadoDoRascunho("RASCUNHO LIMPO");
+  };
 
   return (
     <section className="hx-live-cockpit" data-cockpit-mode={cockpit.modo}>
@@ -1261,13 +1387,6 @@ export function CockpitOperacionalVivo({
           <strong>{iirhCalculado ? `${numero(iirhApresentado, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong>
           <span>Índice regulatório atual</span>
         </div>
-        <div className="is-decision">
-          <small>RESULTANTE</small>
-          <strong>{resultanteCalculada
-            ? `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`
-            : texto(resultante.estado, "NÃO CALCULÁVEL")}</strong>
-          <span>{trajetoriaCalculada ? `Tendência ${texto(trajetoria.valor)}` : "Tendência ainda não inferível"}</span>
-        </div>
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{sessaoBaseline ? estadoDoBaseline : texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
         <div><small>TEMPO</small><strong>{duracao(inicioDoCronometro, fimDoCronometro, agora)}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
@@ -1276,19 +1395,6 @@ export function CockpitOperacionalVivo({
         <div><small>EPOC X</small><strong>{texto(eeg.estado)}</strong><span>{eeg.ao_vivo === true ? "Capturando" : eegEmVerificacao ? "Atualização interrompida" : "Sem leitura atual"}</span></div>
         <div><small>POLAR H10</small><strong>{texto(polar.estado)}</strong><span>{polar.ao_vivo === true ? "Capturando" : polarEmVerificacao ? "Atualização interrompida" : "Sem leitura atual"}</span></div>
       </section>
-
-      {neurotelemetriaOperacional.length ? (
-        <section className="hx-live-neuro-strip" aria-label="Neurotelemetria operacional atual">
-          {neurotelemetriaOperacional.map((metrica) => (
-            <div key={texto(metrica.nome)}>
-              <small>{texto(metrica.nome)}</small>
-              <strong>{metrica.valor_atual == null
-                ? "SEM LEITURA ATUAL"
-                : percentual(metrica.valor_atual)}</strong>
-            </div>
-          ))}
-        </section>
-      ) : null}
 
       {Object.keys(configuracaoBasal).length ? (
         <details className="hx-live-scientific-disclosure">
@@ -1446,7 +1552,15 @@ export function CockpitOperacionalVivo({
         </div>
         <div className="hx-live-operation-action">
           <small>COMANDO PRINCIPAL</small>
-          {acaoPrincipal ? (
+          {acaoPrincipal === "PREPARAR_SESSAO" ? (
+            <button
+              className="hx-live-command__route"
+              type="button"
+              onClick={executarPrincipal}
+            >
+              IR PARA SESSÕES E PREPARAR
+            </button>
+          ) : acaoPrincipal ? (
             <button
               className={`hx-live-command__primary ${
                 acaoPrincipal.startsWith("ENCERRAR_") || acaoPrincipal === "CONCLUIR_SESSAO"
@@ -1522,6 +1636,124 @@ export function CockpitOperacionalVivo({
             </div>
           </HxSurface>
         ) : null}
+
+        <section className="hx-live-intelligence-instruments" aria-label="Instrumentos de Inteligência Regulatória Humana">
+          <HxSurface as="section" className="hx-live-intelligence-instrument">
+            <HxSectionHeader
+              eyebrow="NEUROTELEMETRIA CANÔNICA"
+              title="Funcionamento Neuroregulatório"
+              aside={(
+                <select
+                  aria-label="Métrica neuroregulatória"
+                  value={metricaNeuroSelecionada}
+                  onChange={(evento) => setMetricaNeuroSelecionada(evento.target.value)}
+                >
+                  {METRICAS_DE_DESEMPENHO_VISIVEIS.map((nome) => (
+                    <option key={nome} value={nome}>{nome}</option>
+                  ))}
+                </select>
+              )}
+            />
+            <div className="hx-live-neuro-summary" aria-label="Valores neuroregulatórios atuais">
+              {METRICAS_DE_DESEMPENHO_VISIVEIS.map((nome) => {
+                const metrica = neurotelemetriaOperacional.find(
+                  (item) => String(item.nome) === nome
+                );
+                return (
+                  <span className={nome === metricaNeuroSelecionada ? "is-selected" : ""} key={nome}>
+                    <small>{nome}</small>
+                    <b>{metrica?.valor_atual == null
+                      ? "AUSENTE"
+                      : percentual(metrica.valor_atual)}</b>
+                  </span>
+                );
+              })}
+            </div>
+            {trilhaNeuroregulatoriaSelecionada ? (
+              <CockpitSignalStack
+                tracks={[trilhaNeuroregulatoriaSelecionada]}
+                markers={marcadores}
+                phases={faixas}
+                showTechnicalLegend={false}
+              />
+            ) : (
+              <InstrumentoSemLeitura mensagem="A métrica Cortex selecionada permanece ausente; qualidade EEG não é usada como substituta." />
+            )}
+          </HxSurface>
+
+          <HxSurface as="section" className="hx-live-intelligence-instrument">
+            <HxSectionHeader
+              eyebrow="POLAR H10"
+              title="Regulação Autonômica"
+              aside={(
+                <select
+                  aria-label="Sinal autonômico"
+                  value={sinalAutonomicoSelecionado}
+                  onChange={(evento) => setSinalAutonomicoSelecionado(evento.target.value)}
+                >
+                  <option value="polar-hr">Frequência cardíaca</option>
+                  <option value="polar-rmssd">RMSSD</option>
+                </select>
+              )}
+            />
+            {trilhaAutonomicaSelecionada ? (
+              <CockpitSignalStack
+                tracks={[trilhaAutonomicaSelecionada]}
+                markers={marcadores}
+                phases={faixas}
+                showTechnicalLegend={false}
+              />
+            ) : (
+              <InstrumentoSemLeitura mensagem="Polar H10 sem série atual para o sinal selecionado. A última leitura histórica não é reutilizada." />
+            )}
+          </HxSurface>
+
+          <HxSurface as="section" className="hx-live-intelligence-instrument">
+            <HxSectionHeader
+              eyebrow="RESULTANTE · IIRH · TENDÊNCIA"
+              title="Dinâmica da Inteligência Regulatória Humana"
+              aside={<span>Somente propriedades calculadas pelo núcleo</span>}
+            />
+            <DinamicaDaInteligenciaRegulatoria
+              vetores={radarVetorial}
+              resultante={resultante}
+              resultanteCalculada={resultanteCalculada}
+              trajetoria={trajetoria}
+              trajetoriaCalculada={trajetoriaCalculada}
+            />
+          </HxSurface>
+
+          <HxSurface as="section" className="hx-live-intelligence-instrument">
+            <HxSectionHeader
+              eyebrow="ANTES · INTERVENÇÃO · DEPOIS"
+              title="Resposta à Intervenção"
+              aside={(
+                <select
+                  aria-label="Camada da resposta à intervenção"
+                  value={sinalDaRespostaSelecionado}
+                  onChange={(evento) => setSinalDaRespostaSelecionado(evento.target.value)}
+                >
+                  <option value="polar-hr">Frequência cardíaca</option>
+                  <option value="polar-rmssd">RMSSD</option>
+                  {trilhasNeuroregulatorias.map((trilha) => (
+                    <option key={trilha.id} value={trilha.id}>{trilha.name}</option>
+                  ))}
+                </select>
+              )}
+            />
+            {trilhaDaRespostaSelecionada ? (
+              <CockpitSignalStack
+                tracks={[trilhaDaRespostaSelecionada]}
+                markers={marcadores}
+                phases={faixas}
+                showTechnicalLegend={false}
+              />
+            ) : (
+              <InstrumentoSemLeitura mensagem="Ainda não há série atual compatível com os marcadores profissionais da intervenção." />
+            )}
+            <p className="hx-live-instrument-limit">Comparação temporal observada; a interface não atribui causalidade nem declara ganho automaticamente.</p>
+          </HxSurface>
+        </section>
 
         <details id="hx-evidence-level" className="hx-live-temporal-disclosure">
           <summary>
@@ -1895,8 +2127,8 @@ export function CockpitOperacionalVivo({
         </aside>
 
         <div className="hx-live-register">
-          <header><small>REGISTRO PROFISSIONAL RÁPIDO</small><strong>Contexto preenchido automaticamente</strong></header>
-          <div>
+          <header><small>REGISTRO PROFISSIONAL</small><strong>Contexto preenchido automaticamente</strong></header>
+          <div className="hx-live-register__fields">
             <select value={categoria} onChange={(evento) => setCategoria(evento.target.value)} disabled={sessaoFinalizada || !permitirOperacao}>
               <option value="EVENTO">Evento</option>
               <option value="INTERVENCAO">Intervenção</option>
@@ -1914,9 +2146,13 @@ export function CockpitOperacionalVivo({
               maxLength={500}
               disabled={sessaoFinalizada || !permitirOperacao}
             />
-            <button type="button" onClick={() => void enviarRegistro()} disabled={sessaoFinalizada || ocupado || !permitirOperacao || !registro.trim()}>Registrar</button>
           </div>
-          <span>{permitirOperacao ? "Atalho: ⌘/Ctrl + Enter · o contexto operacional vem do núcleo." : "Consulta administrativa: registros e comandos operacionais exigem o profissional responsável."}</span>
+          <div className="hx-live-register__actions">
+            <button type="button" onClick={salvarRascunho} disabled={sessaoFinalizada || registroEmEnvio || !permitirOperacao || !registro.trim()}>Salvar rascunho</button>
+            <button className="is-primary" type="button" onClick={() => void enviarRegistro()} disabled={sessaoFinalizada || ocupado || registroEmEnvio || !permitirOperacao || !registro.trim()}>Salvar e concluir registro</button>
+            <button type="button" onClick={limparRegistro} disabled={registroEmEnvio || !registro}>Limpar</button>
+          </div>
+          <span>{estadoDoRascunho || (permitirOperacao ? "Atalho: ⌘/Ctrl + Enter · o contexto operacional vem do núcleo." : "Consulta administrativa: registros e comandos operacionais exigem o profissional responsável.")}</span>
         </div>
 
         <div className="hx-live-events">

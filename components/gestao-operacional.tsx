@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { ModuloDaPlataforma } from "@/components/modulo-integrado";
 import { consultarJson } from "@/lib/client-request";
 import { PlatformErrorState } from "@/components/platform-error-state";
+import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multimodal";
 
 type Registro = Record<string, unknown>;
 type BaseOperacional = {
@@ -287,6 +288,7 @@ export function GestaoOperacional({
     participante: string;
   } | null>(null);
   const [sessaoEmEdicao, setSessaoEmEdicao] = useState("");
+  const [sessaoParaPreparar, setSessaoParaPreparar] = useState("");
   const [historicoDaSessao, setHistoricoDaSessao] = useState<{
     identificador: string;
     eventos: Registro[];
@@ -624,6 +626,9 @@ export function GestaoOperacional({
 
   useEffect(() => {
     const parametros = new URLSearchParams(window.location.search);
+    if (modulo === "sessoes") {
+      setSessaoParaPreparar(parametros.get("sessao") ?? "");
+    }
     try {
       const favoritos = JSON.parse(
         window.localStorage.getItem("humanexus:thx-favoritos:v1") ?? "[]"
@@ -1009,6 +1014,18 @@ export function GestaoOperacional({
     window.location.assign(`/plataforma/cockpit-vivo?${parametros}`);
   }
 
+  function abrirCockpitSemAlterarEstado(
+    identificadorDaSessao: string,
+    identificadorDoParticipante: string
+  ) {
+    const parametros = new URLSearchParams({
+      organizacao: String(dados?.organizacao?.identificador ?? ""),
+      participante: identificadorDoParticipante,
+      sessao: identificadorDaSessao
+    });
+    window.location.assign(`/plataforma/cockpit-vivo?${parametros}`);
+  }
+
   async function abrirHistoricoDaSessao(identificador: string) {
     const resultado = await executar(
       "historico-sessao",
@@ -1348,6 +1365,24 @@ export function GestaoOperacional({
                   }}
                 >
                   Editar configuração
+                </button>
+              ) : null}
+              {operacional && ["CRIADA", "INICIADA"].includes(estado) ? (
+                <button
+                  type="button"
+                  disabled={ocupado || !podeConduzir}
+                  onClick={() => {
+                    const identificador = String(item.identificador ?? "");
+                    setSessaoParaPreparar(identificador);
+                    atualizarContextoNaUrl({
+                      participante: String(
+                        item.identificador_do_participante ?? ""
+                      ),
+                      sessao: identificador
+                    });
+                  }}
+                >
+                  PREPARAR SESSÃO
                 </button>
               ) : null}
               {acao && operacional ? (
@@ -2807,6 +2842,32 @@ export function GestaoOperacional({
             ) : null}
           </form>
           {tabelaSessoes}
+          {sessaoParaPreparar ? (
+            <section className="hx-session-preparation-workspace" aria-label="Configuração e preparação da sessão">
+              <header>
+                <small>CONFIGURAÇÃO OPERACIONAL</small>
+                <h2>Preparar antes de entrar no Cockpit</h2>
+                <p>Fontes, mídia, retenção e referência são definidas aqui. O Cockpit permanece dedicado à condução da sessão.</p>
+              </header>
+              <ControleGravacaoMultimodal sessao={sessaoParaPreparar} />
+              <button
+                type="button"
+                disabled={ocupado}
+                onClick={() => {
+                  const sessaoSelecionada = dados.sessoes.find(
+                    (item) => String(item.identificador) === sessaoParaPreparar
+                  );
+                  if (!sessaoSelecionada) return;
+                  abrirCockpitSemAlterarEstado(
+                    sessaoParaPreparar,
+                    String(sessaoSelecionada.identificador_do_participante ?? "")
+                  );
+                }}
+              >
+                ABRIR COCKPIT
+              </button>
+            </section>
+          ) : null}
           {historicoDaSessao ? (
             <section className="hx-module__notice" aria-live="polite">
               <strong>Histórico operacional da sessão</strong>

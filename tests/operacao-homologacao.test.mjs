@@ -311,7 +311,6 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
   for (const item of [
     "ZONA OPERACIONAL",
     "IIRH",
-    "RESULTANTE",
     "THX",
     "FASE",
     "TEMPO",
@@ -449,6 +448,47 @@ test("Cockpit Vivo Premium anima instrumentos sem fabricar dado operacional", as
   assert.match(estilos, /Cockpit Vivo Premium — instrumentação, movimento e demonstração visual isolada/);
   assert.match(estilos, /@keyframes hx-phase-progress/);
   assert.match(estilos, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
+test("Cockpit de Inteligência Regulatória concentra decisão e preserva uma fonte canônica", async () => {
+  const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  const pagina = await source("components/operacao-homologacao.tsx");
+  const gestao = await source("components/gestao-operacional.tsx");
+  const hud = operacional.match(
+    /<section id="hx-decision-level"[\s\S]*?<\/section>/
+  )?.[0] ?? "";
+
+  for (const item of [
+    "ZONA OPERACIONAL",
+    "IIRH",
+    "THX",
+    "FASE",
+    "TEMPO",
+    "FREQUÊNCIA CARDÍACA",
+    "RMSSD",
+    "EPOC X",
+    "POLAR H10"
+  ]) assert.match(hud, new RegExp(item));
+  assert.doesNotMatch(hud, /RESULTANTE/);
+
+  for (const instrumento of [
+    "Dez vetores oficiais",
+    "Funcionamento Neuroregulatório",
+    "Regulação Autonômica",
+    "Dinâmica da Inteligência Regulatória Humana",
+    "Resposta à Intervenção"
+  ]) assert.match(operacional, new RegExp(instrumento));
+
+  assert.match(operacional, /tracks=\{\[trilhaNeuroregulatoriaSelecionada\]\}/);
+  assert.match(operacional, /tracks=\{\[trilhaAutonomicaSelecionada\]\}/);
+  assert.match(operacional, /tracks=\{\[trilhaDaRespostaSelecionada\]\}/);
+  assert.match(operacional, /Nenhuma composição científica é calculada no portal/);
+  assert.match(operacional, /qualidade EEG não é usada como substituta/);
+  assert.match(operacional, /Salvar rascunho/);
+  assert.match(operacional, /Salvar e concluir registro/);
+  assert.match(operacional, /humanexus:registro-profissional:v1/);
+  assert.match(pagina, /\/plataforma\/sessoes\?\$\{parametrosDoContexto\}/);
+  assert.match(gestao, /<ControleGravacaoMultimodal sessao=\{sessaoParaPreparar\}/);
 });
 
 test("demonstração visual é local, sintética e estruturalmente isolada", async () => {
@@ -590,8 +630,9 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   )?.[0] ?? "";
   assert.match(hud, /ZONA OPERACIONAL/);
   assert.match(hud, /IIRH/);
-  assert.match(hud, /RESULTANTE/);
-  assert.equal((hud.match(/<div/g) ?? []).length, 10);
+  assert.doesNotMatch(hud, /RESULTANTE/);
+  assert.match(cockpit, /Dinâmica da Inteligência Regulatória Humana/);
+  assert.equal((hud.match(/<div/g) ?? []).length, 9);
   assert.equal((cockpit.match(/thx\.codigo/g) ?? []).length, 1);
   assert.doesNotMatch(hud, /Sequência|maturidade_da_evidencia/);
   assert.doesNotMatch(cockpit, /hx-live-regulatory-readout--primary/);
