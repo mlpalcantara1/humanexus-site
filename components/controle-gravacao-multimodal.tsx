@@ -3,6 +3,8 @@
 import QRCode from "qrcode";
 import { useEffect, useRef, useState } from "react";
 
+import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
+
 type Registro = Record<string, unknown>;
 type Fonte = {
   codigo: string;
@@ -932,9 +934,9 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
             <div>
               <small>Cobertura</small>
               <strong>
-                {coberturaBasalCanonica == null
-                  ? `${Math.round(Number(baselineAtual.cobertura ?? 0) * 100)}%`
-                  : `${Math.round(Number(coberturaBasalCanonica) * 100)}%`}
+                {formatarPercentualCanonico(
+                  coberturaBasalCanonica ?? baselineAtual.cobertura ?? 0
+                )}
               </strong>
               {snapshotBasalCanonico ? <span>Snapshot basal imutável</span> : null}
             </div>

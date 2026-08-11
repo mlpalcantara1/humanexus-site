@@ -6,9 +6,20 @@ import {
   fonteDuranteSincronizacao,
   podeAplicarRespostaCanonica
 } from "../lib/cockpit-live-coordination.ts";
+import { formatarPercentualCanonico } from "../lib/percentual-canonico.ts";
 
 const root = new URL("../", import.meta.url);
 const source = (path) => readFile(new URL(path, root), "utf8");
+
+test("cobertura canônica é formatada uma única vez", () => {
+  assert.equal(formatarPercentualCanonico(0), "0%");
+  assert.equal(formatarPercentualCanonico(0.44), "44%");
+  assert.equal(formatarPercentualCanonico(0.5), "50%");
+  assert.equal(formatarPercentualCanonico(0.56), "56%");
+  assert.equal(formatarPercentualCanonico(1), "100%");
+  assert.equal(formatarPercentualCanonico(50), "50%");
+  assert.equal(formatarPercentualCanonico(100), "100%");
+});
 
 test("operação usa sessão httpOnly e proteção CSRF sem expor token", async () => {
   const route = await source("app/api/operacao-homologacao/route.ts");
