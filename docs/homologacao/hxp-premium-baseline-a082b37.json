@@ -1,0 +1,48 @@
+{
+  "missao": "HXP — Direção de Arte Global Definitiva",
+  "capturado_em": "2026-08-11T19:40:00-04:00",
+  "commit_portal": "a082b37ec29ee8ddf80a029f5c0c7d9573e9a695",
+  "ambiente": "producao",
+  "metodologia": {
+    "navegacao": "cinco navegações autenticadas por rota; tempo até DOM acessível",
+    "interacao": "dez alternâncias Executivo/Científico",
+    "percentis": "interpolação linear",
+    "requests": "inventário observado no Cockpit após carga e polling inicial",
+    "memoria": "RSS máximo da regressão acelerada de estabilidade visual e radar"
+  },
+  "rotas_ms": {
+    "painel": {"p50": 303, "p95": 523, "p99": 541, "amostras": [546, 431, 303, 261, 249]},
+    "organizacoes": {"p50": 286, "p95": 348, "p99": 350, "amostras": [338, 286, 263, 350, 281]},
+    "clientes_participantes": {"p50": 386, "p95": 496, "p99": 513, "amostras": [517, 386, 413, 293, 286]},
+    "sessoes": {"p50": 301, "p95": 374, "p99": 380, "amostras": [344, 301, 258, 381, 282]},
+    "preparacao_sessao": {"p50": 799, "p95": 2060, "p99": 2263, "amostras": [2314, 799, 754, 719, 1044]},
+    "cockpit": {"p50": 274, "p95": 383, "p99": 386, "amostras": [240, 387, 274, 267, 365]},
+    "relatorios": {"p50": 378, "p95": 426, "p99": 428, "amostras": [412, 429, 244, 328, 378]},
+    "executivo_cientifico": {"p50": 364, "p95": 1972, "p99": 2943, "amostras": [294, 299, 443, 3186, 307, 481, 305, 488, 291, 421]}
+  },
+  "requests_observados_cockpit": {
+    "total": 36,
+    "stylesheets": 4,
+    "scripts": 12,
+    "images": 2,
+    "fonts": 1,
+    "outros_incluindo_api_e_prefetch": 17
+  },
+  "bundle": {
+    "rota_plataforma_kb": 99.2,
+    "first_load_js_kb": 213,
+    "shared_js_kb": 103,
+    "static_total_kb": 3120,
+    "chunks_kb": 2808,
+    "css_build_kb": 304,
+    "globals_css_bytes": 177916,
+    "hero_command_center_webp_bytes": 116164
+  },
+  "memoria": {
+    "maximum_resident_set_size_bytes": 87949312,
+    "peak_memory_footprint_bytes": 16844888,
+    "testes": 23,
+    "testes_aprovados": 23
+  },
+  "baseline_imutavel": true
+}
