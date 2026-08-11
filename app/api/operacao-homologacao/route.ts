@@ -26,7 +26,8 @@ function consultar<T>(
   caminho: string,
   token: string,
   init: RequestInit = {},
-  organizacao?: string
+  organizacao?: string,
+  opcoes: { tentativas?: number; tempoLimiteMs?: number } = {}
 ) {
   const headers = new Headers(init.headers);
   if (organizacao) {
@@ -35,7 +36,8 @@ function consultar<T>(
   return requisitarNucleoAutenticado<T>(
     caminho,
     token,
-    { ...init, headers }
+    { ...init, headers },
+    opcoes
   );
 }
 
@@ -153,7 +155,14 @@ async function atualizacaoLeve(
     `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional-vivo${parametros.size ? `?${parametros}` : ""}`,
     token,
     {},
-    selecao.identificador_da_organizacao
+    selecao.identificador_da_organizacao,
+    {
+      // O navegador já coordena backoff e mantém a última projeção marcada
+      // como não atual. Repetir a mesma leitura no proxy multiplicava
+      // invocações serverless após um timeout e ampliava a saturação.
+      tentativas: 1,
+      tempoLimiteMs: 10_000
+    }
   );
   return {
     atualizacao_parcial: true,

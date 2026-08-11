@@ -920,6 +920,8 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
 test("Polling oficial expira requisição travada e permite nova tentativa", async () => {
   const operacao = await source("components/operacao-homologacao.tsx");
   const coordenacao = await source("lib/cockpit-live-coordination.ts");
+  const rota = await source("app/api/operacao-homologacao/route.ts");
+  const nucleo = await source("lib/humanexus-core.ts");
 
   assert.match(operacao, /const controlador = !opcoes\.signal \? new AbortController\(\) : null/);
   assert.match(operacao, /window\.setTimeout\(\(\) => controlador\.abort\(\), 12_000\)/);
@@ -930,6 +932,10 @@ test("Polling oficial expira requisição travada e permite nova tentativa", asy
   assert.match(operacao, /falhasConsecutivas \+= 1/);
   assert.match(operacao, /atrasoDoPollingCanonico/);
   assert.match(coordenacao, /Math\.min\(30_000/);
+  assert.match(rota, /tentativas: 1/);
+  assert.match(rota, /tempoLimiteMs: 10_000/);
+  assert.match(nucleo, /signal: controlador\.signal/);
+  assert.match(nucleo, /controlador\.abort\(new Error\("Tempo limite do núcleo excedido\."\)\)/);
 });
 
 test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", async () => {

@@ -38,17 +38,36 @@ export class ErroDoNucleo extends Error {
   }
 }
 
+type OpcoesDaRequisicaoAoNucleo = {
+  tentativas?: number;
+  tempoLimiteMs?: number;
+};
+
 async function requisitar<T>(
   caminho: string,
   init: RequestInit = {},
-  token?: string
+  token?: string,
+  opcoes: OpcoesDaRequisicaoAoNucleo = {}
 ): Promise<T> {
   const metodo = String(init.method ?? "GET").toUpperCase();
   const consultaSegura = metodo === "GET" || metodo === "HEAD";
-  const tentativas = consultaSegura ? 3 : 1;
+  const tentativas = Math.max(
+    1,
+    Math.min(3, opcoes.tentativas ?? (consultaSegura ? 3 : 1))
+  );
   let resposta: Response | null = null;
   let falhaDeRede: unknown = null;
   for (let tentativa = 1; tentativa <= tentativas; tentativa += 1) {
+    const controlador = new AbortController();
+    const propagarCancelamento = () => controlador.abort(init.signal?.reason);
+    if (init.signal?.aborted) propagarCancelamento();
+    else init.signal?.addEventListener("abort", propagarCancelamento, { once: true });
+    const limite = opcoes.tempoLimiteMs
+      ? setTimeout(
+          () => controlador.abort(new Error("Tempo limite do núcleo excedido.")),
+          opcoes.tempoLimiteMs
+        )
+      : null;
     try {
       resposta = await fetch(`${CORE_API}${caminho}`, {
         ...init,
@@ -57,7 +76,8 @@ async function requisitar<T>(
           ...(token ? { authorization: `Bearer ${token}` } : {}),
           ...init.headers
         },
-        cache: "no-store"
+        cache: "no-store",
+        signal: controlador.signal
       });
       if (
         !consultaSegura
@@ -68,7 +88,10 @@ async function requisitar<T>(
       }
     } catch (erro) {
       falhaDeRede = erro;
-      if (!consultaSegura || tentativa === tentativas) break;
+      if (init.signal?.aborted || !consultaSegura || tentativa === tentativas) break;
+    } finally {
+      if (limite) clearTimeout(limite);
+      init.signal?.removeEventListener("abort", propagarCancelamento);
     }
     await new Promise((resolver) => setTimeout(resolver, 150 * tentativa));
   }
@@ -93,9 +116,10 @@ async function requisitar<T>(
 export function requisitarNucleoAutenticado<T>(
   caminho: string,
   token: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  opcoes: OpcoesDaRequisicaoAoNucleo = {}
 ) {
-  return requisitar<T>(caminho, init, token);
+  return requisitar<T>(caminho, init, token, opcoes);
 }
 
 export async function requisitarNucleoBinario(
