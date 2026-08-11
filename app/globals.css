@@ -1578,12 +1578,12 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 }
 
 /* Cockpit operacional = decisão. Ciência e prova ficam nas visões próprias. */
-.hx-live-cockpit > .hx-live-scientific-disclosure,
-.hx-live-cockpit > .hx-live-scientific-chain,
-.hx-live-cockpit > .hx-live-scientific-coverage,
-.hx-live-cockpit > .hx-live-technical-drawer,
-.hx-live-cockpit > .hx-live-indicators,
-.hx-live-command-center--premium > .hx-live-temporal-disclosure {
+[data-hx-experience-mode="executivo"] .hx-live-cockpit > .hx-live-scientific-disclosure,
+[data-hx-experience-mode="executivo"] .hx-live-cockpit > .hx-live-scientific-chain,
+[data-hx-experience-mode="executivo"] .hx-live-cockpit > .hx-live-scientific-coverage,
+[data-hx-experience-mode="executivo"] .hx-live-cockpit > .hx-live-technical-drawer,
+[data-hx-experience-mode="executivo"] .hx-live-cockpit > .hx-live-indicators,
+[data-hx-experience-mode="executivo"] .hx-live-command-center--premium > .hx-live-temporal-disclosure {
   display: none;
 }
 

@@ -622,8 +622,9 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   );
   assert.match(cockpit, /o contexto operacional vem do núcleo/);
   assert.match(css, /Cockpit operacional = decisão/);
-  assert.match(css, /\.hx-live-cockpit > \.hx-live-scientific-chain[\s\S]*display: none/);
-  assert.match(css, /\.hx-live-command-center--premium > \.hx-live-temporal-disclosure/);
+  assert.match(css, /\[data-hx-experience-mode="executivo"\] \.hx-live-cockpit > \.hx-live-scientific-chain[\s\S]*display: none/);
+  assert.match(css, /\[data-hx-experience-mode="executivo"\] \.hx-live-command-center--premium > \.hx-live-temporal-disclosure/);
+  assert.doesNotMatch(css, /^\.hx-live-cockpit > \.hx-live-scientific-chain/m);
   assert.match(css, /data-cockpit-view="visao-geral"[\s\S]*\.hx-coverage-board/);
   assert.match(css, /data-cockpit-view="visao-geral"[\s\S]*\.hx-baseline-reference/);
   assert.match(css, /\.hx-operational-readiness__body > div:not\(:last-child\)/);
