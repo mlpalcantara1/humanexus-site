@@ -1547,7 +1547,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           ...atual,
           cockpit_operacional: {
             ...objeto(atual.cockpit_operacional),
-            polling_confirmado_em: pollingConfirmadoEm
+            polling_confirmado_em: pollingConfirmadoEm,
+            versao_canonica_do_polling: versaoDoCockpit.current,
+            revisao_local_da_projecao: dados.revisao_do_cockpit,
+            escopo_da_revisao: dados.escopo_da_revisao_do_cockpit
           }
         } : atual);
         return contextoExplicito;
@@ -1576,13 +1579,30 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           estado_operacional: estadoOperacional,
           cockpit_operacional: {
             ...cockpitOperacional,
-            polling_confirmado_em: pollingConfirmadoEm
+            polling_confirmado_em: pollingConfirmadoEm,
+            versao_canonica_do_polling: versaoDoCockpit.current,
+            revisao_local_da_projecao: dados.revisao_do_cockpit,
+            escopo_da_revisao: dados.escopo_da_revisao_do_cockpit,
+            sequencias_canonicas: dados.sequencias_do_cockpit,
+            geracoes_canonicas: dados.geracoes_do_cockpit
           }
         };
       });
       return contextoExplicito;
     }
-    setEstado(dados);
+    const pollingConfirmadoEm = new Date().toISOString();
+    setEstado({
+      ...dados,
+      cockpit_operacional: {
+        ...objeto(dados.cockpit_operacional),
+        polling_confirmado_em: pollingConfirmadoEm,
+        versao_canonica_do_polling: dados.versao_do_cockpit ?? "",
+        revisao_local_da_projecao: dados.revisao_do_cockpit,
+        escopo_da_revisao: dados.escopo_da_revisao_do_cockpit,
+        sequencias_canonicas: dados.sequencias_do_cockpit,
+        geracoes_canonicas: dados.geracoes_do_cockpit
+      }
+    });
     versaoDoCockpit.current = "";
     estadoOperacionalDoPolling.current = String(
       objeto(dados.estado_operacional).estado_da_sessao ?? ""

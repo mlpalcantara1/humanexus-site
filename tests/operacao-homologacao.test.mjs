@@ -498,7 +498,7 @@ test("composição executiva premium permanece isolada no front-end da plataform
   assert.match(estilosGlobais, /@media\(min-width:1600px\)\{\.hx-live-hud\{grid-template-columns:repeat\(9,minmax\(88px,1fr\)\)/);
   assert.match(estilosGlobais, /@media\(max-width:900px\)[\s\S]*\.hx-live-hud\{position:relative;top:auto;grid-template-columns:repeat\(3,1fr\)/);
   assert.match(estilosGlobais, /@media\(max-width:640px\)[\s\S]*\.hx-live-hud\{grid-template-columns:1fr 1fr\}/);
-  assert.match(estilos, /\.hx-app--executive \.hx-vector-radar-live\s*\{[\s\S]*min-height: clamp\(400px, 38vw, 580px\)/);
+  assert.match(estilos, /\.hx-app--executive \.hx-vector-radar-live\s*\{[\s\S]*min-height: clamp\(460px, 38vw, 640px\)/);
   assert.match(estilos, /\.hx-app :where\(\.hx-management-context,[\s\S]*\.hx-admin__directory\)/);
   assert.match(estilos, /\.hx-app :where\(input, select, textarea\):focus/);
   assert.match(estilos, /@media \(max-width: 1080px\)[\s\S]*\.hx-nav-toggle/);
@@ -572,7 +572,8 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /Última leitura registrada/);
   assert.match(cockpit, /leituraAoVivo \? valorNormalizado/);
   assert.match(cockpit, /const cienciaAtualAdmissivel = leituraAoVivo \|\| configuracaoBasalCanonica/);
-  assert.match(cockpit, /const iirhCalculado = cienciaAtualAdmissivel/);
+  assert.match(cockpit, /const iirhCanonicoCalculado = cienciaAtualAdmissivel/);
+  assert.match(cockpit, /ativo: cienciaAtualAdmissivel/);
   assert.match(cockpit, /const resultanteCalculada = cienciaAtualAdmissivel/);
   assert.match(cockpit, /const trajetoriaCalculada = leituraAoVivo/);
   assert.match(cockpit, /const projecaoOperacionalAtual = Number\.isFinite/);
@@ -915,6 +916,28 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
     /estadosVetoriais\.filter\(\(item\) => item\.magnitude != null\)\.length/
   );
   assert.doesNotMatch(cockpit, /resultante\.valor\s*\?\?/);
+});
+
+test("Cockpit prioriza os dez vetores e estabiliza somente a apresentação", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const css = await source("app/globals.css");
+  const estabilizacao = await source("lib/cockpit-regulatory-visual-stability.ts");
+
+  assert.match(cockpit, /VETORES BASAIS CANÔNICOS/);
+  assert.match(
+    cockpit,
+    /Apresentação \{JANELA_VISUAL_REGULATORIA_MS \/ 1000\}s · cadência \{CADENCIA_VISUAL_REGULATORIA_MS \/ 1000\}s · Zona \{PERSISTENCIA_VISUAL_DA_ZONA_MS \/ 1000\}s/
+  );
+  assert.match(cockpit, /Zona canônica [\s\S]* em confirmação visual/);
+  assert.match(cockpit, /Magnitude canônica/);
+  assert.match(cockpit, /Magnitude apresentada/);
+  assert.match(cockpit, /TELEMETRIA DETALHADA/);
+  assert.match(css, /grid-template-columns:\s*minmax\(500px,\s*1\.55fr\)/);
+  assert.match(css, /transition: width 720ms/);
+  assert.match(estabilizacao, /JANELA_VISUAL_REGULATORIA_MS = 4_000/);
+  assert.match(estabilizacao, /CADENCIA_VISUAL_REGULATORIA_MS = 1_000/);
+  assert.match(estabilizacao, /PERSISTENCIA_VISUAL_DA_ZONA_MS = 3_000/);
+  assert.doesNotMatch(estabilizacao, /Math\.round\(|Math\.floor\(|\blerp\b|valorIntermediario/);
 });
 
 test("Polling oficial expira requisição travada e permite nova tentativa", async () => {

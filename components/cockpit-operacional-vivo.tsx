@@ -13,6 +13,13 @@ import {
 } from "@/components/hx-command-visualizations";
 import { HxSectionHeader, HxSurface } from "@/components/hx-design-system";
 import { fonteDuranteSincronizacao } from "@/lib/cockpit-live-coordination";
+import {
+  CADENCIA_VISUAL_REGULATORIA_MS,
+  JANELA_VISUAL_REGULATORIA_MS,
+  PERSISTENCIA_VISUAL_DA_ZONA_MS,
+  estabilizarApresentacaoRegulatoria,
+  type RevisaoRegulatoriaVisual
+} from "@/lib/cockpit-regulatory-visual-stability";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 
 type Registro = Record<string, unknown>;
@@ -54,6 +61,28 @@ const METRICAS_DE_DESEMPENHO_VISIVEIS = [
   "Estresse",
   "Relaxamento"
 ] as const;
+
+const ROTULOS_DAS_PRECONDICOES_DA_ZONA: Record<string, string> = {
+  COBERTURA_DO_PERFIL_DE_FONTES_INSUFICIENTE:
+    "Cobertura do perfil de fontes insuficiente",
+  FAMILIAS_HUMANAS_INDEPENDENTES_INSUFICIENTES:
+    "Famílias humanas independentes insuficientes",
+  DOMINIO_DE_FONTE_UNICA:
+    "Predomínio de uma única fonte humana",
+  ESTABILIDADE_TEMPORAL_HUMANA_INSUFICIENTE:
+    "Estabilidade temporal humana insuficiente",
+  QUALIDADE_DAS_FONTES_INSUFICIENTE:
+    "Qualidade das fontes insuficiente",
+  IIRH_AUSENTE:
+    "IIRH ausente"
+};
+
+const ROTULOS_DAS_ZONAS: Record<string, string> = {
+  ZO: "Zona Ótima",
+  ZA: "Zona Adaptativa",
+  ZI: "Zona de Instabilidade",
+  ZCF: "Zona de Comprometimento Funcional"
+};
 
 function metricasDeDesempenhoVisiveis(fonte: Fonte) {
   if (fonte.ao_vivo !== true) return [];
@@ -97,6 +126,17 @@ function estadoDoIndicador(valor: unknown) {
     PRONTO_PARA_VALIDACAO: "Resultado aguardando validação profissional",
     ENTREGAVEL: "Resultado validado e entregável"
   } as Record<string, string>)[codigo] ?? texto(valor, "Aguardando requisitos oficiais");
+}
+
+function rotuloDaPrecondicaoDaZona(valor: unknown) {
+  const codigo = String(valor ?? "").toUpperCase();
+  return ROTULOS_DAS_PRECONDICOES_DA_ZONA[codigo]
+    ?? texto(valor, "Precondição científica não atendida");
+}
+
+function rotuloDaZona(valor: unknown) {
+  const codigo = String(valor ?? "").toUpperCase();
+  return ROTULOS_DAS_ZONAS[codigo] ?? texto(valor, "NÃO CLASSIFICÁVEL");
 }
 
 function fontesDoIndicador(valor: unknown) {
@@ -676,6 +716,7 @@ export function CockpitOperacionalVivo({
   const zona = objeto(leituraCientifica.zona);
   const resultante = objeto(leituraCientifica.resultante);
   const trajetoria = objeto(leituraCientifica.trajetoria);
+  const revisaoCientifica = objeto(leituraCientifica.revisao_cientifica);
   const configuracaoBasal = objeto(
     leituraCientifica.configuracao_regulatoria_basal
   );
@@ -707,7 +748,7 @@ export function CockpitOperacionalVivo({
   const estadosVetoriaisPorDefinicao = new Map(
     estadosVetoriais.map((item) => [String(item.definicao ?? ""), item])
   );
-  const radarVetorial: HxVectorAxis[] = definicoesVetoriais.map((definicao) => {
+  const radarVetorialCanonico: HxVectorAxis[] = definicoesVetoriais.map((definicao) => {
     const identificador = identificadorVetorial(definicao);
     const codigo = codigoVetorial(definicao);
     const estadoVetorial = estadosVetoriaisPorDefinicao.get(identificador)
@@ -722,10 +763,8 @@ export function CockpitOperacionalVivo({
           : null
     };
   });
-  const radarCompleto = radarVetorial.length === 10
-    && radarVetorial.every((item) => item.value != null);
   const cienciaAtualAdmissivel = leituraAoVivo || configuracaoBasalCanonica;
-  const iirhCalculado = cienciaAtualAdmissivel && iirh.estado === "CALCULADO"
+  const iirhCanonicoCalculado = cienciaAtualAdmissivel && iirh.estado === "CALCULADO"
     && typeof iirh.valor === "number";
   const resultanteCalculada = cienciaAtualAdmissivel
     && (resultante.estado === "CALCULAVEL" || resultante.estado === "CONFLITANTE")
@@ -734,25 +773,135 @@ export function CockpitOperacionalVivo({
     resultante.selo,
     "HIPÓTESE OPERACIONAL v0.1 — EM VALIDAÇÃO EMPÍRICA"
   );
-  const vetoresContribuintesDaResultante = Array.isArray(resultante.vetores_contribuintes)
-    ? resultante.vetores_contribuintes.map(String)
-    : [];
-  const vetoresAusentesDaResultante = Array.isArray(resultante.vetores_ausentes)
-    ? resultante.vetores_ausentes.map(String)
-    : [];
-  const macrocamposCobertosDaResultante = Array.isArray(resultante.macrocampos_cobertos)
-    ? resultante.macrocampos_cobertos.map(String)
-    : [];
-  const macrocamposAusentesDaResultante = Array.isArray(resultante.macrocampos_ausentes)
-    ? resultante.macrocampos_ausentes.map(String)
-    : [];
-  const incertezasDaResultante = Array.isArray(resultante.incertezas)
-    ? resultante.incertezas.map(String)
-    : [];
-  const zonaCalculada = cienciaAtualAdmissivel
-    && iirhCalculado
+  const zonaCanonicaCalculada = cienciaAtualAdmissivel
+    && iirhCanonicoCalculado
     && Boolean(zona.nome ?? zona.codigo);
+  const contextoDaApresentacaoRegulatoria = [
+    texto(organizacao.identificador, "sem-organizacao"),
+    texto(participante.identificador, "sem-participante"),
+    identificadorDaSessao || "sem-sessao",
+    faseCientificaAtual || (sessaoBaseline ? "BASELINE" : "SEM_FASE")
+  ].join("|");
+  const ordemCanonicaDaApresentacao = new Date(String(
+    revisaoCientifica.calculado_em
+    ?? cockpit.polling_confirmado_em
+    ?? cockpit.atualizado_em
+    ?? 0
+  )).getTime();
+  const revisaoRegulatoriaVisual: RevisaoRegulatoriaVisual = {
+    contexto: contextoDaApresentacaoRegulatoria,
+    ordemCanonica: Number.isFinite(ordemCanonicaDaApresentacao)
+      ? ordemCanonicaDaApresentacao
+      : 0,
+    ativo: cienciaAtualAdmissivel,
+    vetores: radarVetorialCanonico,
+    iirh: iirhCanonicoCalculado ? Number(iirh.valor) : null,
+    zona: zonaCanonicaCalculada
+      ? String(zona.codigo ?? zona.nome)
+      : null
+  };
+  const revisaoRegulatoriaVisualRef = useRef(revisaoRegulatoriaVisual);
+  revisaoRegulatoriaVisualRef.current = revisaoRegulatoriaVisual;
+  const [apresentacaoRegulatoria, setApresentacaoRegulatoria] = useState(() =>
+    estabilizarApresentacaoRegulatoria(
+      null,
+      revisaoRegulatoriaVisual,
+      Date.now()
+    )
+  );
+  const assinaturaDaRevisaoVisual = [
+    revisaoRegulatoriaVisual.contexto,
+    revisaoRegulatoriaVisual.ordemCanonica,
+    revisaoRegulatoriaVisual.ativo,
+    revisaoRegulatoriaVisual.iirh,
+    revisaoRegulatoriaVisual.zona,
+    radarVetorialCanonico
+      .map((item) => `${item.code}:${item.value == null ? "nulo" : item.value}`)
+      .join("|")
+  ].join("::");
+  useEffect(() => {
+    setApresentacaoRegulatoria((atual) =>
+      estabilizarApresentacaoRegulatoria(
+        atual,
+        revisaoRegulatoriaVisualRef.current,
+        Date.now()
+      )
+    );
+  }, [assinaturaDaRevisaoVisual]);
+  useEffect(() => {
+    const temporizador = window.setInterval(() => {
+      setApresentacaoRegulatoria((atual) =>
+        estabilizarApresentacaoRegulatoria(
+          atual,
+          revisaoRegulatoriaVisualRef.current,
+          Date.now()
+        )
+      );
+    }, 250);
+    const aoAlterarVisibilidade = () => {
+      if (document.visibilityState !== "visible") return;
+      setApresentacaoRegulatoria((atual) =>
+        estabilizarApresentacaoRegulatoria(
+          atual,
+          revisaoRegulatoriaVisualRef.current,
+          Date.now(),
+          { forcarCanonico: true }
+        )
+      );
+    };
+    document.addEventListener("visibilitychange", aoAlterarVisibilidade);
+    return () => {
+      window.clearInterval(temporizador);
+      document.removeEventListener("visibilitychange", aoAlterarVisibilidade);
+    };
+  }, []);
+  const radarVetorial = apresentacaoRegulatoria.vetores as HxVectorAxis[];
+  const radarCompleto = radarVetorial.length === 10
+    && radarVetorial.every((item) => item.value != null);
+  const iirhCalculado = apresentacaoRegulatoria.iirh != null;
+  const iirhApresentado = apresentacaoRegulatoria.iirh;
+  const zonaCalculada = apresentacaoRegulatoria.zona != null;
+  const zonaApresentada = apresentacaoRegulatoria.zona;
+  const iirhCanonico = iirhCanonicoCalculado ? Number(iirh.valor) : null;
+  const zonaCanonica = zonaCanonicaCalculada
+    ? String(zona.codigo ?? zona.nome)
+    : null;
+  const divergenciaVisualDoIirh = iirhCanonico !== iirhApresentado;
   const trajetoriaCalculada = leituraAoVivo && trajetoria.valor != null;
+  const precondicoesDaZonaNaoAtendidas = Array.isArray(
+    zona.precondicoes_nao_atendidas
+  )
+    ? zona.precondicoes_nao_atendidas.map(String)
+    : [];
+  const causaDaZona = precondicoesDaZonaNaoAtendidas.length
+    ? precondicoesDaZonaNaoAtendidas
+      .map(rotuloDaPrecondicaoDaZona)
+      .join(" · ")
+    : rotuloDaPrecondicaoDaZona(zona.motivo);
+  const vetoresCalculaveis = radarVetorial.filter(
+    (item) => item.value != null
+  ).length;
+  const assinaturaVetorial = radarVetorial
+    .map((item) => `${item.code}:${item.value == null ? "nulo" : item.value.toFixed(6)}`)
+    .join("|");
+  const assinaturaVetorialAnterior = useRef(assinaturaVetorial);
+  const [ultimaMudancaVetorial, setUltimaMudancaVetorial] = useState<number | null>(null);
+  useEffect(() => {
+    if (assinaturaVetorialAnterior.current === assinaturaVetorial) return;
+    assinaturaVetorialAnterior.current = assinaturaVetorial;
+    setUltimaMudancaVetorial(Date.now());
+  }, [assinaturaVetorial]);
+  const versaoCanonicaDoCockpit = revisaoCientifica.calculado_em
+    ? `revisão de ${dataLegivel(revisaoCientifica.calculado_em)}`
+    : texto(
+        cockpit.versao_canonica_do_polling,
+        "revisão canônica confirmada"
+      );
+  const instanteDaRevisaoVetorial = estadosVetoriais
+    .map((item) => new Date(String(item.timestamp ?? "")).getTime())
+    .filter(Number.isFinite)
+    .sort((a, b) => b - a)[0]
+    ?? new Date(String(configuracaoBasal.calculado_em ?? "")).getTime();
   const leituraCientificaVisivel = iirhCalculado
     || zonaCalculada
     || resultanteCalculada
@@ -1141,8 +1290,8 @@ export function CockpitOperacionalVivo({
       </section>
 
       <section className="hx-live-hud" aria-label="HUD operacional fixo">
-        <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{iirhCalculado ? `${numero(iirh.valor, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong><span>{iirhCalculado ? "Resultado canônico" : texto(iirh.motivo, "Evidência insuficiente")}</span></div>
-        <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? texto(zona.nome ?? zona.codigo) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? `Taxonomia canônica · ${texto(zona.versao_da_taxonomia, "versão não informada")}` : `${texto(zona.motivo, "IIRH oficial indisponível")} · ${texto(zona.versao_da_taxonomia, "taxonomia não informada")}`}</span></div>
+        <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>{iirhCalculado ? `${numero(iirhApresentado, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong><span>{iirhCalculado ? "Apresentação estabilizada de valor canônico" : texto(iirh.motivo, "Evidência insuficiente")}</span></div>
+        <div><small>ZONA OPERACIONAL</small><strong>{zonaCalculada ? rotuloDaZona(zonaApresentada) : "NÃO CLASSIFICÁVEL"}</strong><span>{zonaCalculada ? `Taxonomia canônica · ${texto(zona.versao_da_taxonomia, "versão não informada")}` : `${iirhCalculado ? "IIRH calculável; Zona sem convergência suficiente" : "IIRH oficial indisponível"} · ${causaDaZona}`}</span></div>
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{sessaoBaseline ? estadoDoBaseline : texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
         <div><small>TEMPO</small><strong>{duracao(inicioDoCronometro, fimDoCronometro, agora)}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
@@ -1345,6 +1494,76 @@ export function CockpitOperacionalVivo({
         </div>
       </section>
 
+      <section
+        className="hx-live-regulatory-readout hx-live-regulatory-readout--primary"
+        aria-label="Decisão regulatória atual"
+      >
+        <article data-regulatory-state={zonaCalculada ? "CLASSIFICADA" : "NAO_CLASSIFICAVEL"}>
+          <small>ZONA OPERACIONAL</small>
+          <strong>{zonaCalculada
+            ? rotuloDaZona(zonaApresentada)
+            : "NÃO CLASSIFICÁVEL"}</strong>
+          <span>{zonaCalculada
+            ? `Classificação ${texto(zona.estado)} · ${texto(zona.versao_da_taxonomia)}`
+            : iirhCalculado
+              ? `IIRH calculável; Zona preservada como ausência · ${causaDaZona}`
+              : causaDaZona}</span>
+          <span>{apresentacaoRegulatoria.divergenciaDaZonaVisivel
+            ? `Zona canônica ${rotuloDaZona(zonaCanonica)} em confirmação visual; destaque atual ${rotuloDaZona(zonaApresentada)}`
+            : `Mesma projeção canônica do IIRH · ${versaoCanonicaDoCockpit}`}</span>
+        </article>
+        <article>
+          <small>IIRH</small>
+          <strong>{iirhCalculado
+            ? `${numero(iirhApresentado, 1)} ${texto(iirh.unidade, "")}`
+            : "NÃO CALCULÁVEL"}</strong>
+          <span>{iirhCalculado
+            ? `Integração dos componentes admissíveis · confiança ${percentual(iirh.confiabilidade)}`
+            : texto(iirh.motivo, "Evidência humana admissível insuficiente")}</span>
+          <span>{divergenciaVisualDoIirh
+            ? `Canônico atual ${numero(iirhCanonico, 1)} · apresentação ${numero(iirhApresentado, 1)}`
+            : `${vetoresCalculaveis}/10 vetores com magnitude canônica`}</span>
+        </article>
+        <article>
+          <small>RESULTANTE REGULATÓRIA</small>
+          <em className="hx-live-regulatory-readout__seal">{seloDaResultante}</em>
+          <strong>{resultanteCalculada
+            ? `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`
+            : texto(resultante.estado, "NÃO CALCULÁVEL")}</strong>
+          <span>{resultanteCalculada
+            ? `Direção ${texto(resultante.vetor_dominante, "não dominante")} · Sentido ${texto(resultante.sentido_contextual, "não determinável")}`
+            : texto(resultante.justificativa ?? resultante.motivo, "Configuração vetorial insuficiente")}</span>
+          <span>Validação profissional obrigatória · nenhuma decisão automática</span>
+          <details className="hx-live-vector-trace">
+            <summary>Por que este resultado? · Inspeção canônica</summary>
+            <dl>
+              <div><dt>Direção funcional</dt><dd>{texto(resultante.vetor_dominante, "NÃO DETERMINÁVEL")}</dd></div>
+              <div><dt>Sentido contextual</dt><dd>{texto(resultante.sentido_contextual, "NÃO DETERMINÁVEL")}</dd></div>
+              <div><dt>Vetores contribuintes</dt><dd>{fontesDoIndicador(resultante.vetores_utilizados)}</dd></div>
+              <div><dt>Vetores ausentes</dt><dd>{fontesDoIndicador(resultante.vetores_ausentes)}</dd></div>
+              <div><dt>Macrocampos cobertos</dt><dd>{fontesDoIndicador(resultante.macrocampos_cobertos)}</dd></div>
+              <div><dt>Macrocampos ausentes</dt><dd>{fontesDoIndicador(resultante.macrocampos_ausentes)}</dd></div>
+              <div><dt>Conflitos</dt><dd>{fontesDoIndicador(resultante.conflitos)}</dd></div>
+              <div><dt>Compensações</dt><dd>{fontesDoIndicador(resultante.compensacoes)}</dd></div>
+              <div><dt>Versão científica</dt><dd>{texto(resultante.versao_cientifica ?? resultante.versao_do_algoritmo)}</dd></div>
+              <div><dt>Origem matemática</dt><dd>{referenciaCientificaLegivel(resultante.origem_matematica) || "Biblioteca Oficial"}</dd></div>
+              <div><dt>Justificativa</dt><dd>{texto(resultante.justificativa ?? resultante.motivo)}</dd></div>
+              <div><dt>Incertezas</dt><dd>{fontesDoIndicador(resultante.incertezas)}</dd></div>
+            </dl>
+          </details>
+        </article>
+        <article>
+          <small>TRAJETÓRIA / TENDÊNCIA</small>
+          <strong>{trajetoriaCalculada ? texto(trajetoria.valor) : "NÃO INFERÍVEL"}</strong>
+          <span>{trajetoriaCalculada
+            ? "Estados sucessivos comparáveis"
+            : "Um ponto isolado não produz trajetória"}</span>
+          <span>{ultimaMudancaVetorial == null
+            ? `Sem mudança vetorial observada nesta visualização · revisão ${dataLegivel(instanteDaRevisaoVetorial)}`
+            : `Última mudança vetorial real nesta visualização · ${dataLegivel(ultimaMudancaVetorial)}`}</span>
+        </article>
+      </section>
+
       <div id="hx-regulation-level" className="hx-live-command-center">
         {radarVetorial.length ? (
           <HxSurface as="section" className="hx-live-vector-stage">
@@ -1353,6 +1572,12 @@ export function CockpitOperacionalVivo({
                 ? "VETORES BASAIS CANÔNICOS · MATRIZ VETORIAL"
                 : "VETORES VIVOS · MATRIZ VETORIAL"}
               title="Dez vetores oficiais"
+              aside={(
+                <span className="hx-live-vector-revision">
+                  {vetoresCalculaveis}/10 calculáveis · {versaoCanonicaDoCockpit}<br />
+                  Apresentação {JANELA_VISUAL_REGULATORIA_MS / 1000}s · cadência {CADENCIA_VISUAL_REGULATORIA_MS / 1000}s · Zona {PERSISTENCIA_VISUAL_DA_ZONA_MS / 1000}s
+                </span>
+              )}
             />
             <VectorRadarChart vectors={radarVetorial} />
             <div className="hx-live-vector-list" aria-label="Estado dos dez vetores oficiais">
@@ -1400,6 +1625,12 @@ export function CockpitOperacionalVivo({
                       <summary>Por que este resultado? · Rastreabilidade científica</summary>
                       <dl>
                         <div><dt>Estado</dt><dd>{texto(estadoVetorialExibido?.estado, "NAO_DEFINIDO")}</dd></div>
+                        <div><dt>Magnitude canônica</dt><dd>{estadoVetorialExibido?.magnitude == null
+                          ? "AUSENTE"
+                          : `${numero(estadoVetorialExibido.magnitude, 2)} / 100`}</dd></div>
+                        <div><dt>Magnitude apresentada</dt><dd>{vetor.value == null
+                          ? "AUSENTE"
+                          : `${numero(vetor.value * 100, 2)} / 100`}</dd></div>
                         <div><dt>Cobertura</dt><dd>{percentual(estadoVetorialExibido?.cobertura)}</dd></div>
                         <div><dt>Qualidade</dt><dd>{percentual(estadoVetorialExibido?.qualidade)}</dd></div>
                         <div><dt>Confiança</dt><dd>{percentual(estadoVetorialExibido?.confiabilidade ?? estadoVetorialExibido?.confianca)}</dd></div>
@@ -1432,12 +1663,19 @@ export function CockpitOperacionalVivo({
           </HxSurface>
         ) : null}
 
-        <HxSurface
-          as="section"
-          id="hx-evidence-level"
-          className="hx-live-graphs"
-          data-signal-state={modoHistorico ? "HISTORICO" : modoSincronizando ? "SINCRONIZANDO" : modoAguardando ? "AGUARDANDO" : "ATIVO"}
-        >
+        <details id="hx-evidence-level" className="hx-live-temporal-disclosure">
+          <summary>
+            <span>
+              <small>TELEMETRIA DETALHADA</small>
+              <strong>Sinais, integridade e eventos no mesmo instante</strong>
+            </span>
+            <em>Expandir somente quando a inspeção temporal for necessária</em>
+          </summary>
+          <HxSurface
+            as="section"
+            className="hx-live-graphs"
+            data-signal-state={modoHistorico ? "HISTORICO" : modoSincronizando ? "SINCRONIZANDO" : modoAguardando ? "AGUARDANDO" : "ATIVO"}
+          >
           <HxSectionHeader
             eyebrow={modoHistorico ? "DADOS PRESERVADOS" : modoSincronizando ? "SINCRONIZANDO COM O NÚCLEO" : modoAguardando ? "AGUARDANDO FONTES" : "ATIVIDADE AO VIVO"}
             title="Leitura temporal da sessão"
@@ -1496,53 +1734,9 @@ export function CockpitOperacionalVivo({
             <span>{eventos.length} evento(s) preservado(s)</span>
             <span>Último registro {dataLegivel(replay.ultimo_evento)}</span>
           </footer>
-        </HxSurface>
+          </HxSurface>
+        </details>
       </div>
-
-      <section className="hx-live-regulatory-readout" aria-label="Resultante e trajetória regulatórias">
-        <article>
-          <small>RESULTANTE REGULATÓRIA</small>
-          <em className="hx-live-regulatory-readout__seal">{seloDaResultante}</em>
-          <strong>{resultanteCalculada
-            ? `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`
-            : "NÃO CALCULÁVEL"}</strong>
-          <span>{resultanteCalculada
-            ? `Direção ${texto(resultante.vetor_dominante, "não dominante")} · Sentido ${texto(resultante.sentido_contextual, "NAO_DETERMINAVEL")}`
-            : texto(resultante.justificativa ?? resultante.motivo, "Evidência humana insuficiente")}</span>
-          <span>Cobertura {numero(resultante.cobertura, 2)} · Qualidade {numero(resultante.qualidade, 2)} · Confiança {numero(resultante.confianca, 2)}</span>
-          <span>Validação profissional obrigatória · nenhuma decisão ou intervenção automática</span>
-          <details className="hx-live-vector-trace">
-            <summary>Por que este resultado?</summary>
-            <dl>
-              <div><dt>Estado</dt><dd>{texto(resultante.estado, "NAO_CALCULAVEL")}</dd></div>
-              <div><dt>Magnitude</dt><dd>{numero(resultante.magnitude_global, 4)}</dd></div>
-              <div><dt>Direção funcional</dt><dd>{JSON.stringify(objeto(resultante.direcao_funcional))}</dd></div>
-              <div><dt>Sentido contextual</dt><dd>{texto(resultante.sentido_contextual, "NAO_DETERMINAVEL")}</dd></div>
-              <div><dt>Vetores contribuintes</dt><dd>{vetoresContribuintesDaResultante.join(" · ") || "Nenhum"}</dd></div>
-              <div><dt>Vetores ausentes</dt><dd>{vetoresAusentesDaResultante.join(" · ") || "Nenhum"}</dd></div>
-              <div><dt>Macrocampos cobertos</dt><dd>{macrocamposCobertosDaResultante.join(" · ") || "Nenhum"}</dd></div>
-              <div><dt>Macrocampos ausentes</dt><dd>{macrocamposAusentesDaResultante.join(" · ") || "Nenhum"}</dd></div>
-              <div><dt>Conflitos</dt><dd>{lista(resultante.conflitos).length}</dd></div>
-              <div><dt>Compensações</dt><dd>{lista(resultante.compensacoes).length}</dd></div>
-              <div><dt>Contexto</dt><dd>{JSON.stringify(objeto(resultante.contexto))}</dd></div>
-              <div><dt>Fase</dt><dd>{texto(resultante.fase)}</dd></div>
-              <div><dt>Timestamp</dt><dd>{dataLegivel(resultante.timestamp)}</dd></div>
-              <div><dt>Versão científica</dt><dd>{texto(resultante.versao_cientifica)}</dd></div>
-              <div><dt>Versão da fórmula</dt><dd>{texto(resultante.versao)}</dd></div>
-              <div><dt>Origem matemática</dt><dd>{JSON.stringify(objeto(resultante.origem_matematica))}</dd></div>
-              <div><dt>Justificativa</dt><dd>{texto(resultante.justificativa)}</dd></div>
-              <div><dt>Incertezas</dt><dd>{incertezasDaResultante.join(" · ") || "Nenhuma"}</dd></div>
-            </dl>
-          </details>
-        </article>
-        <article>
-          <small>TRAJETÓRIA REGULATÓRIA</small>
-          <strong>{trajetoriaCalculada ? texto(trajetoria.valor) : "NÃO INFERÍVEL"}</strong>
-          <span>{trajetoriaCalculada
-            ? "Estados sucessivos comparáveis"
-            : "Um ponto isolado não produz trajetória"}</span>
-        </article>
-      </section>
 
       <section
         id="hx-inspection-level"

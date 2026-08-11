@@ -1495,6 +1495,189 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
   font: 7px/1.45 var(--font-geist-mono), monospace;
 }
 
+.hx-live-regulatory-readout--primary {
+  grid-template-columns: minmax(230px, 1.2fr) minmax(190px, .72fr) minmax(260px, 1fr) minmax(230px, .9fr);
+}
+
+.hx-live-regulatory-readout--primary article {
+  min-height: 132px;
+  padding: 16px 18px 15px 21px;
+}
+
+.hx-live-regulatory-readout--primary article:first-child {
+  background:
+    radial-gradient(circle at 78% 18%, rgba(205, 178, 116, .13), transparent 54%),
+    linear-gradient(125deg, rgba(20, 23, 22, .99), rgba(7, 9, 10, .98));
+}
+
+.hx-live-regulatory-readout--primary article[data-regulatory-state="NAO_CLASSIFICAVEL"]::before {
+  background: #b58e54;
+}
+
+.hx-live-regulatory-readout--primary strong {
+  font-size: clamp(18px, 1.55vw, 25px);
+}
+
+.hx-live-vector-stage {
+  display: grid;
+  grid-template-columns: minmax(500px, 1.55fr) minmax(340px, .72fr);
+  gap: 12px 18px;
+  align-items: start;
+}
+
+.hx-live-vector-stage > header {
+  grid-column: 1 / -1;
+}
+
+.hx-live-vector-revision {
+  color: #7f8c89;
+  text-align: right;
+  letter-spacing: .06em;
+  font: 7px/1.6 var(--font-geist-mono), monospace;
+}
+
+.hx-live-vector-stage .hx-vector-radar-live,
+.hx-live-vector-stage .hx-vector-radar-live .hx-echart {
+  width: 100%;
+  min-height: clamp(460px, 38vw, 640px);
+  height: clamp(460px, 38vw, 640px) !important;
+}
+
+.hx-live-vector-stage .hx-live-vector-list {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  margin-top: 0;
+}
+
+.hx-live-vector-stage .hx-live-vector-list > div {
+  min-height: 46px;
+  padding: 8px 10px;
+}
+
+.hx-live-vector-stage .hx-live-vector-list span {
+  font-size: 7px;
+}
+
+.hx-live-vector-stage .hx-live-vector-meter i {
+  transition: width 720ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.hx-live-regulatory-readout--primary strong,
+.hx-live-vector-stage .hx-live-vector-list strong {
+  transition: color 180ms ease, opacity 180ms ease;
+}
+
+.hx-live-temporal-disclosure {
+  border: 1px solid rgba(205, 178, 116, .18);
+  background: rgba(5, 9, 11, .86);
+}
+
+.hx-live-temporal-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 64px;
+  padding: 12px 16px;
+  color: #d5d5ce;
+  cursor: pointer;
+  list-style: none;
+}
+
+.hx-live-temporal-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.hx-live-temporal-disclosure > summary::after {
+  content: "+";
+  flex: 0 0 auto;
+  color: #cdb274;
+  font: 20px Georgia, serif;
+}
+
+.hx-live-temporal-disclosure[open] > summary::after {
+  content: "−";
+}
+
+.hx-live-temporal-disclosure > summary span {
+  display: grid;
+  gap: 5px;
+}
+
+.hx-live-temporal-disclosure > summary small {
+  color: #cdb274;
+  letter-spacing: .14em;
+  font: 6px var(--font-geist-mono), monospace;
+}
+
+.hx-live-temporal-disclosure > summary strong {
+  color: #e7e4da;
+  font: 400 15px Georgia, serif;
+}
+
+.hx-live-temporal-disclosure > summary em {
+  margin-left: auto;
+  color: #75817f;
+  text-align: right;
+  font: normal 7px/1.5 var(--font-geist-mono), monospace;
+}
+
+.hx-live-temporal-disclosure > .hx-live-graphs {
+  border-width: 1px 0 0;
+  box-shadow: none;
+}
+
+@media (max-width: 1240px) {
+  .hx-live-regulatory-readout--primary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hx-live-vector-stage {
+    grid-template-columns: minmax(420px, 1.25fr) minmax(300px, .75fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .hx-live-vector-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .hx-live-vector-stage > header {
+    grid-column: auto;
+  }
+
+  .hx-live-vector-stage .hx-live-vector-list {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hx-live-vector-revision {
+    text-align: left;
+  }
+}
+
+@media (max-width: 640px) {
+  .hx-live-regulatory-readout--primary,
+  .hx-live-vector-stage .hx-live-vector-list {
+    grid-template-columns: 1fr;
+  }
+
+  .hx-live-vector-stage .hx-vector-radar-live,
+  .hx-live-vector-stage .hx-vector-radar-live .hx-echart {
+    min-height: 320px;
+    height: 320px !important;
+  }
+
+  .hx-live-temporal-disclosure > summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hx-live-temporal-disclosure > summary em {
+    margin-left: 0;
+    text-align: left;
+  }
+}
+
 .hx-live-scientific-chain {
   border: 1px solid rgba(205, 178, 116, .22);
   background:
