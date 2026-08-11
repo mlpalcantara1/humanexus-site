@@ -1587,6 +1587,18 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
   display: none;
 }
 
+/* Preparação operacional: comandos e prontidão ficam visíveis; prova e
+   telemetria técnica permanecem nas visões Científico/Técnico. */
+.hx-cockpit-view[data-cockpit-view="visao-geral"] > .hx-media-control .hx-coverage-board,
+.hx-cockpit-view[data-cockpit-view="visao-geral"] > .hx-media-control .hx-baseline-reference,
+.hx-cockpit-view[data-cockpit-view="visao-geral"] > .hx-media-control .hx-operational-readiness__body > div:not(:last-child) {
+  display: none;
+}
+
+.hx-cockpit-view[data-cockpit-view="visao-geral"] > .hx-media-control .hx-operational-readiness__body {
+  grid-template-columns: 1fr;
+}
+
 .hx-live-vector-stage {
   display: grid;
   grid-template-columns: minmax(500px, 1.55fr) minmax(340px, .72fr);
