@@ -23,6 +23,7 @@ import {
   chaveDoContextoVivo,
   podeAplicarRespostaCanonica
 } from "@/lib/cockpit-live-coordination";
+import { publicarEstadoDoNucleo } from "@/lib/client-request";
 
 type Registro = Record<string, unknown>;
 type OpcoesDeCarregamento = {
@@ -1445,6 +1446,13 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         }
       );
       dados = await resposta.json();
+      publicarEstadoDoNucleo(
+        resposta.ok
+          ? "conectado"
+          : navigator.onLine
+            ? "reconectando"
+            : "offline"
+      );
     } catch (causa) {
       if (
         !leve
@@ -1458,10 +1466,16 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         && causa instanceof DOMException
         && causa.name === "AbortError"
       ) {
+        publicarEstadoDoNucleo(
+          navigator.onLine ? "reconectando" : "offline"
+        );
         throw new Error(
           "Atualização do Cockpit expirou; nova tentativa automática em andamento."
         );
       }
+      publicarEstadoDoNucleo(
+        navigator.onLine ? "reconectando" : "offline"
+      );
       throw causa;
     } finally {
       if (limiteDaAtualizacao !== null) {

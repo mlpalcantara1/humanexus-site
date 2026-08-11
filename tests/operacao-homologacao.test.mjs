@@ -1011,6 +1011,22 @@ test("polling reduz sessão pausada, para encerrada e libera memória ao sair", 
   assert.match(rota, /export async function DELETE/);
 });
 
+test("polling do Cockpit publica o estado real de conexão do núcleo", async () => {
+  const operacao = await source("components/operacao-homologacao.tsx");
+  const cliente = await source("lib/client-request.ts");
+
+  assert.match(cliente, /export function publicarEstadoDoNucleo/);
+  assert.match(operacao, /publicarEstadoDoNucleo\(/);
+  assert.match(
+    operacao,
+    /resposta\.ok[\s\S]*?"conectado"[\s\S]*?"reconectando"[\s\S]*?"offline"/
+  );
+  assert.match(
+    operacao,
+    /Atualização do Cockpit expirou[\s\S]*?nova tentativa automática/
+  );
+});
+
 test("Polling autenticado preserva contexto, ordenação e ciclo único", async () => {
   const operacao = await source("components/operacao-homologacao.tsx");
 

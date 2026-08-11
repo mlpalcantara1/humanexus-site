@@ -8,7 +8,9 @@ export class ErroDeConsulta extends Error {
   }
 }
 
-function publicarEstado(estado: "conectado" | "reconectando" | "offline") {
+export function publicarEstadoDoNucleo(
+  estado: "conectado" | "reconectando" | "offline"
+) {
   window.dispatchEvent(new CustomEvent("humanexus:nucleo-status", { detail: estado }));
 }
 
@@ -39,7 +41,7 @@ export async function consultarJson<T>(
           reconectavel
         );
       }
-      publicarEstado("conectado");
+      publicarEstadoDoNucleo("conectado");
       return corpo as T;
     } catch (erro) {
       ultimaFalha = erro;
@@ -50,7 +52,7 @@ export async function consultarJson<T>(
           ? true
           : !navigator.onLine;
       if (!reconectavel || tentativa === tentativas) break;
-      publicarEstado(navigator.onLine ? "reconectando" : "offline");
+      publicarEstadoDoNucleo(navigator.onLine ? "reconectando" : "offline");
       await new Promise((resolver) => window.setTimeout(resolver, 350 * (2 ** (tentativa - 1))));
     } finally {
       window.clearTimeout(limite);
@@ -58,7 +60,7 @@ export async function consultarJson<T>(
     }
   }
 
-  publicarEstado(navigator.onLine ? "reconectando" : "offline");
+  publicarEstadoDoNucleo(navigator.onLine ? "reconectando" : "offline");
   if (ultimaFalha instanceof ErroDeConsulta) throw ultimaFalha;
   if (ultimaFalha instanceof DOMException && ultimaFalha.name === "AbortError") {
     throw new ErroDeConsulta("O núcleo demorou mais que o esperado. Tente novamente.", 504, true);
