@@ -991,29 +991,6 @@ export function GestaoOperacional({
     await carregar(String(resultado.identificador_da_organizacao ?? ""));
   }
 
-  async function iniciarSessaoDiretamente(
-    identificadorDaSessao: string,
-    identificadorDoParticipante: string
-  ) {
-    const resultado = await executar(
-      "operar-sessao",
-      { acao: "ABRIR" },
-      identificadorDaSessao
-    );
-    if (!resultado) return;
-    const parametros = new URLSearchParams({
-      organizacao: String(dados?.organizacao?.identificador ?? ""),
-      participante: identificadorDoParticipante,
-      sessao: identificadorDaSessao
-    });
-    atualizarContextoNaUrl({
-      organizacao: String(dados?.organizacao?.identificador ?? ""),
-      participante: identificadorDoParticipante,
-      sessao: identificadorDaSessao
-    });
-    window.location.assign(`/plataforma/cockpit-vivo?${parametros}`);
-  }
-
   function abrirCockpitSemAlterarEstado(
     identificadorDaSessao: string,
     identificadorDoParticipante: string
@@ -1299,13 +1276,13 @@ export function GestaoOperacional({
             (participante) => String(participante.identificador)
               === String(item.identificador_do_participante)
           );
-          const acao = estado === "CRIADA"
-            ? "ABRIR"
-            : estado === "INICIADA"
-              ? "PAUSAR"
-              : estado === "PAUSADA" || estado === "INTERROMPIDA" || estado === "REABERTA"
-                ? "RETOMAR"
-                : null;
+          const podeAbrirCockpit = [
+            "CRIADA",
+            "INICIADA",
+            "PAUSADA",
+            "INTERROMPIDA",
+            "REABERTA"
+          ].includes(estado);
           return (
             <article key={String(item.identificador)}>
               <div>
@@ -1385,22 +1362,16 @@ export function GestaoOperacional({
                   PREPARAR SESSÃO
                 </button>
               ) : null}
-              {acao && operacional ? (
+              {podeAbrirCockpit && operacional ? (
                 <button
                   type="button"
                   disabled={ocupado || !podeConduzir}
-                  onClick={() => acao === "ABRIR"
-                    ? void iniciarSessaoDiretamente(
-                        String(item.identificador ?? ""),
-                        String(item.identificador_do_participante ?? "")
-                      )
-                    : void executar(
-                        "operar-sessao",
-                        { acao },
-                        item.identificador
-                      )}
+                  onClick={() => abrirCockpitSemAlterarEstado(
+                    String(item.identificador ?? ""),
+                    String(item.identificador_do_participante ?? "")
+                  )}
                 >
-                  {acao === "ABRIR" ? "INICIAR SESSÃO" : texto(acao)}
+                  ABRIR COCKPIT
                 </button>
               ) : <span>Histórico preservado</span>}
               <button
@@ -2831,12 +2802,15 @@ export function GestaoOperacional({
                 <button
                   type="button"
                   disabled={ocupado || !podeConduzir}
-                  onClick={() => void iniciarSessaoDiretamente(
-                    sessaoCriada.identificador,
-                    sessaoCriada.participante
-                  )}
+                  onClick={() => {
+                    setSessaoParaPreparar(sessaoCriada.identificador);
+                    atualizarContextoNaUrl({
+                      participante: sessaoCriada.participante,
+                      sessao: sessaoCriada.identificador
+                    });
+                  }}
                 >
-                  INICIAR SESSÃO
+                  PREPARAR SESSÃO
                 </button>
               </section>
             ) : null}

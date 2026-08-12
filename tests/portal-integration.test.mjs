@@ -133,10 +133,12 @@ test("sessão e convites preservam o escopo organizacional selecionado", async (
   assert.match(management, /tipo_de_sessao/);
   assert.match(management, /Baseline/);
   assert.match(management, /PRÉ → TREINO → PÓS/);
-  assert.match(management, /INICIAR SESSÃO/);
+  assert.match(management, /PREPARAR SESSÃO/);
+  assert.match(management, /ABRIR COCKPIT/);
   assert.match(management, /\/plataforma\/cockpit-vivo\?/);
   assert.match(management, /Sessão criada e contexto preservado/);
-  assert.match(management, /iniciarSessaoDiretamente/);
+  assert.doesNotMatch(management, /iniciarSessaoDiretamente/);
+  assert.doesNotMatch(management, />\s*(?:INICIAR SESSÃO|PAUSAR|RETOMAR)\s*</);
   assert.match(management, /atualizarContextoNaUrl/);
   for (const key of ["organizacao", "participante", "sessao", "thx"]) {
     assert.match(navigation, new RegExp(`"${key}"`));
