@@ -1402,6 +1402,15 @@
   padding-left: 216px;
 }
 
+.hx-app--executive .hx-nav--collapsed {
+  width: 72px;
+}
+
+.hx-app--executive:has(.hx-nav--collapsed) .hx-app__content--signed,
+.hx-app--executive:has(.hx-nav--collapsed) .hx-app__footer {
+  padding-left: 72px;
+}
+
 .hx-app :where(.hx-module__inner, .hx-admin, .hx-operacao, .hx-management) {
   width: 100%;
   max-width: 1840px;

@@ -555,6 +555,8 @@ test("composição executiva premium permanece isolada no front-end da plataform
   assert.match(designSystem, /export function HxSectionHeader/);
   assert.match(designSystem, /export function HxSurface/);
   assert.match(estilos, /\.hx-app--executive:has\(\.hx-nav--collapsed\)/);
+  assert.match(estilos, /\.hx-app--executive \.hx-nav--collapsed\s*\{[\s\S]*?width:\s*72px;/);
+  assert.match(estilos, /\.hx-app--executive:has\(\.hx-nav--collapsed\) \.hx-app__content--signed,[\s\S]*?padding-left:\s*72px;/);
   assert.match(estilosGlobais, /\.hx-live-hud\{position:sticky;top:135px/);
   assert.match(estilosGlobais, /@media\(min-width:1600px\)\{\.hx-live-hud\{grid-template-columns:repeat\(9,minmax\(88px,1fr\)\)/);
   assert.match(estilosGlobais, /@media\(max-width:900px\)[\s\S]*\.hx-live-hud\{position:relative;top:auto;grid-template-columns:repeat\(3,1fr\)/);
