@@ -1079,7 +1079,7 @@ function ConstituicaoOperacional({ estado }: { estado: Estado }) {
     objeto(estado.cockpit_operacional).cadeia_cientifica
   );
   const evidencias = lista(objeto(cadeiaCientifica.evidencias).aceitas).length;
-  const cobertura = iirh.cobertura ?? resultante.cobertura;
+  const cobertura = resultante.cobertura ?? iirh.cobertura;
   const coberturaLegivel = formatarPercentualCanonico(cobertura);
   const operacionalizacao = [
     `${eventos} evento(s) e ${momentos(estado).length} registro(s) temporal(is); a configuração basal atual permanece separada da trajetória.`,

@@ -268,6 +268,7 @@ test("Inspeção TIRH compartilha a projeção científica canônica do Cockpit"
   assert.match(client, /const resultadoCanonico = objeto\(leituraCientifica\.resultante\)/);
   assert.match(client, /const iirh = objeto\(leituraCientifica\.iirh\)/);
   assert.match(client, /const zona = objeto\(leituraCientifica\.zona\)/);
+  assert.match(client, /const cobertura = resultante\.cobertura \?\? iirh\.cobertura/);
   assert.match(client, /formatarPercentualCanonico/);
   assert.match(client, /\? vetoresBasais : vetoresAtuais/);
   assert.doesNotMatch(client, /magnitude\s*:\s*0|cobertura\s*:\s*0/);
