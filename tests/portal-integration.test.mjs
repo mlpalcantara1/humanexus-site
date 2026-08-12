@@ -232,6 +232,18 @@ test("participantes possuem grupos e busca operacional completa", async () => {
   assert.match(management, /Organizacionais/);
 });
 
+test("rótulo operacional preserva nome completo antes do nome preferencial", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  assert.match(
+    management,
+    /cadastrais\.nome_completo[\s\S]*\?\? cadastrais\.nome_social/
+  );
+  assert.match(
+    management,
+    /nomePreferencial && nomePreferencial !== nome[\s\S]*\$\{nome\} \(\$\{nomePreferencial\}\)/
+  );
+});
+
 test("status jurídico removido do instrumento integrado e de suas cópias", async () => {
   const files = [
     "components/instrumento-integrado.tsx",

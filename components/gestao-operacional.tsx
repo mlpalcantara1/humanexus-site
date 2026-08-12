@@ -125,19 +125,25 @@ function nomeDoParticipante(registro: Registro | null | undefined) {
   const perfil = objeto(registro?.perfil_operacional);
   const cadastrais = objeto(perfil.dados_cadastrais);
   return String(
-    cadastrais.nome_social
-    ?? cadastrais.nome_completo
+    cadastrais.nome_completo
+    ?? cadastrais.nome_social
     ?? registro?.referencia_externa
     ?? "Participante"
-  );
+  ).trim();
 }
 
 function rotuloDoParticipante(registro: Registro | null | undefined) {
+  const perfil = objeto(registro?.perfil_operacional);
+  const cadastrais = objeto(perfil.dados_cadastrais);
   const nome = nomeDoParticipante(registro);
-  const referencia = String(registro?.referencia_externa ?? "").trim();
-  return referencia && referencia !== nome
-    ? `${nome} — ${referencia}`
+  const nomePreferencial = String(cadastrais.nome_social ?? "").trim();
+  const nomeVisivel = nomePreferencial && nomePreferencial !== nome
+    ? `${nome} (${nomePreferencial})`
     : nome;
+  const referencia = String(registro?.referencia_externa ?? "").trim();
+  return referencia && referencia !== nomeVisivel
+    ? `${nomeVisivel} — ${referencia}`
+    : nomeVisivel;
 }
 
 function normalizar(valor: unknown) {
