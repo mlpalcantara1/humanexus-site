@@ -67,7 +67,19 @@ export async function PainelSeguro({
           <div className="hx-secure-panel__actions">
             <Link href={destinoDoPerfil(sessao.usuario.perfil)}>Início do painel <span>→</span></Link>
             {perfilExigido === "PROFISSIONAL_HUMANEXUS" ? (
-              <Link href="/profissional/catalogo">Catálogo autoral</Link>
+              <>
+                <Link href="/profissional/catalogo">Catálogo autoral</Link>
+                <Link href="/profissional/relatorios">Governança de relatórios</Link>
+              </>
+            ) : null}
+            {sessao.usuario.perfil === "ADMINISTRADOR_PROPRIETARIO" ? (
+              <Link href="/profissional/relatorios">Governança de relatórios</Link>
+            ) : null}
+            {perfilExigido === "VISUALIZADOR_OPERACIONAL" ? (
+              <Link href="/meus-relatorios">Meus Relatórios</Link>
+            ) : null}
+            {perfilExigido === "ADMINISTRADOR_DA_ORGANIZACAO" ? (
+              <><Link href="/organizacao/relatorios">Relatórios da organização</Link><Link href="/organizacao/relatorios/acessos">Acessos aos relatórios</Link></>
             ) : null}
           </div>
         </HxSurface>
