@@ -381,7 +381,7 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
   assert.match(operacional, /hx-live-operation-focus/);
   assert.match(operacional, /FLUXO OPERACIONAL/);
   assert.match(operacional, /Ações operacionais complementares/);
-  assert.match(operacional, /acoesSecundarias\.map/);
+  assert.match(operacional, /acoesSecundariasVisiveis\.map/);
   assert.match(client, /proxima_acao_principal/);
 });
 
@@ -476,6 +476,7 @@ test("telemetria real é contínua, histórica quando encerrada e não cria simu
 test("registro profissional rápido herda o contexto e Replay segue sem mídia", async () => {
   const operacional = await source("components/cockpit-operacional-vivo.tsx");
   const rota = await source("app/api/operacao-homologacao/route.ts");
+  const estilos = await source("app/globals.css");
   for (const categoria of [
     "EVENTO",
     "INTERVENCAO",
@@ -486,6 +487,28 @@ test("registro profissional rápido herda o contexto e Replay segue sem mídia",
   assert.match(rota, /REGISTRO_PROFISSIONAL_RAPIDO/);
   assert.match(operacional, /A ausência de mídia|NÃO É FALHA/);
   assert.match(operacional, /REPLAY SINCRONIZANDO/);
+  assert.match(
+    estilos,
+    /\.hx-live-conduction\s*\{[\s\S]*?grid-template-columns:\s*minmax\(220px, \.82fr\)\s*minmax\(430px, 1\.52fr\)\s*minmax\(240px, \.86fr\)/
+  );
+  assert.match(
+    estilos,
+    /\.hx-live-conduction \.hx-live-register > \.hx-live-register__fields\s*\{[\s\S]*?minmax\(260px, 1fr\)/
+  );
+});
+
+test("sessão finalizada não oferece novo encerramento no Cockpit", async () => {
+  const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  assert.match(
+    operacional,
+    /const acaoPrincipalVisivel = sessaoFinalizada \? "" : acaoPrincipal/
+  );
+  assert.match(
+    operacional,
+    /const acoesSecundariasVisiveis = sessaoFinalizada[\s\S]*?comando === "ABRIR_REPLAY"/
+  );
+  assert.match(operacional, /acaoPrincipalVisivel === "PREPARAR_SESSAO"/);
+  assert.match(operacional, /acoesSecundariasVisiveis\.map/);
 });
 
 test("Cockpit Vivo Premium anima instrumentos sem fabricar dado operacional", async () => {

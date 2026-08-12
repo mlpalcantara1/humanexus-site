@@ -743,6 +743,10 @@ export function CockpitOperacionalVivo({
     && cockpit.ao_vivo === true
     && !modoHistorico;
   const sessaoFinalizada = contextoSessao.estado === "FINALIZADA";
+  const acaoPrincipalVisivel = sessaoFinalizada ? "" : acaoPrincipal;
+  const acoesSecundariasVisiveis = sessaoFinalizada
+    ? acoesSecundarias.filter((comando) => comando === "ABRIR_REPLAY")
+    : acoesSecundarias;
   const graficos = useMemo(
     () => trilhas(fontes.filter((fonte) => fonte.ao_vivo === true)),
     [fontes]
@@ -1539,7 +1543,7 @@ export function CockpitOperacionalVivo({
         </div>
         <div className="hx-live-operation-action">
           <small>COMANDO PRINCIPAL</small>
-          {acaoPrincipal === "PREPARAR_SESSAO" ? (
+          {acaoPrincipalVisivel === "PREPARAR_SESSAO" ? (
             <button
               className="hx-live-command__route"
               type="button"
@@ -1547,10 +1551,10 @@ export function CockpitOperacionalVivo({
             >
               IR PARA SESSÕES E PREPARAR
             </button>
-          ) : acaoPrincipal ? (
+          ) : acaoPrincipalVisivel ? (
             <button
               className={`hx-live-command__primary ${
-                acaoPrincipal.startsWith("ENCERRAR_") || acaoPrincipal === "CONCLUIR_SESSAO"
+                acaoPrincipalVisivel.startsWith("ENCERRAR_") || acaoPrincipalVisivel === "CONCLUIR_SESSAO"
                   ? "is-critical"
                   : ""
               }`}
@@ -1565,9 +1569,9 @@ export function CockpitOperacionalVivo({
               Sessão sem ação pendente
             </strong>
           )}
-          {acoesSecundarias.length ? (
+          {acoesSecundariasVisiveis.length ? (
             <div className="hx-live-operation-action__secondary" aria-label="Ações operacionais complementares">
-              {acoesSecundarias.map((comando) => (
+              {acoesSecundariasVisiveis.map((comando) => (
                 <button
                   className={comando.startsWith("ENCERRAR_") || comando === "CONCLUIR_SESSAO" ? "is-critical" : ""}
                   key={comando}
