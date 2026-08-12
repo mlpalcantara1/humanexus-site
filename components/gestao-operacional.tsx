@@ -1046,20 +1046,19 @@ export function GestaoOperacional({
     "ADMINISTRADOR_DO_SISTEMA",
     "ADMINISTRADOR_DA_ORGANIZACAO"
   ].includes(String(dados?.usuario.perfil));
-  const podeGerenciarParticipantes = [
-    "ADMINISTRADOR_PROPRIETARIO",
-    "ADMINISTRADOR_DO_SISTEMA",
-    "ADMINISTRADOR_DA_ORGANIZACAO",
-    "PROFISSIONAL_HUMANEXUS"
-  ].includes(String(dados?.usuario.perfil));
   const permissoesDoUsuario = Array.isArray(dados?.usuario.permissoes)
     ? dados.usuario.permissoes.map(String)
     : [];
   const podeConduzir = permissoesDoUsuario.includes("conduzir_sessao");
   const administradorProprietario =
     dados?.usuario.administrador_proprietario === true;
+  const podeGerenciarParticipantes = administradorProprietario || (
+    String(dados?.usuario.perfil) === "PROFISSIONAL_HUMANEXUS"
+    && permissoesDoUsuario.includes("gerenciar_participantes")
+  );
   const podeCriarOrganizacao =
-    permissoesDoUsuario.includes("criar_organizacao");
+    administradorProprietario
+    && permissoesDoUsuario.includes("criar_organizacao");
   const participanteAtualSelecionado = dados?.participantes.find(
     (item) => String(item.identificador) === participanteSelecionado
   );
@@ -1196,7 +1195,7 @@ export function GestaoOperacional({
   });
 
   const tabelaParticipantes = (
-    <section className="hx-management-table">
+    <section className="hx-management-table hx-management-table--participants">
       <header><div><small>PARTICIPANTES</small><h2>Cadastros no escopo</h2></div><span>{participantesVisiveis.length} registro(s)</span></header>
       <div className="hx-management-actions">
         <button type="button" onClick={() => setGrupoParticipante("TODOS")}>Todos</button>
@@ -1242,7 +1241,7 @@ export function GestaoOperacional({
                 >
                   Abrir ficha
                 </button>
-                {!administradorProprietario ? (
+                {podeGerenciarParticipantes ? (
                   <button
                     type="button"
                     disabled={ocupado}
@@ -1631,7 +1630,7 @@ export function GestaoOperacional({
 
       {modulo === "organizacoes" ? (
         <>
-        <div className="hx-management-grid">
+        <div className="hx-management-grid hx-management-grid--organizations">
           <form className="hx-record-form" onSubmit={async (evento: FormEvent) => {
             evento.preventDefault();
             const resultado = await executar(
@@ -1910,7 +1909,7 @@ export function GestaoOperacional({
               </fieldset>
             ) : null}
           </form>
-          <section className="hx-management-table">
+          <section className="hx-management-table hx-management-table--organizations">
             <header>
               <div><small>ORGANIZAÇÕES</small><h2>Diretório autorizado</h2></div>
               <span>{organizacoesVisiveis.length} registro(s)</span>
@@ -2049,7 +2048,7 @@ export function GestaoOperacional({
       ) : null}
 
       {modulo === "clientes" ? (
-        <div className="hx-management-grid">
+        <div className="hx-management-grid hx-management-grid--participants">
           <form className="hx-record-form" onSubmit={async (evento: FormEvent) => {
             evento.preventDefault();
             const formulario = new FormData(
@@ -2337,9 +2336,9 @@ export function GestaoOperacional({
                 })}
               </section>
             ) : null}
-            {administradorProprietario && participanteSelecionado ? (
+            {podeGerenciarParticipantes && participanteSelecionado ? (
               <fieldset className="hx-record-section">
-                <legend>Autonomia exclusiva do proprietário</legend>
+                <legend>Exclusão controlada</legend>
                 <button
                   type="button"
                   disabled={ocupado}
@@ -2354,57 +2353,111 @@ export function GestaoOperacional({
                   && impactoCritico.identificador
                     === participanteSelecionado ? (
                   <>
+                    {!administradorProprietario ? (
+                      <>
+                        <label>
+                          Senha do profissional autorizado
+                          <input
+                            type="password"
+                            autoComplete="current-password"
+                            value={operacaoCritica.senha}
+                            onChange={(evento) => setOperacaoCritica({
+                              ...operacaoCritica,
+                              senha: evento.target.value
+                            })}
+                          />
+                        </label>
+                        <label>
+                          Digite exatamente “{nomeDoParticipanteSelecionado}”
+                          <input
+                            value={operacaoCritica.confirmacao}
+                            onChange={(evento) => setOperacaoCritica({
+                              ...operacaoCritica,
+                              confirmacao: evento.target.value
+                            })}
+                          />
+                        </label>
+                      </>
+                    ) : null}
                     <p>
-                      Dependências encontradas: {
+                      Grupos de impacto encontrados: {
                         Number(
                           impactoCritico.quantidade_de_dependencias ?? 0
                         )
-                      }. A exclusão controlada preserva somente autoria,
-                      evidências e rastreabilidade indispensáveis.
+                      }. Autoria, evidências e rastreabilidade indispensáveis
+                      permanecem preservadas.
                     </p>
-                    <label>
-                      Organização de destino
-                      <select
-                        value={operacaoCritica.organizacao_destino}
-                        onChange={(evento) => setOperacaoCritica({
-                          ...operacaoCritica,
-                          organizacao_destino: evento.target.value
-                        })}
-                      >
-                        <option value="">Selecione para transferir</option>
-                        {dados.organizacoes
-                          .filter((item) =>
-                            item.identificador
-                              !== organizacaoAtual?.identificador
-                          )
-                          .map((item) => (
-                            <option
-                              key={String(item.identificador)}
-                              value={String(item.identificador)}
-                            >
-                              {texto(item.nome)}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
+                    {lista(impactoCritico.resumo_humano_do_impacto).length ? (
+                      <ul className="hx-human-impact-summary">
+                        {lista(impactoCritico.resumo_humano_do_impacto).map((item) => (
+                          <li key={String(item.categoria)}>
+                            {String(item.categoria) === "sessoes"
+                              ? "Sessões vinculadas"
+                              : String(item.categoria) === "contextos"
+                                ? "Contextos preservados"
+                                : String(item.categoria) === "anamneses"
+                                  ? "Anamneses preservadas"
+                                  : String(item.categoria) === "consentimentos"
+                                    ? "Consentimentos preservados"
+                                    : String(item.categoria) === "evidencias_tecnicas_preservadas"
+                                      ? "Evidências técnicas preservadas"
+                                      : "Registros vinculados"}
+                            {item.quantidade == null
+                              ? ""
+                              : `: ${Number(item.quantidade)}`}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>Nenhum vínculo operacional impede a exclusão imediata.</p>
+                    )}
+                    {administradorProprietario ? (
+                      <label>
+                        Organização de destino
+                        <select
+                          value={operacaoCritica.organizacao_destino}
+                          onChange={(evento) => setOperacaoCritica({
+                            ...operacaoCritica,
+                            organizacao_destino: evento.target.value
+                          })}
+                        >
+                          <option value="">Selecione para transferir</option>
+                          {dados.organizacoes
+                            .filter((item) =>
+                              item.identificador
+                                !== organizacaoAtual?.identificador
+                            )
+                            .map((item) => (
+                              <option
+                                key={String(item.identificador)}
+                                value={String(item.identificador)}
+                              >
+                                {texto(item.nome)}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                    ) : null}
                     <div className="hx-management-actions">
-                      <button
-                        type="button"
-                        disabled={
-                          ocupado
-                          || !operacaoCritica.senha
-                          || !operacaoCritica.confirmacao
-                          || !operacaoCritica.organizacao_destino
-                          || Number(
-                            impactoCritico.quantidade_de_dependencias ?? 0
-                          ) > 0
-                        }
-                        onClick={() =>
-                          void transferirParticipanteSelecionado()
-                        }
-                      >
-                        Transferir participante
-                      </button>
+                      {administradorProprietario ? (
+                        <button
+                          type="button"
+                          disabled={
+                            ocupado
+                            || !operacaoCritica.senha
+                            || !operacaoCritica.confirmacao
+                            || !operacaoCritica.organizacao_destino
+                            || Number(
+                              impactoCritico.quantidade_de_dependencias ?? 0
+                            ) > 0
+                          }
+                          onClick={() =>
+                            void transferirParticipanteSelecionado()
+                          }
+                        >
+                          Transferir participante
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         disabled={

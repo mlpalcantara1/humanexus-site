@@ -380,9 +380,16 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
   assert.match(operacional, /acaoPrincipal/);
   assert.match(operacional, /hx-live-operation-focus/);
   assert.match(operacional, /FLUXO OPERACIONAL/);
-  assert.match(operacional, /A ação principal permanece em foco acima/);
-  assert.match(operacional, /fornecidos exclusivamente pelo estado operacional do backend/);
+  assert.match(operacional, /Ações operacionais complementares/);
+  assert.match(operacional, /acoesSecundarias\.map/);
   assert.match(client, /proxima_acao_principal/);
+});
+
+test("Cockpit distingue IIRH vivo da referência basal da anamnese", async () => {
+  const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  assert.match(operacional, /leituraAoVivo\s*\? "Índice regulatório atual"/);
+  assert.match(operacional, /configuracaoBasalCanonica[\s\S]*"Referência basal · evidência da anamnese"/);
+  assert.match(operacional, /<span>\{naturezaDoIirh\}<\/span>/);
 });
 
 test("Cockpit cinematográfico prioriza HUD, leitura viva e condução sem alterar o núcleo", async () => {

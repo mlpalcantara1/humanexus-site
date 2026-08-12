@@ -297,6 +297,28 @@ test("organização e participante usam ficha completa, versionada e reabrível"
   assert.doesNotMatch(route, /\/api\/v1\/usuarios/);
 });
 
+test("governança de cadastros separa proprietário, profissional e volume técnico", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  const styles = await source("app/operational.css");
+  assert.match(
+    management,
+    /const podeGerenciarParticipantes = administradorProprietario \|\| \([\s\S]*PROFISSIONAL_HUMANEXUS[\s\S]*gerenciar_participantes/
+  );
+  assert.match(
+    management,
+    /const podeCriarOrganizacao =[\s\S]*administradorProprietario[\s\S]*criar_organizacao/
+  );
+  assert.match(management, /resumo_humano_do_impacto/);
+  assert.match(management, /Evidências técnicas preservadas/);
+  assert.match(management, /Senha do profissional autorizado/);
+  assert.doesNotMatch(
+    management,
+    /Dependências encontradas:[\s\S]{0,500}PARTICIPANTE/
+  );
+  assert.match(styles, /hx-management-table--organizations article/);
+  assert.match(styles, /hx-management-table--participants article/);
+});
+
 test("organização possui bases estruturadas e painel agregado com filtros B2B", async () => {
   const management = await source("components/gestao-operacional.tsx");
   const route = await source("app/api/gestao-operacional/route.ts");

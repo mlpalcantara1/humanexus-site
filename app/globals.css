@@ -1043,6 +1043,27 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
   min-height: 54px;
 }
 
+.hx-live-operation-action__secondary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 6px;
+}
+
+.hx-live-operation-action__secondary button {
+  min-height: 38px;
+  border: 1px solid rgba(205, 178, 116, .22);
+  background: rgba(5, 9, 11, .88);
+  color: #d7c27f;
+  font: 7px var(--font-geist-mono), monospace;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.hx-live-operation-action__secondary button.is-critical {
+  border-color: rgba(198, 110, 104, .42);
+  color: #d8a09b;
+}
+
 .hx-live-hud {
   position: relative;
   top: auto;

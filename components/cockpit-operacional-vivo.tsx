@@ -927,6 +927,11 @@ export function CockpitOperacionalVivo({
     && radarVetorial.every((item) => item.value != null);
   const iirhCalculado = apresentacaoRegulatoria.iirh != null;
   const iirhApresentado = apresentacaoRegulatoria.iirh;
+  const naturezaDoIirh = leituraAoVivo
+    ? "Índice regulatório atual"
+    : configuracaoBasalCanonica
+      ? "Referência basal · evidência da anamnese"
+      : "Sem leitura regulatória atual";
   const zonaCalculada = apresentacaoRegulatoria.zona != null;
   const zonaApresentada = apresentacaoRegulatoria.zona;
   const trajetoriaCalculada = leituraAoVivo && trajetoria.valor != null;
@@ -1366,7 +1371,7 @@ export function CockpitOperacionalVivo({
         <div className="is-decision">
           <small>IIRH</small>
           <strong>{iirhCalculado ? `${numero(iirhApresentado, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong>
-          <span>Índice regulatório atual</span>
+          <span>{naturezaDoIirh}</span>
         </div>
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{sessaoBaseline ? estadoDoBaseline : texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
@@ -1560,6 +1565,21 @@ export function CockpitOperacionalVivo({
               Sessão sem ação pendente
             </strong>
           )}
+          {acoesSecundarias.length ? (
+            <div className="hx-live-operation-action__secondary" aria-label="Ações operacionais complementares">
+              {acoesSecundarias.map((comando) => (
+                <button
+                  className={comando.startsWith("ENCERRAR_") || comando === "CONCLUIR_SESSAO" ? "is-critical" : ""}
+                  key={comando}
+                  type="button"
+                  onClick={() => executarSecundaria(comando)}
+                  disabled={ocupado || (!permitirOperacao && comando !== "ABRIR_REPLAY")}
+                >
+                  {rotuloDaSecundaria(comando)}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -2058,24 +2078,6 @@ export function CockpitOperacionalVivo({
             <span><small>RESPOSTA OBSERVADA</small><b>{texto(resumoDaResposta, "AGUARDANDO REGISTRO PROFISSIONAL")}</b></span>
           </div>
         </div>
-
-        <aside className="hx-live-command hx-live-command--secondary">
-          <small>AÇÕES SECUNDÁRIAS PERMITIDAS</small>
-          <div>
-            {acoesSecundarias.map((comando) => (
-              <button
-                className={comando.startsWith("ENCERRAR_") || comando === "CONCLUIR_SESSAO" ? "is-critical" : ""}
-                key={comando}
-                type="button"
-                onClick={() => executarSecundaria(comando)}
-                disabled={ocupado || (!permitirOperacao && comando !== "ABRIR_REPLAY")}
-              >
-                {rotuloDaSecundaria(comando)}
-              </button>
-            ))}
-          </div>
-          <span>A ação principal permanece em foco acima. Comandos complementares são fornecidos exclusivamente pelo estado operacional do backend.</span>
-        </aside>
 
         <div className="hx-live-register">
           <header><small>REGISTRO PROFISSIONAL</small><strong>Contexto preenchido automaticamente</strong></header>

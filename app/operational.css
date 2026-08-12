@@ -747,6 +747,62 @@
   grid-column: 1 / -1;
 }
 
+.hx-management-grid.hx-management-grid--organizations,
+.hx-management-grid.hx-management-grid--participants {
+  grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr);
+}
+
+.hx-management-grid--organizations > .hx-record-form,
+.hx-management-grid--organizations > .hx-management-table,
+.hx-management-grid--participants > .hx-record-form {
+  grid-column: auto;
+  min-width: 0;
+}
+
+.hx-management-table--organizations article {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 1.2fr)
+    minmax(140px, .8fr)
+    minmax(80px, .45fr)
+    minmax(70px, .35fr)
+    minmax(110px, auto);
+}
+
+.hx-management-table--participants article {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 1.1fr)
+    minmax(120px, .65fr)
+    minmax(170px, 1fr)
+    minmax(130px, .8fr)
+    minmax(70px, .4fr)
+    minmax(60px, .3fr)
+    minmax(150px, auto);
+}
+
+.hx-management-table--organizations article > div,
+.hx-management-table--participants article > div {
+  min-width: 0;
+}
+
+.hx-management-table--organizations article strong,
+.hx-management-table--participants article strong {
+  overflow-wrap: anywhere;
+}
+
+.hx-human-impact-summary {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 12px 14px 12px 30px;
+  border: 1px solid rgba(210, 179, 109, .16);
+  background: rgba(210, 179, 109, .035);
+  color: rgba(218, 231, 234, .76);
+  font-size: .72rem;
+  line-height: 1.45;
+}
+
 .hx-record-form__title,
 .hx-management-actions {
   display: flex;
@@ -1141,6 +1197,12 @@
     grid-template-columns: 1fr;
   }
 
+  .hx-management-grid--organizations > .hx-record-form,
+  .hx-management-grid--organizations > .hx-management-table,
+  .hx-management-grid--participants > .hx-record-form {
+    grid-column: 1;
+  }
+
   .hx-fields-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1169,6 +1231,11 @@
   }
 
   .hx-management-table--sessions article {
+    display: flex;
+  }
+
+  .hx-management-table--organizations article,
+  .hx-management-table--participants article {
     display: flex;
   }
 
