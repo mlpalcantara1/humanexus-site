@@ -22,6 +22,10 @@ import {
   vetoresDaVisao,
   type VisaoVetorial
 } from "@/lib/cockpit-vector-views";
+import {
+  estadoOperacionalTerminal,
+  operacaoCanonicaTerminal
+} from "@/lib/cockpit-terminal-eligibility";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 
 type Registro = Record<string, unknown>;
@@ -742,11 +746,7 @@ export function CockpitOperacionalVivo({
   const leituraAoVivo = projecaoOperacionalAtual
     && cockpit.ao_vivo === true
     && !modoHistorico;
-  const sessaoFinalizada = contextoSessao.estado === "FINALIZADA";
-  const acaoPrincipalVisivel = sessaoFinalizada ? "" : acaoPrincipal;
-  const acoesSecundariasVisiveis = sessaoFinalizada
-    ? acoesSecundarias.filter((comando) => comando === "ABRIR_REPLAY")
-    : acoesSecundarias;
+  const sessaoFinalizada = estadoOperacionalTerminal(contextoSessao.estado);
   const graficos = useMemo(
     () => trilhas(fontes.filter((fonte) => fonte.ao_vivo === true)),
     [fontes]
@@ -772,6 +772,19 @@ export function CockpitOperacionalVivo({
   const estadoDoBaseline = registroBaseline.estado === "INICIADO"
     ? "EM EXECUÇÃO"
     : texto(registroBaseline.estado, texto(contextoSessao.estado));
+  const fluxoIndependente = tipoDaSessao !== "PRE_TREINO_POS";
+  const estadoDaFaseIndependente = registroBaseline.estado
+    ?? estadoOperacional.estado_da_fase
+    ?? execucao.estado;
+  const operacaoFinalizada = operacaoCanonicaTerminal({
+    estadoDaSessao: contextoSessao.estado,
+    fluxoIndependente,
+    estadoDaFaseIndependente
+  });
+  const acaoPrincipalVisivel = operacaoFinalizada ? "" : acaoPrincipal;
+  const acoesSecundariasVisiveis = operacaoFinalizada
+    ? acoesSecundarias.filter((comando) => comando === "ABRIR_REPLAY")
+    : acoesSecundarias;
   const ciencia = objeto(estado.ciencia);
   const leituraCientifica = objeto(cockpit.leitura_cientifica);
   const iirh = objeto(leituraCientifica.iirh);

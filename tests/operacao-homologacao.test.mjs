@@ -6,6 +6,10 @@ import {
   fonteDuranteSincronizacao,
   podeAplicarRespostaCanonica
 } from "../lib/cockpit-live-coordination.ts";
+import {
+  estadoOperacionalTerminal,
+  operacaoCanonicaTerminal
+} from "../lib/cockpit-terminal-eligibility.ts";
 import { formatarPercentualCanonico } from "../lib/percentual-canonico.ts";
 
 const root = new URL("../", import.meta.url);
@@ -499,13 +503,31 @@ test("registro profissional rápido herda o contexto e Replay segue sem mídia",
 
 test("sessão finalizada não oferece novo encerramento no Cockpit", async () => {
   const operacional = await source("components/cockpit-operacional-vivo.tsx");
+  assert.equal(estadoOperacionalTerminal("FINALIZADA"), true);
+  assert.equal(estadoOperacionalTerminal("concluído"), true);
+  assert.equal(estadoOperacionalTerminal("PAUSADA"), false);
+  assert.equal(operacaoCanonicaTerminal({
+    estadoDaSessao: "CRIADA",
+    fluxoIndependente: true,
+    estadoDaFaseIndependente: "REALIZADO"
+  }), true);
+  assert.equal(operacaoCanonicaTerminal({
+    estadoDaSessao: "CRIADA",
+    fluxoIndependente: false,
+    estadoDaFaseIndependente: "FINALIZADO"
+  }), false);
+  assert.match(operacional, /const fluxoIndependente = tipoDaSessao !== "PRE_TREINO_POS"/);
   assert.match(
     operacional,
-    /const acaoPrincipalVisivel = sessaoFinalizada \? "" : acaoPrincipal/
+    /const operacaoFinalizada = operacaoCanonicaTerminal/
   );
   assert.match(
     operacional,
-    /const acoesSecundariasVisiveis = sessaoFinalizada[\s\S]*?comando === "ABRIR_REPLAY"/
+    /const acaoPrincipalVisivel = operacaoFinalizada \? "" : acaoPrincipal/
+  );
+  assert.match(
+    operacional,
+    /const acoesSecundariasVisiveis = operacaoFinalizada[\s\S]*?comando === "ABRIR_REPLAY"/
   );
   assert.match(operacional, /acaoPrincipalVisivel === "PREPARAR_SESSAO"/);
   assert.match(operacional, /acoesSecundariasVisiveis\.map/);
