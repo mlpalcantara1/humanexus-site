@@ -440,7 +440,15 @@ async function estado(
       ? principais.estadoOperacional
       : registro(cockpitOperacional.estado_operacional)
   ) as Registro;
-  const ctr = ctrs.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
+  const ctr = ctrs
+    .filter((item) => item.identificador_da_sessao === sessao.identificador)
+    .sort((a, b) => {
+      const revisao = Number(b.numero_da_revisao ?? 0) - Number(a.numero_da_revisao ?? 0);
+      if (revisao) return revisao;
+      return String(b.atualizado_em ?? b.criado_em ?? "").localeCompare(
+        String(a.atualizado_em ?? a.criado_em ?? "")
+      );
+    })[0] ?? null;
   const execucao = execucoes.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
   const usuariosDisponiveis = contextoBase.profissionais;
   const vinculosOficiais = contextoBase.vinculos_ctr_thx_validados;

@@ -566,11 +566,23 @@ function fasesComparaveis(estado: Estado) {
 }
 
 function Rastreabilidade({ estado }: { estado: Estado }) {
-  const cadeia = objeto(estado.rastreabilidade?.cadeia);
+  const cadeiaCientifica = objeto(
+    objeto(estado.cockpit_operacional).cadeia_cientifica
+  );
+  const cadeia = Object.keys(cadeiaCientifica).length
+    ? cadeiaCientifica
+    : objeto(estado.rastreabilidade?.cadeia);
+  const valorRastreavel = (valor: unknown) => {
+    const item = objeto(valor);
+    if (Object.keys(item).length) {
+      return item.estado ?? item.codigo ?? item.identificador ?? item.nome;
+    }
+    return valor;
+  };
   const itens: [string, unknown][] = [
-    ["ARR", cadeia.arr],
-    ["RRO", cadeia.rro],
-    ["NRA", cadeia.nra],
+    ["ARR", valorRastreavel(cadeia.arr)],
+    ["RRO", valorRastreavel(cadeia.rro)],
+    ["NRA", valorRastreavel(cadeia.nra)],
     ["CTR individual", estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador],
     ["THX individual", estado.thx_individual?.identificador],
     ["Execução", estado.execucao?.identificador],
@@ -588,7 +600,7 @@ function Rastreabilidade({ estado }: { estado: Estado }) {
         {itens.map(([nome, valor]) => (
           <article key={nome} className={valor ? "is-present" : "is-missing"}>
             <small>{nome}</small>
-            <strong>{valor ? texto(valor) : "NÃO DISPONÍVEL NESTA SIMULAÇÃO"}</strong>
+            <strong>{valor ? texto(valor) : "SEM REGISTRO NESTA SESSÃO"}</strong>
           </article>
         ))}
       </div>
@@ -656,7 +668,7 @@ function Identificacao({ estado }: { estado: Estado }) {
     <section className="hx-identification">
       <article>
         <p>CTR INDIVIDUAL EXISTENTE</p>
-        <h3>{texto(estado.ctr_individual?.identificador)}</h3>
+        <h3>{texto(estado.ctr_individual?.codigo)} · {texto(estado.ctr_individual?.nome)}</h3>
         <dl>
           <div><dt>Situação</dt><dd>{texto(estado.ctr_individual?.situacao)}</dd></div>
           <div><dt>Origem do vínculo</dt><dd>{texto(estado.ctr_individual?.origem_do_vinculo)}</dd></div>
@@ -676,7 +688,11 @@ function Identificacao({ estado }: { estado: Estado }) {
           <div><dt>CTR vinculado</dt><dd>{texto(estado.thx_individual?.ctr_vinculado)}</dd></div>
           <div><dt>Profissional</dt><dd>{texto(estado.thx_individual?.profissional_que_autorizou)}</dd></div>
         </dl>
-        <p className="hx-identification__restriction">PROTOCOLO SIMULADO · NÃO EXECUTÁVEL COMO PROTOCOLO HUMANO REAL</p>
+        <p className="hx-identification__restriction">
+          {estado.thx_individual?.executavel_como_protocolo_humano
+            ? "PROTOCOLO AUTORIZADO PARA CONDUÇÃO PROFISSIONAL"
+            : "VÍNCULO DOCUMENTAL · NÃO EXECUTÁVEL COMO PROTOCOLO HUMANO REAL"}
+        </p>
       </article>
     </section>
   );

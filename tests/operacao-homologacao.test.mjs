@@ -72,6 +72,18 @@ test("CTR e THX individuais não usam a versão do catálogo como identificador"
   assert.doesNotMatch(client, /codigo_do_catalogo/);
 });
 
+test("CTR e THX projetam a revisão profissional atual sem rótulo falso de simulação", async () => {
+  const route = await source("app/api/operacao-homologacao/route.ts");
+  const client = await source("components/operacao-homologacao.tsx");
+  assert.match(route, /numero_da_revisao/);
+  assert.match(route, /atualizado_em/);
+  assert.match(client, /ctr_individual\?\.codigo.*ctr_individual\?\.nome/s);
+  assert.match(client, /executavel_como_protocolo_humano/);
+  assert.match(client, /PROTOCOLO AUTORIZADO PARA CONDUÇÃO PROFISSIONAL/);
+  assert.match(client, /SEM REGISTRO NESTA SESSÃO/);
+  assert.doesNotMatch(client, /PROTOCOLO SIMULADO|NÃO DISPONÍVEL NESTA SIMULAÇÃO/);
+});
+
 test("simulação técnica não produz IIRH, zona ou evidência humana", async () => {
   const route = await source("app/api/operacao-homologacao/route.ts");
   const client = await source("components/operacao-homologacao.tsx");
