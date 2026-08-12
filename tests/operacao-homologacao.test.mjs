@@ -314,6 +314,15 @@ test("produtos científicos e infraestrutura estão integrados sem virar módulo
   assert.match(client, /Diagnóstico técnico protegido/);
 });
 
+test("Modo Coletivo identifica a visão ativa sem fabricar amostra ou índice", async () => {
+  const client = await source("components/operacao-homologacao.tsx");
+  assert.match(client, /selecionarVisao\("visao-geral"\).*Cockpit Individual/s);
+  assert.match(client, /className="is-active" aria-current="page">Cockpit Coletivo/);
+  assert.match(client, /AMOSTRA NÃO ELEGÍVEL/);
+  assert.match(client, /Não há equipe autorizada, finalidade coletiva, anonimização ou amostra elegível/);
+  assert.doesNotMatch(client, /disabled>Cockpit Coletivo/);
+});
+
 test("Painel de Comando é operacional e não duplica análise científica", async () => {
   const panel = await source("components/modulo-integrado.tsx");
   for (const action of ["Consultar organizações", "Consultar participantes", "Gerar convite de Anamnese", "Abrir sessão técnica", "Abrir Cockpit Vivo"]) {

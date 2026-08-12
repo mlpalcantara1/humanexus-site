@@ -2677,7 +2677,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const visaoColetiva = (
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="MODO COLETIVO DO COCKPIT" titulo="Alternância Individual / Coletivo preservando privacidade." descricao="Organização, equipe, período, finalidade, cobertura e amostra elegível são obrigatórios." />
-      <div className="hx-mode-switch"><button type="button" className="is-active">Cockpit Individual</button><button type="button" disabled>Cockpit Coletivo</button></div>
+      <div className="hx-mode-switch">
+        <button type="button" onClick={() => selecionarVisao("visao-geral")}>Cockpit Individual</button>
+        <button type="button" className="is-active" aria-current="page">Cockpit Coletivo</button>
+      </div>
       <EmptySignalState title="COBERTURA E AMOSTRA COLETIVA" status="AMOSTRA NÃO ELEGÍVEL" reason="A sessão atual é técnica e individual. Não há equipe autorizada, finalidade coletiva, anonimização ou amostra elegível." />
     </section>
   );
