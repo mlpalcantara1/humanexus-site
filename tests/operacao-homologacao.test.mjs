@@ -482,9 +482,12 @@ test("Cockpit de Inteligência Regulatória concentra decisão e preserva uma fo
     "Resposta à Intervenção"
   ]) assert.match(operacional, new RegExp(instrumento));
 
-  assert.match(operacional, /tracks=\{\[trilhaNeuroregulatoriaSelecionada\]\}/);
-  assert.match(operacional, /tracks=\{\[trilhaAutonomicaSelecionada\]\}/);
-  assert.match(operacional, /tracks=\{\[trilhaDaRespostaSelecionada\]\}/);
+  assert.match(operacional, /tracks=\{trilhasNeuroregulatorias\}/);
+  assert.match(operacional, /tracks=\{trilhasAutonomicas\}/);
+  assert.match(operacional, /tracks=\{trilhasDaResposta\}/);
+  assert.doesNotMatch(operacional, /aria-label="Métrica neuroregulatória"/);
+  assert.doesNotMatch(operacional, /aria-label="Sinal autonômico"/);
+  assert.doesNotMatch(operacional, /aria-label="Camada da resposta à intervenção"/);
   assert.match(operacional, /Nenhuma composição científica é calculada no portal/);
   assert.match(operacional, /qualidade EEG não é usada como substituta/);
   assert.match(operacional, /Salvar rascunho/);
@@ -569,6 +572,7 @@ test("HUMANEXUS Design System unifica módulos e separa profundidade sem alterar
   const modo = await source("components/experience-mode-control.tsx");
   const navegacao = await source("components/platform-navigation.tsx");
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const operacao = await source("components/operacao-homologacao.tsx");
   const demonstracao = await source("components/cockpit-demonstracao-visual.tsx");
 
   assert.match(estilos, /HUMANEXUS DESIGN SYSTEM — Command Experience 1\.0/);
@@ -594,10 +598,9 @@ test("HUMANEXUS Design System unifica módulos e separa profundidade sem alterar
     "Relatórios e exportação", "Administração", "Configurações"
   ]) assert.match(navegacao, new RegExp(modulo.replaceAll("·", "\\·")));
 
-  assert.match(cockpit, /01<\/span>\s*<strong>Decisão/);
-  assert.match(cockpit, /02<\/span>\s*<strong>Vetores/);
-  assert.match(cockpit, /03<\/span>\s*<strong>Comando/);
-  assert.match(cockpit, /04<\/span>\s*<strong>Intervenção/);
+  assert.doesNotMatch(cockpit, /className="hx-live-levels"/);
+  assert.match(operacao, /<small>EXECUÇÃO<\/small>/);
+  assert.match(operacao, /<small>ANÁLISE<\/small>/);
   assert.match(demonstracao, /SEM CÁLCULO · SEM FALLBACK/);
   assert.match(demonstracao, /Ausência não convertida em zero/);
 });
@@ -660,9 +663,9 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
     design,
     /\[data-hx-experience-mode="executivo"\] \.hx-live-cockpit > #hx-inspection-level/
   );
-  assert.doesNotMatch(
+  assert.match(
     design,
-    /^\.hx-live-cockpit > #hx-inspection-level/m
+    /\.hx-live-cockpit > #hx-inspection-level,[\s\S]*display: none !important/
   );
   assert.match(cockpit, /o contexto operacional vem do núcleo/);
   assert.match(css, /Cockpit operacional = decisão/);

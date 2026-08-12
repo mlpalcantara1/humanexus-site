@@ -697,11 +697,6 @@ export function CockpitOperacionalVivo({
   const [registro, setRegistro] = useState("");
   const [registroEmEnvio, setRegistroEmEnvio] = useState(false);
   const [estadoDoRascunho, setEstadoDoRascunho] = useState("");
-  const [metricaNeuroSelecionada, setMetricaNeuroSelecionada] = useState<string>(
-    METRICAS_DE_DESEMPENHO_VISIVEIS[0]
-  );
-  const [sinalAutonomicoSelecionado, setSinalAutonomicoSelecionado] = useState("polar-hr");
-  const [sinalDaRespostaSelecionado, setSinalDaRespostaSelecionado] = useState("polar-hr");
   const cockpit = objeto(estado.cockpit_operacional);
   const sessao = objeto(cockpit.sessao);
   const contextoSessao = objeto(estado.sessao);
@@ -1264,19 +1259,10 @@ export function CockpitOperacionalVivo({
       trilha.name as typeof METRICAS_DE_DESEMPENHO_VISIVEIS[number]
     )
   );
-  const trilhaNeuroregulatoriaSelecionada = trilhasNeuroregulatorias.find(
-    (trilha) => trilha.name === metricaNeuroSelecionada
-  );
   const trilhasAutonomicas = graficos.filter((trilha) =>
     ["polar-hr", "polar-rmssd"].includes(trilha.id)
   );
-  const trilhaAutonomicaSelecionada = trilhasAutonomicas.find(
-    (trilha) => trilha.id === sinalAutonomicoSelecionado
-  );
   const trilhasDaResposta = [...trilhasAutonomicas, ...trilhasNeuroregulatorias];
-  const trilhaDaRespostaSelecionada = trilhasDaResposta.find(
-    (trilha) => trilha.id === sinalDaRespostaSelecionado
-  );
   const chaveDoRascunho = [
     "humanexus:registro-profissional:v1",
     texto(usuario.identificador, "usuario"),
@@ -1320,12 +1306,6 @@ export function CockpitOperacionalVivo({
 
   return (
     <section className="hx-live-cockpit" data-cockpit-mode={cockpit.modo}>
-      <nav className="hx-live-levels" aria-label="Arquitetura do Centro de Comando">
-        <a href="#hx-decision-level"><span>01</span><strong>Decisão</strong></a>
-        <a href="#hx-regulation-level"><span>02</span><strong>Vetores</strong></a>
-        <a href="#hx-command-level"><span>03</span><strong>Comando</strong></a>
-        <a href="#hx-intervention-level"><span>04</span><strong>Intervenção</strong></a>
-      </nav>
       <header className="hx-live-cockpit__masthead">
         <div className="hx-live-masthead-rail" aria-hidden="true"><i /><i /><i /></div>
         <div>
@@ -1614,12 +1594,12 @@ export function CockpitOperacionalVivo({
                 vectors={vetoresDaVisaoAtual}
               />
             </div>
-            <div className="hx-live-vector-list" aria-label={`Estado vetorial — visão ${visaoVetorial}`}>
-              {vetoresDaVisaoAtual.map((vetor) => {
+            <div className="hx-live-vector-list" aria-label="Estado individual dos dez vetores oficiais">
+              {radarVetorial.map((vetor) => {
                 return (
                   <div className={vetor.value == null ? "is-missing" : "has-value"} key={vetor.code}>
                     <div>
-                      <span><b>{vetor.code}</b>{vetor.name}</span>
+                      <span className="hx-live-vector-identity"><b>{vetor.code}</b>{vetor.name}</span>
                       <strong>
                         {vetor.value == null
                           ? "NÃO CALCULÁVEL"
@@ -1644,17 +1624,7 @@ export function CockpitOperacionalVivo({
             <HxSectionHeader
               eyebrow="NEUROTELEMETRIA CANÔNICA"
               title="Funcionamento Neuroregulatório"
-              aside={(
-                <select
-                  aria-label="Métrica neuroregulatória"
-                  value={metricaNeuroSelecionada}
-                  onChange={(evento) => setMetricaNeuroSelecionada(evento.target.value)}
-                >
-                  {METRICAS_DE_DESEMPENHO_VISIVEIS.map((nome) => (
-                    <option key={nome} value={nome}>{nome}</option>
-                  ))}
-                </select>
-              )}
+              aside={<span>Seis métricas canônicas simultâneas</span>}
             />
             <div className="hx-live-neuro-summary" aria-label="Valores neuroregulatórios atuais">
               {METRICAS_DE_DESEMPENHO_VISIVEIS.map((nome) => {
@@ -1662,7 +1632,7 @@ export function CockpitOperacionalVivo({
                   (item) => String(item.nome) === nome
                 );
                 return (
-                  <span className={nome === metricaNeuroSelecionada ? "is-selected" : ""} key={nome}>
+                  <span key={nome}>
                     <small>{nome}</small>
                     <b>{metrica?.valor_atual == null
                       ? "AUSENTE"
@@ -1671,15 +1641,15 @@ export function CockpitOperacionalVivo({
                 );
               })}
             </div>
-            {trilhaNeuroregulatoriaSelecionada ? (
+            {trilhasNeuroregulatorias.length ? (
               <CockpitSignalStack
-                tracks={[trilhaNeuroregulatoriaSelecionada]}
+                tracks={trilhasNeuroregulatorias}
                 markers={marcadores}
                 phases={faixas}
                 showTechnicalLegend={false}
               />
             ) : (
-              <InstrumentoSemLeitura mensagem="A métrica Cortex selecionada permanece ausente; qualidade EEG não é usada como substituta." />
+              <InstrumentoSemLeitura mensagem="As métricas Cortex permanecem ausentes; qualidade EEG não é usada como substituta." />
             )}
           </HxSurface>
 
@@ -1687,26 +1657,17 @@ export function CockpitOperacionalVivo({
             <HxSectionHeader
               eyebrow="POLAR H10"
               title="Regulação Autonômica"
-              aside={(
-                <select
-                  aria-label="Sinal autonômico"
-                  value={sinalAutonomicoSelecionado}
-                  onChange={(evento) => setSinalAutonomicoSelecionado(evento.target.value)}
-                >
-                  <option value="polar-hr">Frequência cardíaca</option>
-                  <option value="polar-rmssd">RMSSD</option>
-                </select>
-              )}
+              aside={<span>FC + RMSSD · escalas preservadas</span>}
             />
-            {trilhaAutonomicaSelecionada ? (
+            {trilhasAutonomicas.length ? (
               <CockpitSignalStack
-                tracks={[trilhaAutonomicaSelecionada]}
+                tracks={trilhasAutonomicas}
                 markers={marcadores}
                 phases={faixas}
                 showTechnicalLegend={false}
               />
             ) : (
-              <InstrumentoSemLeitura mensagem="Polar H10 sem série atual para o sinal selecionado. A última leitura histórica não é reutilizada." />
+              <InstrumentoSemLeitura mensagem="Polar H10 sem séries atuais de FC e RMSSD. A última leitura histórica não é reutilizada." />
             )}
           </HxSurface>
 
@@ -1729,23 +1690,11 @@ export function CockpitOperacionalVivo({
             <HxSectionHeader
               eyebrow="ANTES · INTERVENÇÃO · DEPOIS"
               title="Resposta à Intervenção"
-              aside={(
-                <select
-                  aria-label="Camada da resposta à intervenção"
-                  value={sinalDaRespostaSelecionado}
-                  onChange={(evento) => setSinalDaRespostaSelecionado(evento.target.value)}
-                >
-                  <option value="polar-hr">Frequência cardíaca</option>
-                  <option value="polar-rmssd">RMSSD</option>
-                  {trilhasNeuroregulatorias.map((trilha) => (
-                    <option key={trilha.id} value={trilha.id}>{trilha.name}</option>
-                  ))}
-                </select>
-              )}
+              aside={<span>Séries canônicas simultâneas</span>}
             />
-            {trilhaDaRespostaSelecionada ? (
+            {trilhasDaResposta.length ? (
               <CockpitSignalStack
-                tracks={[trilhaDaRespostaSelecionada]}
+                tracks={trilhasDaResposta}
                 markers={marcadores}
                 phases={faixas}
                 showTechnicalLegend={false}

@@ -22,8 +22,8 @@ test("HUD preserva dez posições operacionais simétricas em duas linhas no des
     css,
     /HUMANEXUS PREMIUM EXPERIENCE 2\.0[\s\S]*?\.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(5,[^;]+\);/
   );
-  assert.match(css, /\.hx-live-hud\s*\{[\s\S]*?grid-auto-rows:\s*80px;/);
-  assert.match(css, /\.hx-live-hud > div\s*\{[\s\S]*?height:\s*80px;/);
+  assert.match(css, /\.hx-live-hud\s*\{[\s\S]*?grid-auto-rows:\s*72px;/);
+  assert.match(css, /\.hx-live-hud > div\s*\{[\s\S]*?height:\s*72px;/);
   assert.match(css, /\.hx-live-hud__detail\s*\{[\s\S]*?min-height:\s*0 !important;/);
   assert.match(css, /@media \(max-width: 1560px\)[\s\S]*?\.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(5,/);
   assert.match(css, /@media \(max-width: 520px\)[\s\S]*?\.hx-app--executive \.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,/);
@@ -38,9 +38,16 @@ test("Sessões usa composição larga e empilha antes de comprimir a tabela", ()
 
 test("radar permanece protagonista e ausência continua visualmente distinta", () => {
   assert.match(css, /\.hx-live-vector-stage \.hx-vector-radar-live/);
+  assert.match(css, /\.hx-live-vector-stage\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) minmax\(0, 1fr\);/);
   assert.match(css, /\.hx-live-vector-stage \.hx-live-vector-list > div/);
+  assert.match(css, /\.hx-live-vector-stage \.hx-live-vector-identity\s*\{[\s\S]*?white-space:\s*nowrap;/);
   assert.match(css, /\.hx-vector-radar-live__label-state/);
   assert.doesNotMatch(css, /\.hx-live-vector-stage[^}]*content:\s*["']0/);
+});
+
+test("Cockpit usa uma taxonomia de navegação e mantém ciência fora da superfície operacional", () => {
+  assert.match(css, /\.hx-app:has\(\.hx-cockpit-workspace\) \.hx-experience-mode\s*\{[\s\S]*?display:\s*none;/);
+  assert.match(css, /\.hx-live-cockpit > #hx-inspection-level,[\s\S]*?display:\s*none !important;/);
 });
 
 test("responsividade cobre notebook, tablet e celular sem nova dependência", () => {
