@@ -358,6 +358,7 @@ test("novos cadastros preservam escopo e proprietário reautentica ações crít
 
 test("painel e gestão evitam waterfall e carga global duplicada", async () => {
   const modules = await source("components/modulo-integrado.tsx");
+  const lab = await source("app/api/plataforma/lab/route.ts");
   const summary = await source("app/api/plataforma/resumo/route.ts");
   const management = await source("app/api/gestao-operacional/route.ts");
 
@@ -365,6 +366,9 @@ test("painel e gestão evitam waterfall e carga global duplicada", async () => {
   assert.doesNotMatch(summary, /FONTES_GERAIS/);
   assert.match(modules, /exigeConsultaGlobal/);
   assert.match(modules, /"painel",\s*"formulacao",\s*"humanexus-lab"/);
+  assert.match(lab, /\/api\/v1\/humanexus-lab\?modo=indice/);
+  assert.match(modules, /await Promise\.all\(/);
+  assert.match(modules, /setResposta[\s\S]*?const avisos/);
   assert.match(management, /\/api\/v1\/gestao\/contexto/);
 });
 

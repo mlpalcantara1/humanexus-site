@@ -12,14 +12,16 @@ export async function GET() {
   try {
     // O próprio núcleo aplica a permissão exclusiva do Administrador Proprietário.
     const dados = await requisitarNucleoAutenticado<unknown>(
-      "/api/v1/humanexus-lab",
-      token
+      "/api/v1/humanexus-lab?modo=indice",
+      token,
+      {},
+      { tentativas: 2, tempoLimiteMs: 5000 }
     );
     return NextResponse.json({ dados });
   } catch (erro) {
     return responderErroDaApi(erro, {
       modulo: "HUMANEXUS_LAB",
-      rota: "/api/v1/humanexus-lab",
+      rota: "/api/v1/humanexus-lab?modo=indice",
       mensagemDeAcessoNegado: "HUMANEXUS LAB disponível somente ao Administrador Proprietário."
     });
   }

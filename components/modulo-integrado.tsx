@@ -172,7 +172,15 @@ function Replay({ recurso }: { recurso?: Recurso }) {
 
 function Lab({ dados, php, anamnese, avisos }: { dados: unknown; php: DadosPHP | null; anamnese: DadosAnamneseLab | null; avisos: string[] }) {
   const hrefComContexto = useHrefComContexto();
-  const entradas = dados && typeof dados === "object" && !Array.isArray(dados) ? Object.entries(dados as Record<string, unknown>) : [];
+  const objeto = dados && typeof dados === "object" && !Array.isArray(dados)
+    ? dados as Record<string, unknown>
+    : null;
+  const historico = Array.isArray(objeto?.historico)
+    ? objeto.historico.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+    : [];
+  const entradas = historico.length
+    ? historico.map((item, indice) => [String(item.codigo ?? `modulo-${indice + 1}`), item] as const)
+    : objeto ? Object.entries(objeto) : [];
   return <div className="hx-lab">
     <section className="hx-lab__intro"><div><p>AMBIENTE OFICIAL DE HOMOLOGAÇÃO</p><h2>Constituição científica e rastreabilidade em consulta viva.</h2></div><Estado ativo>acesso de proprietário validado pelo núcleo</Estado></section>
     <section className="hx-lab__cockpit">
@@ -181,7 +189,12 @@ function Lab({ dados, php, anamnese, avisos }: { dados: unknown; php: DadosPHP |
     </section>
     {avisos.length ? <aside className="hx-lab__partial" role="status"><strong>Dados parciais preservados</strong>{avisos.map((aviso) => <span key={aviso}>{aviso}</span>)}</aside> : null}
     <section className="hx-lab__grid">
-      {entradas.length ? entradas.map(([chave, valor], indice) => <article className="hx-lab-card" key={chave}><span>{String(indice + 1).padStart(2, "0")}</span><p>{humanizar(chave)}</p><strong>{descricaoDosDados(valor)}</strong><small>FONTE OFICIAL · INSPEÇÃO AUTORIZADA</small></article>) : <article className="hx-lab-card hx-lab-card--empty"><p>Validação em consulta</p><strong>O núcleo não retornou módulos homologáveis para este contexto.</strong><small>NENHUM DADO FOI SUBSTITUÍDO</small></article>}
+      {entradas.length ? entradas.map(([chave, valor], indice) => {
+        const moduloDoIndice = valor && typeof valor === "object" && !Array.isArray(valor)
+          ? valor as Record<string, unknown>
+          : null;
+        return <article className="hx-lab-card" key={chave}><span>{String(indice + 1).padStart(2, "0")}</span><p>{humanizar(chave)}</p><strong>{moduloDoIndice?.nome ? texto(moduloDoIndice.nome, humanizar(chave)) : descricaoDosDados(valor)}</strong><small>{moduloDoIndice?.estado ? `${texto(moduloDoIndice.estado, "ESTADO PRESERVADO")} · ` : ""}FONTE OFICIAL · INSPEÇÃO AUTORIZADA</small></article>;
+      }) : <article className="hx-lab-card hx-lab-card--empty"><p>Validação em consulta</p><strong>O núcleo não retornou módulos homologáveis para este contexto.</strong><small>NENHUM DADO FOI SUBSTITUÍDO</small></article>}
     </section>
     {php
       ? <ParametrizacaoProspectiva dados={php} />
@@ -223,14 +236,20 @@ export function ModuloIntegrado({ modulo }: { modulo: ModuloDaPlataforma }) {
       : `/api/plataforma/resumo?modulo=${encodeURIComponent(modulo)}`;
     try {
       const dados = await consultarJson<{ dados?: unknown } | Resposta>(destino, { signal });
+      setResposta(modulo === "humanexus-lab"
+        ? { recursos: [{ nome: "humanexus-lab", disponivel: true, dados: (dados as { dados?: unknown }).dados }], usuario: { perfil: "ADMINISTRADOR_PROPRIETARIO", permissoes: [] } }
+        : dados as Resposta);
+      setErro("");
+      if (falhouAntes.current) setMensagem("Conexão restabelecida.");
+      falhouAntes.current = false;
       const avisos: string[] = [];
       let proximaAnamnese: DadosAnamneseLab | null = null;
       let proximoPhp: DadosPHP | null = null;
       if (modulo === "humanexus-lab") {
-        for (const adicional of [
+        await Promise.all([
           { caminho: "/api/plataforma/governanca-anamnese", aplicar: (valor: unknown) => { proximaAnamnese = valor as DadosAnamneseLab; } },
           { caminho: "/api/plataforma/governanca-restrita", aplicar: (valor: unknown) => { proximoPhp = valor as DadosPHP; } }
-        ]) {
+        ].map(async (adicional) => {
           try {
             const respostaAdicional = await consultarJson<{ dados: unknown }>(adicional.caminho, { tentativas: 1, signal });
             adicional.aplicar(respostaAdicional.dados);
@@ -239,17 +258,12 @@ export function ModuloIntegrado({ modulo }: { modulo: ModuloDaPlataforma }) {
               avisos.push(causa instanceof Error ? causa.message : "Consulta complementar indisponível.");
             }
           }
-        }
+        }));
       }
+      if (signal?.aborted) return;
       setAnamneseLab(proximaAnamnese);
       setPhp(proximoPhp);
       setAvisosLab(avisos);
-      setResposta(modulo === "humanexus-lab"
-        ? { recursos: [{ nome: "humanexus-lab", disponivel: true, dados: (dados as { dados?: unknown }).dados }], usuario: { perfil: "ADMINISTRADOR_PROPRIETARIO", permissoes: [] } }
-        : dados as Resposta);
-      setErro("");
-      if (falhouAntes.current) setMensagem("Conexão restabelecida.");
-      falhouAntes.current = false;
     } catch (causa) {
       if (signal?.aborted) return;
       falhouAntes.current = true;
