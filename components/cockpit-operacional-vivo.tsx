@@ -1609,7 +1609,7 @@ export function CockpitOperacionalVivo({
                     </div>
                     <span className="hx-live-vector-meter" aria-hidden="true">
                       {vetor.value == null
-                        ? <em />
+                        ? null
                         : <i style={{ width: `${vetor.value * 100}%` }} />}
                     </span>
                   </div>

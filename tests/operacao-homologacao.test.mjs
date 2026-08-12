@@ -489,7 +489,8 @@ test("Cockpit Vivo Premium anima instrumentos sem fabricar dado operacional", as
 
   assert.match(operacional, /LeituraNumerica/);
   assert.match(operacional, /hx-live-vector-meter/);
-  assert.match(operacional, /vetor\.value == null[\s\S]*<em \/>/);
+  assert.match(operacional, /vetor\.value == null[\s\S]*\? null[\s\S]*<i style=\{\{ width:/);
+  assert.doesNotMatch(estilos, /\.hx-live-vector-meter em/);
   assert.match(graficos, /data-reduced-motion/);
   assert.match(estilos, /transition: cx 760ms/);
   assert.match(runtime, /prefers-reduced-motion: reduce/);
