@@ -3567,17 +3567,18 @@ export function GestaoOperacional({
               contratoSelecionado || undefined
             );
           }}>
-            <small>CONTRATOS E VÍNCULOS VERSIONADOS</small>
-            <h2>{contratoSelecionado ? "Ficha contratual" : "Novo vínculo"}</h2>
-            <label>Tipo<select name="tipo" value={contrato.tipo} onChange={(evento) => setContrato({ ...contrato, tipo: evento.target.value })}><option>ORGANIZACIONAL</option><option>PARTICULAR</option></select></label>
+            <small>CONTRATOS E VÍNCULOS COM HISTÓRICO</small>
+            <h2>{contratoSelecionado ? "Ficha contratual" : "Novo vínculo contratual"}</h2>
+            <p>Defina a vigência e o contexto do vínculo. Cada alteração cria uma nova versão auditável.</p>
+            <label>Tipo<select name="tipo" value={contrato.tipo} onChange={(evento) => setContrato({ ...contrato, tipo: evento.target.value })}><option value="ORGANIZACIONAL">Organização</option><option value="PARTICULAR">Cliente particular</option></select></label>
             <label>Início<input required name="inicio_da_vigencia" inputMode="numeric" placeholder="AAAA-MM-DD" pattern="\d{4}-\d{2}-\d{2}" value={contrato.inicio_da_vigencia} onChange={(evento) => setContrato({ ...contrato, inicio_da_vigencia: evento.target.value })} /></label>
             <label>Fim<input name="fim_da_vigencia" inputMode="numeric" placeholder="AAAA-MM-DD" pattern="\d{4}-\d{2}-\d{2}" value={contrato.fim_da_vigencia} onChange={(evento) => setContrato({ ...contrato, fim_da_vigencia: evento.target.value })} /></label>
             <label>Número de participantes<input name="numero_de_participantes" type="number" min="1" value={contrato.numero_de_participantes} onChange={(evento) => setContrato({ ...contrato, numero_de_participantes: evento.target.value })} /></label>
             <label>Identificação do contexto<input required name="marcacao" value={contrato.marcacao} onChange={(evento) => setContrato({ ...contrato, marcacao: evento.target.value })} /></label>
-            <label>Situação<select value={contrato.situacao} onChange={(evento) => setContrato({ ...contrato, situacao: evento.target.value })}><option>ATIVO</option><option>INATIVO</option><option>ENCERRADO</option></select></label>
+            <label>Situação<select value={contrato.situacao} onChange={(evento) => setContrato({ ...contrato, situacao: evento.target.value })}><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option><option value="ENCERRADO">Encerrado</option></select></label>
             <label>Justificativa da versão<textarea required value={contrato.justificativa} onChange={(evento) => setContrato({ ...contrato, justificativa: evento.target.value })} /></label>
             <button disabled={ocupado || !podeAdministrar}>
-              {contratoSelecionado ? "Salvar nova versão" : "Registrar contrato"}
+              {contratoSelecionado ? "Salvar nova versão" : "Registrar vínculo"}
             </button>
             {contratoSelecionado ? (
               <button type="button" onClick={() => {

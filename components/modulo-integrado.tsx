@@ -38,7 +38,7 @@ const DEFINICOES: Record<ModuloDaPlataforma, Definicao> = {
   telemetria: { titulo: "Telemetria Bridge", codigo: "HX / TELEMETRIA", descricao: "Fontes de telemetria e qualidade de integração, sem ocultar indisponibilidades.", fontes: ["telemetria", "conectores"] },
   movel: { titulo: "Acesso Móvel", codigo: "HX / MÓVEL", descricao: "O mesmo perfil, permissões e sincronização em iPhone, Android e tablet.", fontes: ["movel"], observacao: "A sincronização só registra dados recebidos pelo núcleo; não há armazenamento paralelo de produção." },
   replay: { titulo: "Replay Inteligente", codigo: "HX / REPLAY", descricao: "Linha temporal auditável da sessão, condicionada ao contexto autorizado.", fontes: ["painel"], observacao: "Selecione uma sessão para criar, comparar ou exportar o replay correspondente.", modo: "replay" },
-  configuracoes: { titulo: "Configurações", codigo: "HX / CONFIGURAÇÕES", descricao: "Contratos, vínculos, versão científica, postulados e permissões efetivas da sessão.", fontes: ["versao_cientifica", "postulados"] }
+  configuracoes: { titulo: "Configurações", codigo: "HX / CONFIGURAÇÕES", descricao: "Contratos e vínculos do contexto autorizado, com histórico de cada alteração.", fontes: [] }
 };
 
 type Recurso = { nome: string; disponivel: boolean; dados: unknown };

@@ -388,6 +388,25 @@ test("admin converge para a ficha canônica e usuários são editáveis", async 
   assert.match(route, /method: "PUT"/);
 });
 
+test("administração traduz permissões e exige organização dos perfis restritos", async () => {
+  const seguro = await source("components/painel-seguro.tsx");
+  const admin = await source("components/painel-administrador.tsx");
+  assert.match(seguro, /ROTULOS_DAS_PERMISSOES/);
+  assert.match(seguro, /Todas as organizações autorizadas/);
+  assert.match(admin, /PERFIS_DE_ESCOPO_ORGANIZACIONAL/);
+  assert.match(admin, /required=\{exigeOrganizacao\}/);
+  assert.match(admin, /O acesso não é herdado por outras organizações/);
+});
+
+test("Configurações explica e opera somente contratos e vínculos", async () => {
+  const modulo = await source("components/modulo-integrado.tsx");
+  const gestao = await source("components/gestao-operacional.tsx");
+  assert.match(modulo, /Contratos e vínculos do contexto autorizado/);
+  assert.doesNotMatch(modulo, /configuracoes:[^\n]*versao_cientifica/);
+  assert.match(gestao, /Novo vínculo contratual/);
+  assert.match(gestao, /Cada alteração cria uma nova versão auditável/);
+});
+
 test("operações legadas permanecem compatíveis sem reabrir cadastro oficial", async () => {
   const management = await source("components/gestao-operacional.tsx");
   const route = await source("app/api/gestao-operacional/route.ts");

@@ -23,11 +23,24 @@ type UsuarioAtual = {
   perfil: string;
 };
 
+const PERFIS_DE_ESCOPO_ORGANIZACIONAL = new Set([
+  "ADMINISTRADOR_DA_ORGANIZACAO",
+  "PROFISSIONAL_HUMANEXUS",
+  "VISUALIZADOR_OPERACIONAL"
+]);
+
+const ROTULOS_DOS_PERFIS: Record<string, string> = {
+  ADMINISTRADOR_PROPRIETARIO: "Administrador Proprietário",
+  ADMINISTRADOR_DO_SISTEMA: "Administrador do Sistema",
+  GOVERNANCA_CIENTIFICA: "Governança Científica",
+  ADMINISTRADOR_DA_ORGANIZACAO: "Administrador da Organização",
+  PROFISSIONAL_HUMANEXUS: "Profissional HUMANEXUS",
+  VISUALIZADOR_OPERACIONAL: "Visualizador Operacional",
+  AUDITOR: "Auditor"
+};
+
 function rotuloDoPerfil(perfil: string) {
-  if (perfil === "ADMINISTRADOR_PROPRIETARIO") {
-    return "Administrador Proprietário";
-  }
-  return perfil.replaceAll("_", " ");
+  return ROTULOS_DOS_PERFIS[perfil] ?? perfil.replaceAll("_", " ");
 }
 
 export function PainelAdministrador({
@@ -144,6 +157,9 @@ export function PainelAdministrador({
     edicaoProprietaria
     && usuarioAtual.perfil !== "ADMINISTRADOR_PROPRIETARIO"
   );
+  const exigeOrganizacao = PERFIS_DE_ESCOPO_ORGANIZACIONAL.has(
+    novoUsuario.perfil
+  );
 
   return (
     <div className="hx-admin">
@@ -187,12 +203,17 @@ export function PainelAdministrador({
                   Administrador Proprietário
                 </option>
               ) : null}
-              {["ADMINISTRADOR_DO_SISTEMA","GOVERNANCA_CIENTIFICA","ADMINISTRADOR_DA_ORGANIZACAO","PROFISSIONAL_HUMANEXUS","VISUALIZADOR_OPERACIONAL","AUDITOR"].map((perfil) => <option key={perfil}>{perfil}</option>)}
+              {["ADMINISTRADOR_DO_SISTEMA","GOVERNANCA_CIENTIFICA","ADMINISTRADOR_DA_ORGANIZACAO","PROFISSIONAL_HUMANEXUS","VISUALIZADOR_OPERACIONAL","AUDITOR"].map((perfil) => <option key={perfil} value={perfil}>{rotuloDoPerfil(perfil)}</option>)}
             </select>
-            <select disabled={edicaoProprietaria} value={novoUsuario.identificador_da_organizacao} onChange={(e) => setNovoUsuario({ ...novoUsuario, identificador_da_organizacao: e.target.value })}>
-              <option value="">Escopo sistêmico</option>
+            <select aria-label="Organização autorizada" required={exigeOrganizacao} disabled={edicaoProprietaria} value={novoUsuario.identificador_da_organizacao} onChange={(e) => setNovoUsuario({ ...novoUsuario, identificador_da_organizacao: e.target.value })}>
+              <option value="">{exigeOrganizacao ? "Selecione uma organização" : "Todas as organizações autorizadas"}</option>
               {dados?.organizacoes.map((org) => <option key={org.identificador} value={org.identificador}>{org.nome}</option>)}
             </select>
+            {exigeOrganizacao ? (
+              <p className="hx-admin__message">
+                Este perfil atua somente na organização selecionada. O acesso não é herdado por outras organizações.
+              </p>
+            ) : null}
             {novoUsuario.perfil === "PROFISSIONAL_HUMANEXUS" ? (
               <input value={novoUsuario.registro_profissional} onChange={(e) => setNovoUsuario({ ...novoUsuario, registro_profissional: e.target.value })} placeholder="Registro profissional" />
             ) : null}

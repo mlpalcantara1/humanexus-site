@@ -14,6 +14,24 @@ const TITULOS: Record<PerfilHumanexus, string> = {
   AUDITOR: "Auditoria"
 };
 
+const ROTULOS_DAS_PERMISSOES: Record<string, string> = {
+  acessar_humanexus_lab: "Acessar o HUMANEXUS LAB",
+  administrar_organizacao: "Administrar organizações autorizadas",
+  administrar_sistema: "Administrar a plataforma",
+  conduzir_sessao: "Conduzir sessões",
+  consultar_auditoria: "Consultar auditoria",
+  consultar_ciencia: "Consultar a ciência TIRH",
+  consultar_operacao: "Consultar a operação",
+  criar_organizacao: "Criar organizações",
+  gerenciar_participantes: "Gerenciar participantes",
+  validar_desenvolvimento: "Validar recursos em desenvolvimento"
+};
+
+function rotuloDaPermissao(permissao: string) {
+  return ROTULOS_DAS_PERMISSOES[permissao]
+    ?? permissao.replaceAll("_", " ").toLocaleLowerCase("pt-BR");
+}
+
 export async function PainelSeguro({
   perfilExigido
 }: {
@@ -49,10 +67,10 @@ export async function PainelSeguro({
               <dt>Nome</dt><dd>{sessao.usuario.nome}</dd>
             </div>
             <div>
-              <dt>Perfil</dt><dd>{sessao.usuario.perfil}</dd>
+              <dt>Perfil</dt><dd>{TITULOS[sessao.usuario.perfil]}</dd>
             </div>
             <div>
-              <dt>Organização</dt><dd>{sessao.usuario.identificador_da_organizacao ?? "Escopo sistêmico"}</dd>
+              <dt>Organização</dt><dd>{sessao.usuario.identificador_da_organizacao ? "Organização vinculada" : "Todas as organizações autorizadas"}</dd>
             </div>
           </dl>
         </HxSurface>
@@ -61,7 +79,7 @@ export async function PainelSeguro({
           <h2>Permissões efetivas</h2>
           <ul>
             {sessao.usuario.permissoes.map((permissao) => (
-              <li key={permissao}>{permissao}</li>
+              <li key={permissao}>{rotuloDaPermissao(permissao)}</li>
             ))}
           </ul>
           <div className="hx-secure-panel__actions">
