@@ -24,6 +24,7 @@ import {
   podeAplicarRespostaCanonica
 } from "@/lib/cockpit-live-coordination";
 import { publicarEstadoDoNucleo } from "@/lib/client-request";
+import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
 
 type Registro = Record<string, unknown>;
 type OpcoesDeCarregamento = {
@@ -728,10 +729,43 @@ function nomeDoVetor(registro: Registro) {
   return texto(valorDoRegistro(registro, "name", "nome"));
 }
 
+function leituraCientificaDaInspecao(estado: Estado) {
+  return objeto(objeto(estado.cockpit_operacional).leitura_cientifica);
+}
+
+function configuracaoBasalDaInspecao(estado: Estado) {
+  const configuracao = objeto(
+    leituraCientificaDaInspecao(estado).configuracao_regulatoria_basal
+  );
+  return String(configuracao.identificador_da_sessao ?? "")
+    === String(estado.sessao.identificador ?? "")
+    ? configuracao
+    : {};
+}
+
+function vetoresCanonicosDaInspecao(estado: Estado) {
+  const leitura = leituraCientificaDaInspecao(estado);
+  const configuracaoBasal = configuracaoBasalDaInspecao(estado);
+  const fase = String(
+    objeto(estado.estado_operacional).fase_cientifica_atual ?? ""
+  );
+  const vetoresBasais = lista(configuracaoBasal.vetores) as Registro[];
+  const vetoresAtuais = lista(leitura.vetores) as Registro[];
+  return !fase && vetoresBasais.length ? vetoresBasais : vetoresAtuais;
+}
+
 function estadoDoVetor(estado: Estado, definicao: Registro) {
   const identificador = valorDoRegistro(definicao, "id", "identificador");
   const codigo = codigoDoVetor(definicao);
-  return estado.leitura_regulatoria.estados_vetoriais.find((item) =>
+  return vetoresCanonicosDaInspecao(estado).find((item): item is Registro =>
+    [
+      item.definicao,
+      item.codigo,
+      item.identificador_da_definicao_vetorial,
+      item.identificador_do_vetor,
+      item.codigo_do_vetor
+    ].some((valor) => valor === identificador || valor === codigo)
+  ) ?? estado.leitura_regulatoria.estados_vetoriais.find((item): item is Registro =>
     [
       item.identificador_da_definicao_vetorial,
       item.identificador_do_vetor,
@@ -929,12 +963,16 @@ function ReferenciaBaselineResumo({ estado }: { estado: Estado }) {
 
 function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
   const evidencias = estado.leitura_regulatoria.evidencias;
-  const leituraCientifica = objeto(
-    objeto(estado.cockpit_operacional).leitura_cientifica
-  );
+  const leituraCientifica = leituraCientificaDaInspecao(estado);
   const configuracaoBasal = objeto(
     leituraCientifica.configuracao_regulatoria_basal
   );
+  const cadeiaCientifica = objeto(
+    objeto(estado.cockpit_operacional).cadeia_cientifica
+  );
+  const evidenciasDoMotor = objeto(cadeiaCientifica.evidencias);
+  const evidenciasAceitas = lista(evidenciasDoMotor.aceitas);
+  const iirh = objeto(leituraCientifica.iirh);
   return (
     <section className="hx-cockpit-panel">
       <TituloDaVisao
@@ -956,7 +994,16 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
             <span>{typeof evidencia.qualidade === "number" ? `${Math.round(evidencia.qualidade * 100)}%` : "NÃO INFORMADA"}</span>
             <span>{texto(valorDoRegistro(evidencia, "integridade", "estado_de_validade"), "PRESERVADA")}</span>
           </div>
-        )) : <div className="hx-evidence-table__empty">Nenhuma evidência foi disponibilizada para esta sessão.</div>}
+        )) : <div className="hx-evidence-table__empty">Nenhum registro independente foi vinculado à coleção documental desta sessão.</div>}
+      </div>
+      <div className="hx-limit-consolidated">
+        <strong>EVIDÊNCIA RECONHECIDA PELO MOTOR REGULATÓRIO</strong>
+        <span>{evidenciasAceitas.length
+          ? `${evidenciasAceitas.length} evidência(s) admissível(is) sustentam a leitura canônica atual.`
+          : texto(
+              objeto(configuracaoBasal.anamnese).estado,
+              "Não há evidência admissível suficiente para uma leitura científica."
+            )}</span>
       </div>
       <details className="hx-technical-details">
         <summary>Governança científica, suficiência e proveniência</summary>
@@ -972,7 +1019,9 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
       </details>
       <div className="hx-limit-consolidated">
         <strong>LIMITAÇÃO CONSOLIDADA</strong>
-        <span>As observações disponíveis pertencem à homologação técnica. Não constituem evidência humana suficiente para produzir vetor, Resultante, IIRH, Zona, trajetória ou rota regulatória.</span>
+        <span>{iirh.estado === "CALCULADO"
+          ? "O IIRH e os vetores presentes foram calculados pelo núcleo com as evidências admissíveis. Ausências, Zona e trajetória conservam seus próprios limites científicos."
+          : "Os dados disponíveis ainda não são suficientes para produzir uma leitura científica integral; nenhuma ausência foi convertida em zero."}</span>
       </div>
       {estado.leitura_regulatoria.anamneses.length ? (
         <details className="hx-technical-details"><summary>Anamnese Regulatória autorizada como fonte de evidência</summary><pre>{JSON.stringify(estado.leitura_regulatoria.anamneses, null, 2)}</pre></details>
@@ -1017,15 +1066,42 @@ function ConstituicaoOperacional({ estado }: { estado: Estado }) {
   const regras = Array.isArray(estado.ciencia.postulados.regras) ? estado.ciencia.postulados.regras as Registro[] : [];
   const eventos = estado.eventos.length;
   const vetores = estado.ciencia.vetores.length;
-  const evidencias = estado.leitura_regulatoria.evidencias.length;
+  const leituraCientifica = leituraCientificaDaInspecao(estado);
+  const configuracaoBasal = configuracaoBasalDaInspecao(estado);
+  const vetoresCanonicos = vetoresCanonicosDaInspecao(estado);
+  const vetoresCalculaveis = vetoresCanonicos.filter(
+    (item) => valorVetorial(item.magnitude, "") !== ""
+  ).length;
+  const iirh = objeto(leituraCientifica.iirh);
+  const zona = objeto(leituraCientifica.zona);
+  const resultante = objeto(leituraCientifica.resultante);
+  const cadeiaCientifica = objeto(
+    objeto(estado.cockpit_operacional).cadeia_cientifica
+  );
+  const evidencias = lista(objeto(cadeiaCientifica.evidencias).aceitas).length;
+  const cobertura = iirh.cobertura ?? resultante.cobertura;
+  const coberturaLegivel = formatarPercentualCanonico(cobertura);
   const operacionalizacao = [
-    `${eventos} evento(s) e ${momentos(estado).length} snapshot(s) preservam a dinâmica no tempo.`,
-    `${vetores} definições vetoriais versionadas impedem explicação por variável isolada.`,
+    `${eventos} evento(s) e ${momentos(estado).length} registro(s) temporal(is); a configuração basal atual permanece separada da trajetória.`,
+    `${vetores} definições versionadas e ${vetoresCalculaveis} vetor(es) calculável(is) no contexto atual.`,
     `${evidencias} evidência(s) permanecem vinculadas a origem, contexto e cobertura.`,
-    "A Resultante é bloqueada sem configuração vetorial humana suficiente.",
+    `Resultante ${texto(resultante.estado, "não calculável").toLocaleLowerCase("pt-BR")} preservada sem completar vetores ausentes.`,
     "A Trajetória exige estados sucessivos comparáveis; um ponto isolado não gera trajetória.",
     "Ausências e limites inferenciais são declarados sem conversão em zero.",
     "A reorganização depende de contexto e decisão profissional rastreável."
+  ];
+  const estados = [
+    Object.keys(configuracaoBasal).length
+      ? "ATIVO · configuração basal canônica"
+      : "ATIVO · sem configuração basal admissível",
+    `ATIVO · ${vetoresCalculaveis}/${vetores || 10} vetores calculáveis`,
+    evidencias ? "ATIVO · evidências admissíveis reconhecidas" : "ATIVO · evidência admissível ausente",
+    `ATIVO · ${texto(resultante.estado, "não calculável")}`,
+    "ATIVO · trajetória ainda não inferível",
+    "ATIVO · mensurabilidade parcial declarada",
+    zona.codigo || zona.nome
+      ? `ATIVO · Zona ${texto(zona.codigo ?? zona.nome)}`
+      : "ATIVO · Zona não classificável"
   ];
   return (
     <section className="hx-cockpit-panel">
@@ -1040,8 +1116,8 @@ function ConstituicaoOperacional({ estado }: { estado: Estado }) {
             <span>{String(indice + 1).padStart(2, "0")}</span>
             <div><small>Postulado</small><strong>{nomeDoPostulado(regra)}</strong></div>
             <div><small>Função na sessão</small><strong>{operacionalizacao[indice] ?? texto(regra.descricao)}</strong></div>
-            <div><small>Cobertura / confiabilidade</small><strong>{evidencias ? "Parcial · evidência técnica" : "Não calculável"}</strong></div>
-            <div><small>Estado e limitação</small><strong>{indice === 5 ? "ATIVO · mensurabilidade parcial declarada" : "ATIVO COMO REGRA · leitura humana bloqueada"}</strong></div>
+            <div><small>Cobertura / confiabilidade</small><strong>{coberturaLegivel === "—" ? "Sem cobertura mensurável" : `${coberturaLegivel} · leitura parcial`}</strong></div>
+            <div><small>Estado e limitação</small><strong>{estados[indice]}</strong></div>
             <details><summary>Rastreabilidade</summary><p>{texto(regra.limite_inferencial)}</p><small>{texto(regra.referencia_no_livro)}</small></details>
           </article>
         ))}
@@ -1125,9 +1201,18 @@ function MatrizVetorial({
 }
 
 function ResultanteRegulatoria({ estado, resumida = false }: { estado: Estado; resumida?: boolean }) {
+  const leituraCientifica = leituraCientificaDaInspecao(estado);
+  const resultadoCanonico = objeto(leituraCientifica.resultante);
   const configuracao = estado.leitura_regulatoria.configuracoes.at(-1);
   const avaliacao = estado.leitura_regulatoria.avaliacoes.at(-1);
-  const resultado = configuracao ?? avaliacao;
+  const resultado = Object.keys(resultadoCanonico).length
+    ? resultadoCanonico
+    : configuracao ?? avaliacao;
+  const iirh = objeto(leituraCientifica.iirh);
+  const zona = objeto(leituraCientifica.zona);
+  const motivo = objeto(resultado?.por_que_este_resultado).resumo
+    ?? resultado?.justificativa
+    ?? resultado?.motivo;
   return (
     <section className="hx-cockpit-panel hx-resultant">
       <TituloDaVisao
@@ -1137,13 +1222,16 @@ function ResultanteRegulatoria({ estado, resumida = false }: { estado: Estado; r
       />
       <div className="hx-resultant__core">
         <div><small>Estado</small><strong>{resultado ? texto(valorDoRegistro(resultado, "estado", "estado_processamento")) : "EVIDÊNCIA INSUFICIENTE"}</strong></div>
-        <div><small>Direção predominante</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "direcao_predominante", "direcao"), "NÃO CALCULÁVEL")}</strong></div>
-        <div><small>Sentido predominante</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "sentido_predominante", "sentido"), "NÃO CALCULÁVEL")}</strong></div>
-        <div><small>Cobertura global</small><strong>{typeof resultado?.cobertura === "number" ? `${Math.round(resultado.cobertura * 100)}%` : "INSUFICIENTE"}</strong></div>
-        <div><small>Confiabilidade global</small><strong>{typeof resultado?.confiabilidade === "number" ? `${Math.round(resultado.confiabilidade * 100)}%` : "INSUFICIENTE"}</strong></div>
-        <div><small>Versão do motor</small><strong>{texto(valorDoRegistro(resultado ?? {}, "versao_do_motor", "versao_algoritmo"), "PRESERVADA NO NÚCLEO")}</strong></div>
+        <div><small>Magnitude global</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "magnitude_global", "valor"), "NÃO CALCULÁVEL")}</strong></div>
+        <div><small>Direção funcional</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "direcao_funcional", "direcao_predominante", "direcao"), "NÃO DETERMINÁVEL")}</strong></div>
+        <div><small>Sentido contextual</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "sentido_contextual", "sentido_predominante", "sentido"), "NÃO DETERMINÁVEL")}</strong></div>
+        <div><small>Cobertura global</small><strong>{formatarPercentualCanonico(resultado?.cobertura)}</strong></div>
+        <div><small>Confiabilidade global</small><strong>{formatarPercentualCanonico(resultado?.confianca ?? resultado?.confiabilidade)}</strong></div>
+        <div><small>IIRH</small><strong>{iirh.estado === "CALCULADO" && typeof iirh.valor === "number" ? `${iirh.valor} · ${texto(iirh.unidade, "0-100")}` : "NÃO CALCULÁVEL"}</strong></div>
+        <div><small>Zona Operacional</small><strong>{texto(zona.codigo ?? zona.nome, "NÃO CLASSIFICÁVEL")}</strong></div>
+        <div><small>Versão científica</small><strong>{texto(valorDoRegistro(resultado ?? {}, "versao_cientifica", "versao_da_biblioteca", "versao_do_motor", "versao_algoritmo"), "PRESERVADA NO NÚCLEO")}</strong></div>
       </div>
-      <div className="hx-limit-consolidated"><strong>MOTIVO CONSOLIDADO</strong><span>{resultado ? "Consulte vetores contribuintes, tensões e compensações na rastreabilidade." : "Sessão técnica: campos humanos ausentes e evidência humana insuficiente."}</span></div>
+      <div className="hx-limit-consolidated"><strong>MOTIVO CONSOLIDADO</strong><span>{texto(motivo, resultado ? "Consulte vetores contribuintes, tensões e compensações na rastreabilidade." : "As evidências disponíveis não são suficientes para compor a Resultante.")}</span></div>
       {!resumida && resultado ? <details className="hx-technical-details"><summary>Vetores contribuintes, preservados, comprometidos, tensões e compensações</summary><pre>{JSON.stringify(resultado, null, 2)}</pre></details> : null}
     </section>
   );

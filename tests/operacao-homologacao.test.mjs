@@ -257,6 +257,22 @@ test("Matriz Vetorial não fabrica força, magnitude, direção, sentido ou inte
   assert.doesNotMatch(client, /magnitude\s*:\s*0|sentido\s*:\s*"adaptativo"|interacao\s*:\s*"convergência"/i);
 });
 
+test("Inspeção TIRH compartilha a projeção científica canônica do Cockpit", async () => {
+  const client = await source("components/operacao-homologacao.tsx");
+
+  assert.match(client, /function leituraCientificaDaInspecao/);
+  assert.match(client, /cockpit_operacional\)\.leitura_cientifica/);
+  assert.match(client, /function vetoresCanonicosDaInspecao/);
+  assert.match(client, /configuracao_regulatoria_basal/);
+  assert.match(client, /item\.definicao/);
+  assert.match(client, /const resultadoCanonico = objeto\(leituraCientifica\.resultante\)/);
+  assert.match(client, /const iirh = objeto\(leituraCientifica\.iirh\)/);
+  assert.match(client, /const zona = objeto\(leituraCientifica\.zona\)/);
+  assert.match(client, /formatarPercentualCanonico/);
+  assert.match(client, /\? vetoresBasais : vetoresAtuais/);
+  assert.doesNotMatch(client, /magnitude\s*:\s*0|cobertura\s*:\s*0/);
+});
+
 test("Resultante, IIRH, Zona e Trajetória permanecem ontologicamente separados", async () => {
   const client = await source("components/operacao-homologacao.tsx");
   assert.match(client, /A Resultante.*não é IIRH nem Zona/s);
