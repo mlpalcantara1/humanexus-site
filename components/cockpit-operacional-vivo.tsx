@@ -1212,6 +1212,7 @@ export function CockpitOperacionalVivo({
   const polarEmVerificacao = polar.projecao_em_verificacao === true;
   const eegEmVerificacao = eeg.projecao_em_verificacao === true;
   const polarValoresHud = objeto(polar.valores);
+  const eegValoresHud = objeto(eeg.valores);
   const fase = sessaoBaseline
     ? `BASELINE · ${baseline.estado}`
     : sessao.fase_atual
@@ -1394,6 +1395,7 @@ export function CockpitOperacionalVivo({
         <div><small>RMSSD</small><strong>{polar.ao_vivo === true || polarEmVerificacao ? <LeituraNumerica valor={polarValoresHud.rmssd_tecnico_ms} casas={1} sufixo=" ms" /> : "Sem leitura atual"}</strong><span>{polarEmVerificacao ? "Última projeção canônica · validade em verificação" : texto(polar.estado)}</span></div>
         <div><small>EPOC X</small><strong>{texto(eeg.estado)}</strong><span>{eeg.ao_vivo === true ? "Capturando" : eegEmVerificacao ? "Atualização interrompida" : "Sem leitura atual"}</span></div>
         <div><small>POLAR H10</small><strong>{texto(polar.estado)}</strong><span>{polar.ao_vivo === true ? "Capturando" : polarEmVerificacao ? "Atualização interrompida" : "Sem leitura atual"}</span></div>
+        <div><small>QUALIDADE EEG</small><strong>{eeg.ao_vivo === true ? percentual(eegValoresHud.qualidade_global) : "Sem leitura atual"}</strong><span>{eeg.ao_vivo === true ? "Sinal Cortex atual" : texto(eeg.estado)}</span></div>
       </section>
 
       {Object.keys(configuracaoBasal).length ? (

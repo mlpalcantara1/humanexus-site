@@ -252,9 +252,9 @@ export function CockpitDemonstracaoVisual() {
         <div><small>PERSISTÊNCIA</small><strong>DESATIVADA</strong></div>
       </section>
 
-      <section className="hx-live-hud" aria-label="HUD demonstrativo com nove itens">
-        <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>DEMO VISUAL</strong><span>Não calculado</span></div>
+      <section className="hx-live-hud" aria-label="HUD demonstrativo com dez itens">
         <div><small>ZONA OPERACIONAL</small><strong>NÃO CLASSIFICADA</strong><span>Demonstração sem ciência</span></div>
+        <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>DEMO VISUAL</strong><span>Não calculado</span></div>
         <div><small>THX</small><strong>THX-DEMO</strong><span>Somente interface</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>Estado visual</span></div>
         <div><small>TEMPO</small><strong>{`00:${String(Math.floor(pulso / 60)).padStart(2, "0")}:${String(pulso % 60).padStart(2, "0")}`}</strong><span>Não persistido</span></div>
@@ -262,6 +262,7 @@ export function CockpitDemonstracaoVisual() {
         <div><small>RMSSD</small><strong>{rmssd == null ? "— ms" : `${rmssd.toFixed(1)} ms`}</strong><span>Dado sintético identificado</span></div>
         <div><small>ESTADO DO EEG</small><strong>{estadoTecnico(sensor)}</strong><span>Qualidade {exibindoSinal ? `${Math.round(qualidade * 100)}%` : "—"}</span></div>
         <div><small>ESTADO DO POLAR</small><strong>{estadoTecnico(sensor)}</strong><span>Sequência demonstrativa {pulso}</span></div>
+        <div><small>QUALIDADE EEG</small><strong>{exibindoSinal ? `${Math.round(qualidade * 100)}%` : "—"}</strong><span>Dado sintético identificado</span></div>
       </section>
 
       <section className="hx-live-operation-focus" id="hx-demo-command" aria-label="Fluxo demonstrativo">

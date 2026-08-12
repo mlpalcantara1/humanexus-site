@@ -302,6 +302,9 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
   const hud = operacional.match(
     /<section id="hx-decision-level" className="hx-live-hud"[\s\S]*?<\/section>/
   )?.[0] ?? "";
+  assert.ok(hud.indexOf("ZONA OPERACIONAL") < hud.indexOf("IIRH"));
+  assert.ok(hud.indexOf("IIRH") < hud.indexOf("THX"));
+  assert.match(hud, /QUALIDADE EEG[\s\S]*?eeg\.ao_vivo === true \? percentual\(eegValoresHud\.qualidade_global\)/);
   for (const item of [
     "MODO OPERACIONAL AO VIVO",
     "Inspeção TIRH",
@@ -317,12 +320,12 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
     "FREQUÊNCIA CARDÍACA",
     "RMSSD",
     "EPOC X",
-    "POLAR H10"
+    "POLAR H10",
+    "QUALIDADE EEG"
   ]) assert.match(hud, new RegExp(item));
   for (const item of [
     "SEQUÊNCIA",
     "TEMPO TOTAL",
-    "QUALIDADE",
     "COBERTURA",
     "SESSÃO"
   ]) {
@@ -500,7 +503,7 @@ test("demonstração visual é local, sintética e estruturalmente isolada", asy
   assert.match(demonstracao, /DEMONSTRAÇÃO VISUAL ISOLADA/);
   assert.match(demonstracao, /DADOS SINTÉTICOS · SEM API · SEM BANCO · SEM RELATÓRIOS/);
   assert.match(demonstracao, /primaryDataLabel="Dado sintético identificado"/);
-  assert.match(demonstracao, /HUD demonstrativo com nove itens/);
+  assert.match(demonstracao, /HUD demonstrativo com dez itens/);
   assert.match(demonstracao, /VETORES\.map/);
   assert.match(demonstracao, /AGUARDANDO CONEXÃO/);
   assert.match(demonstracao, /CAPTURA ATIVA/);
@@ -632,7 +635,7 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   assert.match(hud, /IIRH/);
   assert.doesNotMatch(hud, /RESULTANTE/);
   assert.match(cockpit, /Dinâmica da Inteligência Regulatória Humana/);
-  assert.equal((hud.match(/<div/g) ?? []).length, 9);
+  assert.equal((hud.match(/<div/g) ?? []).length, 10);
   assert.equal((cockpit.match(/thx\.codigo/g) ?? []).length, 1);
   assert.doesNotMatch(hud, /Sequência|maturidade_da_evidencia/);
   assert.doesNotMatch(cockpit, /hx-live-regulatory-readout--primary/);

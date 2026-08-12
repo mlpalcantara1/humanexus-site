@@ -2576,7 +2576,7 @@ export function GestaoOperacional({
       ) : null}
 
       {modulo === "sessoes" ? (
-        <div className="hx-management-grid">
+        <div className="hx-management-grid hx-management-grid--sessions">
           {!podeConduzir ? (
             <p className="hx-module__notice">
               Consulta administrativa ativa. Criar, editar e conduzir sessões
