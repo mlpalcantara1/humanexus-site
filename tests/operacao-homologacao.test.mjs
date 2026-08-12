@@ -782,7 +782,10 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
 
   assert.match(cockpit, /if \(fonte\.ao_vivo !== true\) return \[\];/);
-  assert.match(cockpit, /fontes\.filter\(\(fonte\) => fonte\.ao_vivo === true\)/);
+  assert.match(
+    cockpit,
+    /fonte\.ao_vivo === true \|\| fonte\.projecao_em_verificacao === true/
+  );
   assert.match(cockpit, /polar\.ao_vivo === true[\s\S]*Sem leitura atual/);
   assert.match(cockpit, /eeg\.ao_vivo === true[\s\S]*Sem leitura atual/);
   assert.match(cockpit, /Última leitura registrada/);
@@ -825,6 +828,19 @@ test("sincronização preserva a projeção identificada sem convertê-la em lei
   assert.equal(fonte.estado, "PROJEÇÃO CANÔNICA EM VERIFICAÇÃO");
   assert.deepEqual(fonte.valores, { hr_bpm: 71, rmssd_tecnico_ms: 11.4 });
   assert.equal(fonte.metricas.ultima_sequencia, 1444);
+});
+
+test("Cockpit preserva séries da última projeção sem reativar a ciência viva", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+
+  assert.match(
+    cockpit,
+    /fonte\.ao_vivo === true\s*\|\| fonte\.projecao_em_verificacao === true/
+  );
+  assert.match(cockpit, /ÚLTIMA PROJEÇÃO — NÃO ATUAL/);
+  assert.match(cockpit, /const leituraAoVivo = projecaoOperacionalAtual/);
+  assert.match(cockpit, /const neurotelemetriaOperacional = metricasDeDesempenhoVisiveis\(eeg\)/);
+  assert.match(cockpit, /if \(fonte\.ao_vivo !== true\) return \[\];/);
 });
 
 test("resposta fora de ordem não sobrescreve a projeção canônica mais recente", () => {

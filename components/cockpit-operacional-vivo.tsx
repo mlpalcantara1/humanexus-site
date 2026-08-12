@@ -429,7 +429,9 @@ function Sparkline({ pontos, cor }: { pontos: Registro[]; cor: string }) {
 }
 
 function pontosDaSerie(fonte: Fonte, serie: string, origem: string): HxDataPoint[] {
-  if (fonte.ao_vivo !== true) return [];
+  const projecaoVisivel = fonte.ao_vivo === true
+    || fonte.projecao_em_verificacao === true;
+  if (!projecaoVisivel) return [];
   return lista(fonte.series?.[serie]).flatMap((item) => {
     const tempo = new Date(String(item.timestamp ?? "")).getTime();
     const valor = Number(item.valor);
@@ -442,7 +444,9 @@ function pontosDaSerie(fonte: Fonte, serie: string, origem: string): HxDataPoint
       source: origem,
       quality: Number(item.qualidade ?? 0),
       coverage: null,
-      connection: fonte.ao_vivo ? "TRANSMITINDO" : "REPLAY HISTÓRICO",
+      connection: fonte.ao_vivo
+        ? "TRANSMITINDO"
+        : "ÚLTIMA PROJEÇÃO — NÃO ATUAL",
       gap: false
     }];
   });
@@ -451,7 +455,10 @@ function pontosDaSerie(fonte: Fonte, serie: string, origem: string): HxDataPoint
 function trilhas(fontes: Fonte[]): HxTrack[] {
   const polar = fontes.find((item) => item.codigo === "POLAR_H10") ?? {};
   const epoc = fontes.find((item) => item.codigo === "EMOTIV_EPOC_X") ?? {};
-  const desempenho = metricasDeDesempenhoVisiveis(epoc);
+  const desempenho = epoc.ao_vivo === true
+    || epoc.projecao_em_verificacao === true
+    ? metricasDeDesempenhoDaFonte(epoc)
+    : [];
   const candidatas: HxTrack[] = [
     {
       id: "polar-hr",
@@ -500,7 +507,9 @@ function trilhas(fontes: Fonte[]): HxTrack[] {
           phase: texto(item.momento, "SEM FASE"),
           source: "Sistema EMOTIV",
           quality: Number(item.qualidade ?? 0),
-          connection: epoc.ao_vivo ? "TRANSMITINDO" : "REPRODUÇÃO HISTÓRICA",
+          connection: epoc.ao_vivo
+            ? "TRANSMITINDO"
+            : "ÚLTIMA PROJEÇÃO — NÃO ATUAL",
           gap: false
         } as HxDataPoint];
       }),
@@ -533,7 +542,7 @@ function FontePolar({ fonte }: { fonte: Fonte }) {
           <span>Os números permanecem visíveis para continuidade operacional, mas não são tratados como leitura atual nem alimentam cálculos científicos.</span>
         </div>
       ) : null}
-      <Sparkline pontos={aoVivo ? lista(fonte.series?.hr) : []} cor={C.gold} />
+      <Sparkline pontos={aoVivo || emVerificacao ? lista(fonte.series?.hr) : []} cor={C.gold} />
       <footer>
         <span>{aoVivo ? `Pacote atual ${dataLegivel(metricas.ultimo_pacote)}` : "Sem pacote atual"}</span>
         <span>{aoVivo ? `Latência ${numero(metricas.latencia_ms, 1)} ms · perdas ${numero(metricas.perdas)}` : "Fonte sem transmissão atual"}</span>
@@ -581,7 +590,7 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
           <span>EEG com confiança reduzida ou não admissível. A sessão e as demais fontes continuam normalmente.</span>
         </div>
       ) : null}
-      <Sparkline pontos={aoVivo ? lista(fonte.series?.qualidade) : []} cor={C.green} />
+      <Sparkline pontos={aoVivo || emVerificacao ? lista(fonte.series?.qualidade) : []} cor={C.green} />
       <div className="hx-live-performance-heading">
         <small>NEUROTELEMETRIA REGULATÓRIA · STREAM MET CORTEX</small>
         <span>Separada da qualidade do sinal EEG · sem estimativa e sem derivação por qualidade.</span>
@@ -748,7 +757,9 @@ export function CockpitOperacionalVivo({
     && !modoHistorico;
   const sessaoFinalizada = estadoOperacionalTerminal(contextoSessao.estado);
   const graficos = useMemo(
-    () => trilhas(fontes.filter((fonte) => fonte.ao_vivo === true)),
+    () => trilhas(fontes.filter((fonte) =>
+      fonte.ao_vivo === true || fonte.projecao_em_verificacao === true
+    )),
     [fontes]
   );
   const baselineBruto = objeto(objeto(estado.gravacao).baseline);
