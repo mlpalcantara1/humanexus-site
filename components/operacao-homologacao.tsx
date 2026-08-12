@@ -1259,7 +1259,12 @@ function TrajetoriaRegulatoria({ estado, resumida = false }: { estado: Estado; r
 }
 
 function RotasRegulatorias({ estado }: { estado: Estado }) {
-  const cadeia = objeto(estado.rastreabilidade?.cadeia);
+  const cadeiaCientifica = objeto(
+    objeto(estado.cockpit_operacional).cadeia_cientifica
+  );
+  const cadeia = Object.keys(cadeiaCientifica).length
+    ? cadeiaCientifica
+    : objeto(estado.rastreabilidade?.cadeia);
   const itens = [
     ["ARR", estado.leitura_regulatoria.arr.at(-1) ?? cadeia.arr],
     ["Reorganização da Rota Operacional — RRO", estado.leitura_regulatoria.rro.at(-1) ?? cadeia.rro],
@@ -1269,7 +1274,11 @@ function RotasRegulatorias({ estado }: { estado: Estado }) {
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="ROTAS REGULATÓRIAS" titulo="ARR → RRO → NRA sob validação profissional." descricao="Hipótese, reorganização operacional e nova rota adaptativa permanecem separadas e auditáveis." />
       <div className="hx-route-grid">
-        {itens.map(([nome, valor]) => <article key={nome}><small>{nome}</small><strong>{valor ? "REGISTRO LOCALIZADO" : "NÃO CONFIRMADA"}</strong><span>{valor ? "Evidências e histórico disponíveis na rastreabilidade." : "Bloqueada: a simulação técnica não produz gatilho, rota ou adaptação humana."}</span>{valor && typeof valor === "object" ? <details><summary>Inspecionar</summary><pre>{JSON.stringify(valor, null, 2)}</pre></details> : null}</article>)}
+        {itens.map(([nome, valor]) => {
+          const registro = objeto(valor);
+          const localizado = Object.keys(registro).length > 0;
+          return <article key={nome}><small>{nome}</small><strong>{localizado ? texto(registro.estado, "REGISTRO LOCALIZADO") : "NÃO CONFIRMADA"}</strong><span>{localizado ? texto(registro.motivo, "Evidências e histórico disponíveis na rastreabilidade.") : "Não há evidência admissível vinculada a esta sessão para confirmar a rota."}</span>{localizado ? <details><summary>Inspecionar</summary><pre>{JSON.stringify(registro, null, 2)}</pre></details> : null}</article>;
+        })}
       </div>
     </section>
   );

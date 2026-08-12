@@ -283,6 +283,14 @@ test("Resultante, IIRH, Zona e Trajetória permanecem ontologicamente separados"
   assert.doesNotMatch(client, /iirh\s*=\s*resultante|zona\s*=\s*resultante/i);
 });
 
+test("ARR, RRO e NRA usam a cadeia científica canônica da sessão humana", async () => {
+  const client = await source("components/operacao-homologacao.tsx");
+  assert.match(client, /cockpit_operacional\)\.cadeia_cientifica/);
+  assert.match(client, /texto\(registro\.estado, "REGISTRO LOCALIZADO"\)/);
+  assert.match(client, /texto\(registro\.motivo, "Evidências e histórico disponíveis na rastreabilidade\."\)/);
+  assert.doesNotMatch(client, /Bloqueada: a simulação técnica não produz gatilho, rota ou adaptação humana\./);
+});
+
 test("produtos científicos e infraestrutura estão integrados sem virar módulos concorrentes", async () => {
   const client = await source("components/operacao-homologacao.tsx");
   for (const item of [
