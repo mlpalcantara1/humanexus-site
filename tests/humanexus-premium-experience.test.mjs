@@ -17,11 +17,13 @@ test("Premium Experience consolida uma única camada visual compartilhada", () =
   assert.match(css, /\.hx-live-intelligence-instruments/);
 });
 
-test("HUD preserva exatamente nove posições operacionais sem incluir Resultante", () => {
+test("HUD preserva nove posições operacionais em duas linhas no desktop sem incluir Resultante", () => {
   assert.match(
     css,
-    /\.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,[^;]+\)\s*repeat\(7,[^;]+\);/
+    /HUMANEXUS PREMIUM EXPERIENCE 2\.0[\s\S]*?\.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(5,[^;]+\);/
   );
+  assert.match(css, /@media \(max-width: 1560px\)[\s\S]*?\.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(5,/);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*?\.hx-app--executive \.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,/);
 });
 
 test("radar permanece protagonista e ausência continua visualmente distinta", () => {
@@ -39,8 +41,9 @@ test("responsividade cobre notebook, tablet e celular sem nova dependência", ()
   assert.match(css, /@media \(max-width: 1240px\)[\s\S]*?\.hx-live-intelligence-instruments\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
 });
 
-test("atmosfera reutiliza o ativo institucional otimizado", () => {
-  assert.match(css, /url\("\/media\/hero-command-center\.webp"\)/);
+test("atmosfera operacional não depende de fotografia pesada", () => {
+  const secaoPremium = css.split("HUMANEXUS PREMIUM EXPERIENCE 2.0")[1] ?? "";
+  assert.doesNotMatch(secaoPremium, /url\("\/media\/hero-command-center\.webp"\)/);
   assert.doesNotMatch(css, /cockpit-simulator\.jpg/);
 });
 

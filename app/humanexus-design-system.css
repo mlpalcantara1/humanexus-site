@@ -1245,11 +1245,7 @@
 }
 
 .hx-app {
-  background:
-    linear-gradient(90deg, transparent 0 49.96%, rgba(255, 255, 255, .012) 50%, transparent 50.04%),
-    radial-gradient(circle at 82% 5%, rgba(41, 73, 75, .12), transparent 31rem),
-    radial-gradient(circle at 15% 92%, rgba(169, 133, 69, .055), transparent 35rem),
-    var(--hx-black);
+  background: var(--hx-black);
   color: var(--hx-white);
   font-family: Arial, Helvetica, sans-serif;
   font-size: 16px;
@@ -1257,23 +1253,21 @@
 }
 
 .hx-app::after {
-  opacity: .1;
-  background-size: 144px 144px;
+  opacity: .06;
+  background-size: 160px 160px;
 }
 
 .hx-app__atmosphere {
-  opacity: .2;
-  background:
-    linear-gradient(90deg, rgba(2, 4, 5, .97), rgba(2, 4, 5, .72) 44%, rgba(2, 4, 5, .88)),
-    url("/media/hero-command-center.webp") center 18% / cover no-repeat;
+  opacity: .12;
+  background: linear-gradient(90deg, rgba(2, 4, 5, .98), rgba(8, 18, 21, .74), rgba(2, 4, 5, .94));
 }
 
 .hx-app--executive .hx-app__header {
-  min-height: 84px;
-  padding: 12px clamp(20px, 2.4vw, 42px);
+  min-height: 74px;
+  padding: 9px clamp(18px, 2vw, 34px);
   border-bottom: 1px solid rgba(210, 182, 111, .14);
   background: rgba(2, 4, 5, .965);
-  box-shadow: 0 12px 42px rgba(0, 0, 0, .24);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
   backdrop-filter: none;
 }
 
@@ -1282,15 +1276,15 @@
 }
 
 .hx-app__brand-mark {
-  width: 45px;
-  height: 45px;
+  width: 40px;
+  height: 40px;
   border-color: rgba(210, 182, 111, .62);
   box-shadow: none;
 }
 
 .hx-app__brand strong {
-  font-size: 1.03rem;
-  letter-spacing: .31em;
+  font-size: .94rem;
+  letter-spacing: .28em;
 }
 
 .hx-app__brand small,
@@ -1352,13 +1346,13 @@
 }
 
 .hx-app--executive .hx-nav {
-  width: 232px;
+  width: 216px;
   border-right: 1px solid rgba(210, 182, 111, .1);
   background: rgba(4, 8, 10, .985);
 }
 
 .hx-nav__head {
-  min-height: 68px;
+  min-height: 58px;
   padding-inline: 15px;
 }
 
@@ -1373,9 +1367,9 @@
 }
 
 .hx-app--executive .hx-nav__link {
-  grid-template-columns: 38px minmax(0, 1fr) 2px;
-  min-height: 49px;
-  padding: 7px 9px;
+  grid-template-columns: 34px minmax(0, 1fr) 2px;
+  min-height: 44px;
+  padding: 6px 8px;
 }
 
 .hx-app--executive .hx-nav__link:hover {
@@ -1399,25 +1393,26 @@
 
 .hx-app--executive .hx-app__content--signed,
 .hx-app--executive .hx-app__footer {
-  padding-left: 232px;
+  padding-left: 216px;
 }
 
 .hx-app :where(.hx-module__inner, .hx-admin, .hx-operacao, .hx-management) {
-  width: min(100%, 1720px);
-  padding-inline: clamp(18px, 2.2vw, 38px);
+  width: 100%;
+  max-width: 1840px;
+  padding-inline: clamp(14px, 1.55vw, 28px);
 }
 
 .hx-app :where(.hx-module-head, .hx-ds-page-head) {
-  min-height: 156px;
+  min-height: 112px;
   align-items: end;
-  padding: clamp(32px, 4.5vw, 66px) 0 24px;
+  padding: clamp(22px, 3vw, 42px) 0 18px;
 }
 
 .hx-app :where(.hx-module h1, .hx-ds-page-head h1, .hx-admin h1) {
-  max-width: 880px;
-  margin-top: 8px;
-  font-size: clamp(2.25rem, 4.2vw, 4.8rem);
-  line-height: .98;
+  max-width: 960px;
+  margin-top: 6px;
+  font-size: clamp(1.9rem, 3vw, 3.35rem);
+  line-height: 1.02;
 }
 
 .hx-app :where(.hx-module-head > div > p:last-child, .hx-ds-page-head__description) {
@@ -1454,8 +1449,8 @@
 
 .hx-app :where(.hx-management-context, .hx-management-grid form, .hx-management-table, .hx-record-form, .hx-cockpit-panel, .hx-admin__form, .hx-admin__directory, .hx-ds-surface) {
   border-color: rgba(202, 213, 211, .1);
-  background: linear-gradient(145deg, rgba(12, 18, 21, .955), rgba(4, 8, 10, .975));
-  box-shadow: 0 18px 56px rgba(0, 0, 0, .2);
+  background: rgba(5, 10, 12, .96);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .16);
 }
 
 .hx-app :where(.hx-management-metrics, .hx-admin__metrics, .hx-command-dashboard__metrics) {
@@ -1509,7 +1504,8 @@
 }
 
 .hx-management-grid {
-  gap: 18px;
+  grid-template-columns: minmax(420px, .9fr) minmax(0, 1.1fr);
+  gap: 16px;
 }
 
 .hx-record-form,
@@ -1578,18 +1574,18 @@
 /* Cockpit premium: decisão e vetores acima da explicação. */
 
 .hx-cockpit-workspace {
-  padding-top: 12px;
+  padding-top: 8px;
 }
 
 .hx-cockpit-mode-switch {
-  top: 84px;
+  top: 74px;
   border-color: rgba(210, 182, 111, .17);
   background: rgba(2, 5, 6, .975);
   backdrop-filter: none;
 }
 
 .hx-cockpit-mode-switch button {
-  min-height: 54px;
+  min-height: 46px;
 }
 
 .hx-cockpit-mode-switch small {
@@ -1601,7 +1597,7 @@
 }
 
 .hx-live-levels {
-  top: 84px;
+  top: 74px;
   border-color: rgba(202, 213, 211, .1);
   background: rgba(3, 7, 9, .975);
   box-shadow: 0 10px 26px rgba(0, 0, 0, .2);
@@ -1609,7 +1605,7 @@
 }
 
 .hx-live-levels a {
-  min-height: 46px;
+  min-height: 40px;
 }
 
 .hx-live-levels a span,
@@ -1618,30 +1614,28 @@
 }
 
 .hx-app--executive .hx-live-cockpit {
-  gap: 14px;
-  padding: 14px;
+  gap: 10px;
+  padding: 10px;
   border-color: rgba(202, 213, 211, .095);
-  background: rgba(2, 6, 8, .9);
-  box-shadow: 0 28px 86px rgba(0, 0, 0, .32);
+  background: rgba(2, 6, 8, .94);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .24);
 }
 
 .hx-app--executive .hx-live-cockpit__masthead {
-  min-height: 132px;
-  padding: clamp(20px, 2vw, 30px);
+  min-height: 92px;
+  padding: clamp(16px, 1.5vw, 22px);
   border-color: rgba(210, 182, 111, .16);
-  background:
-    linear-gradient(92deg, rgba(5, 12, 15, .98), rgba(5, 12, 15, .82) 62%, rgba(12, 16, 14, .92)),
-    url("/media/hero-command-center.webp") right center / 52% auto no-repeat;
+  background: linear-gradient(92deg, rgba(5, 12, 15, .98), rgba(8, 17, 20, .88));
 }
 
 .hx-live-cockpit__masthead h1 {
-  margin-top: 8px;
-  font-size: clamp(2rem, 3.1vw, 3.8rem) !important;
+  margin-top: 4px;
+  font-size: clamp(1.65rem, 2.45vw, 2.85rem) !important;
   letter-spacing: -.035em;
 }
 
 .hx-live-cockpit__masthead p {
-  margin-top: 10px;
+  margin-top: 6px;
   color: var(--hx-steel);
   font-size: .86rem;
 }
@@ -1654,8 +1648,8 @@
 }
 
 .hx-live-context-strip > div {
-  min-height: 61px;
-  padding: 11px 14px;
+  min-height: 50px;
+  padding: 8px 12px;
 }
 
 .hx-live-context-strip small {
@@ -1667,12 +1661,12 @@
 }
 
 .hx-live-hud {
-  grid-template-columns: repeat(2, minmax(158px, 1.22fr)) repeat(7, minmax(112px, .86fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .hx-live-hud > div {
-  min-height: 90px;
-  padding: 13px 12px;
+  min-height: 64px;
+  padding: 8px 10px;
 }
 
 .hx-live-hud small {
@@ -1682,7 +1676,7 @@
 }
 
 .hx-live-hud strong {
-  margin-top: 7px;
+  margin-top: 3px;
   font-size: .93rem;
   line-height: 1.25;
 }
@@ -1694,7 +1688,7 @@
 
 .hx-live-hud span,
 .hx-live-hud__detail {
-  margin-top: 6px;
+  margin-top: 3px;
   font-size: .58rem;
   line-height: 1.35;
 }
@@ -1715,8 +1709,8 @@
 }
 
 .hx-live-vector-stage {
-  column-gap: clamp(18px, 2vw, 32px);
-  padding: clamp(18px, 2vw, 28px);
+  column-gap: clamp(14px, 1.5vw, 24px);
+  padding: clamp(14px, 1.5vw, 22px);
   border-color: rgba(210, 182, 111, .16);
   background:
     radial-gradient(circle at 36% 42%, rgba(41, 73, 75, .095), transparent 45%),
@@ -1735,8 +1729,8 @@
 
 .hx-live-vector-stage .hx-vector-radar-live,
 .hx-live-vector-stage .hx-vector-radar-live__svg {
-  min-height: clamp(500px, 38vw, 650px);
-  height: clamp(500px, 38vw, 650px) !important;
+  min-height: clamp(420px, 34vw, 570px);
+  height: clamp(420px, 34vw, 570px) !important;
 }
 
 .hx-vector-radar-live::before,
@@ -1874,11 +1868,11 @@
 
 @media (max-width: 1560px) {
   .hx-live-hud {
-    grid-template-columns: repeat(3, minmax(150px, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .hx-live-hud > div {
-    min-height: 82px;
+    min-height: 64px;
   }
 }
 
@@ -1910,11 +1904,11 @@
 
   .hx-cockpit-mode-switch,
   .hx-live-levels {
-    top: 74px;
+    top: 70px;
   }
 
   .hx-live-hud {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
@@ -1924,12 +1918,12 @@
   }
 
   .hx-app :where(.hx-module-head, .hx-ds-page-head) {
-    min-height: 126px;
-    padding-top: 28px;
+    min-height: 96px;
+    padding-top: 20px;
   }
 
   .hx-app :where(.hx-module h1, .hx-ds-page-head h1, .hx-admin h1) {
-    font-size: clamp(2rem, 12vw, 3.5rem);
+    font-size: clamp(1.75rem, 9vw, 2.75rem);
   }
 
   .hx-live-levels {
@@ -1942,13 +1936,13 @@
     background: linear-gradient(105deg, rgba(5, 12, 15, .98), rgba(5, 12, 15, .9));
   }
 
-  .hx-live-hud {
+  .hx-app--executive .hx-live-hud {
     position: relative;
     top: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .hx-live-hud > div:last-child {
+  .hx-app--executive .hx-live-hud > div:last-child {
     grid-column: 1 / -1;
   }
 
@@ -1997,12 +1991,8 @@
     letter-spacing: .22em;
   }
 
-  .hx-live-hud {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .hx-live-hud > div:last-child {
-    grid-column: auto;
+  .hx-app--executive .hx-live-hud {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .hx-live-vector-stage .hx-vector-radar-live,
