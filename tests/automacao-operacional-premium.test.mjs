@@ -31,6 +31,31 @@ test("preparação modular possui ação explícita e não inicia baseline", () 
   assert.doesNotMatch(preparar, /executar\("baseline"/);
 });
 
+test("abrir Cockpit garante o handoff canônico sem iniciar fase", () => {
+  const sessoes = ler("components/gestao-operacional.tsx");
+  const inicio = sessoes.indexOf(
+    "async function abrirCockpitComHandoffAtual"
+  );
+  const fim = sessoes.indexOf(
+    "async function abrirHistoricoDaSessao",
+    inicio
+  );
+  const abrir = sessoes.slice(inicio, fim);
+
+  assert.ok(inicio >= 0, "fluxo comum de abertura do Cockpit ausente");
+  assert.match(abrir, /acao:\s*"preparar"/);
+  assert.match(abrir, /sessao:\s*identificadorDaSessao/);
+  assert.match(
+    abrir,
+    /await fetch\("\/api\/plataforma\/gravacao-multimodal"/
+  );
+  assert.match(
+    abrir,
+    /window\.location\.assign\(`\/plataforma\/cockpit-vivo\?/
+  );
+  assert.doesNotMatch(abrir, /baseline|INICIAR_/);
+});
+
 test("preparação sem hardware não é classificada como falha técnica", () => {
   const componente = ler("components/controle-gravacao-multimodal.tsx");
   assert.match(componente, /const aguardandoHardware = Boolean\(/);

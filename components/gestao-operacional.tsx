@@ -997,10 +997,42 @@ export function GestaoOperacional({
     await carregar(String(resultado.identificador_da_organizacao ?? ""));
   }
 
-  function abrirCockpitSemAlterarEstado(
+  async function abrirCockpitComHandoffAtual(
     identificadorDaSessao: string,
     identificadorDoParticipante: string
   ) {
+    setOcupado(true);
+    setErro("");
+    try {
+      const resposta = await fetch("/api/plataforma/gravacao-multimodal", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-humanexus-csrf": csrf()
+        },
+        body: JSON.stringify({
+          acao: "preparar",
+          sessao: identificadorDaSessao,
+          dados: {}
+        })
+      });
+      const corpo = await resposta.json();
+      if (!resposta.ok) {
+        throw new Error(
+          corpo?.erro?.mensagem
+          ?? "Não foi possível preparar o contexto físico da sessão."
+        );
+      }
+    } catch (causa) {
+      setErro(
+        causa instanceof Error
+          ? causa.message
+          : "Não foi possível preparar o contexto físico da sessão."
+      );
+      return;
+    } finally {
+      setOcupado(false);
+    }
     const parametros = new URLSearchParams({
       organizacao: String(dados?.organizacao?.identificador ?? ""),
       participante: identificadorDoParticipante,
@@ -1371,7 +1403,7 @@ export function GestaoOperacional({
                 <button
                   type="button"
                   disabled={ocupado || !podeConduzir}
-                  onClick={() => abrirCockpitSemAlterarEstado(
+                  onClick={() => void abrirCockpitComHandoffAtual(
                     String(item.identificador ?? ""),
                     String(item.identificador_do_participante ?? "")
                   )}
@@ -2891,7 +2923,7 @@ export function GestaoOperacional({
                     (item) => String(item.identificador) === sessaoParaPreparar
                   );
                   if (!sessaoSelecionada) return;
-                  abrirCockpitSemAlterarEstado(
+                  void abrirCockpitComHandoffAtual(
                     sessaoParaPreparar,
                     String(sessaoSelecionada.identificador_do_participante ?? "")
                   );
