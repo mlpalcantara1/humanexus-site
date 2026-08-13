@@ -797,7 +797,14 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /const resultanteCalculada = cienciaAtualAdmissivel/);
   assert.match(cockpit, /const trajetoriaCalculada = leituraAoVivo/);
   assert.match(cockpit, /const projecaoOperacionalAtual = Number\.isFinite/);
-  assert.match(cockpit, /fontesRecebidas\.map\(fonteDuranteSincronizacao\)/);
+  assert.match(
+    cockpit,
+    /fontesRecebidas\.map\(\(fonte\) => fonteDuranteSincronizacao/
+  );
+  assert.match(cockpit, /limiteDeRecenciaSegundos: limiteCanonicoDaFonteSegundos/);
+  assert.match(cockpit, /pollingEmVerificacao: !projecaoOperacionalAtual/);
+  assert.match(cockpit, /const leituraAoVivo = algumaFonteCanonicaAtual/);
+  assert.doesNotMatch(cockpit, /const leituraAoVivo = projecaoOperacionalAtual/);
   assert.match(cockpit, /Última projeção canônica · não é leitura atual/);
   assert.match(cockpit, /não são tratados como leitura atual nem alimentam cálculos científicos/);
   assert.match(cockpit, /const modoSincronizando = !projecaoOperacionalAtual/);
@@ -821,6 +828,9 @@ test("sincronização preserva a projeção identificada sem convertê-la em lei
     valores: { hr_bpm: 71, rmssd_tecnico_ms: 11.4 },
     metricas: { ultima_sequencia: 1444 },
     series: { hr: [{ valor: 71 }] }
+  }, {
+    agora: Date.parse("2026-08-13T12:00:16Z"),
+    limiteDeRecenciaSegundos: 15
   });
 
   assert.equal(fonte.ao_vivo, false);
@@ -828,6 +838,89 @@ test("sincronização preserva a projeção identificada sem convertê-la em lei
   assert.equal(fonte.estado, "PROJEÇÃO CANÔNICA EM VERIFICAÇÃO");
   assert.deepEqual(fonte.valores, { hr_bpm: 71, rmssd_tecnico_ms: 11.4 });
   assert.equal(fonte.metricas.ultima_sequencia, 1444);
+});
+
+test("falhas transitórias preservam somente amostra canônica ainda atual", () => {
+  const fonte = {
+    codigo: "EMOTIV_EPOC_X",
+    estado: "CAPTURANDO",
+    ao_vivo: true,
+    valores: { qualidade_global: 58 },
+    metricas: {
+      ultimo_pacote: "2026-08-13T12:00:00Z",
+      ultima_sequencia: 787
+    },
+    metricas_de_desempenho: [
+      { nome: "Engajamento", valor_atual: 0.73 }
+    ]
+  };
+
+  const aposUmaFalha = fonteDuranteSincronizacao(fonte, {
+    agora: Date.parse("2026-08-13T12:00:05Z"),
+    limiteDeRecenciaSegundos: 15
+  });
+  const aposDuasFalhas = fonteDuranteSincronizacao(fonte, {
+    agora: Date.parse("2026-08-13T12:00:10Z"),
+    limiteDeRecenciaSegundos: 15
+  });
+
+  for (const atual of [aposUmaFalha, aposDuasFalhas]) {
+    assert.equal(atual.ao_vivo, true);
+    assert.equal(atual.estado, "CAPTURANDO");
+    assert.equal(atual.polling_em_verificacao, true);
+    assert.equal(atual.valores.qualidade_global, 58);
+    assert.equal(atual.metricas_de_desempenho[0].valor_atual, 0.73);
+  }
+});
+
+test("expiração real encerra a atualidade sem reutilizar histórico", () => {
+  const expirada = fonteDuranteSincronizacao({
+    codigo: "POLAR_H10",
+    estado: "CAPTURANDO",
+    ao_vivo: true,
+    valores: { hr_bpm: 82 },
+    metricas: {
+      ultimo_pacote: "2026-08-13T12:00:00Z",
+      ultima_sequencia: 606
+    }
+  }, {
+    agora: Date.parse("2026-08-13T12:00:16Z"),
+    limiteDeRecenciaSegundos: 15
+  });
+  const historica = fonteDuranteSincronizacao({
+    codigo: "POLAR_H10",
+    estado: "DESCONECTADO",
+    ao_vivo: false,
+    historico: true,
+    metricas: { ultimo_pacote: "2026-08-13T12:00:09Z" }
+  }, {
+    agora: Date.parse("2026-08-13T12:00:10Z"),
+    limiteDeRecenciaSegundos: 15
+  });
+
+  assert.equal(expirada.ao_vivo, false);
+  assert.equal(expirada.estado, "PROJEÇÃO CANÔNICA EM VERIFICAÇÃO");
+  assert.equal(expirada.projecao_em_verificacao, true);
+  assert.equal(historica.ao_vivo, false);
+  assert.equal(historica.projecao_em_verificacao, undefined);
+  assert.equal(historica.estado, "DESCONECTADO");
+});
+
+test("poll confirmado mantém exatamente a classificação canônica recebida", () => {
+  const fonte = {
+    codigo: "POLAR_H10",
+    estado: "CAPTURANDO",
+    ao_vivo: true,
+    metricas: { ultimo_pacote: "2026-08-13T12:00:00Z" }
+  };
+  const confirmada = fonteDuranteSincronizacao(fonte, {
+    agora: Date.parse("2026-08-13T12:00:01Z"),
+    limiteDeRecenciaSegundos: 15,
+    pollingEmVerificacao: false
+  });
+
+  assert.equal(confirmada, fonte);
+  assert.equal(confirmada.polling_em_verificacao, undefined);
 });
 
 test("Cockpit preserva séries da última projeção sem reativar a ciência viva", async () => {
@@ -838,7 +931,7 @@ test("Cockpit preserva séries da última projeção sem reativar a ciência viv
     /fonte\.ao_vivo === true\s*\|\| fonte\.projecao_em_verificacao === true/
   );
   assert.match(cockpit, /ÚLTIMA PROJEÇÃO — NÃO ATUAL/);
-  assert.match(cockpit, /const leituraAoVivo = projecaoOperacionalAtual/);
+  assert.match(cockpit, /const leituraAoVivo = algumaFonteCanonicaAtual/);
   assert.match(cockpit, /const neurotelemetriaOperacional = metricasDeDesempenhoVisiveis\(eeg\)/);
   assert.match(cockpit, /if \(fonte\.ao_vivo !== true\) return \[\];/);
 });

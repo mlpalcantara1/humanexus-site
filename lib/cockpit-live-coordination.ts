@@ -40,9 +40,38 @@ export function podeAplicarRespostaCanonica({
 type FonteCanonica = Record<string, unknown> & {
   ao_vivo?: boolean;
   estado?: string;
+  metricas?: Record<string, unknown>;
 };
 
-export function fonteDuranteSincronizacao<T extends FonteCanonica>(fonte: T): T {
+export function fonteDuranteSincronizacao<T extends FonteCanonica>(
+  fonte: T,
+  {
+    agora = Date.now(),
+    limiteDeRecenciaSegundos = 15,
+    pollingEmVerificacao = true
+  }: {
+    agora?: number;
+    limiteDeRecenciaSegundos?: number;
+    pollingEmVerificacao?: boolean;
+  } = {}
+): T {
+  if (fonte.ao_vivo !== true) return fonte;
+  const ultimoPacote = fonte.metricas?.ultimo_pacote;
+  const instanteDoUltimoPacote = new Date(String(ultimoPacote ?? "")).getTime();
+  const idadeDaAmostra = agora - instanteDoUltimoPacote;
+  const amostraCanonicaAindaAtual = fonte.ao_vivo === true
+    && Number.isFinite(instanteDoUltimoPacote)
+    && idadeDaAmostra >= 0
+    && idadeDaAmostra <= limiteDeRecenciaSegundos * 1000;
+  if (amostraCanonicaAindaAtual) {
+    return pollingEmVerificacao ? {
+      ...fonte,
+      // O transporte HTTP está em nova tentativa, mas a amostra confirmada
+      // pelo núcleo ainda pertence à janela canônica de atualidade. Preservar
+      // sua apresentação evita a falsa desconexão sem prolongar sua validade.
+      polling_em_verificacao: true
+    } : fonte;
+  }
   return {
     ...fonte,
     // A interrupção do transporte HTTP não prova perda da fonte física. Os

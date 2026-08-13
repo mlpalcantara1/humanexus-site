@@ -42,6 +42,7 @@ type Fonte = Registro & {
   series?: Record<string, Registro[]>;
   ultima_leitura_registrada?: Registro;
   projecao_em_verificacao?: boolean;
+  polling_em_verificacao?: boolean;
 };
 
 type Props = {
@@ -733,13 +734,21 @@ export function CockpitOperacionalVivo({
   const limiteDaProjecaoMs = (
     Number(cockpit.limite_de_recencia_segundos ?? 15) + 5
   ) * 1000;
+  const limiteCanonicoDaFonteSegundos = Number(
+    cockpit.limite_de_recencia_segundos ?? 15
+  );
   const projecaoOperacionalAtual = Number.isFinite(atualizadoEm)
     && agora >= atualizadoEm
     && agora - atualizadoEm <= limiteDaProjecaoMs;
   const fontesRecebidas = lista(cockpit.fontes) as Fonte[];
-  const fontes = projecaoOperacionalAtual
-    ? fontesRecebidas
-    : fontesRecebidas.map(fonteDuranteSincronizacao);
+  const fontes = fontesRecebidas.map((fonte) => fonteDuranteSincronizacao(
+    fonte,
+    {
+      agora,
+      limiteDeRecenciaSegundos: limiteCanonicoDaFonteSegundos,
+      pollingEmVerificacao: !projecaoOperacionalAtual
+    }
+  ));
   const replay = objeto(cockpit.replay);
   const indicadores = lista(cockpit.indicadores_contratados);
   const alertas = lista(cockpit.alertas_acionaveis);
@@ -749,10 +758,15 @@ export function CockpitOperacionalVivo({
   const itensReplay = lista(replayCompleto.itens);
   const fases = objeto(sessao.estados_das_fases);
   const modoHistorico = cockpit.modo === "REPLAY_HISTORICO";
-  const modoSincronizando = !projecaoOperacionalAtual && !modoHistorico;
+  const algumaFonteCanonicaAtual = fontes.some(
+    (fonte) => fonte.ao_vivo === true
+  );
+  const modoSincronizando = !projecaoOperacionalAtual
+    && !algumaFonteCanonicaAtual
+    && !modoHistorico;
   const modoAguardando =
     cockpit.modo === "MODO_OPERACIONAL_AGUARDANDO_CONEXAO";
-  const leituraAoVivo = projecaoOperacionalAtual
+  const leituraAoVivo = algumaFonteCanonicaAtual
     && cockpit.ao_vivo === true
     && !modoHistorico;
   const sessaoFinalizada = estadoOperacionalTerminal(contextoSessao.estado);
