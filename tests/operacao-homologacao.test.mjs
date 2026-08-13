@@ -758,6 +758,12 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   assert.match(operacao, /Governança científica, suficiência e proveniência/);
   assert.match(operacao, /elegibilidade_temporal/);
   assert.match(operacao, /rastreabilidade_do_motor/);
+  assert.match(cockpit, /indicadores_neuroregulatorios_experimentais/);
+  assert.match(cockpit, /Indicadores neuroregulatórios experimentais/);
+  assert.match(
+    cockpit,
+    /EXPERIMENTAL — NÃO VALIDADO PARA DECISÃO OPERACIONAL/
+  );
   assert.match(operacao, /visao !== "visao-geral"/);
   assert.doesNotMatch(cockpit, /fontes e cobertura vêm do núcleo/);
   assert.match(
@@ -1356,8 +1362,11 @@ test("cronômetro do Baseline começa somente no início canônico do Baseline",
   );
   assert.match(
     cockpit,
-    /duracao\(inicioDoCronometro, fimDoCronometro, agora\)/
+    /registroBaseline\.duracao_segundos/
   );
+  assert.match(cockpit, /registroBaseline\.duracao_calculada_em/);
+  assert.match(cockpit, /registroBaseline\.cronometro_em_execucao/);
+  assert.match(cockpit, /cronometroEmExecucao === true/);
   assert.match(
     cockpit,
     /registroBaseline\.estado === "INICIADO"[\s\S]*?"EM EXECUÇÃO"/

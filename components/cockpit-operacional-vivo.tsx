@@ -244,7 +244,32 @@ function dataLegivel(valor: unknown) {
   }).format(data);
 }
 
-function duracao(inicio: unknown, fim: unknown, agora: number) {
+function duracao(
+  inicio: unknown,
+  fim: unknown,
+  agora: number,
+  duracaoCanonica?: unknown,
+  calculadaEm?: unknown,
+  cronometroEmExecucao?: unknown
+) {
+  const segundosCanonicos = Number(duracaoCanonica);
+  if (Number.isFinite(segundosCanonicos) && segundosCanonicos >= 0) {
+    const calculadaEmMs = new Date(String(calculadaEm ?? "")).getTime();
+    const complemento = cronometroEmExecucao === true
+      && Number.isFinite(calculadaEmMs)
+      ? Math.max(0, (agora - calculadaEmMs) / 1000)
+      : 0;
+    const segundos = Math.max(
+      0,
+      Math.floor(segundosCanonicos + complemento)
+    );
+    const h = Math.floor(segundos / 3600);
+    const m = Math.floor((segundos % 3600) / 60);
+    const s = segundos % 60;
+    return [h, m, s]
+      .map((item) => String(item).padStart(2, "0"))
+      .join(":");
+  }
   const inicioMs = new Date(String(inicio ?? "")).getTime();
   if (!Number.isFinite(inicioMs)) return "00:00:00";
   const fimMs = fim ? new Date(String(fim)).getTime() : agora;
@@ -812,6 +837,13 @@ export function CockpitOperacionalVivo({
     : acoesSecundarias;
   const ciencia = objeto(estado.ciencia);
   const leituraCientifica = objeto(cockpit.leitura_cientifica);
+  const inrExperimental = objeto(
+    cockpit.indicadores_neuroregulatorios_experimentais
+  );
+  const indicadoresInrCalculados = lista(inrExperimental.indicadores).filter(
+    (indicador) => indicador.estado === "CALCULADO"
+      && typeof indicador.valor === "number"
+  );
   const iirh = objeto(leituraCientifica.iirh);
   const zona = objeto(leituraCientifica.zona);
   const resultante = objeto(leituraCientifica.resultante);
@@ -1417,7 +1449,16 @@ export function CockpitOperacionalVivo({
         </div>
         <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{sessaoBaseline ? estadoDoBaseline : texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
-        <div><small>TEMPO</small><strong>{duracao(inicioDoCronometro, fimDoCronometro, agora)}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
+        <div><small>TEMPO</small><strong>{duracao(
+          inicioDoCronometro,
+          fimDoCronometro,
+          agora,
+          sessaoBaseline ? registroBaseline.duracao_segundos : undefined,
+          sessaoBaseline ? registroBaseline.duracao_calculada_em : undefined,
+          sessaoBaseline
+            ? registroBaseline.cronometro_em_execucao
+            : undefined
+        )}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
         <div><small>FREQUÊNCIA CARDÍACA</small><strong>{polar.ao_vivo === true || polarEmVerificacao ? <LeituraNumerica valor={polarValoresHud.hr_bpm} sufixo=" bpm" /> : "Sem leitura atual"}</strong><span>{polarEmVerificacao ? "Última projeção canônica · não é leitura atual" : texto(polar.estado)}</span></div>
         <div><small>RMSSD</small><strong>{polar.ao_vivo === true || polarEmVerificacao ? <LeituraNumerica valor={polarValoresHud.rmssd_tecnico_ms} casas={1} sufixo=" ms" /> : "Sem leitura atual"}</strong><span>{polarEmVerificacao ? "Última projeção canônica · validade em verificação" : texto(polar.estado)}</span></div>
         <div><small>EPOC X</small><strong>{texto(eeg.estado)}</strong><span>{eeg.ao_vivo === true ? "Capturando" : eegEmVerificacao ? "Atualização interrompida" : "Sem leitura atual"}</span></div>
@@ -1962,6 +2003,29 @@ export function CockpitOperacionalVivo({
               );
             })}
           </details>
+          {indicadoresInrCalculados.length ? (
+            <details className="hx-live-vector-trace">
+              <summary>Indicadores neuroregulatórios experimentais</summary>
+              <p>{texto(
+                inrExperimental.status_cientifico,
+                "EXPERIMENTAL — NÃO VALIDADO PARA DECISÃO OPERACIONAL"
+              )}</p>
+              {indicadoresInrCalculados.map((indicador) => (
+                <dl key={texto(indicador.identificador)}>
+                  <div><dt>Indicador</dt><dd>{texto(indicador.identificador)} · {texto(indicador.nome)}</dd></div>
+                  <div><dt>Valor observado</dt><dd>{numero(indicador.valor, 4)} {texto(indicador.unidade, "")}</dd></div>
+                  <div><dt>Confiança</dt><dd>{percentual(indicador.confianca)}</dd></div>
+                  <div><dt>Qualidade</dt><dd>{percentual(indicador.qualidade)}</dd></div>
+                  <div><dt>Fontes</dt><dd>{fontesDoIndicador(indicador.fontes)}</dd></div>
+                  <div><dt>Janela observada</dt><dd>{JSON.stringify(indicador.janela)}</dd></div>
+                  <div><dt>Fórmula transparente</dt><dd>{texto(indicador.formula)}</dd></div>
+                  <div><dt>Normalização</dt><dd>{texto(indicador.normalizacao)}</dd></div>
+                  <div><dt>Versão</dt><dd>{texto(indicador.versao)}</dd></div>
+                  <div><dt>Status</dt><dd>{texto(indicador.status_cientifico)}</dd></div>
+                </dl>
+              ))}
+            </details>
+          ) : null}
           <pre>{JSON.stringify({
             elegibilidade_temporal: elegibilidadeTemporal,
             precondicoes_da_zona: zona.precondicoes_avaliadas,
