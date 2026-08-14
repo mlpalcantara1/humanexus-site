@@ -38,6 +38,7 @@ type Fonte = Registro & {
   valores?: Registro;
   metricas?: Registro;
   metricas_de_desempenho?: Registro[];
+  atividade_de_bandas_eeg?: Registro;
   janela_de_qualidade?: Registro;
   series?: Record<string, Registro[]>;
   ultima_leitura_registrada?: Registro;
@@ -590,6 +591,8 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
   const metricas = aoVivo || emVerificacao ? objeto(fonte.metricas) : {};
   const janela = aoVivo || emVerificacao ? objeto(fonte.janela_de_qualidade) : {};
   const desempenho = metricasDeDesempenhoDaFonte(fonte);
+  const atividadeDeBandas = objeto(fonte.atividade_de_bandas_eeg);
+  const bandas = lista(atividadeDeBandas.bandas);
   const desempenhoPorNome = new Map(
     desempenho.map((metrica) => [String(metrica.nome ?? ""), metrica])
   );
@@ -599,9 +602,9 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
     <article className="hx-live-source-card hx-live-source-card--epoc" data-source="epoc-x">
       <header><div><small>EPOC X</small><strong>Desempenho e qualidade</strong></div><FonteEstado estado={fonte.estado} /></header>
       <div className="hx-live-source-values">
-        <span><small>Qualidade atual do sinal EEG</small><b>{aoVivo || emVerificacao ? percentual(valores.qualidade_global) : "Sem leitura atual"}</b></span>
-        <span><small>Mediana da qualidade EEG</small><b>{aoVivo || emVerificacao ? percentual(valores.qualidade_mediana_da_janela) : "Sem leitura atual"}</b></span>
-        <span><small>Confiança do EEG</small><b>{aoVivo || emVerificacao ? texto(valores.nivel_de_confianca_eeg) : "Indisponível"}</b></span>
+        <span><small>Qualidade EEG</small><b>{aoVivo || emVerificacao ? percentual(valores.qualidade_eeg) : "Sem leitura atual"}</b></span>
+        <span><small>Qualidade de contato</small><b>{aoVivo || emVerificacao ? percentual(valores.qualidade_de_contato) : "Sem leitura atual"}</b></span>
+        <span><small>Qualidade da taxa de amostragem</small><b>{aoVivo || emVerificacao ? percentual(valores.qualidade_da_taxa_de_amostragem) : "Sem leitura atual"}</b></span>
         <span><small>Sequência atual</small><b>{aoVivo || emVerificacao ? numero(metricas.ultima_sequencia) : "Sem leitura atual"}</b></span>
       </div>
       {emVerificacao ? (
@@ -618,8 +621,35 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
       ) : null}
       <Sparkline pontos={aoVivo || emVerificacao ? lista(fonte.series?.qualidade) : []} cor={C.green} />
       <div className="hx-live-performance-heading">
-        <small>NEUROTELEMETRIA REGULATÓRIA · STREAM MET CORTEX</small>
-        <span>Separada da qualidade do sinal EEG · sem estimativa e sem derivação por qualidade.</span>
+        <small>ATIVIDADE DAS BANDAS EEG · EMOTIV CORTEX POW</small>
+        <span>Médias de apresentação derivadas dos sensores disponíveis; evidência original preservada por sensor e banda.</span>
+      </div>
+      <div className="hx-live-performance-grid">
+        {["Theta", "Alpha", "Beta baixa", "Beta alta", "Gamma"].map((nome) => {
+          const banda = bandas.find((item) => String(item.nome) === nome);
+          const atual = aoVivo && banda?.valor_agregado != null;
+          return (
+            <span key={nome}>
+              <small>{nome}</small>
+              <b>{atual ? numero(banda?.valor_agregado, 3) : "INDISPONÍVEL"}</b>
+              <em>{atual ? "Cortex POW atual · média dos canais disponíveis" : "Stream POW sem valor atual"}</em>
+            </span>
+          );
+        })}
+      </div>
+      {aoVivo && bandas.length ? (
+        <details className="hx-live-recorded-reading">
+          <summary>Detalhar bandas por sensor</summary>
+          <pre>{JSON.stringify(bandas.map((banda) => ({
+            banda: banda.nome,
+            sensores: banda.por_sensor,
+            proveniencia: banda.proveniencia
+          })), null, 2)}</pre>
+        </details>
+      ) : null}
+      <div className="hx-live-performance-heading">
+        <small>MÉTRICAS DE DESEMPENHO · EMOTIV CORTEX MET</small>
+        <span>Somente valores nativos ativos · sem estimativa, blend ou derivação por bandas/qualidade.</span>
       </div>
       <div className="hx-live-performance-grid">
         {METRICAS_DE_DESEMPENHO_VISIVEIS.map((nome) => {
@@ -628,7 +658,7 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
           return (
             <span key={nome}>
               <small>{nome}</small>
-              <b>{leituraAtual ? percentual(metrica?.valor_atual) : "SEM LEITURA ATUAL"}</b>
+              <b>{leituraAtual ? percentual(metrica?.valor_atual) : "INDISPONÍVEL"}</b>
               <em>{leituraAtual
                 ? `${texto(metrica?.tendencia)} · ${texto(metrica?.estado_da_aquisicao)} · ATUAL · ${dataLegivel(metrica?.ultima_atualizacao)}`
                 : emVerificacao && metrica?.valor_atual != null
@@ -840,10 +870,7 @@ export function CockpitOperacionalVivo({
   const inrExperimental = objeto(
     cockpit.indicadores_neuroregulatorios_experimentais
   );
-  const indicadoresInrCalculados = lista(inrExperimental.indicadores).filter(
-    (indicador) => indicador.estado === "CALCULADO"
-      && typeof indicador.valor === "number"
-  );
+  const indicadoresInr = lista(inrExperimental.indicadores);
   const iirh = objeto(leituraCientifica.iirh);
   const zona = objeto(leituraCientifica.zona);
   const resultante = objeto(leituraCientifica.resultante);
@@ -2003,17 +2030,28 @@ export function CockpitOperacionalVivo({
               );
             })}
           </details>
-          {indicadoresInrCalculados.length ? (
+          {indicadoresInr.length ? (
             <details className="hx-live-vector-trace">
               <summary>Indicadores neuroregulatórios experimentais</summary>
               <p>{texto(
                 inrExperimental.status_cientifico,
                 "EXPERIMENTAL — NÃO VALIDADO PARA DECISÃO OPERACIONAL"
               )}</p>
-              {indicadoresInrCalculados.map((indicador) => (
+              {indicadoresInr.map((indicador) => (
                 <dl key={texto(indicador.identificador)}>
                   <div><dt>Indicador</dt><dd>{texto(indicador.identificador)} · {texto(indicador.nome)}</dd></div>
-                  <div><dt>Valor observado</dt><dd>{numero(indicador.valor, 4)} {texto(indicador.unidade, "")}</dd></div>
+                  <div><dt>Estado</dt><dd>{texto(indicador.estado)}</dd></div>
+                  <div><dt>Significado</dt><dd>{texto(indicador.significado)}</dd></div>
+                  <div><dt>Valor observado</dt><dd>{
+                    indicador.estado === "CALCULADO" && typeof indicador.valor === "number"
+                      ? `${numero(indicador.valor, 4)} ${texto(indicador.unidade, "")}`
+                      : "NÃO CALCULÁVEL COM A FONTE ATUAL"
+                  }</dd></div>
+                  <div><dt>Condição mínima</dt><dd>{texto(indicador.condicao_minima_de_calculo)}</dd></div>
+                  <div><dt>Limite de interpretação</dt><dd>{texto(indicador.limite_interpretativo)}</dd></div>
+                  {indicador.motivo_de_nao_calculo ? (
+                    <div><dt>Motivo da ausência</dt><dd>{texto(indicador.motivo_de_nao_calculo)}</dd></div>
+                  ) : null}
                   <div><dt>Confiança</dt><dd>{percentual(indicador.confianca)}</dd></div>
                   <div><dt>Qualidade</dt><dd>{percentual(indicador.qualidade)}</dd></div>
                   <div><dt>Fontes</dt><dd>{fontesDoIndicador(indicador.fontes)}</dd></div>

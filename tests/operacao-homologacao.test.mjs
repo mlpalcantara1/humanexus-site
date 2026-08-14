@@ -470,7 +470,15 @@ test("telemetria real é contínua, histórica quando encerrada e não cria simu
   for (const item of [
     "Foco e atenção", "Engajamento", "Interesse", "Excitação", "Estresse", "Relaxamento"
   ]) assert.match(operacional, new RegExp(item));
-  assert.doesNotMatch(operacional, /theta|alpha|betaL|betaH|gamma|fluxos_ativos|metricas_cortex_autorizadas/i);
+  for (const item of [
+    "Qualidade EEG", "Qualidade de contato",
+    "Qualidade da taxa de amostragem",
+    "ATIVIDADE DAS BANDAS EEG · EMOTIV CORTEX POW",
+    "Theta", "Alpha", "Beta baixa", "Beta alta", "Gamma",
+    "MÉTRICAS DE DESEMPENHO · EMOTIV CORTEX MET"
+  ]) assert.match(operacional, new RegExp(item));
+  assert.match(operacional, /sem estimativa, blend ou derivação por bandas\/qualidade/);
+  assert.doesNotMatch(operacional, /fluxos_ativos|metricas_cortex_autorizadas/i);
   assert.match(operacional, /REPRODUÇÃO HISTÓRICA DE SESSÃO CIENTIFICAMENTE INCOMPLETA/);
   assert.match(client, /window\.setInterval/);
   assert.doesNotMatch(rota, /gerarTelemetriaTecnica|BRIDGE_TESTE/);
@@ -760,6 +768,9 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   assert.match(operacao, /rastreabilidade_do_motor/);
   assert.match(cockpit, /indicadores_neuroregulatorios_experimentais/);
   assert.match(cockpit, /Indicadores neuroregulatórios experimentais/);
+  assert.match(cockpit, /Condição mínima/);
+  assert.match(cockpit, /Limite de interpretação/);
+  assert.match(cockpit, /NÃO CALCULÁVEL COM A FONTE ATUAL/);
   assert.match(
     cockpit,
     /EXPERIMENTAL — NÃO VALIDADO PARA DECISÃO OPERACIONAL/
@@ -976,8 +987,8 @@ test("snapshot e neurotelemetria têm projeção visual completa e separada da q
     "Versão científica", "Biblioteca", "Taxonomia de Zona", "Cobertura",
     "Qualidade", "Confiança", "Fontes", "Proveniência", "Regra longitudinal"
   ]) assert.match(cockpit, new RegExp(item));
-  assert.match(cockpit, /NEUROTELEMETRIA REGULATÓRIA · STREAM MET CORTEX/);
-  assert.match(cockpit, /Separada da qualidade do sinal EEG/);
+  assert.match(cockpit, /MÉTRICAS DE DESEMPENHO · EMOTIV CORTEX MET/);
+  assert.match(cockpit, /Somente valores nativos ativos/);
   assert.match(cockpit, /Stream MET real sem valor canônico atual/);
   assert.match(gravacao, /snapshot_canonico/);
   assert.match(gravacao, /Snapshot basal imutável/);
@@ -1148,8 +1159,9 @@ test("propriedade do ciclo canônico cobre duas horas, retomada, concorrência e
 test("EPOC degradado gera ressalva sem bloquear o fluxo operacional", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
 
-  assert.match(cockpit, /qualidade_mediana_da_janela/);
-  assert.match(cockpit, /nivel_de_confianca_eeg/);
+  assert.match(cockpit, /valores\.qualidade_eeg/);
+  assert.match(cockpit, /valores\.qualidade_de_contato/);
+  assert.match(cockpit, /valores\.qualidade_da_taxa_de_amostragem/);
   assert.match(cockpit, /QUALIDADE_MUITO_DEGRADADA/);
   assert.match(cockpit, /A sessão e as demais fontes continuam normalmente/);
   assert.match(cockpit, /EPOC X está indisponível ou reconectando; a sessão continua/);
