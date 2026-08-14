@@ -473,10 +473,21 @@ test("telemetria real é contínua, histórica quando encerrada e não cria simu
   for (const item of [
     "Qualidade EEG", "Qualidade de contato",
     "Qualidade da taxa de amostragem",
-    "ATIVIDADE DAS BANDAS EEG · EMOTIV CORTEX POW",
+    "ATIVIDADE DAS BANDAS EEG — EMOTIV CORTEX",
     "Theta", "Alpha", "Beta baixa", "Beta alta", "Gamma",
-    "MÉTRICAS DE DESEMPENHO · EMOTIV CORTEX MET"
+    "PERFORMANCE METRICS — EMOTIV CORTEX MET",
+    "GRÁFICO TEMPORAL · CINCO BANDAS",
+    "GLOBAL", "SENSOR", "SEM LEITURA ATUAL"
   ]) assert.match(operacional, new RegExp(item));
+  assert.ok(
+    operacional.indexOf("<AtividadeDasBandasEeg")
+      < operacional.indexOf('className="hx-live-technical-drawer"'),
+    "as cinco bandas precisam existir na superfície operacional antes do painel técnico"
+  );
+  assert.match(operacional, /serie_global/);
+  assert.match(operacional, /series_por_sensor/);
+  assert.match(operacional, /Agregação HUMANEXUS de dados EMOTIV Cortex/);
+  assert.match(operacional, /lacunas não interpoladas/);
   assert.match(operacional, /sem estimativa, blend ou derivação por bandas\/qualidade/);
   assert.doesNotMatch(operacional, /fluxos_ativos|metricas_cortex_autorizadas/i);
   assert.match(operacional, /REPRODUÇÃO HISTÓRICA DE SESSÃO CIENTIFICAMENTE INCOMPLETA/);

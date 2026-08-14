@@ -70,6 +70,14 @@ const METRICAS_DE_DESEMPENHO_VISIVEIS = [
   "Relaxamento"
 ] as const;
 
+const BANDAS_EEG_VISIVEIS = [
+  { codigo: "theta", nome: "Theta", cor: C.gold },
+  { codigo: "alpha", nome: "Alpha", cor: C.green },
+  { codigo: "beta_baixa", nome: "Beta baixa", cor: C.cyan },
+  { codigo: "beta_alta", nome: "Beta alta", cor: C.amber },
+  { codigo: "gamma", nome: "Gamma", cor: C.red }
+] as const;
+
 const ROTULOS_DAS_ZONAS: Record<string, string> = {
   ZO: "Zona Ótima",
   ZA: "Zona Adaptativa",
@@ -679,6 +687,177 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
         <span>{aoVivo ? "Métricas fornecidas pelo equipamento · sem interpretação HUMANEXUS automática" : "Fonte sem transmissão atual"}</span>
       </footer>
     </article>
+  );
+}
+
+function pontosDaBanda(
+  banda: Registro,
+  escopo: "GLOBAL" | "SENSOR",
+  sensor: string,
+  aoVivo: boolean
+): HxDataPoint[] {
+  if (!aoVivo) return [];
+  const serie = escopo === "GLOBAL"
+    ? lista(banda.serie_global)
+    : lista(objeto(banda.series_por_sensor)[sensor]);
+  return serie.slice(-120).flatMap((item) => {
+    const time = new Date(String(item.timestamp ?? "")).getTime();
+    const value = Number(item.valor);
+    if (!Number.isFinite(time) || !Number.isFinite(value)) return [];
+    const quality = Number(item.qualidade);
+    return [{
+      time,
+      value,
+      label: texto(banda.nome),
+      phase: texto(item.momento, "SEM FASE"),
+      source: escopo === "GLOBAL"
+        ? "EMOTIV Cortex pow · agregação HUMANEXUS"
+        : `EMOTIV Cortex pow · sensor ${sensor}`,
+      quality: Number.isFinite(quality) ? quality : null,
+      connection: "ATUAL",
+      gap: item.gap === true
+    } satisfies HxDataPoint];
+  });
+}
+
+function AtividadeDasBandasEeg({
+  fonte,
+  marcadores,
+  faixas
+}: {
+  fonte: Fonte;
+  marcadores: HxMarker[];
+  faixas: HxPhaseRange[];
+}) {
+  const aoVivo = fonte.ao_vivo === true;
+  const atividade = objeto(fonte.atividade_de_bandas_eeg);
+  const bandas = lista(atividade.bandas);
+  const sensores = Array.from(new Set(
+    (Array.isArray(atividade.sensores) ? atividade.sensores : [])
+      .map((item) => String(item).trim())
+      .filter(Boolean)
+  ));
+  const [escopo, setEscopo] = useState<"GLOBAL" | "SENSOR">("GLOBAL");
+  const [sensorSelecionado, setSensorSelecionado] = useState("");
+  const sensorAtivo = sensores.includes(sensorSelecionado)
+    ? sensorSelecionado
+    : sensores[0] ?? "";
+  const valores = objeto(fonte.valores);
+  const timestampAtual = atividade.timestamp;
+  const trilhas = useMemo<HxTrack[]>(() => BANDAS_EEG_VISIVEIS.map((definicao) => {
+    const banda = bandas.find((item) => String(item.codigo) === definicao.codigo) ?? {};
+    return {
+      id: `eeg-pow-${definicao.codigo}-${escopo}-${sensorAtivo || "sem-sensor"}`,
+      name: definicao.nome,
+      unit: texto(banda.unidade, "unidade nativa Cortex"),
+      color: definicao.cor,
+      points: pontosDaBanda(banda, escopo, sensorAtivo, aoVivo),
+      emptyReason: "Sem leitura atual",
+      technical: true
+    };
+  }), [aoVivo, bandas, escopo, sensorAtivo]);
+  const possuiSerieAtual = trilhas.some((trilha) => trilha.points.length > 0);
+
+  return (
+    <HxSurface as="section" className="hx-live-intelligence-instrument hx-live-eeg-bands">
+      <HxSectionHeader
+        eyebrow="ATIVIDADE DAS BANDAS EEG — EMOTIV CORTEX"
+        title="Potência espectral viva"
+        aside={(
+          <div className="hx-live-eeg-scope" aria-label="Granularidade das bandas EEG">
+            <div role="group" aria-label="Escopo da leitura">
+              <button
+                className={escopo === "GLOBAL" ? "is-active" : ""}
+                onClick={() => setEscopo("GLOBAL")}
+                type="button"
+              >GLOBAL</button>
+              <button
+                className={escopo === "SENSOR" ? "is-active" : ""}
+                disabled={!sensores.length}
+                onClick={() => setEscopo("SENSOR")}
+                type="button"
+              >SENSOR</button>
+            </div>
+            {escopo === "SENSOR" ? (
+              <label>
+                <span>Sensor Cortex</span>
+                <select
+                  aria-label="Sensor Cortex"
+                  disabled={!sensores.length}
+                  onChange={(evento) => setSensorSelecionado(evento.target.value)}
+                  value={sensorAtivo}
+                >
+                  {sensores.map((sensor) => <option key={sensor} value={sensor}>{sensor}</option>)}
+                </select>
+              </label>
+            ) : null}
+          </div>
+        )}
+      />
+
+      <div className="hx-live-eeg-workspace">
+        <div>
+          <div className="hx-live-eeg-band-values" aria-label="Valores atuais das cinco bandas EEG">
+            {BANDAS_EEG_VISIVEIS.map((definicao) => {
+              const banda = bandas.find((item) => String(item.codigo) === definicao.codigo) ?? {};
+              const leituraDoSensor = lista(banda.por_sensor).find(
+                (item) => String(item.sensor) === sensorAtivo
+              );
+              const valor = escopo === "GLOBAL"
+                ? banda.valor_agregado
+                : leituraDoSensor?.valor;
+              const atual = aoVivo && typeof valor === "number" && Number.isFinite(valor);
+              return (
+                <span key={definicao.codigo}>
+                  <small>{definicao.nome}</small>
+                  <b>{atual ? numero(valor, 3) : "SEM LEITURA ATUAL"}</b>
+                  <em>{atual
+                    ? `${texto(banda.unidade, "unidade nativa Cortex")} · ATUAL · ${dataLegivel(timestampAtual)}`
+                    : "Nenhuma amostra pow atual para esta banda"}</em>
+                </span>
+              );
+            })}
+          </div>
+          <p className="hx-live-eeg-provenance">
+            {escopo === "GLOBAL"
+              ? "Agregação HUMANEXUS de dados EMOTIV Cortex · valores originais preservados por sensor e banda."
+              : `Dados nativos EMOTIV Cortex do sensor ${sensorAtivo || "ainda não disponível"}.`}
+          </p>
+          <div className="hx-live-eeg-quality" aria-label="Qualidades independentes do EPOC X">
+            {[
+              ["EEG Quality", valores.qualidade_eeg],
+              ["Contact Quality", valores.qualidade_de_contato],
+              ["Sample Rate Quality", valores.qualidade_da_taxa_de_amostragem]
+            ].map(([nome, valor]) => (
+              <span key={String(nome)}>
+                <small>{String(nome)}</small>
+                <b>{aoVivo && typeof valor === "number"
+                  ? percentual(valor)
+                  : "SEM LEITURA ATUAL"}</b>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="hx-live-eeg-chart" aria-label="Gráfico temporal vivo das cinco bandas EEG">
+          <header>
+            <small>GRÁFICO TEMPORAL · CINCO BANDAS</small>
+            <span>Buffer visual limitado · lacunas não interpoladas</span>
+          </header>
+          {possuiSerieAtual ? (
+            <CockpitSignalStack
+              tracks={trilhas}
+              markers={marcadores}
+              phases={faixas}
+              showTechnicalLegend={false}
+              primaryDataLabel="Potência espectral Cortex"
+            />
+          ) : (
+            <InstrumentoSemLeitura mensagem="O gráfico será preenchido somente por amostras atuais do stream pow do EMOTIV Cortex." />
+          )}
+        </div>
+      </div>
+    </HxSurface>
   );
 }
 
@@ -1750,11 +1929,17 @@ export function CockpitOperacionalVivo({
         ) : null}
 
         <section className="hx-live-intelligence-instruments" aria-label="Instrumentos de Inteligência Regulatória Humana">
+          <AtividadeDasBandasEeg
+            fonte={eeg}
+            marcadores={marcadores}
+            faixas={faixas}
+          />
+
           <HxSurface as="section" className="hx-live-intelligence-instrument">
             <HxSectionHeader
-              eyebrow="NEUROTELEMETRIA CANÔNICA"
+              eyebrow="PERFORMANCE METRICS — EMOTIV CORTEX MET"
               title="Funcionamento Neuroregulatório"
-              aside={<span>Seis métricas canônicas simultâneas</span>}
+              aside={<span>Somente métricas met nativas e ativas</span>}
             />
             <div className="hx-live-neuro-summary" aria-label="Valores neuroregulatórios atuais">
               {METRICAS_DE_DESEMPENHO_VISIVEIS.map((nome) => {
