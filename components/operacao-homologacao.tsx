@@ -237,6 +237,71 @@ function dataLegivel(valor: unknown) {
       }).format(data);
 }
 
+const BANDAS_ANI_LONGITUDINAIS = [
+  { codigo: "theta", nome: "Theta", cor: C.gold },
+  { codigo: "alpha", nome: "Alpha", cor: C.warmWhite },
+  { codigo: "beta_baixa", nome: "Beta baixa", cor: C.cyan },
+  { codigo: "beta_alta", nome: "Beta alta", cor: C.amber },
+  { codigo: "gamma", nome: "Gamma", cor: C.red }
+] as const;
+
+function EvolucaoDaAssinaturaNeuroregulatoria({ longitudinal }: { longitudinal: Registro }) {
+  const sinais = objeto(longitudinal.sinais_longitudinais);
+  const evolucao = objeto(sinais.evolucao_da_assinatura_neuroregulatoria);
+  const observacoes = lista(evolucao.observacoes).map(objeto);
+  const trilhas: HxTrack[] = BANDAS_ANI_LONGITUDINAIS.map((definicao) => ({
+    id: `ani-longitudinal-${definicao.codigo}`,
+    name: definicao.nome,
+    unit: "µV²/Hz",
+    color: definicao.cor,
+    points: observacoes.flatMap((observacao) => {
+      const time = instante(observacao.timestamp);
+      if (!time) return [];
+      const banda = lista(observacao.bandas)
+        .map(objeto)
+        .find((item) => String(item.codigo) === definicao.codigo);
+      return [{
+        time,
+        value: typeof banda?.valor_observado === "number"
+          ? banda.valor_observado
+          : null,
+        label: texto(observacao.fase, "Sessão"),
+        source: "ANI-TIRH · EMOTIV Cortex pow",
+        gap: banda?.valor_observado == null
+      }];
+    }),
+    emptyReason: "Não há observações comparáveis desta banda no histórico autorizado."
+  }));
+  const possuiValores = trilhas.some((trilha) =>
+    trilha.points.some((ponto) => ponto.value != null)
+  );
+  return (
+    <section className="hx-cockpit-panel hx-ani-longitudinal">
+      <HxSectionHeader
+        eyebrow="ANI-TIRH v0.1 · EXPERIMENTAL — EM VALIDAÇÃO LONGITUDINAL"
+        title="Evolução da Assinatura Neuroregulatória"
+        description="Comparação intraindividual por sessão e fase. Associação temporal não implica causalidade; ausência permanece ausência."
+        aside={<span>{texto(evolucao.estado, "EVIDÊNCIA TEMPORAL AINDA INSUFICIENTE")}</span>}
+      />
+      {possuiValores ? (
+        <CockpitSignalStack
+          tracks={trilhas}
+          markers={[]}
+          phases={[]}
+          showTechnicalLegend={false}
+          primaryDataLabel="Observação ANI-TIRH"
+        />
+      ) : (
+        <EmptySignalState
+          title="ASSINATURA NEUROREGULATÓRIA"
+          status="EVIDÊNCIA TEMPORAL AINDA INSUFICIENTE"
+          reason="Ainda não existem observações neurodinâmicas intraindividuais comparáveis suficientes. Nenhum valor é estimado ou preenchido."
+        />
+      )}
+    </section>
+  );
+}
+
 function faseAtual(estado: Estado | null) {
   const canonico = objeto(estado?.estado_operacional);
   if (canonico.fase_cientifica_atual) {
@@ -2556,6 +2621,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="LONGITUDINAL" titulo="Histórico do participante sem recálculo silencioso." descricao="Sessões, ciclos, versões, lacunas e comparabilidade metodológica permanecem preservados." />
       <LongitudinalEvolutionChart points={pontosLongitudinais} />
+      <EvolucaoDaAssinaturaNeuroregulatoria longitudinal={estado.longitudinal} />
       <ReferenciaBaselineResumo estado={estado} />
       <Rastreabilidade estado={estado} />
     </section>
@@ -3014,6 +3080,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           description="Filtros por período, contexto, tarefa e versão científica são aplicados sem ligar sessões incompatíveis."
         />
         <LongitudinalEvolutionChart points={pontos} />
+        <EvolucaoDaAssinaturaNeuroregulatoria longitudinal={estado.longitudinal} />
         <Rastreabilidade estado={estado} />
       </div>
     );

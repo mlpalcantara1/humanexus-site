@@ -656,8 +656,8 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
         </details>
       ) : null}
       <div className="hx-live-performance-heading">
-        <small>MÉTRICAS DE DESEMPENHO · EMOTIV CORTEX MET</small>
-        <span>Somente valores nativos ativos · sem estimativa, blend ou derivação por bandas/qualidade.</span>
+        <small>PERFORMANCE METRICS — EMOTIV CORTEX MET</small>
+        <span>MÉTRICAS DE DESEMPENHO · EMOTIV CORTEX MET · Somente valores nativos ativos; qualidade EEG não é usada como substituta · sem estimativa, blend ou derivação por bandas/qualidade.</span>
       </div>
       <div className="hx-live-performance-grid">
         {METRICAS_DE_DESEMPENHO_VISIVEIS.map((nome) => {
@@ -731,6 +731,7 @@ function AtividadeDasBandasEeg({
 }) {
   const aoVivo = fonte.ao_vivo === true;
   const atividade = objeto(fonte.atividade_de_bandas_eeg);
+  const aniTirh = objeto(atividade.analise_neurodinamica_individual);
   const bandas = lista(atividade.bandas);
   const sensores = Array.from(new Set(
     (Array.isArray(atividade.sensores) ? atividade.sensores : [])
@@ -738,10 +739,16 @@ function AtividadeDasBandasEeg({
       .filter(Boolean)
   ));
   const [escopo, setEscopo] = useState<"GLOBAL" | "SENSOR">("GLOBAL");
+  const [modoTemporal, setModoTemporal] = useState<"ATUAL" | "BASELINE">("ATUAL");
   const [sensorSelecionado, setSensorSelecionado] = useState("");
   const sensorAtivo = sensores.includes(sensorSelecionado)
     ? sensorSelecionado
     : sensores[0] ?? "";
+  const perfilAni = escopo === "GLOBAL"
+    ? objeto(aniTirh.perfil_global)
+    : objeto(objeto(aniTirh.perfis_por_sensor)[sensorAtivo]);
+  const bandasAni = lista(perfilAni.bandas);
+  const comparacaoDisponivel = perfilAni.comparacao_com_baseline_disponivel === true;
   const valores = objeto(fonte.valores);
   const timestampAtual = atividade.timestamp;
   const trilhas = useMemo<HxTrack[]>(() => BANDAS_EEG_VISIVEIS.map((definicao) => {
@@ -762,7 +769,7 @@ function AtividadeDasBandasEeg({
     <HxSurface as="section" className="hx-live-intelligence-instrument hx-live-eeg-bands">
       <HxSectionHeader
         eyebrow="ATIVIDADE DAS BANDAS EEG — EMOTIV CORTEX"
-        title="Potência espectral viva"
+        title="Neurodinâmica em tempo real"
         aside={(
           <div className="hx-live-eeg-scope" aria-label="Granularidade das bandas EEG">
             <div role="group" aria-label="Escopo da leitura">
@@ -791,9 +798,28 @@ function AtividadeDasBandasEeg({
                 </select>
               </label>
             ) : null}
+            <div role="group" aria-label="Contexto temporal da análise neurodinâmica">
+              <button
+                className={modoTemporal === "ATUAL" ? "is-active" : ""}
+                onClick={() => setModoTemporal("ATUAL")}
+                type="button"
+              >ESTADO ATUAL</button>
+              <button
+                className={modoTemporal === "BASELINE" ? "is-active" : ""}
+                disabled={!comparacaoDisponivel}
+                onClick={() => setModoTemporal("BASELINE")}
+                type="button"
+              >COMPARAR COM BASELINE</button>
+            </div>
           </div>
         )}
       />
+
+      <div className="hx-live-eeg-ani-status">
+        <strong>ANI-TIRH v0.1</strong>
+        <span>{texto(aniTirh.status_cientifico, "EXPERIMENTAL — EM VALIDAÇÃO LONGITUDINAL")}</span>
+        <em>Descrição individual contextual · não diagnóstica · sem decisão automática</em>
+      </div>
 
       <div className="hx-live-eeg-workspace">
         <div>
@@ -806,14 +832,29 @@ function AtividadeDasBandasEeg({
               const valor = escopo === "GLOBAL"
                 ? banda.valor_agregado
                 : leituraDoSensor?.valor;
+              const bandaAni = bandasAni.find(
+                (item) => String(item.codigo) === definicao.codigo
+              ) ?? {};
+              const referencia = bandaAni.referencia_individual;
+              const variacaoRelativa = bandaAni.variacao_relativa;
               const atual = aoVivo && typeof valor === "number" && Number.isFinite(valor);
               return (
                 <span key={definicao.codigo}>
                   <small>{definicao.nome}</small>
-                  <b>{atual ? numero(valor, 3) : "SEM LEITURA ATUAL"}</b>
-                  <em>{atual
-                    ? `${texto(banda.unidade, "unidade nativa Cortex")} · ATUAL · ${dataLegivel(timestampAtual)}`
-                    : "Nenhuma amostra pow atual para esta banda"}</em>
+                  <b>{modoTemporal === "BASELINE"
+                    ? typeof referencia === "number"
+                      ? numero(referencia, 3)
+                      : "SEM REFERÊNCIA INDIVIDUAL"
+                    : atual
+                      ? numero(valor, 3)
+                      : "SEM LEITURA ATUAL"}</b>
+                  <em>{modoTemporal === "BASELINE"
+                    ? typeof referencia === "number"
+                      ? `${texto(bandaAni.unidade, "µV²/Hz")} · variação atual ${typeof variacaoRelativa === "number" ? percentual(variacaoRelativa) : "ainda não comparável"}`
+                      : "O Baseline individual compatível ainda não sustenta esta comparação"
+                    : atual
+                      ? `${texto(bandaAni.unidade ?? banda.unidade, "µV²/Hz")} · ${texto(bandaAni.tendencia, "estado atual")} · ${dataLegivel(timestampAtual)}`
+                      : "Nenhuma amostra pow atual para esta banda"}</em>
                 </span>
               );
             })}
@@ -823,6 +864,11 @@ function AtividadeDasBandasEeg({
               ? "Agregação HUMANEXUS de dados EMOTIV Cortex · valores originais preservados por sensor e banda."
               : `Dados nativos EMOTIV Cortex do sensor ${sensorAtivo || "ainda não disponível"}.`}
           </p>
+          {BANDAS_EEG_VISIVEIS.some((item) => item.codigo === "gamma") ? (
+            <p className="hx-live-eeg-caution">
+              Gamma exige cautela adicional: movimento e atividade muscular podem contaminar a leitura de escalpo.
+            </p>
+          ) : null}
           <div className="hx-live-eeg-quality" aria-label="Qualidades independentes do EPOC X">
             {[
               ["EEG Quality", valores.qualidade_eeg],
@@ -1049,6 +1095,12 @@ export function CockpitOperacionalVivo({
   const inrExperimental = objeto(
     cockpit.indicadores_neuroregulatorios_experimentais
   );
+  const aniTirh = objeto(cockpit.analise_neurodinamica_individual);
+  const perfilAniGlobal = objeto(aniTirh.perfil_global);
+  const bandasAniGlobais = lista(perfilAniGlobal.bandas);
+  const bibliotecaAni = objeto(aniTirh.biblioteca_neurofisiologica);
+  const entradasDaBibliotecaAni = lista(bibliotecaAni.entradas);
+  const marcadoresAni = lista(aniTirh.marcadores_contextuais);
   const indicadoresInr = lista(inrExperimental.indicadores);
   const iirh = objeto(leituraCientifica.iirh);
   const zona = objeto(leituraCientifica.zona);
@@ -1538,7 +1590,6 @@ export function CockpitOperacionalVivo({
       ? "Polar H10 ativo. O EPOC X está indisponível ou reconectando; a sessão continua sem reutilizar dados EEG anteriores."
       : "Fontes autorizadas conectadas. A qualidade do EPOC modula somente a confiança do EEG e não bloqueia o fluxo da sessão.";
 
-  const neurotelemetriaOperacional = metricasDeDesempenhoVisiveis(eeg);
   const trilhasNeuroregulatorias = graficos.filter((trilha) =>
     METRICAS_DE_DESEMPENHO_VISIVEIS.includes(
       trilha.name as typeof METRICAS_DE_DESEMPENHO_VISIVEIS[number]
@@ -1937,57 +1988,6 @@ export function CockpitOperacionalVivo({
 
           <HxSurface as="section" className="hx-live-intelligence-instrument">
             <HxSectionHeader
-              eyebrow="PERFORMANCE METRICS — EMOTIV CORTEX MET"
-              title="Funcionamento Neuroregulatório"
-              aside={<span>Somente métricas met nativas e ativas</span>}
-            />
-            <div className="hx-live-neuro-summary" aria-label="Valores neuroregulatórios atuais">
-              {METRICAS_DE_DESEMPENHO_VISIVEIS.map((nome) => {
-                const metrica = neurotelemetriaOperacional.find(
-                  (item) => String(item.nome) === nome
-                );
-                return (
-                  <span key={nome}>
-                    <small>{nome}</small>
-                    <b>{metrica?.valor_atual == null
-                      ? "AUSENTE"
-                      : percentual(metrica.valor_atual)}</b>
-                  </span>
-                );
-              })}
-            </div>
-            {trilhasNeuroregulatorias.length ? (
-              <CockpitSignalStack
-                tracks={trilhasNeuroregulatorias}
-                markers={marcadores}
-                phases={faixas}
-                showTechnicalLegend={false}
-              />
-            ) : (
-              <InstrumentoSemLeitura mensagem="As métricas Cortex permanecem ausentes; qualidade EEG não é usada como substituta." />
-            )}
-          </HxSurface>
-
-          <HxSurface as="section" className="hx-live-intelligence-instrument">
-            <HxSectionHeader
-              eyebrow="POLAR H10"
-              title="Regulação Autonômica"
-              aside={<span>FC + RMSSD · escalas preservadas</span>}
-            />
-            {trilhasAutonomicas.length ? (
-              <CockpitSignalStack
-                tracks={trilhasAutonomicas}
-                markers={marcadores}
-                phases={faixas}
-                showTechnicalLegend={false}
-              />
-            ) : (
-              <InstrumentoSemLeitura mensagem="Polar H10 sem séries atuais de FC e RMSSD. A última leitura histórica não é reutilizada." />
-            )}
-          </HxSurface>
-
-          <HxSurface as="section" className="hx-live-intelligence-instrument">
-            <HxSectionHeader
               eyebrow="RESULTANTE · IIRH · TENDÊNCIA"
               title="Dinâmica da Inteligência Regulatória Humana"
               aside={<span>Somente propriedades calculadas pelo núcleo</span>}
@@ -2215,6 +2215,47 @@ export function CockpitOperacionalVivo({
               );
             })}
           </details>
+          {Object.keys(aniTirh).length ? (
+            <details className="hx-live-vector-trace hx-live-ani-inspection">
+              <summary>Análise Neurodinâmica Individual · contexto, comparação e limites</summary>
+              <p><strong>{texto(aniTirh.versao, "ANI-TIRH-0.1.0")}</strong> · {texto(
+                aniTirh.status_cientifico,
+                "EXPERIMENTAL — EM VALIDAÇÃO LONGITUDINAL"
+              )}</p>
+              <p>Descrição individual contextual, não diagnóstica e sem inferência causal automática. O stream met permanece independente do pow.</p>
+              <dl>
+                {bandasAniGlobais.map((banda) => (
+                  <div key={texto(banda.codigo)}>
+                    <dt>{texto(banda.nome)}</dt>
+                    <dd>
+                      Atual {banda.valor_atual == null ? "sem leitura atual" : `${numero(banda.valor_atual, 3)} ${texto(banda.unidade, "µV²/Hz")}`}
+                      {banda.referencia_individual == null
+                        ? " · referência individual ainda indisponível"
+                        : ` · referência ${numero(banda.referencia_individual, 3)} ${texto(banda.unidade, "µV²/Hz")}`}
+                      {banda.variacao_relativa == null
+                        ? " · variação ainda não comparável"
+                        : ` · variação ${percentual(banda.variacao_relativa)}`}
+                      {` · ${texto(banda.tendencia, "sem janela temporal suficiente")}`}
+                    </dd>
+                  </div>
+                ))}
+                <div><dt>Contexto temporal</dt><dd>{marcadoresAni.length
+                  ? `${marcadoresAni.length} marco(s) canônico(s) sincronizado(s)`
+                  : "Nenhum marco canônico disponível neste recorte"}</dd></div>
+                <div><dt>Biblioteca</dt><dd>{texto(bibliotecaAni.versao)} · {entradasDaBibliotecaAni.length} bandas documentadas</dd></div>
+                <div><dt>Separação científica</dt><dd>ANI-TIRH não altera IIRH, Zona, Resultante nem decisão operacional.</dd></div>
+              </dl>
+              {entradasDaBibliotecaAni.map((entrada) => (
+                <details key={texto(entrada.codigo)}>
+                  <summary>{texto(entrada.nome)} · evidência e limites</summary>
+                  <p>{texto(entrada.fenomeno_associado)}</p>
+                  <p><strong>Inferência sustentada:</strong> {fontesDoIndicador(entrada.inferencias_sustentadas)}</p>
+                  <p><strong>Não sustenta:</strong> {fontesDoIndicador(entrada.inferencias_nao_sustentadas)}</p>
+                  <p><strong>Limitações:</strong> {fontesDoIndicador(entrada.limitacoes_e_confundidores)}</p>
+                </details>
+              ))}
+            </details>
+          ) : null}
           {indicadoresInr.length ? (
             <details className="hx-live-vector-trace">
               <summary>Indicadores neuroregulatórios experimentais</summary>

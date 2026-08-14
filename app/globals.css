@@ -1657,7 +1657,7 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 
 .hx-live-vector-stage {
   display: grid;
-  grid-template-columns: minmax(500px, 1.55fr) minmax(340px, .72fr);
+  grid-template-columns: minmax(430px, 1.2fr) minmax(330px, .8fr);
   gap: 12px 18px;
   align-items: start;
 }
@@ -1712,8 +1712,8 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 .hx-live-vector-stage .hx-vector-radar-live,
 .hx-live-vector-stage .hx-vector-radar-live__svg {
   width: 100%;
-  min-height: clamp(460px, 38vw, 640px);
-  height: clamp(460px, 38vw, 640px) !important;
+  min-height: clamp(390px, 31vw, 520px);
+  height: clamp(390px, 31vw, 520px) !important;
 }
 
 .hx-vector-radar-live__svg {
@@ -2653,9 +2653,49 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 
 .hx-live-eeg-workspace {
   display: grid;
-  grid-template-columns: minmax(300px, .82fr) minmax(0, 1.18fr);
+  grid-template-columns: minmax(310px, .68fr) minmax(0, 1.32fr);
   gap: 12px;
   margin-top: 14px;
+}
+
+.hx-live-eeg-ani-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+  margin-top: 12px;
+  border: 1px solid rgba(205, 178, 116, .16);
+  background: rgba(205, 178, 116, .045);
+  padding: 8px 10px;
+  font: 7px/1.5 var(--font-geist-mono), monospace;
+}
+
+.hx-live-eeg-ani-status strong {
+  color: #e4cf92;
+  letter-spacing: .12em;
+}
+
+.hx-live-eeg-ani-status span {
+  color: #aab4b0;
+  letter-spacing: .06em;
+}
+
+.hx-live-eeg-ani-status em {
+  margin-left: auto;
+  color: #75827f;
+  font-style: normal;
+}
+
+.hx-live-eeg-caution {
+  margin: 7px 0 0;
+  color: #8f918a;
+  font: 7px/1.5 var(--font-geist-mono), monospace;
+}
+
+.hx-live-ani-inspection > details {
+  margin-top: 8px;
+  border-top: 1px solid rgba(205, 178, 116, .12);
+  padding-top: 8px;
 }
 
 .hx-live-eeg-band-values {

@@ -477,7 +477,10 @@ test("telemetria real é contínua, histórica quando encerrada e não cria simu
     "Theta", "Alpha", "Beta baixa", "Beta alta", "Gamma",
     "PERFORMANCE METRICS — EMOTIV CORTEX MET",
     "GRÁFICO TEMPORAL · CINCO BANDAS",
-    "GLOBAL", "SENSOR", "SEM LEITURA ATUAL"
+    "GLOBAL", "SENSOR", "SEM LEITURA ATUAL",
+    "Neurodinâmica em tempo real", "ANI-TIRH v0.1",
+    "EXPERIMENTAL — EM VALIDAÇÃO LONGITUDINAL",
+    "COMPARAR COM BASELINE"
   ]) assert.match(operacional, new RegExp(item));
   assert.ok(
     operacional.indexOf("<AtividadeDasBandasEeg")
@@ -594,20 +597,26 @@ test("Cockpit de Inteligência Regulatória concentra decisão e preserva uma fo
 
   for (const instrumento of [
     "Dez vetores oficiais",
-    "Funcionamento Neuroregulatório",
-    "Regulação Autonômica",
+    "Neurodinâmica em tempo real",
     "Dinâmica da Inteligência Regulatória Humana",
     "Resposta à Intervenção"
   ]) assert.match(operacional, new RegExp(instrumento));
 
-  assert.match(operacional, /tracks=\{trilhasNeuroregulatorias\}/);
-  assert.match(operacional, /tracks=\{trilhasAutonomicas\}/);
   assert.match(operacional, /tracks=\{trilhasDaResposta\}/);
+  assert.match(operacional, /<FontePolar fonte=\{polar\}/);
+  assert.match(operacional, /<FonteEpoc fonte=\{eeg\}/);
+  assert.doesNotMatch(operacional, /title="Funcionamento Neuroregulatório"/);
+  assert.doesNotMatch(operacional, /title="Regulação Autonômica"/);
   assert.doesNotMatch(operacional, /aria-label="Métrica neuroregulatória"/);
   assert.doesNotMatch(operacional, /aria-label="Sinal autonômico"/);
   assert.doesNotMatch(operacional, /aria-label="Camada da resposta à intervenção"/);
   assert.match(operacional, /Nenhuma composição científica é calculada no portal/);
   assert.match(operacional, /qualidade EEG não é usada como substituta/);
+  assert.match(operacional, /Análise Neurodinâmica Individual · contexto, comparação e limites/);
+  assert.match(operacional, /ANI-TIRH não altera IIRH, Zona, Resultante nem decisão operacional/);
+  assert.match(pagina, /Evolução da Assinatura Neuroregulatória/);
+  assert.match(pagina, /Comparação intraindividual por sessão e fase/);
+  assert.match(pagina, /evolucao_da_assinatura_neuroregulatoria/);
   assert.match(operacional, /Salvar rascunho/);
   assert.match(operacional, /Salvar e concluir registro/);
   assert.match(operacional, /humanexus:registro-profissional:v1/);
@@ -960,7 +969,8 @@ test("Cockpit preserva séries da última projeção sem reativar a ciência viv
   );
   assert.match(cockpit, /ÚLTIMA PROJEÇÃO — NÃO ATUAL/);
   assert.match(cockpit, /const leituraAoVivo = algumaFonteCanonicaAtual/);
-  assert.match(cockpit, /const neurotelemetriaOperacional = metricasDeDesempenhoVisiveis\(eeg\)/);
+  assert.match(cockpit, /function metricasDeDesempenhoVisiveis\(fonte: Fonte\)/);
+  assert.match(cockpit, /<FonteEpoc fonte=\{eeg\}/);
   assert.match(cockpit, /if \(fonte\.ao_vivo !== true\) return \[\];/);
 });
 
@@ -1304,7 +1314,8 @@ test("Cockpit prioriza os dez vetores sem expor parâmetros de estabilização",
   assert.doesNotMatch(cockpit, /Zona canônica [\s\S]* em confirmação visual/);
   assert.doesNotMatch(cockpit, /zonaOperacionalBasal \? "ZONA OPERACIONAL BASAL"/);
   assert.match(cockpit, /TELEMETRIA DETALHADA/);
-  assert.match(css, /grid-template-columns:\s*minmax\(500px,\s*1\.55fr\)/);
+  assert.match(css, /grid-template-columns:\s*minmax\(430px,\s*1\.2fr\)/);
+  assert.match(css, /grid-template-columns:\s*minmax\(310px,\s*\.68fr\)\s*minmax\(0,\s*1\.32fr\)/);
   assert.match(css, /transition: width 720ms/);
   assert.match(estabilizacao, /JANELA_VISUAL_REGULATORIA_MS = 4_000/);
   assert.match(estabilizacao, /CADENCIA_VISUAL_REGULATORIA_MS = 1_000/);
