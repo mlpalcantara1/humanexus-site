@@ -3010,9 +3010,9 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
   opacity: .42;
 }
 
-/* Gate pré-sensores: síntese regulatória fixa e registro profissional acionável. */
+/* Gate pré-sensores: HUD dinâmico multimodal e registro profissional acionável. */
 .hx-live-hud {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   grid-auto-rows: 76px;
 }
 
@@ -3148,9 +3148,80 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
   grid-template-columns: minmax(250px, .72fr) minmax(360px, 1.28fr);
 }
 
+.hx-live-command-center--premium {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hx-live-command-center--premium > * {
+  order: 3;
+}
+
+.hx-live-command-center--premium > .hx-live-intelligence-instruments {
+  order: 1;
+}
+
+.hx-live-command-center--premium > .hx-live-vector-stage {
+  order: 2;
+}
+
+.hx-live-primary-physiology {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr);
+  gap: 14px;
+}
+
+.hx-live-primary-physiology > .hx-live-eeg-bands {
+  grid-column: auto;
+}
+
+.hx-live-autonomic-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 14px 0;
+  border: 1px solid rgba(205, 178, 116, .14);
+  background: rgba(205, 178, 116, .12);
+}
+
+.hx-live-autonomic-values > span {
+  display: grid;
+  min-width: 0;
+  min-height: 74px;
+  align-content: center;
+  gap: 5px;
+  padding: 10px;
+  background: rgba(4, 9, 11, .96);
+}
+
+.hx-live-autonomic-values small,
+.hx-live-autonomic-values em {
+  color: #7c8987;
+  letter-spacing: .07em;
+  font: 6px/1.4 var(--font-geist-mono), monospace;
+  text-transform: uppercase;
+}
+
+.hx-live-autonomic-values b {
+  color: #e7e3d8;
+  font: 400 15px/1.2 Georgia, serif;
+}
+
+@media (max-width: 1560px) {
+  .hx-live-hud {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .hx-live-primary-physiology {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 1100px) {
   .hx-live-hud {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .hx-live-register__context {
@@ -3170,8 +3241,13 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 
   .hx-live-register--dialog > .hx-live-register__fields,
   .hx-live-register__context,
-  .hx-live-conduction {
+  .hx-live-conduction,
+  .hx-live-autonomic-values {
     grid-template-columns: 1fr;
+  }
+
+  .hx-live-hud {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

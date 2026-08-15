@@ -353,10 +353,12 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
     /<section id="hx-decision-level" className="hx-live-hud"[\s\S]*?<\/section>/
   )?.[0] ?? "";
   assert.ok(hud.indexOf("ZONA") < hud.indexOf("IIRH"));
-  assert.ok(hud.indexOf("IIRH") < hud.indexOf("FASE"));
-  assert.ok(hud.indexOf("FASE") < hud.indexOf("TEMPO"));
-  assert.ok(hud.indexOf("TEMPO") < hud.indexOf("THX"));
-  assert.ok(hud.indexOf("THX") < hud.indexOf("REGISTRO PROFISSIONAL"));
+  assert.ok(hud.indexOf("IIRH") < hud.indexOf("EEG"));
+  assert.ok(hud.indexOf("EEG") < hud.indexOf("FC"));
+  assert.ok(hud.indexOf("FC") < hud.indexOf("RMSSD"));
+  assert.ok(hud.indexOf("RMSSD") < hud.indexOf("RR"));
+  assert.ok(hud.indexOf("RR") < hud.indexOf("TEMPO"));
+  assert.ok(hud.indexOf("TEMPO") < hud.indexOf("REGISTRO PROFISSIONAL"));
   for (const item of [
     "MODO OPERACIONAL AO VIVO",
     "Inspeção TIRH",
@@ -366,17 +368,16 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
   for (const item of [
     "ZONA",
     "IIRH",
-    "FASE",
+    "EEG",
+    "FC",
+    "RMSSD",
+    "RR",
     "TEMPO",
-    "THX",
     "REGISTRO PROFISSIONAL"
   ]) assert.match(hud, new RegExp(item));
   for (const item of [
-    "FREQUÊNCIA CARDÍACA",
-    "RMSSD",
-    "EPOC X",
-    "POLAR H10",
-    "QUALIDADE EEG",
+    "<small>FASE</small>",
+    "<small>THX</small>",
     "CONTACT QUALITY",
     "SAMPLE RATE QUALITY"
   ]) assert.doesNotMatch(hud, new RegExp(item));
@@ -426,8 +427,8 @@ test("Cockpit cinematográfico prioriza HUD, leitura viva e condução sem alter
   assert.match(client, /window\.confirm/);
   assert.match(modulo, /modulo !== "cockpit-vivo"/);
   assert.match(estilos, /Cockpit Premium cinematográfico/);
-  assert.match(estilos, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
-  assert.match(design, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(estilos, /grid-template-columns: repeat\(8, minmax\(0, 1fr\)\)/);
+  assert.match(design, /grid-template-columns: repeat\(8, minmax\(0, 1fr\)\)/);
 });
 
 test("Cockpit abre progressivamente e preserva os dez vetores visíveis", async () => {
@@ -596,12 +597,14 @@ test("Cockpit de Inteligência Regulatória concentra decisão e preserva uma fo
   for (const item of [
     "ZONA",
     "IIRH",
-    "FASE",
+    "EEG",
+    "FC",
+    "RMSSD",
+    "RR",
     "TEMPO",
-    "THX",
     "REGISTRO PROFISSIONAL"
   ]) assert.match(hud, new RegExp(item));
-  for (const item of ["FREQUÊNCIA CARDÍACA", "RMSSD", "EPOC X", "POLAR H10", "QUALIDADE EEG"]) {
+  for (const item of ["<small>FASE</small>", "<small>THX</small>", "CONTACT QUALITY", "SAMPLE RATE QUALITY"]) {
     assert.doesNotMatch(hud, new RegExp(item));
   }
   assert.doesNotMatch(hud, /RESULTANTE/);
@@ -609,6 +612,7 @@ test("Cockpit de Inteligência Regulatória concentra decisão e preserva uma fo
   for (const instrumento of [
     "Dez vetores oficiais",
     "Neurodinâmica em tempo real",
+    "Regulação cardiovascular em tempo real",
     "Dinâmica da Inteligência Regulatória Humana",
     "Resposta à Intervenção"
   ]) assert.match(operacional, new RegExp(instrumento));
@@ -778,8 +782,8 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   assert.match(hud, /IIRH/);
   assert.doesNotMatch(hud, /RESULTANTE/);
   assert.match(cockpit, /Dinâmica da Inteligência Regulatória Humana/);
-  assert.equal((hud.match(/<div/g) ?? []).length, 6);
-  assert.equal((cockpit.match(/thx\.codigo/g) ?? []).length, 1);
+  assert.equal((hud.match(/<div/g) ?? []).length, 8);
+  assert.match(cockpit, /texto\(thx\.nome/);
   assert.doesNotMatch(hud, /Sequência|maturidade_da_evidencia/);
   assert.doesNotMatch(cockpit, /hx-live-regulatory-readout--primary/);
   assert.match(vetores, /Dez vetores oficiais/);
@@ -839,7 +843,7 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   );
   assert.equal(
     (cockpit.match(/const aoVivo = fonte\.ao_vivo === true;/g) ?? []).length,
-    3
+    4
   );
   assert.match(
     cockpit,

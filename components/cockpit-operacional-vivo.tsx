@@ -333,6 +333,12 @@ function numero(valor: unknown, casas = 0) {
   return Number.isFinite(convertido) ? convertido.toFixed(casas) : "—";
 }
 
+function numeroFinito(valor: unknown): number | null {
+  if (valor == null || valor === "") return null;
+  const convertido = Number(valor);
+  return Number.isFinite(convertido) ? convertido : null;
+}
+
 function LeituraNumerica({
   valor,
   casas = 0,
@@ -504,7 +510,7 @@ function trilhas(fontes: Fonte[]): HxTrack[] {
     },
     {
       id: "polar-rr",
-      name: "Intervalos RR",
+      name: "Intervalo RR médio",
       unit: "ms",
       color: C.warmWhite,
       points: pontosDaSerie(polar, "rr", "Polar H10")
@@ -914,6 +920,65 @@ function InstrumentoSemLeitura({ mensagem }: { mensagem: string }) {
       <strong>SEM LEITURA ATUAL</strong>
       <span>{mensagem}</span>
     </div>
+  );
+}
+
+function DinamicaAutonomicaPolar({
+  fonte,
+  marcadores,
+  faixas
+}: {
+  fonte: Fonte;
+  marcadores: HxMarker[];
+  faixas: HxPhaseRange[];
+}) {
+  const aoVivo = fonte.ao_vivo === true;
+  const valores = aoVivo ? objeto(fonte.valores) : {};
+  const metricas = aoVivo ? objeto(fonte.metricas) : {};
+  const frequenciaCardiaca = numeroFinito(valores.hr_bpm);
+  const intervaloRrMedio = numeroFinito(valores.rr_ms);
+  const rmssd = numeroFinito(valores.rmssd_tecnico_ms);
+  const trilhasAtuais = aoVivo
+    ? trilhas([fonte]).filter((trilha) => ["polar-hr", "polar-rr", "polar-rmssd"].includes(trilha.id))
+    : [];
+
+  return (
+    <HxSurface as="section" className="hx-live-intelligence-instrument hx-live-autonomic-dynamics">
+      <HxSectionHeader
+        eyebrow="DINÂMICA AUTONÔMICA — POLAR H10"
+        title="Regulação cardiovascular em tempo real"
+        aside={<span>{aoVivo ? `Pacote atual · ${dataLegivel(metricas.ultimo_pacote)}` : "Sem pacote atual"}</span>}
+      />
+      <div className="hx-live-autonomic-values" aria-label="Valores atuais da dinâmica autonômica Polar H10">
+        <span>
+          <small>Frequência cardíaca</small>
+          <b>{frequenciaCardiaca == null ? "SEM LEITURA ATUAL" : `${numero(frequenciaCardiaca)} bpm`}</b>
+          <em>DADO POLAR H10 · atual</em>
+        </span>
+        <span>
+          <small>RR</small>
+          <b>{intervaloRrMedio == null ? "SEM LEITURA ATUAL" : `${numero(intervaloRrMedio, 1)} ms`}</b>
+          <em>DADO POLAR H10 · intervalo RR médio</em>
+        </span>
+        <span>
+          <small>RMSSD</small>
+          <b>{!aoVivo ? "SEM LEITURA ATUAL" : rmssd == null ? "NÃO CALCULÁVEL" : `${numero(rmssd, 1)} ms`}</b>
+          <em>INDICADOR DERIVADO HUMANEXUS · janela canônica</em>
+        </span>
+      </div>
+      {trilhasAtuais.length ? (
+        <CockpitSignalStack
+          tracks={trilhasAtuais}
+          markers={marcadores}
+          phases={faixas}
+          showTechnicalLegend={false}
+          primaryDataLabel="Sinais autonômicos Polar H10"
+        />
+      ) : (
+        <InstrumentoSemLeitura mensagem="A superfície será preenchida somente por FC e intervalos RR atuais do Polar H10; RMSSD exige janela válida suficiente." />
+      )}
+      <p className="hx-live-instrument-limit">FC e intervalo RR médio são dados Polar H10. RMSSD é apresentado somente quando a janela técnica canônica sustenta o cálculo.</p>
+    </HxSurface>
   );
 }
 
@@ -1542,6 +1607,14 @@ export function CockpitOperacionalVivo({
   const trilhasVisiveis = [...new Set(timelineItems.map((item) => item.track))];
   const polar = fontes.find((item) => item.codigo === "POLAR_H10") ?? {};
   const eeg = fontes.find((item) => item.codigo === "EMOTIV_EPOC_X") ?? {};
+  const polarAoVivo = polar.ao_vivo === true;
+  const eegAoVivo = eeg.ao_vivo === true;
+  const valoresPolarAtuais = polarAoVivo ? objeto(polar.valores) : {};
+  const valoresEegAtuais = eegAoVivo ? objeto(eeg.valores) : {};
+  const frequenciaCardiacaAtual = numeroFinito(valoresPolarAtuais.hr_bpm);
+  const intervaloRrMedioAtual = numeroFinito(valoresPolarAtuais.rr_ms);
+  const rmssdAtual = numeroFinito(valoresPolarAtuais.rmssd_tecnico_ms);
+  const qualidadeEegAtual = numeroFinito(valoresEegAtuais.qualidade_eeg);
   const fase = sessaoBaseline
     ? `BASELINE · ${baseline.estado}`
     : sessao.fase_atual
@@ -1703,7 +1776,26 @@ export function CockpitOperacionalVivo({
           <strong>{iirhCalculado ? `${numero(iirhApresentado, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong>
           <span>{naturezaDoIirh}</span>
         </div>
-        <div><small>FASE</small><strong>{fase}</strong><span>{sessaoBaseline ? estadoDoBaseline : texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
+        <div>
+          <small>EEG</small>
+          <strong>{qualidadeEegAtual == null ? "SEM LEITURA ATUAL" : percentual(qualidadeEegAtual)}</strong>
+          <span>{qualidadeEegAtual == null ? "EMOTIV Cortex · sem amostra atual" : "EEG Quality · EMOTIV Cortex · atual"}</span>
+        </div>
+        <div>
+          <small>FC</small>
+          <strong>{frequenciaCardiacaAtual == null ? "SEM LEITURA ATUAL" : `${numero(frequenciaCardiacaAtual)} bpm`}</strong>
+          <span>{frequenciaCardiacaAtual == null ? "Polar H10 · sem amostra atual" : "Polar H10 · atual"}</span>
+        </div>
+        <div>
+          <small>RMSSD</small>
+          <strong>{!polarAoVivo ? "SEM LEITURA ATUAL" : rmssdAtual == null ? "NÃO CALCULÁVEL" : `${numero(rmssdAtual, 1)} ms`}</strong>
+          <span>{!polarAoVivo ? "Polar H10 · sem amostra atual" : "Janela canônica · atual"}</span>
+        </div>
+        <div>
+          <small>RR</small>
+          <strong>{intervaloRrMedioAtual == null ? "SEM LEITURA ATUAL" : `${numero(intervaloRrMedioAtual, 1)} ms`}</strong>
+          <span>{intervaloRrMedioAtual == null ? "Polar H10 · sem amostra atual" : "Intervalo RR médio · Polar H10"}</span>
+        </div>
         <div><small>TEMPO</small><strong>{duracao(
           inicioDoCronometro,
           fimDoCronometro,
@@ -1713,8 +1805,7 @@ export function CockpitOperacionalVivo({
           sessaoBaseline
             ? registroBaseline.cronometro_em_execucao
             : undefined
-        )}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
-        <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
+          )}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
         <div className="is-action">
           <button
             className="hx-live-hud__record"
@@ -2046,11 +2137,18 @@ export function CockpitOperacionalVivo({
         ) : null}
 
         <section className="hx-live-intelligence-instruments" aria-label="Instrumentos de Inteligência Regulatória Humana">
-          <AtividadeDasBandasEeg
-            fonte={eeg}
-            marcadores={marcadores}
-            faixas={faixas}
-          />
+          <section className="hx-live-primary-physiology" aria-label="Superfícies fisiológicas principais">
+            <AtividadeDasBandasEeg
+              fonte={eeg}
+              marcadores={marcadores}
+              faixas={faixas}
+            />
+            <DinamicaAutonomicaPolar
+              fonte={polar}
+              marcadores={marcadores}
+              faixas={faixas}
+            />
+          </section>
 
           <HxSurface as="section" className="hx-live-intelligence-instrument">
             <HxSectionHeader

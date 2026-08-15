@@ -17,15 +17,15 @@ test("Premium Experience consolida uma única camada visual compartilhada", () =
   assert.match(css, /\.hx-live-intelligence-instruments/);
 });
 
-test("HUD preserva seis posições operacionais canônicas em uma linha no desktop", () => {
+test("HUD preserva oito posições dinâmicas canônicas e responde sem rolagem horizontal", () => {
   assert.match(
     css,
-    /HUMANEXUS PREMIUM EXPERIENCE 2\.0[\s\S]*?\.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(6,[^;]+\);/
+    /HUMANEXUS PREMIUM EXPERIENCE 2\.0[\s\S]*?\.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(8,[^;]+\);/
   );
   assert.match(css, /\.hx-live-hud\s*\{[\s\S]*?grid-auto-rows:\s*76px;/);
   assert.match(css, /\.hx-live-hud > div\s*\{[\s\S]*?height:\s*76px;/);
   assert.match(css, /\.hx-live-hud__detail\s*\{[\s\S]*?min-height:\s*0 !important;/);
-  assert.match(css, /@media \(max-width: 1560px\)[\s\S]*?\.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(6,/);
+  assert.match(css, /@media \(max-width: 1560px\)[\s\S]*?\.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4,/);
   assert.match(css, /@media \(max-width: 520px\)[\s\S]*?\.hx-app--executive \.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,/);
   assert.doesNotMatch(css, /\.hx-app--executive \.hx-live-hud > div:last-child\s*\{[\s\S]*?grid-column:\s*1 \/ -1;/);
 });
