@@ -1676,13 +1676,13 @@
 }
 
 .hx-live-hud {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  grid-auto-rows: 72px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: 76px;
 }
 
 .hx-live-hud > div {
   min-height: 0;
-  height: 72px;
+  height: 76px;
   padding: 8px 10px;
 }
 
@@ -1927,7 +1927,7 @@
 
 @media (max-width: 1560px) {
   .hx-live-hud {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .hx-live-hud > div {
@@ -1973,7 +1973,7 @@
   }
 
   .hx-live-hud {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

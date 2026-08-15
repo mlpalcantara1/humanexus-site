@@ -352,9 +352,11 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
   const hud = operacional.match(
     /<section id="hx-decision-level" className="hx-live-hud"[\s\S]*?<\/section>/
   )?.[0] ?? "";
-  assert.ok(hud.indexOf("ZONA OPERACIONAL") < hud.indexOf("IIRH"));
-  assert.ok(hud.indexOf("IIRH") < hud.indexOf("THX"));
-  assert.match(hud, /QUALIDADE EEG[\s\S]*?eeg\.ao_vivo === true \? percentual\(eegValoresHud\.qualidade_global\)/);
+  assert.ok(hud.indexOf("ZONA") < hud.indexOf("IIRH"));
+  assert.ok(hud.indexOf("IIRH") < hud.indexOf("FASE"));
+  assert.ok(hud.indexOf("FASE") < hud.indexOf("TEMPO"));
+  assert.ok(hud.indexOf("TEMPO") < hud.indexOf("THX"));
+  assert.ok(hud.indexOf("THX") < hud.indexOf("REGISTRO PROFISSIONAL"));
   for (const item of [
     "MODO OPERACIONAL AO VIVO",
     "Inspeção TIRH",
@@ -362,17 +364,22 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
   assert.doesNotMatch(client, /<small>INSPEÇÃO<\/small>\s*<strong>Inspeção TIRH<\/strong>/);
   assert.match(client, /<small>ANÁLISE<\/small>\s*<strong>Inspeção TIRH<\/strong>/);
   for (const item of [
-    "ZONA OPERACIONAL",
+    "ZONA",
     "IIRH",
-    "THX",
     "FASE",
     "TEMPO",
+    "THX",
+    "REGISTRO PROFISSIONAL"
+  ]) assert.match(hud, new RegExp(item));
+  for (const item of [
     "FREQUÊNCIA CARDÍACA",
     "RMSSD",
     "EPOC X",
     "POLAR H10",
-    "QUALIDADE EEG"
-  ]) assert.match(hud, new RegExp(item));
+    "QUALIDADE EEG",
+    "CONTACT QUALITY",
+    "SAMPLE RATE QUALITY"
+  ]) assert.doesNotMatch(hud, new RegExp(item));
   for (const item of [
     "SEQUÊNCIA",
     "TEMPO TOTAL",
@@ -419,8 +426,8 @@ test("Cockpit cinematográfico prioriza HUD, leitura viva e condução sem alter
   assert.match(client, /window\.confirm/);
   assert.match(modulo, /modulo !== "cockpit-vivo"/);
   assert.match(estilos, /Cockpit Premium cinematográfico/);
-  assert.match(estilos, /grid-template-columns: repeat\(9, minmax\(78px, 1fr\)\)/);
-  assert.match(design, /grid-template-columns: repeat\(10, minmax\(112px, 1fr\)\)/);
+  assert.match(estilos, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(design, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
 });
 
 test("Cockpit abre progressivamente e preserva os dez vetores visíveis", async () => {
@@ -499,7 +506,7 @@ test("telemetria real é contínua, histórica quando encerrada e não cria simu
   assert.doesNotMatch(client, /comandos\.telemetria/);
 });
 
-test("registro profissional rápido herda o contexto e Replay segue sem mídia", async () => {
+test("registro profissional permanente na barra herda o contexto e Replay segue sem mídia", async () => {
   const operacional = await source("components/cockpit-operacional-vivo.tsx");
   const rota = await source("app/api/operacao-homologacao/route.ts");
   const estilos = await source("app/globals.css");
@@ -513,13 +520,17 @@ test("registro profissional rápido herda o contexto e Replay segue sem mídia",
   assert.match(rota, /REGISTRO_PROFISSIONAL_RAPIDO/);
   assert.match(operacional, /A ausência de mídia|NÃO É FALHA/);
   assert.match(operacional, /REPLAY SINCRONIZANDO/);
+  assert.match(operacional, /className="hx-live-hud__record"/);
+  assert.match(operacional, /aria-haspopup="dialog"/);
+  assert.match(operacional, /role="dialog"/);
+  assert.match(operacional, /Sessão[\s\S]*Participante[\s\S]*Fase[\s\S]*Profissional[\s\S]*Horário/);
   assert.match(
     estilos,
-    /\.hx-live-conduction\s*\{[\s\S]*?grid-template-columns:\s*minmax\(220px, \.82fr\)\s*minmax\(430px, 1\.52fr\)\s*minmax\(240px, \.86fr\)/
+    /Gate pré-sensores:[\s\S]*?\.hx-live-conduction\s*\{[\s\S]*?grid-template-columns:\s*minmax\(250px, \.72fr\) minmax\(360px, 1\.28fr\)/
   );
   assert.match(
     estilos,
-    /\.hx-live-conduction \.hx-live-register > \.hx-live-register__fields\s*\{[\s\S]*?minmax\(260px, 1fr\)/
+    /\.hx-live-register--dialog > \.hx-live-register__fields\s*\{[\s\S]*?minmax\(360px, 1fr\)/
   );
 });
 
@@ -583,16 +594,16 @@ test("Cockpit de Inteligência Regulatória concentra decisão e preserva uma fo
   )?.[0] ?? "";
 
   for (const item of [
-    "ZONA OPERACIONAL",
+    "ZONA",
     "IIRH",
-    "THX",
     "FASE",
     "TEMPO",
-    "FREQUÊNCIA CARDÍACA",
-    "RMSSD",
-    "EPOC X",
-    "POLAR H10"
+    "THX",
+    "REGISTRO PROFISSIONAL"
   ]) assert.match(hud, new RegExp(item));
+  for (const item of ["FREQUÊNCIA CARDÍACA", "RMSSD", "EPOC X", "POLAR H10", "QUALIDADE EEG"]) {
+    assert.doesNotMatch(hud, new RegExp(item));
+  }
   assert.doesNotMatch(hud, /RESULTANTE/);
 
   for (const instrumento of [
@@ -763,11 +774,11 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   const vetores = cockpit.match(
     /<HxSurface as="section" className="hx-live-vector-stage">[\s\S]*?<\/HxSurface>/
   )?.[0] ?? "";
-  assert.match(hud, /ZONA OPERACIONAL/);
+  assert.match(hud, /<small>ZONA<\/small>/);
   assert.match(hud, /IIRH/);
   assert.doesNotMatch(hud, /RESULTANTE/);
   assert.match(cockpit, /Dinâmica da Inteligência Regulatória Humana/);
-  assert.equal((hud.match(/<div/g) ?? []).length, 10);
+  assert.equal((hud.match(/<div/g) ?? []).length, 6);
   assert.equal((cockpit.match(/thx\.codigo/g) ?? []).length, 1);
   assert.doesNotMatch(hud, /Sequência|maturidade_da_evidencia/);
   assert.doesNotMatch(cockpit, /hx-live-regulatory-readout--primary/);
@@ -805,7 +816,10 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
     design,
     /\.hx-live-cockpit > #hx-inspection-level,[\s\S]*display: none !important/
   );
-  assert.match(cockpit, /o contexto operacional vem do núcleo/);
+  assert.match(
+    cockpit,
+    /sessão, participante, fase, horário e profissional seguem do contexto atual/
+  );
   assert.match(css, /Cockpit operacional = decisão/);
   assert.match(css, /\[data-hx-experience-mode="executivo"\] \.hx-live-cockpit > \.hx-live-scientific-chain[\s\S]*display: none/);
   assert.match(css, /\[data-hx-experience-mode="executivo"\] \.hx-live-command-center--premium > \.hx-live-temporal-disclosure/);
@@ -823,8 +837,18 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
     cockpit,
     /fonte\.ao_vivo === true \|\| fonte\.projecao_em_verificacao === true/
   );
-  assert.match(cockpit, /polar\.ao_vivo === true[\s\S]*Sem leitura atual/);
-  assert.match(cockpit, /eeg\.ao_vivo === true[\s\S]*Sem leitura atual/);
+  assert.equal(
+    (cockpit.match(/const aoVivo = fonte\.ao_vivo === true;/g) ?? []).length,
+    3
+  );
+  assert.match(
+    cockpit,
+    /aoVivo \|\| emVerificacao \? `\$\{numero\(valores\.hr_bpm\)\} bpm` : "Sem leitura atual"/
+  );
+  assert.match(
+    cockpit,
+    /aoVivo \|\| emVerificacao \? percentual\(valores\.qualidade_eeg\) : "Sem leitura atual"/
+  );
   assert.match(cockpit, /Última leitura registrada/);
   assert.match(cockpit, /const vetorCanonicoDoContexto = leituraAoVivo/);
   assert.match(cockpit, /valorNormalizado\(vetorCanonicoDoContexto\?\.magnitude\)/);
@@ -842,7 +866,7 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /pollingEmVerificacao: !projecaoOperacionalAtual/);
   assert.match(cockpit, /const leituraAoVivo = algumaFonteCanonicaAtual/);
   assert.doesNotMatch(cockpit, /const leituraAoVivo = projecaoOperacionalAtual/);
-  assert.match(cockpit, /Última projeção canônica · não é leitura atual/);
+  assert.match(cockpit, /Dados físicos históricos · sem transmissão atual/);
   assert.match(cockpit, /não são tratados como leitura atual nem alimentam cálculos científicos/);
   assert.match(cockpit, /const modoSincronizando = !projecaoOperacionalAtual/);
   assert.doesNotMatch(

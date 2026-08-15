@@ -989,6 +989,7 @@ export function CockpitOperacionalVivo({
   const [agora, setAgora] = useState(Date.now());
   const [categoria, setCategoria] = useState("EVENTO");
   const [registro, setRegistro] = useState("");
+  const [registroAberto, setRegistroAberto] = useState(false);
   const [registroEmEnvio, setRegistroEmEnvio] = useState(false);
   const [estadoDoRascunho, setEstadoDoRascunho] = useState("");
   const cockpit = objeto(estado.cockpit_operacional);
@@ -1541,10 +1542,6 @@ export function CockpitOperacionalVivo({
   const trilhasVisiveis = [...new Set(timelineItems.map((item) => item.track))];
   const polar = fontes.find((item) => item.codigo === "POLAR_H10") ?? {};
   const eeg = fontes.find((item) => item.codigo === "EMOTIV_EPOC_X") ?? {};
-  const polarEmVerificacao = polar.projecao_em_verificacao === true;
-  const eegEmVerificacao = eeg.projecao_em_verificacao === true;
-  const polarValoresHud = objeto(polar.valores);
-  const eegValoresHud = objeto(eeg.valores);
   const fase = sessaoBaseline
     ? `BASELINE · ${baseline.estado}`
     : sessao.fase_atual
@@ -1623,6 +1620,7 @@ export function CockpitOperacionalVivo({
       setRegistro("");
       window.localStorage.removeItem(chaveDoRascunho);
       setEstadoDoRascunho("REGISTRO CONCLUÍDO E PRESERVADO");
+      setRegistroAberto(false);
     } finally {
       setRegistroEmEnvio(false);
     }
@@ -1632,6 +1630,7 @@ export function CockpitOperacionalVivo({
     if (!registro.trim()) return;
     window.localStorage.setItem(chaveDoRascunho, registro.trim());
     setEstadoDoRascunho("RASCUNHO SALVO NESTE NAVEGADOR");
+    setRegistroAberto(false);
   };
 
   const limparRegistro = () => {
@@ -1693,7 +1692,7 @@ export function CockpitOperacionalVivo({
 
       <section id="hx-decision-level" className="hx-live-hud" aria-label="Barra operacional decisória">
         <div className="is-decision" data-regulatory-state={zonaCalculada ? "CLASSIFICADA" : "NAO_CLASSIFICAVEL"}>
-          <small>ZONA OPERACIONAL</small>
+          <small>ZONA</small>
           <strong>{zonaCalculada ? rotuloDaZona(zonaApresentada) : "NÃO CLASSIFICÁVEL"}</strong>
           {zonaCalculada
             ? <span>Estado regulatório atual</span>
@@ -1704,7 +1703,6 @@ export function CockpitOperacionalVivo({
           <strong>{iirhCalculado ? `${numero(iirhApresentado, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong>
           <span>{naturezaDoIirh}</span>
         </div>
-        <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
         <div><small>FASE</small><strong>{fase}</strong><span>{sessaoBaseline ? estadoDoBaseline : texto(fases[String(sessao.fase_atual ?? "")], texto(contextoSessao.estado))}</span></div>
         <div><small>TEMPO</small><strong>{duracao(
           inicioDoCronometro,
@@ -1716,12 +1714,80 @@ export function CockpitOperacionalVivo({
             ? registroBaseline.cronometro_em_execucao
             : undefined
         )}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
-        <div><small>FREQUÊNCIA CARDÍACA</small><strong>{polar.ao_vivo === true || polarEmVerificacao ? <LeituraNumerica valor={polarValoresHud.hr_bpm} sufixo=" bpm" /> : "Sem leitura atual"}</strong><span>{polarEmVerificacao ? "Última projeção canônica · não é leitura atual" : texto(polar.estado)}</span></div>
-        <div><small>RMSSD</small><strong>{polar.ao_vivo === true || polarEmVerificacao ? <LeituraNumerica valor={polarValoresHud.rmssd_tecnico_ms} casas={1} sufixo=" ms" /> : "Sem leitura atual"}</strong><span>{polarEmVerificacao ? "Última projeção canônica · validade em verificação" : texto(polar.estado)}</span></div>
-        <div><small>EPOC X</small><strong>{texto(eeg.estado)}</strong><span>{eeg.ao_vivo === true ? "Capturando" : eegEmVerificacao ? "Atualização interrompida" : "Sem leitura atual"}</span></div>
-        <div><small>POLAR H10</small><strong>{texto(polar.estado)}</strong><span>{polar.ao_vivo === true ? "Capturando" : polarEmVerificacao ? "Atualização interrompida" : "Sem leitura atual"}</span></div>
-        <div><small>QUALIDADE EEG</small><strong>{eeg.ao_vivo === true ? percentual(eegValoresHud.qualidade_global) : "Sem leitura atual"}</strong><span>{eeg.ao_vivo === true ? "Sinal Cortex atual" : texto(eeg.estado)}</span></div>
+        <div><small>THX</small><strong>{texto(thx.codigo)}</strong><span>{texto(execucao.estado)}</span></div>
+        <div className="is-action">
+          <button
+            className="hx-live-hud__record"
+            type="button"
+            onClick={() => setRegistroAberto(true)}
+            aria-haspopup="dialog"
+            aria-expanded={registroAberto}
+          >
+            <small>REGISTRO PROFISSIONAL</small>
+            <strong>ABRIR REGISTRO</strong>
+            <span>{estadoDoRascunho || "Observação, evento ou intervenção"}</span>
+          </button>
+        </div>
       </section>
+
+      {registroAberto ? (
+        <div className="hx-live-register-layer" role="presentation">
+          <button
+            className="hx-live-register-layer__backdrop"
+            type="button"
+            onClick={() => setRegistroAberto(false)}
+            aria-label="Fechar Registro Profissional"
+          />
+          <section
+            className="hx-live-register hx-live-register--dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="hx-live-register-title"
+          >
+            <header>
+              <div>
+                <small>REGISTRO PROFISSIONAL</small>
+                <strong id="hx-live-register-title">Contexto preenchido automaticamente</strong>
+              </div>
+              <button className="hx-live-register__close" type="button" onClick={() => setRegistroAberto(false)}>Voltar ao Cockpit</button>
+            </header>
+            <dl className="hx-live-register__context">
+              <div><dt>Sessão</dt><dd>{texto(contextoSessao.nome_operacional, "Sessão atual")}</dd></div>
+              <div><dt>Participante</dt><dd>{texto(participante.nome ?? participante.referencia_externa, "Participante atual")}</dd></div>
+              <div><dt>Fase</dt><dd>{fase}</dd></div>
+              <div><dt>Profissional</dt><dd>{texto(profissional.nome, "Profissional responsável")}</dd></div>
+              <div><dt>Horário</dt><dd>{dataLegivel(new Date(agora).toISOString())}</dd></div>
+            </dl>
+            <div className="hx-live-register__fields">
+              <select value={categoria} onChange={(evento) => setCategoria(evento.target.value)} disabled={sessaoFinalizada || !permitirOperacao} aria-label="Tipo de registro profissional">
+                <option value="EVENTO">Evento</option>
+                <option value="INTERVENCAO">Intervenção</option>
+                <option value="RESPOSTA">Resposta</option>
+                <option value="OBSERVACAO">Observação curta</option>
+                <option value="DECISAO_PROFISSIONAL">Decisão profissional</option>
+              </select>
+              <input
+                value={registro}
+                onChange={(evento) => setRegistro(evento.target.value)}
+                onKeyDown={(evento) => {
+                  if ((evento.metaKey || evento.ctrlKey) && evento.key === "Enter") void enviarRegistro();
+                }}
+                placeholder={sessaoFinalizada ? "Sessão finalizada — consulta somente" : "Escreva o registro profissional"}
+                maxLength={500}
+                disabled={sessaoFinalizada || !permitirOperacao}
+                aria-label="Conteúdo do registro profissional"
+                autoFocus
+              />
+            </div>
+            <div className="hx-live-register__actions">
+              <button type="button" onClick={salvarRascunho} disabled={sessaoFinalizada || registroEmEnvio || !permitirOperacao || !registro.trim()}>Salvar rascunho</button>
+              <button className="is-primary" type="button" onClick={() => void enviarRegistro()} disabled={sessaoFinalizada || ocupado || registroEmEnvio || !permitirOperacao || !registro.trim()}>Salvar e concluir registro</button>
+              <button type="button" onClick={limparRegistro} disabled={registroEmEnvio || !registro}>Limpar</button>
+            </div>
+            <span>{estadoDoRascunho || (permitirOperacao ? "Atalho: ⌘/Ctrl + Enter · sessão, participante, fase, horário e profissional seguem do contexto atual." : "Consulta administrativa: registros exigem o profissional responsável.")}</span>
+          </section>
+        </div>
+      ) : null}
 
       {Object.keys(configuracaoBasal).length ? (
         <details className="hx-live-scientific-disclosure">
@@ -2447,35 +2513,6 @@ export function CockpitOperacionalVivo({
             <span><small>ESTADO DA APLICAÇÃO</small><b>{texto(execucao.estado, texto(contextoSessao.estado))}</b></span>
             <span><small>RESPOSTA OBSERVADA</small><b>{texto(resumoDaResposta, "AGUARDANDO REGISTRO PROFISSIONAL")}</b></span>
           </div>
-        </div>
-
-        <div className="hx-live-register">
-          <header><small>REGISTRO PROFISSIONAL</small><strong>Contexto preenchido automaticamente</strong></header>
-          <div className="hx-live-register__fields">
-            <select value={categoria} onChange={(evento) => setCategoria(evento.target.value)} disabled={sessaoFinalizada || !permitirOperacao}>
-              <option value="EVENTO">Evento</option>
-              <option value="INTERVENCAO">Intervenção</option>
-              <option value="RESPOSTA">Resposta</option>
-              <option value="OBSERVACAO">Observação curta</option>
-              <option value="DECISAO_PROFISSIONAL">Decisão profissional</option>
-            </select>
-            <input
-              value={registro}
-              onChange={(evento) => setRegistro(evento.target.value)}
-              onKeyDown={(evento) => {
-                if ((evento.metaKey || evento.ctrlKey) && evento.key === "Enter") void enviarRegistro();
-              }}
-              placeholder={sessaoFinalizada ? "Sessão finalizada — consulta somente" : "Registrar sem repetir participante, fase ou protocolo"}
-              maxLength={500}
-              disabled={sessaoFinalizada || !permitirOperacao}
-            />
-          </div>
-          <div className="hx-live-register__actions">
-            <button type="button" onClick={salvarRascunho} disabled={sessaoFinalizada || registroEmEnvio || !permitirOperacao || !registro.trim()}>Salvar rascunho</button>
-            <button className="is-primary" type="button" onClick={() => void enviarRegistro()} disabled={sessaoFinalizada || ocupado || registroEmEnvio || !permitirOperacao || !registro.trim()}>Salvar e concluir registro</button>
-            <button type="button" onClick={limparRegistro} disabled={registroEmEnvio || !registro}>Limpar</button>
-          </div>
-          <span>{estadoDoRascunho || (permitirOperacao ? "Atalho: ⌘/Ctrl + Enter · o contexto operacional vem do núcleo." : "Consulta administrativa: registros e comandos operacionais exigem o profissional responsável.")}</span>
         </div>
 
         <div className="hx-live-events">
