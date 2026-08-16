@@ -1418,17 +1418,23 @@ test("cronômetro do Baseline começa somente no início canônico do Baseline",
     cockpit,
     /Object\.keys\(registroBaselineCanonico\)\.length > 0[\s\S]*?registroBaselineCanonico[\s\S]*?: registroBaselineDaGravacao/
   );
+  assert.match(cockpit, /estadoOperacional\.tempo_ativo_da_fase/);
   assert.match(
     cockpit,
-    /const inicioDoCronometro = sessaoBaseline[\s\S]*?registroBaseline\.iniciado_em[\s\S]*?: sessao\.tempo_total_inicio/
+    /const registroTemporalCanonico = sessaoBaseline[\s\S]*?registroBaseline[\s\S]*?: registroTemporalDaFase/
   );
   assert.match(
     cockpit,
-    /registroBaseline\.duracao_segundos/
+    /const inicioDoCronometro = registroTemporalCanonico\.iniciado_em/
   );
-  assert.match(cockpit, /registroBaseline\.duracao_calculada_em/);
-  assert.match(cockpit, /registroBaseline\.cronometro_em_execucao/);
+  assert.doesNotMatch(
+    cockpit,
+    /const inicioDoCronometro =[\s\S]{0,160}sessao\.tempo_total_inicio/
+  );
   assert.match(cockpit, /cronometroEmExecucao === true/);
+  assert.match(cockpit, /registroTemporalCanonico\.duracao_segundos/);
+  assert.match(cockpit, /registroTemporalCanonico\.duracao_calculada_em/);
+  assert.match(cockpit, /registroTemporalCanonico\.cronometro_em_execucao/);
   assert.match(
     cockpit,
     /registroBaseline\.estado === "INICIADO"[\s\S]*?"EM EXECUÇÃO"/

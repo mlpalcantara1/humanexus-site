@@ -1133,13 +1133,15 @@ export function CockpitOperacionalVivo({
   const registroBaseline = Object.keys(registroBaselineCanonico).length > 0
     ? registroBaselineCanonico
     : registroBaselineDaGravacao;
+  const registroTemporalDaFase = objeto(
+    estadoOperacional.tempo_ativo_da_fase
+  );
+  const registroTemporalCanonico = sessaoBaseline
+    ? registroBaseline
+    : registroTemporalDaFase;
   const baseline = referenciaDeBaseline(baselineBruto);
-  const inicioDoCronometro = sessaoBaseline
-    ? registroBaseline.iniciado_em
-    : sessao.tempo_total_inicio;
-  const fimDoCronometro = sessaoBaseline
-    ? registroBaseline.finalizado_em
-    : sessao.tempo_total_fim;
+  const inicioDoCronometro = registroTemporalCanonico.iniciado_em;
+  const fimDoCronometro = registroTemporalCanonico.finalizado_em;
   const estadoDoBaseline = registroBaseline.estado === "INICIADO"
     ? "EM EXECUÇÃO"
     : texto(registroBaseline.estado, texto(contextoSessao.estado));
@@ -1800,12 +1802,13 @@ export function CockpitOperacionalVivo({
           inicioDoCronometro,
           fimDoCronometro,
           agora,
-          sessaoBaseline ? registroBaseline.duracao_segundos : undefined,
-          sessaoBaseline ? registroBaseline.duracao_calculada_em : undefined,
-          sessaoBaseline
-            ? registroBaseline.cronometro_em_execucao
-            : undefined
-          )}</strong><span>{sessaoBaseline ? "Baseline" : "Sessão"}</span></div>
+          registroTemporalCanonico.duracao_segundos,
+          registroTemporalCanonico.duracao_calculada_em,
+          registroTemporalCanonico.cronometro_em_execucao
+          )}</strong><span>{sessaoBaseline
+            ? "Baseline"
+            : texto(registroTemporalDaFase.fase, "Sem fase ativa")
+          }</span></div>
         <div className="is-action">
           <button
             className="hx-live-hud__record"
