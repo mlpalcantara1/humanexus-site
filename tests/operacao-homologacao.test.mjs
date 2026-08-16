@@ -115,10 +115,15 @@ test("reconexão física pertence à estação e o portal apenas relê a projeç
 
 test("relatório usa a sessão canônica e não duplica versões por chave de contexto divergente", async () => {
   const route = await source("app/api/operacao-homologacao/route.ts");
+  const client = await source("components/operacao-homologacao.tsx");
 
   assert.match(route, /contextoDoRelatorio\.identificador_interno_da_sessao/);
+  assert.match(route, /secoes: lista\(item\.secoes_json\)/);
   assert.match(route, /identificador_da_sessao: contexto\.sessao\.identificador/);
   assert.match(route, /Interpretação profissional pendente/);
+  assert.match(client, /function RelatorioCanonico/);
+  assert.match(client, /Conteúdo nominal do relatório/);
+  assert.match(client, /<RelatorioCanonico relatorio=\{estado\.relatorios\.at\(-1\)\}/);
   assert.doesNotMatch(route, /Registro técnico de homologação|Simulação técnica não equivale/);
 });
 
@@ -571,6 +576,12 @@ test("registro profissional permanente na barra herda o contexto e Replay segue 
   assert.match(operacional, /className="hx-live-hud__record"/);
   assert.match(operacional, /aria-haspopup="dialog"/);
   assert.match(operacional, /role="dialog"/);
+  assert.match(operacional, /Registrar evento/);
+  assert.match(operacional, /Registrar intervenção/);
+  assert.match(operacional, /abrirRegistroProfissional\("EVENTO"\)/);
+  assert.match(operacional, /abrirRegistroProfissional\("INTERVENCAO"\)/);
+  assert.equal((operacional.match(/await registrar\(/g) ?? []).length, 1);
+  assert.match(operacional, /mesmo Registro Profissional canônico/);
   assert.match(operacional, /Sessão[\s\S]*Participante[\s\S]*Fase[\s\S]*Profissional[\s\S]*Horário/);
   assert.match(
     estilos,

@@ -363,7 +363,9 @@ function estadoZona(entrada: EntradaRelatorioHumanexus) {
 }
 
 function textoDeSecao(entrada: EntradaRelatorioHumanexus, codigo: string, ausenciaTexto: string) {
-  const secoes = lista(entrada.relatorio.secoes_json).map((item) => objeto(item));
+  const secoes = lista(
+    entrada.relatorio.secoes ?? entrada.relatorio.secoes_json
+  ).map((item) => objeto(item));
   const secao = secoes.find((item) => texto(item.codigo, "") === codigo);
   const itens = lista(secao?.itens).map((item) => texto(item, "")).filter(Boolean);
   return itens.length ? itens.join(" ") : ausenciaTexto;

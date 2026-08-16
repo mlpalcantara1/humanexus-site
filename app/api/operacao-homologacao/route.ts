@@ -681,7 +681,11 @@ async function estado(
       identificador: item.identificador,
       tipo: item.tipo,
       titulo: item.titulo,
-      criado_em: item.criado_em
+      criado_em: item.criado_em,
+      estado_documental: item.estado_documental,
+      contexto: registro(item.contexto_json),
+      qualidade_dos_dados: registro(item.qualidade_dos_dados_json),
+      secoes: lista(item.secoes_json)
     })),
     formulacoes,
     longitudinal,

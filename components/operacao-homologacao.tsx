@@ -235,6 +235,33 @@ function dataLegivel(valor: unknown) {
       }).format(data);
 }
 
+function RelatorioCanonico({ relatorio }: { relatorio?: Registro }) {
+  const secoes = lista(relatorio?.secoes).map(objeto);
+  if (!secoes.length) {
+    return (
+      <EmptySignalState
+        title="CONTEÚDO DO RELATÓRIO"
+        reason="O relatório nominal desta sessão ainda não está disponível."
+      />
+    );
+  }
+  return (
+    <section className="hx-report-canonical" aria-label="Conteúdo nominal do relatório">
+      {secoes.map((secao, indice) => (
+        <article key={texto(secao.codigo, `secao-${indice}`)}>
+          <small>{texto(secao.codigo, "SEÇÃO DO RELATÓRIO")}</small>
+          <h3>{texto(secao.titulo, "Registro da sessão")}</h3>
+          <ul>
+            {lista(secao.itens).map((item, itemIndice) => (
+              <li key={`${indice}-${itemIndice}`}>{texto(item, "Sem informação registrada.")}</li>
+            ))}
+          </ul>
+        </article>
+      ))}
+    </section>
+  );
+}
+
 const BANDAS_ANI_LONGITUDINAIS = [
   { codigo: "theta", nome: "Theta", cor: C.gold },
   { codigo: "alpha", nome: "Alpha", cor: C.warmWhite },
@@ -2739,6 +2766,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
         <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
       </section>
+      <RelatorioCanonico relatorio={estado.relatorios.at(-1)} />
       <div className="hx-report-charts" data-humanexus-report>
         <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
       </div>
@@ -3044,6 +3072,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
           <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
         </section>
+        <RelatorioCanonico relatorio={estado.relatorios.at(-1)} />
         <div className="hx-report-charts" data-humanexus-report>
           <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
           <TelemetryCommandChart frequency={frequencia} latency={latencia} buffer={buffer} markers={marcadores.filter((item) => ["disconnect", "reconnect"].includes(item.kind))} />

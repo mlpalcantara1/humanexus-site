@@ -1718,6 +1718,11 @@ export function CockpitOperacionalVivo({
     setEstadoDoRascunho("RASCUNHO LIMPO");
   };
 
+  const abrirRegistroProfissional = (tipo?: "EVENTO" | "INTERVENCAO") => {
+    if (tipo) setCategoria(tipo);
+    setRegistroAberto(true);
+  };
+
   return (
     <section className="hx-live-cockpit" data-cockpit-mode={cockpit.modo}>
       <header className="hx-live-cockpit__masthead">
@@ -1814,7 +1819,7 @@ export function CockpitOperacionalVivo({
           <button
             className="hx-live-hud__record"
             type="button"
-            onClick={() => setRegistroAberto(true)}
+            onClick={() => abrirRegistroProfissional()}
             aria-haspopup="dialog"
             aria-expanded={registroAberto}
           >
@@ -2614,6 +2619,23 @@ export function CockpitOperacionalVivo({
             <span><small>CRITÉRIO REGULATÓRIO</small><b>{sessaoBaseline ? "Modalidade independente" : texto(ctr.nome, "Critério preservado no contexto")}</b></span>
             <span><small>ESTADO DA APLICAÇÃO</small><b>{texto(execucao.estado, texto(contextoSessao.estado))}</b></span>
             <span><small>RESPOSTA OBSERVADA</small><b>{texto(resumoDaResposta, "AGUARDANDO REGISTRO PROFISSIONAL")}</b></span>
+          </div>
+          <div className="hx-live-intervention__register-actions" aria-label="Ações rápidas do registro profissional">
+            <button
+              type="button"
+              onClick={() => abrirRegistroProfissional("EVENTO")}
+              disabled={sessaoFinalizada || !permitirOperacao}
+            >
+              Registrar evento
+            </button>
+            <button
+              type="button"
+              onClick={() => abrirRegistroProfissional("INTERVENCAO")}
+              disabled={sessaoFinalizada || !permitirOperacao}
+            >
+              Registrar intervenção
+            </button>
+            <span>Ambos utilizam o mesmo Registro Profissional canônico.</span>
           </div>
         </div>
 

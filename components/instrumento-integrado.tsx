@@ -38,6 +38,7 @@ type Consulta = {
     revisao_do_rascunho: number;
     progresso: number;
     politica_de_retencao: string;
+    contexto_json: Record<string, unknown> | string;
     expira_em: string;
   };
   instrumento: {
@@ -51,6 +52,9 @@ type Consulta = {
     instituto: string;
     participante: string;
     organizacao?: string | null;
+    tipo_de_vinculo: "PARTICULAR" | "ORGANIZACIONAL" | "MISTO";
+    rotulo_do_cliente: string;
+    cliente: string;
     finalidade: string;
   };
   contexto_do_token: {
@@ -122,6 +126,28 @@ function dataLegivel(valor?: string | null) {
 
 function rotulo(codigo: string) {
   return codigo.replaceAll("_", " ");
+}
+
+function rotuloDaMidia(modalidade?: string | null) {
+  return ({
+    NENHUM: "SEM GRAVAÇÃO",
+    AUDIO: "ÁUDIO",
+    VIDEO: "VÍDEO",
+    AUDIO_E_VIDEO: "ÁUDIO E VÍDEO"
+  } as Record<string, string>)[String(modalidade ?? "NENHUM")]
+    ?? rotulo(String(modalidade ?? "NENHUM"));
+}
+
+function rotuloDaRetencao(politica?: string | null) {
+  return ({
+    NAO_ARMAZENAR: "NÃO ARMAZENAR",
+    DURANTE_A_SESSAO: "SOMENTE DURANTE A SESSÃO",
+    ATE_VALIDACAO_DO_RELATORIO: "ATÉ A VALIDAÇÃO DO RELATÓRIO",
+    PRAZO_DEFINIDO: "PRAZO DEFINIDO NA CONFIGURAÇÃO DA SESSÃO",
+    PRESERVACAO_MANUAL: "PRESERVAÇÃO AUTORIZADA PELO PROFISSIONAL",
+    PESQUISA_AUTORIZADA: "PESQUISA ESPECIFICAMENTE AUTORIZADA"
+  } as Record<string, string>)[String(politica ?? "NAO_ARMAZENAR")]
+    ?? rotulo(String(politica ?? "NAO_ARMAZENAR"));
 }
 
 export function InstrumentoIntegrado() {
@@ -339,6 +365,13 @@ export function InstrumentoIntegrado() {
   }
 
   const configuracao = consulta.resposta_unica;
+  const contexto = consulta.apresentacao.contexto_json as
+    | Record<string, unknown>
+    | string
+    | undefined;
+  const contextoDaApresentacao = contexto
+    ? json<Record<string, unknown>>(contexto)
+    : {};
   const confirmado = Boolean(copia);
   const textoEscolhido = resposta === "AUTORIZO"
     ? configuracao?.autorizo ?? TEXTO_AUTORIZO
@@ -412,7 +445,7 @@ export function InstrumentoIntegrado() {
 
       <section className="hxiicca__contexto" aria-label="Identificação">
         <article><small>PARTICIPANTE</small><strong>{consulta.identificacao.participante}</strong></article>
-        <article><small>ORGANIZAÇÃO</small><strong>{consulta.identificacao.organizacao ?? "Não aplicável"}</strong></article>
+        <article><small>{consulta.identificacao.rotulo_do_cliente}</small><strong>{consulta.identificacao.cliente}</strong></article>
         <article><small>FINALIDADE</small><strong>{consulta.identificacao.finalidade}</strong></article>
         <article><small>VERSÃO</small><strong>{consulta.instrumento.versao}</strong></article>
       </section>
@@ -524,8 +557,10 @@ export function InstrumentoIntegrado() {
                   <article>
                     <small>CONSEQUÊNCIAS OPERACIONAIS</small>
                     <span>{consequencia}</span>
-                    <small>PADRÃO DE MÍDIA</small>
-                    <span>SEM GRAVAÇÃO</span>
+                    <small>MÍDIA PLANEJADA</small>
+                    <span>{rotuloDaMidia(String(contextoDaApresentacao.modalidade_de_midia ?? "NENHUM"))}</span>
+                    <small>POLÍTICA DE ARMAZENAMENTO</small>
+                    <span>{rotuloDaRetencao(consulta.apresentacao.politica_de_retencao)}</span>
                   </article>
                   <article>
                     <small>VERSÃO DO INSTRUMENTO</small>

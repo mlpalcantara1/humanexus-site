@@ -7,7 +7,7 @@
 .hx-report-operation{display:flex;align-items:center;justify-content:space-between;gap:25px;margin-top:18px;padding:24px}.hx-report-operation h2{margin:11px 0 8px;color:#e3e4dc;font:400 25px Georgia,serif}.hx-report-operation span{color:#839493;font:10px Arial,sans-serif}.hx-report-operation>div:last-child{display:flex;gap:8px}.hx-report-operation a{text-decoration:none;display:inline-flex;align-items:center}
 .hx-mobile-console{max-width:760px;margin:18px auto;padding:24px}.hx-mobile-console h2{margin:10px 0;color:#e4e4dc;font:400 28px Georgia,serif}.hx-mobile-console>div>span{color:#839392;font:10px Arial,sans-serif}.hx-mobile-console__status{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:20px;background:var(--hx-line)}.hx-mobile-console__status article{min-width:0;padding:15px;background:#061014}.hx-mobile-console__status small{display:block;color:#748687;text-transform:uppercase;font:7px var(--font-geist-mono),monospace}.hx-mobile-console__status strong{display:block;margin-top:9px;color:#d3d9d3;overflow-wrap:anywhere;font:12px/1.4 Georgia,serif}.hx-mobile-console__commands{display:flex;align-items:center;gap:8px;margin-top:16px}.hx-mobile-console__commands span{margin-left:auto!important;color:#7d8d8e!important;font:7px var(--font-geist-mono),monospace!important}
 @media(max-width:1100px){.hx-identification{grid-template-columns:1fr}.hx-chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hx-trace>div{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:760px){.hx-op-hud__grid{grid-template-columns:1fr 1fr}.hx-chart-grid,.hx-chart-grid--telemetry{grid-template-columns:1fr}.hx-identification dl{grid-template-columns:1fr}.hx-trace>div{grid-template-columns:1fr 1fr}.hx-report-operation{align-items:flex-start;flex-direction:column}.hx-mobile-console{padding:16px}.hx-mobile-console__status{grid-template-columns:1fr}.hx-mobile-console__commands{align-items:stretch;flex-direction:column}.hx-mobile-console__commands span{margin-left:0!important}.hx-replay-inspection{align-items:flex-start;flex-direction:column}}
+@media(max-width:760px){.hx-op-hud__grid{grid-template-columns:1fr 1fr}.hx-chart-grid,.hx-chart-grid--telemetry{grid-template-columns:1fr}.hx-identification dl{grid-template-columns:1fr}.hx-trace>div{grid-template-columns:1fr 1fr}.hx-report-operation{align-items:flex-start;flex-direction:column}.hx-report-canonical{grid-template-columns:1fr}.hx-mobile-console{padding:16px}.hx-mobile-console__status{grid-template-columns:1fr}.hx-mobile-console__commands{align-items:stretch;flex-direction:column}.hx-mobile-console__commands span{margin-left:0!important}.hx-replay-inspection{align-items:flex-start;flex-direction:column}}
 @media(max-width:430px){.hx-op-hud__grid,.hx-op-context,.hx-op-controls__grid,.hx-telemetry__grid,.hx-phase-snapshots,.hx-trace>div{grid-template-columns:1fr}.hx-op-hud__grid>div,.hx-op-context>div{border-right:0}.hx-chart{padding:12px}.hx-identification article{padding:16px}}
 
 /* HUMANEXUS command visualization system */
@@ -201,6 +201,12 @@
 .hx-replay-controls input[type=range],.hx-replay-interval input[type=range]{accent-color:#c9aa63}
 .hx-replay-controls select{min-width:72px}
 .hx-report-charts{display:grid;gap:18px}
+.hx-report-canonical{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}
+.hx-report-canonical article{min-width:0;border:1px solid var(--hx-line);background:linear-gradient(145deg,rgba(7,19,24,.96),rgba(3,8,11,.94));padding:20px}
+.hx-report-canonical small{letter-spacing:.14em;color:#d2b36d;text-transform:uppercase;font:7px var(--font-geist-mono),monospace}
+.hx-report-canonical h3{margin:10px 0 14px;color:#e3e4dc;font:400 19px/1.25 Georgia,serif}
+.hx-report-canonical ul{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.hx-report-canonical li{overflow-wrap:anywhere;color:#aebbb7;font:11px/1.55 Arial,sans-serif}
 .hx-report-view .hx-command-visual{break-inside:avoid}
 
 /* Command architecture: compact operational panel + one persistent TIRH cockpit */

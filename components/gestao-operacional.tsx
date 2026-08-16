@@ -346,7 +346,8 @@ export function GestaoOperacional({
     relatorio: false,
     longitudinal: false,
     coletivo: false,
-    pesquisa: false
+    pesquisa: false,
+    politica_de_retencao: "NAO_ARMAZENAR"
   });
   const [entregaDeConsentimento, setEntregaDeConsentimento] =
     useState<Registro | null>(null);
@@ -897,7 +898,10 @@ export function GestaoOperacional({
           : consentimento.audio ? "AUDIO"
           : consentimento.video ? "VIDEO"
           : "NENHUM",
-        politica_de_retencao: "NAO_ARMAZENAR"
+        politica_de_retencao:
+          consentimento.audio || consentimento.video
+            ? consentimento.politica_de_retencao
+            : "NAO_ARMAZENAR"
       }
     });
     const identificador = String(resultado?.identificador ?? "");
@@ -2585,15 +2589,54 @@ export function GestaoOperacional({
                   <input
                     type="checkbox"
                     checked={consentimento[campo]}
-                    onChange={(evento) => setConsentimento({
-                      ...consentimento,
-                      [campo]: evento.target.checked
+                    onChange={(evento) => setConsentimento((atual) => {
+                      const proximo = {
+                        ...atual,
+                        [campo]: evento.target.checked
+                      };
+                      const possuiMidia = campo === "audio" || campo === "video"
+                        ? Boolean(
+                          (campo === "audio"
+                            ? evento.target.checked
+                            : proximo.audio)
+                          || (campo === "video"
+                            ? evento.target.checked
+                            : proximo.video)
+                        )
+                        : Boolean(proximo.audio || proximo.video);
+                      return {
+                        ...proximo,
+                        politica_de_retencao: possuiMidia
+                          ? atual.politica_de_retencao === "NAO_ARMAZENAR"
+                            ? "ATE_VALIDACAO_DO_RELATORIO"
+                            : atual.politica_de_retencao
+                          : "NAO_ARMAZENAR"
+                      };
                     })}
                   />
                   {rotulo}
                 </label>
               ))}
             </fieldset>
+            {consentimento.audio || consentimento.video ? (
+              <label>Política de armazenamento da mídia<select
+                value={consentimento.politica_de_retencao}
+                onChange={(evento) => setConsentimento({
+                  ...consentimento,
+                  politica_de_retencao: evento.target.value
+                })}
+              >
+                <option value="DURANTE_A_SESSAO">Somente durante a sessão</option>
+                <option value="ATE_VALIDACAO_DO_RELATORIO">Até a validação do relatório</option>
+                <option value="PRAZO_DEFINIDO">Prazo definido na configuração da sessão</option>
+                <option value="PRESERVACAO_MANUAL">Preservação autorizada pelo profissional</option>
+                <option value="PESQUISA_AUTORIZADA">Pesquisa especificamente autorizada</option>
+              </select></label>
+            ) : (
+              <p className="hx-module__notice">
+                Sem mídia selecionada · nenhum arquivo de áudio ou vídeo será armazenado.
+              </p>
+            )}
             <label>Validade<select
               value={consentimento.validade_em_horas}
               onChange={(evento) => setConsentimento({

@@ -86,9 +86,17 @@ test("fixtures geram os cinco PDFs premium com paginação esperada", async () =
 
 test("rota preserva impressão, exportação e nome documental profissional", async () => {
   const route = await source("app/api/operacao-homologacao/pdf/route.ts");
+  const documento = await source("lib/tirh-report-document.ts");
   assert.match(route, /modoImpressao/);
   assert.match(route, /inline/);
   assert.match(route, /attachment/);
   assert.match(route, /humanexus-relatorio-tirh/);
+  assert.match(route, /identificador_interno_da_sessao/);
+  assert.match(route, /identificador_da_sessao/);
+  assert.match(route, /Relatório desta sessão não localizado/);
+  assert.match(route, /\/api\/v1\/relatorios\/\$\{encodeURIComponent/);
+  assert.match(route, /SEM EVIDÊNCIA CIENTÍFICA DISPONÍVEL PARA ESTA SESSÃO/);
+  assert.doesNotMatch(route, /relatorios\.at\(-1\)/);
+  assert.match(documento, /entrada\.relatorio\.secoes \?\? entrada\.relatorio\.secoes_json/);
   assert.doesNotMatch(route, /humanexus-homologacao-visual/);
 });

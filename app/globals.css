@@ -3013,11 +3013,13 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 /* Gate pré-sensores: HUD dinâmico multimodal e registro profissional acionável. */
 .hx-live-hud {
   grid-template-columns: repeat(8, minmax(0, 1fr));
-  grid-auto-rows: 76px;
+  grid-auto-rows: minmax(88px, auto);
 }
 
 .hx-live-hud > div {
-  height: 76px;
+  min-width: 0;
+  min-height: 88px;
+  height: auto;
 }
 
 .hx-live-hud > div.is-action {
@@ -3028,6 +3030,7 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 .hx-live-hud__record {
   display: block;
   width: 100%;
+  min-height: 88px;
   height: 100%;
   padding: 8px 10px;
   border: 0;
@@ -3146,6 +3149,37 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 
 .hx-live-conduction {
   grid-template-columns: minmax(250px, .72fr) minmax(360px, 1.28fr);
+}
+
+.hx-live-intervention__register-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px !important;
+  margin-top: 12px;
+}
+
+.hx-live-intervention__register-actions button {
+  min-height: 38px;
+  border: 1px solid rgba(205, 178, 116, .28);
+  background: rgba(205, 178, 116, .07);
+  color: #d7c27f;
+  padding: 8px 12px;
+  cursor: pointer;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font: 7px/1.35 var(--font-geist-mono), monospace;
+}
+
+.hx-live-intervention__register-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .42;
+}
+
+.hx-live-intervention__register-actions span {
+  flex: 1 1 220px;
+  color: #75817f;
+  font: 7px/1.5 var(--font-geist-mono), monospace;
 }
 
 .hx-live-command-center--premium {

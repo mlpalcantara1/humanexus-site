@@ -38,32 +38,53 @@ export async function GET(request: Request) {
       (item) => item.identificador === url.searchParams.get("sessao")
     ) ?? sessoes[0];
     if (!sessao) throw new Error("Sessão não localizada.");
-    const relatorio = [...relatorios].reverse().find(
+    const relatorioResumido = [...relatorios].reverse().find(
       (item) => {
         const contexto = item.contexto_json;
         if (contexto && typeof contexto === "object") {
-          return (contexto as Registro).sessao === sessao.identificador;
+          const registro = contexto as Registro;
+          return String(
+            registro.identificador_interno_da_sessao
+            ?? registro.identificador_da_sessao
+            ?? registro.sessao
+            ?? ""
+          ) === String(sessao.identificador);
         }
         if (typeof contexto === "string") {
           try {
-            return (JSON.parse(contexto) as Registro).sessao === sessao.identificador;
+            const registro = JSON.parse(contexto) as Registro;
+            return String(
+              registro.identificador_interno_da_sessao
+              ?? registro.identificador_da_sessao
+              ?? registro.sessao
+              ?? ""
+            ) === String(sessao.identificador);
           } catch {
             return false;
           }
         }
         return false;
       }
-    ) ?? relatorios.at(-1);
-    if (!relatorio) throw new Error("Relatório da sessão não localizado.");
+    );
+    if (!relatorioResumido) {
+      throw new Error("Relatório desta sessão não localizado.");
+    }
+    const relatorio = await requisitarNucleoAutenticado<Registro>(
+      `/api/v1/relatorios/${encodeURIComponent(String(relatorioResumido.identificador))}`,
+      token
+    );
     const execucao = execucoes.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
     const sessaoId = String(sessao.identificador);
     const [telemetria, ciclo, eventos, gravacao, contratoCientifico] = await Promise.all([
-      requisitarNucleoAutenticado<Registro[]>(`/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}`, token),
+      requisitarNucleoAutenticado<Registro[]>(`/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}`, token)
+        .catch(() => []),
       execucao
         ? requisitarNucleoAutenticado<Registro>(`/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/ciclo`, token)
+            .catch(() => null)
         : Promise.resolve(null),
       execucao
         ? requisitarNucleoAutenticado<Registro[]>(`/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/ciclo/eventos`, token)
+            .catch(() => [])
         : Promise.resolve([]),
       requisitarNucleoAutenticado<Registro>(
         `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/gravacao`,
@@ -78,7 +99,10 @@ export async function GET(request: Request) {
       requisitarNucleoAutenticado<Registro>(
         `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/contrato-cientifico`,
         token
-      )
+      ).catch(() => ({
+        estado: "SEM EVIDÊNCIA CIENTÍFICA DISPONÍVEL PARA ESTA SESSÃO",
+        ausencia_convertida_em_zero: false
+      }))
     ]);
     const pdf = await gerarPdfVisualHumanexus({
       usuario,

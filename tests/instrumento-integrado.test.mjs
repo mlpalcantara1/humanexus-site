@@ -120,9 +120,31 @@ test("PDF contém cópia integral, resposta única, hashes e estado jurídico", 
 
 test("mídia operacional respeita as modalidades autorizadas no backend", async () => {
   const controle = await fonte("components/controle-gravacao-multimodal.tsx");
+  const gestao = await fonte("components/gestao-operacional.tsx");
+  const instrumento = await fonte("components/instrumento-integrado.tsx");
   assert.match(controle, /modalidades_de_midia_permitidas/);
   assert.match(controle, /NÃO AUTORIZADO/);
   assert.match(controle, /useState<Modo>\("NENHUM"\)/);
+  assert.match(gestao, /Política de armazenamento da mídia/);
+  assert.match(gestao, /ATE_VALIDACAO_DO_RELATORIO/);
+  assert.match(gestao, /consentimento\.politica_de_retencao/);
+  assert.match(instrumento, /MÍDIA PLANEJADA/);
+  assert.match(instrumento, /POLÍTICA DE ARMAZENAMENTO/);
+  assert.doesNotMatch(
+    instrumento,
+    /<small>PADRÃO DE MÍDIA<\/small>\s*<span>SEM GRAVAÇÃO<\/span>/
+  );
+});
+
+test("identificação pública distingue cliente particular e organização", async () => {
+  const componente = await fonte("components/instrumento-integrado.tsx");
+  assert.match(componente, /tipo_de_vinculo/);
+  assert.match(componente, /rotulo_do_cliente/);
+  assert.match(componente, /consulta\.identificacao\.cliente/);
+  assert.doesNotMatch(
+    componente,
+    /<small>ORGANIZAÇÃO<\/small><strong>\{consulta\.identificacao\.organizacao/
+  );
 });
 
 test("governança mínima do instrumento é exclusiva da sessão proprietária", async () => {
