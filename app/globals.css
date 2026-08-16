@@ -4011,3 +4011,58 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
     animation: none;
   }
 }
+
+/* Governança de relatórios: seleção explícita preserva o isolamento organizacional. */
+.hx-report-governance__scope {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(260px, .8fr) auto;
+  align-items: end;
+  gap: 28px;
+  margin-top: 24px;
+  padding: 27px;
+  border: 1px solid var(--hx-line);
+  background: linear-gradient(145deg, rgba(9,18,23,.94), rgba(4,8,11,.9));
+}
+.hx-report-governance__scope small {
+  color: #d2b36d;
+  font: 7px var(--font-geist-mono), monospace;
+  letter-spacing: .13em;
+}
+.hx-report-governance__scope h2 {
+  margin: 9px 0 0;
+  color: #efede6;
+  font: 400 27px/1.1 Georgia, serif;
+}
+.hx-report-governance__scope p {
+  margin: 10px 0 0;
+  color: #9eaaaa;
+  font: 12px/1.6 Arial, Helvetica, sans-serif;
+}
+.hx-report-governance__scope label {
+  color: #aab4b3;
+  font: 8px var(--font-geist-mono), monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.hx-report-governance__scope select {
+  width: 100%;
+  margin-top: 8px;
+  padding: 13px 14px;
+  border: 1px solid #385055;
+  background: #03080b;
+  color: #e6e4dd;
+  font: 12px/1.5 Arial, Helvetica, sans-serif;
+}
+.hx-report-governance__scope button {
+  padding: 14px 18px;
+  border: 1px solid #826f43;
+  background: #d2b36d;
+  color: #0a0c0d;
+  font: 700 8px var(--font-geist-mono), monospace;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+@media (max-width: 760px) {
+  .hx-report-governance__scope { grid-template-columns: 1fr; padding: 22px; }
+  .hx-report-governance__scope button { width: 100%; }
+}

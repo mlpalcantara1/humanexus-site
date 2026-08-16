@@ -37,6 +37,19 @@ export type RelatorioEmGovernanca = {
   };
 };
 
+export type OrganizacaoParaGovernancaDeRelatorios = {
+  identificador: string;
+  nome: string;
+  ativa?: boolean | number;
+};
+
+export function listarOrganizacoesParaGovernancaDeRelatorios(token: string) {
+  return requisitarNucleoAutenticado<OrganizacaoParaGovernancaDeRelatorios[]>(
+    "/api/v1/organizacoes",
+    token,
+  );
+}
+
 export function listarRelatoriosEmGovernanca(
   token: string,
   identificadorDaOrganizacao?: string,

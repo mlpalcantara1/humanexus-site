@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { GovernancaDeRelatorios } from "@/components/governanca-relatorios";
-import { listarRelatoriosEmGovernanca } from "@/lib/governanca-relatorios";
+import {
+  listarOrganizacoesParaGovernancaDeRelatorios,
+  listarRelatoriosEmGovernanca,
+} from "@/lib/governanca-relatorios";
 import { sessaoAtual } from "@/lib/portal-session";
 
 const PERFIS = new Set([
@@ -24,9 +27,16 @@ export default async function GovernancaDeRelatoriosPage({
     ?? parametros.organizacao
     ?? "";
   const permissoes = new Set(sessao.usuario.permissoes);
+  const organizacoesDisponiveis = !organizacao && permissoes.has("administrar_sistema")
+    ? await listarOrganizacoesParaGovernancaDeRelatorios(sessao.token)
+    : [];
+  const relatorios = organizacao
+    ? await listarRelatoriosEmGovernanca(sessao.token, organizacao)
+    : [];
   return (
     <GovernancaDeRelatorios
-      relatorios={await listarRelatoriosEmGovernanca(sessao.token, organizacao)}
+      relatorios={relatorios}
+      organizacoesDisponiveis={organizacoesDisponiveis}
       csrf={sessao.csrf}
       identificadorDaOrganizacao={organizacao}
       podeConduzir={permissoes.has("conduzir_sessao")}

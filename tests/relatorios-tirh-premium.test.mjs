@@ -100,3 +100,15 @@ test("rota preserva impressão, exportação e nome documental profissional", as
   assert.match(documento, /entrada\.relatorio\.secoes \?\? entrada\.relatorio\.secoes_json/);
   assert.doesNotMatch(route, /humanexus-homologacao-visual/);
 });
+
+test("governança global exige seleção explícita e nunca consulta relatórios sem organização", async () => {
+  const pagina = await source("app/(platform)/profissional/relatorios/page.tsx");
+  const componente = await source("components/governanca-relatorios.tsx");
+  assert.match(pagina, /const relatorios = organizacao/);
+  assert.match(pagina, /\? await listarRelatoriosEmGovernanca\(sessao\.token, organizacao\)/);
+  assert.match(pagina, /: \[\];/);
+  assert.match(pagina, /listarOrganizacoesParaGovernancaDeRelatorios/);
+  assert.match(componente, /Selecione a organização/);
+  assert.match(componente, /name="organizacao"/);
+  assert.match(componente, /action="\/profissional\/relatorios"/);
+});

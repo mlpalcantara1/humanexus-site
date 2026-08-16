@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { HxPageHeader, HxSurface } from "@/components/hx-design-system";
-import type { RelatorioEmGovernanca } from "@/lib/governanca-relatorios";
+import type {
+  OrganizacaoParaGovernancaDeRelatorios,
+  RelatorioEmGovernanca,
+} from "@/lib/governanca-relatorios";
 
 const ROTULOS: Record<string, string> = {
   RASCUNHO: "Rascunho",
@@ -28,12 +31,14 @@ function proximoEstado(estado: string) {
 
 export function GovernancaDeRelatorios({
   relatorios,
+  organizacoesDisponiveis,
   csrf,
   identificadorDaOrganizacao,
   podeConduzir,
   podeAdministrar,
 }: {
   relatorios: RelatorioEmGovernanca[];
+  organizacoesDisponiveis: OrganizacaoParaGovernancaDeRelatorios[];
   csrf: string;
   identificadorDaOrganizacao: string;
   podeConduzir: boolean;
@@ -82,8 +87,31 @@ export function GovernancaDeRelatorios({
         title="Validação e liberação de relatórios"
         description="Conclua a validação profissional, autorize nominalmente o destinatário e libere somente a versão aprovada."
       />
+      {!identificadorDaOrganizacao ? (
+        <form className="hx-report-governance__scope" action="/profissional/relatorios" method="get">
+          <div>
+            <small>ESCOPO AUTORIZADO</small>
+            <h2>Selecione a organização</h2>
+            <p>A consulta permanece isolada e apresenta somente os relatórios da organização escolhida.</p>
+          </div>
+          <label>
+            Organização
+            <select name="organizacao" required defaultValue="">
+              <option value="" disabled>Selecione</option>
+              {organizacoesDisponiveis
+                .filter((organizacao) => organizacao.ativa !== false && organizacao.ativa !== 0)
+                .map((organizacao) => (
+                  <option key={organizacao.identificador} value={organizacao.identificador}>
+                    {organizacao.nome}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <button type="submit">Consultar relatórios</button>
+        </form>
+      ) : null}
       {mensagem ? <p className="hx-report-governance__notice" role="status">{mensagem}</p> : null}
-      <div className="hx-report-governance__list">
+      {identificadorDaOrganizacao ? <div className="hx-report-governance__list">
         {relatorios.map((relatorio) => {
           const proximo = proximoEstado(relatorio.estado_documental);
           const email = emailPorRelatorio[relatorio.identificador] ?? "";
@@ -167,7 +195,7 @@ export function GovernancaDeRelatorios({
         {!relatorios.length ? (
           <HxSurface as="article"><h2>Nenhum relatório neste escopo.</h2><p>Selecione uma organização com documentos em elaboração.</p></HxSurface>
         ) : null}
-      </div>
+      </div> : null}
     </section>
   );
 }
