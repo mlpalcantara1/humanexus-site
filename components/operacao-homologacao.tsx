@@ -34,7 +34,6 @@ type OpcoesDeCarregamento = {
 };
 type Estado = {
   carregamento_progressivo?: boolean;
-  aviso: string;
   usuario: Registro;
   organizacao: Registro;
   participante: Registro;
@@ -96,7 +95,6 @@ type Estado = {
     evidencias_anamnese_no_escopo: Registro[];
     formulacoes_no_escopo: Registro[];
   };
-  governanca: Registro;
   contextos: {
     organizacoes: Registro[];
     participantes: Registro[];
@@ -118,7 +116,6 @@ type ContextoParaSelecao = {
   sessoes: Registro[];
 };
 
-const AVISO = "SIMULAÇÃO TÉCNICA — NÃO É RESULTADO HUMANO";
 const ABORTAR_POR_SINCRONIZACAO_INTEGRAL =
   "HUMANEXUS_SINCRONIZACAO_INTEGRAL";
 const ABORTAR_POR_NOVO_CARREGAMENTO =
@@ -415,13 +412,13 @@ function AvisoTecnico({ estado }: { estado?: Estado }) {
     <div className="hx-op-hud__warning">
       <span>
         {possuiDadosFisicos
-          ? "Dados físicos preservados permanecem separados de interpretação e validação científica."
-          : "Esta sessão não possui sinal físico atual e não produz resultados humanos automaticamente."}
+          ? "Sinais físicos atuais permanecem vinculados à sessão e separados da interpretação profissional."
+          : "Sem leitura física atual. Indicadores sem evidência permanecem sem valor."}
       </span>
       <b>
         {possuiDadosFisicos
-          ? "DADO FÍSICO ≠ RESULTADO CIENTÍFICO AUTOMÁTICO"
-          : AVISO}
+          ? "FONTE REAL · FRESCOR CANÔNICO"
+          : "SEM LEITURA ATUAL"}
       </b>
     </div>
   );
@@ -1261,7 +1258,7 @@ function MatrizVetorial({
       {resumida && vetores.length > limite ? <p className="hx-matrix-note">A visão completa contém os {vetores.length} vetores oficiais carregados do núcleo.</p> : null}
       {definicaoSelecionada ? (
         <aside className="hx-vector-inspector" aria-label={`Detalhe do vetor ${codigoDoVetor(definicaoSelecionada)}`}>
-          <header><div><small>DETALHE DO VETOR</small><h3>{codigoDoVetor(definicaoSelecionada)} · {nomeDoVetor(definicaoSelecionada)}</h3></div><span>{estadoSelecionado ? "ESTADO DISPONÍVEL" : "BLOQUEADO POR SIMULAÇÃO TÉCNICA"}</span></header>
+          <header><div><small>DETALHE DO VETOR</small><h3>{codigoDoVetor(definicaoSelecionada)} · {nomeDoVetor(definicaoSelecionada)}</h3></div><span>{estadoSelecionado ? "ESTADO DISPONÍVEL" : "SEM EVIDÊNCIA ADMISSÍVEL"}</span></header>
           <p>{texto(valorDoRegistro(definicaoSelecionada, "description", "descricao"))}</p>
           <dl>
             <div><dt>Campo</dt><dd>{texto(valorDoRegistro(definicaoSelecionada, "macrofield_code", "codigo_do_macrocampo"))}</dd></div>
@@ -2200,8 +2197,15 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       }),
     evento: () => enviar("evento", { momento: "TREINO" }),
     intervencao: () => enviar("intervencao"),
-    desconectar: () => enviar("desconectar"),
-    reconectar: () => enviar("reconectar"),
+    atualizar: () => {
+      void carregar().catch((causa) => {
+        setErro(
+          causa instanceof Error
+            ? causa.message
+            : "Não foi possível atualizar a leitura operacional."
+        );
+      });
+    },
     comparar: () => enviar("comparar"),
     registro: (categoria: string, textoDoRegistro: string) =>
       enviar("registro-profissional", {
@@ -3022,7 +3026,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           </div>
           <div className="hx-mobile-console__commands">
             <Botao onClick={comandos.evento} disabled={ocupado !== "" || estado.sessao.estado === "FINALIZADA"}>Registrar evento permitido</Botao>
-            <Botao onClick={comandos.reconectar} disabled={ocupado !== ""}>Retomar rede</Botao>
+            <Botao onClick={comandos.atualizar} disabled={ocupado !== ""}>Atualizar leitura</Botao>
             <span>{estado.movel.comandos.length} comando(s) móvel(is) auditado(s)</span>
           </div>
         </section>

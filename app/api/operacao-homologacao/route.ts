@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { requisitarNucleoAutenticado } from "@/lib/humanexus-core";
+import {
+  ErroDoNucleo,
+  requisitarNucleoAutenticado
+} from "@/lib/humanexus-core";
+import { ErroDaRota, responderErroDaApi } from "@/lib/api-route-error";
 import { COOKIE_CSRF, COOKIE_SESSAO } from "@/lib/portal-session";
 import { exigirCsrf } from "@/lib/request-security";
 import { normalizarComandoOperacional } from "@/lib/cockpit-operational-command";
@@ -14,12 +18,12 @@ type SelecaoDeContexto = {
 };
 type Contexto = Awaited<ReturnType<typeof estado>>;
 
-const MARCACAO = "SIMULAÇÃO TÉCNICA — NÃO É RESULTADO HUMANO";
-
 async function tokenAtual() {
   const armazenamento = await cookies();
   const token = armazenamento.get(COOKIE_SESSAO)?.value;
-  if (!token) throw new Error("Sessão ausente.");
+  if (!token) {
+    throw new ErroDoNucleo("Sessão ausente.", 401, "SESSAO_AUSENTE");
+  }
   return { armazenamento, token };
 }
 
@@ -86,7 +90,11 @@ async function consultarLote(
     consultas.map((consulta) => {
       const resultado = porChave.get(consulta.chave);
       if (!resultado?.disponivel && !consulta.opcional) {
-        throw new Error(`Consulta obrigatória indisponível: ${consulta.chave}.`);
+        throw new ErroDaRota(
+          "Uma informação obrigatória do Cockpit está temporariamente indisponível.",
+          502,
+          `CONSULTA_OBRIGATORIA_${consulta.chave.toUpperCase()}_INDISPONIVEL`
+        );
       }
       return [
         consulta.chave,
@@ -132,7 +140,11 @@ async function atualizacaoLeve(
 ) {
   const sessaoId = String(selecao.identificador_da_sessao ?? "");
   if (!sessaoId) {
-    throw new Error("Sessão é obrigatória para atualização operacional.");
+    throw new ErroDaRota(
+      "Selecione uma sessão antes de atualizar o Cockpit.",
+      400,
+      "SESSAO_NAO_INFORMADA"
+    );
   }
   const parametros = new URLSearchParams();
   if (desdeVersao) parametros.set("desde_versao", desdeVersao);
@@ -220,15 +232,19 @@ async function estado(
   const organizacoes = contextoBase.organizacoes;
   const organizacao = contextoBase.organizacao;
   if (!organizacao?.identificador) {
-    throw new Error(
-      "Nenhuma organização autorizada está disponível para o contexto."
+    throw new ErroDaRota(
+      "Nenhuma organização autorizada está disponível para o contexto.",
+      403,
+      "ORGANIZACAO_NAO_AUTORIZADA"
     );
   }
   const organizacaoId = String(organizacao.identificador);
   const participantes = contextoBase.participantes;
   if (!selecao.identificador_do_participante) {
-    throw new Error(
-      "Selecione explicitamente o participante antes de abrir o Cockpit."
+    throw new ErroDaRota(
+      "Selecione explicitamente o participante antes de abrir o Cockpit.",
+      400,
+      "PARTICIPANTE_NAO_INFORMADO"
     );
   }
   const participanteSolicitado = participantes.find(
@@ -241,20 +257,28 @@ async function estado(
       : []
   ) as Registro[];
   if (!participante) {
-    throw new Error("Participante não pertence ao contexto autorizado.");
+    throw new ErroDaRota(
+      "Participante não pertence ao contexto autorizado.",
+      403,
+      "PARTICIPANTE_FORA_DO_ESCOPO"
+    );
   }
   const participanteId = String(participante.identificador);
   if (!selecao.identificador_da_sessao) {
-    throw new Error(
-      "Selecione explicitamente uma sessão existente antes de abrir o Cockpit."
+    throw new ErroDaRota(
+      "Selecione explicitamente uma sessão existente antes de abrir o Cockpit.",
+      400,
+      "SESSAO_NAO_INFORMADA"
     );
   }
   const sessao = sessoes.find(
     (item) => item.identificador === selecao.identificador_da_sessao
   );
   if (!sessao) {
-    throw new Error(
-      "Sessão não pertence ao participante e à organização selecionados."
+    throw new ErroDaRota(
+      "Sessão não pertence ao participante e à organização selecionados.",
+      403,
+      "SESSAO_FORA_DO_ESCOPO"
     );
   }
   const sessaoId = String(sessao.identificador);
@@ -461,14 +485,24 @@ async function estado(
     ? detalhesOperacionaisConsultados
     : registro(sessao.detalhes_operacionais);
   const relatoriosDaSessao = relatorios.filter(
-    (item) => registro(item.contexto_json).sessao === sessaoId
+    (item) => {
+      const contextoDoRelatorio = registro(item.contexto_json);
+      return String(
+        contextoDoRelatorio.identificador_interno_da_sessao
+        ?? contextoDoRelatorio.identificador_da_sessao
+        ?? contextoDoRelatorio.sessao
+        ?? ""
+      ) === sessaoId;
+    }
   );
   const profissionalResponsavel = usuariosDisponiveis.find(
     (item) => item.identificador === detalhesOperacionais.identificador_do_profissional
   );
   if (!profissionalResponsavel) {
-    throw new Error(
-      "Profissional responsável persistido na sessão não pertence ao contexto autorizado."
+    throw new ErroDaRota(
+      "O profissional responsável da sessão não pertence ao contexto autorizado.",
+      403,
+      "PROFISSIONAL_FORA_DO_ESCOPO"
     );
   }
   const criteriosCatalogo = Array.isArray(catalogoCtr.criterios) ? catalogoCtr.criterios as Registro[] : [];
@@ -554,7 +588,6 @@ async function estado(
     : formulacoes;
   return {
     carregamento_progressivo: Boolean(opcoes.carregamentoInicial),
-    aviso: MARCACAO,
     usuario,
     organizacao,
     participante: {
@@ -672,16 +705,6 @@ async function estado(
       evidencias_anamnese: evidenciasAnamnese,
       evidencias_anamnese_no_escopo: evidenciasAnamneseNoEscopo,
       formulacoes_no_escopo: formulacoesNoEscopo
-    },
-    governanca: {
-      interpretacao_cientifica_executada: false,
-      dados_fisicos_reais_preservados: Array.isArray(cockpitOperacional.fontes)
-        && (cockpitOperacional.fontes as Registro[]).some(
-          (fonte) => Number(registro(fonte.metricas).amostras ?? 0) > 0
-        ),
-      dados_fisicos_convertidos_automaticamente_em_evidencia: false,
-      iirh_oficial: null,
-      zona_oficial: null
     }
   };
 }
@@ -732,7 +755,10 @@ export async function GET(request: Request) {
       { headers: { "cache-control": "private, no-store" } }
     );
   } catch (erro) {
-    return NextResponse.json({ erro: { mensagem: erro instanceof Error ? erro.message : "Consulta operacional indisponível." } }, { status: 403 });
+    return responderErroDaApi(erro, {
+      modulo: "COCKPIT_VIVO",
+      rota: "CONSULTA_OPERACIONAL"
+    });
   }
 }
 
@@ -743,7 +769,11 @@ export async function DELETE(request: Request) {
     const sessao = String(url.searchParams.get("sessao") ?? "");
     const organizacao = String(url.searchParams.get("organizacao") ?? "");
     if (!sessao || !organizacao) {
-      throw new Error("Contexto explícito é obrigatório para liberar o Cockpit.");
+      throw new ErroDaRota(
+        "Selecione organização, participante e sessão antes de liberar o Cockpit.",
+        400,
+        "CONTEXTO_NAO_INFORMADO"
+      );
     }
     const resposta = await consultar<Registro>(
       `/api/v1/sessoes/${encodeURIComponent(sessao)}/cockpit-operacional-vivo`,
@@ -755,23 +785,23 @@ export async function DELETE(request: Request) {
       headers: { "cache-control": "private, no-store" }
     });
   } catch (erro) {
-    return NextResponse.json(
-      {
-        erro: {
-          mensagem: erro instanceof Error
-            ? erro.message
-            : "Não foi possível liberar o contexto vivo."
-        }
-      },
-      { status: 403 }
-    );
+    return responderErroDaApi(erro, {
+      modulo: "COCKPIT_VIVO",
+      rota: "LIBERACAO_DO_CONTEXTO"
+    });
   }
 }
 
 async function registrarEvento(token: string, contexto: Contexto, dados: Registro) {
   const execucao = contexto.execucao;
   const fase = contexto.fases.find((item) => item.fase === dados.momento);
-  if (!execucao || !fase) throw new Error("Execução ou fase de homologação indisponível.");
+  if (!execucao || !fase) {
+    throw new ErroDaRota(
+      "A execução ou a fase atual não está disponível para este registro.",
+      409,
+      "FASE_OPERACIONAL_INDISPONIVEL"
+    );
+  }
   return consultar(`/api/v1/execucoes-thx/${encodeURIComponent(String(execucao.identificador))}/ciclo/eventos`, token, {
     method: "POST",
     body: JSON.stringify({
@@ -779,8 +809,8 @@ async function registrarEvento(token: string, contexto: Contexto, dados: Registr
       momento: dados.momento,
       tipo: dados.tipo,
       ocorrido_em: new Date().toISOString(),
-      origem: "PORTAL_HXP_SIMULACAO_TECNICA",
-      dados: { marcacao: MARCACAO, ...((dados.dados as Registro) ?? {}) }
+      origem: "REGISTRO_PROFISSIONAL_CANONICO_HXP",
+      dados: { ...((dados.dados as Registro) ?? {}) }
     })
   }, String(contexto.organizacao.identificador));
 }
@@ -793,12 +823,13 @@ async function gerarRelatorio(token: string, contexto: Contexto) {
       tipo: "PRE_TREINO_POS",
       destinatario: "PROFISSIONAL",
       titulo: `${String(contexto.sessao.nome_operacional ?? "Sessão operacional")} — relatório HUMANEXUS`,
-      objetivo: "Documentar a sessão técnica preservada sem convertê-la em resultado humano.",
+      objetivo: "Consolidar os registros canônicos da sessão para análise profissional.",
+      identificador_da_sessao: contexto.sessao.identificador,
       contexto: {
         nome_da_sessao: contexto.sessao.nome_operacional,
         identificador_interno_da_sessao: contexto.sessao.identificador,
-        natureza: MARCACAO,
-        fases: "PRE, TREINO e POS",
+        finalidade: contexto.sessao.finalidade,
+        tipo_de_sessao: contexto.sessao.tipo_de_sessao,
         referencia_de_baseline: contexto.gravacao?.baseline ?? {
           referencia: {
             estado: "SESSÃO SEM REFERÊNCIA DE BASELINE"
@@ -806,17 +837,16 @@ async function gerarRelatorio(token: string, contexto: Contexto) {
         }
       },
       qualidade_dos_dados: {
-        cobertura: "registrada separadamente por fase",
-        confiabilidade: "registrada separadamente por fase",
-        dados_humanos_reais: false
+        cobertura: "Registrada pelo motor científico para cada fase.",
+        confiabilidade: "Registrada pelo motor científico para cada fase.",
+        origem: "Evidências canônicas persistidas da sessão."
       },
-      interpretacao_profissional: "Registro técnico de homologação; não há interpretação científica nem resultado humano.",
+      interpretacao_profissional: "Interpretação profissional pendente.",
       limites: [
-        "Simulação técnica não equivale a evidência humana.",
-        "IIRH e zona oficiais não foram calculados.",
-        "A decisão profissional permanece obrigatória."
+        "Indicadores ausentes permanecem sem valor.",
+        "A decisão e a interpretação finais permanecem sob responsabilidade profissional."
       ],
-      proximos_passos: ["Homologação visual pelo Administrador Proprietário."]
+      proximos_passos: ["Revisão e validação profissional do documento."]
     })
   }, String(contexto.organizacao.identificador));
 }
@@ -883,10 +913,18 @@ export async function POST(request: Request) {
         "DECISAO_PROFISSIONAL"
       ]);
       if (!["PRE", "TREINO", "POS"].includes(momento)) {
-        throw new Error("Registro profissional exige uma fase científica ativa.");
+        throw new ErroDaRota(
+          "O registro profissional exige uma fase ativa.",
+          409,
+          "REGISTRO_SEM_FASE_ATIVA"
+        );
       }
       if (!categoriasPermitidas.has(categoria) || !texto || texto.length > 500) {
-        throw new Error("Registro profissional inválido.");
+        throw new ErroDaRota(
+          "Informe um tipo permitido e um registro com até 500 caracteres.",
+          400,
+          "REGISTRO_PROFISSIONAL_INVALIDO"
+        );
       }
       await registrarEvento(token, contexto, {
         momento,
@@ -916,7 +954,11 @@ export async function POST(request: Request) {
       // valida a ação explícita sob lock e idempotência.
       const comando = normalizarComandoOperacional(corpo.comando);
       if (!comando) {
-        throw new Error("O comando operacional confirmado não foi informado.");
+        throw new ErroDaRota(
+          "O comando operacional confirmado não foi informado.",
+          400,
+          "COMANDO_OPERACIONAL_NAO_INFORMADO"
+        );
       }
       const estadoCanonico = registro(contexto.estado_operacional);
       const chaveFornecida = String(corpo.chave_de_idempotencia ?? "").trim();
@@ -940,14 +982,14 @@ export async function POST(request: Request) {
         },
         organizacaoId
       );
-    } else if (corpo.acao === "desconectar" || corpo.acao === "reconectar") {
-      const conector = contexto.conectores[0];
-      if (!conector) throw new Error("Conector técnico não localizado.");
-      const destino = corpo.acao === "desconectar" ? "ERRO" : "RECONECTANDO";
-      await consultar(`/api/v1/conectores/${encodeURIComponent(String(conector.identificador))}/transicoes`, token, { method: "POST", body: JSON.stringify({ estado: destino, detalhes: corpo.acao === "desconectar" ? { codigo: "SIMULACAO_DESCONECTADA" } : {} }) });
-      if (corpo.acao === "reconectar") await consultar(`/api/v1/conectores/${encodeURIComponent(String(conector.identificador))}/transicoes`, token, { method: "POST", body: JSON.stringify({ estado: "TRANSMITINDO", detalhes: {} }) });
     } else if (corpo.acao === "comparar") {
-      if (!contexto.execucao) throw new Error("Execução técnica não localizada.");
+      if (!contexto.execucao) {
+        throw new ErroDaRota(
+          "A execução da sessão não foi localizada.",
+          409,
+          "EXECUCAO_NAO_LOCALIZADA"
+        );
+      }
       if (!contexto.ciclo?.comparacao) {
         await consultar(`/api/v1/execucoes-thx/${encodeURIComponent(String(contexto.execucao.identificador))}/ciclo/comparar`, token, { method: "POST", body: JSON.stringify({}) });
       }
@@ -955,7 +997,13 @@ export async function POST(request: Request) {
       await consultar(`/api/v1/sessoes/${encodeURIComponent(String(contexto.sessao.identificador))}/linha-temporal`, token, { method: "POST", body: JSON.stringify({}) });
     } else if (corpo.acao === "exportar-replay") {
       const linha = contexto.linhas.at(-1);
-      if (!linha?.inicio || !linha?.fim) throw new Error("Linha temporal com intervalo válido não localizada.");
+      if (!linha?.inicio || !linha?.fim) {
+        throw new ErroDaRota(
+          "Não há intervalo temporal válido para exportar.",
+          409,
+          "INTERVALO_TEMPORAL_INDISPONIVEL"
+        );
+      }
       const inicioDaLinha = new Date(String(linha.inicio)).getTime();
       const fimDaLinha = new Date(String(linha.fim)).getTime();
       const duracao = fimDaLinha - inicioDaLinha;
@@ -978,13 +1026,21 @@ export async function POST(request: Request) {
     } else if (corpo.acao === "relatorio") {
       await gerarRelatorio(token, contexto);
     } else {
-      throw new Error("Ação operacional inválida.");
+      throw new ErroDaRota(
+        "A ação solicitada não está disponível neste estado da sessão.",
+        400,
+        "ACAO_OPERACIONAL_INVALIDA"
+      );
     }
     return NextResponse.json(
       await estado(token, selecao, { carregamentoInicial: true }),
       { headers: { "cache-control": "private, no-store" } }
     );
   } catch (erro) {
-    return NextResponse.json({ erro: { mensagem: erro instanceof Error ? erro.message : "Comando operacional recusado." } }, { status: 400 });
+    return responderErroDaApi(erro, {
+      modulo: "COCKPIT_VIVO",
+      rota: "COMANDO_OPERACIONAL",
+      mensagemDeAcessoNegado: "A ação exige um profissional autorizado para esta sessão."
+    });
   }
 }

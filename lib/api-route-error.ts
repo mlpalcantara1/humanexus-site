@@ -7,6 +7,17 @@ type OpcoesDeErro = {
   mensagemDeAcessoNegado?: string;
 };
 
+export class ErroDaRota extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly codigo: string,
+    readonly correlacao?: string
+  ) {
+    super(message);
+  }
+}
+
 function descricaoPublica(status: number, mensagemDeAcessoNegado?: string) {
   if (status === 401) return "Sua sessão expirou. Entre novamente para continuar no mesmo contexto.";
   if (status === 403) return mensagemDeAcessoNegado ?? "Você não possui permissão para este recurso.";
@@ -19,9 +30,12 @@ function descricaoPublica(status: number, mensagemDeAcessoNegado?: string) {
 }
 
 export function responderErroDaApi(erro: unknown, opcoes: OpcoesDeErro) {
-  const statusOriginal = erro instanceof ErroDoNucleo ? erro.status : 500;
+  const erroConhecido = erro instanceof ErroDoNucleo || erro instanceof ErroDaRota;
+  const statusOriginal = erroConhecido ? erro.status : 500;
   const status = statusOriginal >= 400 && statusOriginal <= 599 ? statusOriginal : 500;
-  const correlacao = crypto.randomUUID();
+  const correlacao = erroConhecido && erro.correlacao
+    ? erro.correlacao
+    : crypto.randomUUID();
   const reconectavel = [408, 429, 502, 503, 504].includes(status);
 
   console.error("[HUMANEXUS_PORTAL]", JSON.stringify({
@@ -30,15 +44,26 @@ export function responderErroDaApi(erro: unknown, opcoes: OpcoesDeErro) {
     modulo: opcoes.modulo,
     rota: opcoes.rota,
     status,
-    tipo: erro instanceof ErroDoNucleo ? "ERRO_DO_NUCLEO" : "ERRO_INESPERADO"
+    tipo: erro instanceof ErroDoNucleo
+      ? "ERRO_DO_NUCLEO"
+      : erro instanceof ErroDaRota
+        ? "ERRO_DA_ROTA"
+        : "ERRO_INESPERADO"
   }));
 
   return NextResponse.json({
     erro: {
-      mensagem: descricaoPublica(status, opcoes.mensagemDeAcessoNegado),
-      codigo: `HXP-${status}`,
+      mensagem: erro instanceof ErroDaRota
+        ? erro.message
+        : descricaoPublica(status, opcoes.mensagemDeAcessoNegado),
+      codigo: erroConhecido
+        ? erro.codigo
+        : `HXP-${status}`,
       correlacao,
       reconectavel
     }
-  }, { status });
+  }, {
+    status,
+    headers: { "x-humanexus-correlation-id": correlacao }
+  });
 }

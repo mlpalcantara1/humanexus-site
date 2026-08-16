@@ -32,7 +32,8 @@ export class ErroDoNucleo extends Error {
   constructor(
     message: string,
     readonly status: number,
-    readonly codigo: string = "ERRO_DO_NUCLEO"
+    readonly codigo: string = "ERRO_DO_NUCLEO",
+    readonly correlacao?: string
   ) {
     super(message);
   }
@@ -107,7 +108,8 @@ async function requisitar<T>(
     throw new ErroDoNucleo(
       dados?.erro?.mensagem ?? "Não foi possível concluir a operação.",
       resposta.status,
-      String(dados?.erro?.codigo ?? "ERRO_DO_NUCLEO")
+      String(dados?.erro?.codigo ?? "ERRO_DO_NUCLEO"),
+      resposta.headers.get("x-humanexus-correlation-id") ?? undefined
     );
   }
   return dados as T;

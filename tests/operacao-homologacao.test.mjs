@@ -91,14 +91,35 @@ test("CTR e THX projetam a revisão profissional atual sem rótulo falso de simu
   assert.doesNotMatch(client, /PROTOCOLO SIMULADO|NÃO DISPONÍVEL NESTA SIMULAÇÃO/);
 });
 
-test("simulação técnica não produz IIRH, zona ou evidência humana", async () => {
+test("Cockpit operacional não injeta simulação, fallback ou estado científico paralelo", async () => {
   const route = await source("app/api/operacao-homologacao/route.ts");
   const client = await source("components/operacao-homologacao.tsx");
-  for (const content of [route, client]) assert.match(content, /SIMULAÇÃO TÉCNICA — NÃO É RESULTADO HUMANO/);
-  assert.match(route, /interpretacao_cientifica_executada: false/);
-  assert.match(route, /dados_humanos_reais: false/);
+  assert.doesNotMatch(route, /SIMULACAO_DESCONECTADA|PORTAL_HXP_SIMULACAO_TECNICA/);
+  assert.doesNotMatch(route, /interpretacao_cientifica_executada|iirh_oficial:\s*null|zona_oficial:\s*null/);
+  assert.doesNotMatch(route, /dados_humanos_reais:\s*false/);
+  assert.doesNotMatch(client, /BLOQUEADO POR SIMULAÇÃO TÉCNICA/);
   assert.match(client, /NENHUM INDICADOR PROMETIDO/);
   assert.match(client, /contrato_cientifico/);
+});
+
+test("reconexão física pertence à estação e o portal apenas relê a projeção canônica", async () => {
+  const route = await source("app/api/operacao-homologacao/route.ts");
+  const client = await source("components/operacao-homologacao.tsx");
+
+  assert.doesNotMatch(route, /corpo\.acao === "desconectar"|corpo\.acao === "reconectar"/);
+  assert.doesNotMatch(route, /\/api\/v1\/conectores\/.*\/transicoes/);
+  assert.doesNotMatch(client, /enviar\("desconectar"\)|enviar\("reconectar"\)/);
+  assert.match(client, /Atualizar leitura/);
+  assert.match(client, /atualizar:\s*\(\) => \{[\s\S]*?carregar\(\)/);
+});
+
+test("relatório usa a sessão canônica e não duplica versões por chave de contexto divergente", async () => {
+  const route = await source("app/api/operacao-homologacao/route.ts");
+
+  assert.match(route, /contextoDoRelatorio\.identificador_interno_da_sessao/);
+  assert.match(route, /identificador_da_sessao: contexto\.sessao\.identificador/);
+  assert.match(route, /Interpretação profissional pendente/);
+  assert.doesNotMatch(route, /Registro técnico de homologação|Simulação técnica não equivale/);
 });
 
 test("gráficos e Replay usam registros do núcleo e expõem controles exigidos", async () => {
@@ -229,7 +250,7 @@ test("visualizações premium diferenciam dado, simulação, lacuna e bloqueio",
   for (const estado of ["Dado humano", "Simulação técnica", "Lacuna real", "BLOQUEADO POR COMPARABILIDADE", "AMOSTRA NÃO ELEGÍVEL"]) {
     assert.match(`${chart}\n${client}`, new RegExp(estado, "i"));
   }
-  assert.match(client, /SIMULAÇÃO TÉCNICA — NÃO É RESULTADO HUMANO/);
+  assert.doesNotMatch(client, /BLOQUEADO POR SIMULAÇÃO TÉCNICA/);
   assert.match(client, /NÃO CALCULÁVEL/);
   assert.match(client, /NÃO INFERÍVEL/);
 });
@@ -368,7 +389,7 @@ test("encerramento e limitação científica permanecem distintos no Cockpit", a
   const operacional = await source("components/cockpit-operacional-vivo.tsx");
   assert.match(operacional, /SESSÃO ENCERRADA/);
   assert.match(client, /ENCERRAMENTO OPERACIONAL ≠ COMPLETUDE CIENTÍFICA/);
-  assert.match(client, /DADO FÍSICO ≠ RESULTADO CIENTÍFICO AUTOMÁTICO/);
+  assert.match(client, /FONTE REAL · FRESCOR CANÔNICO/);
   assert.match(client, /NENHUMA FASE ATIVA/);
 });
 
