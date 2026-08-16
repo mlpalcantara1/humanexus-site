@@ -10,6 +10,9 @@ import {
   estadoOperacionalTerminal,
   operacaoCanonicaTerminal
 } from "../lib/cockpit-terminal-eligibility.ts";
+import {
+  criarPayloadDoComandoPrincipal
+} from "../lib/cockpit-operational-command.ts";
 import { formatarPercentualCanonico } from "../lib/percentual-canonico.ts";
 
 const root = new URL("../", import.meta.url);
@@ -162,11 +165,34 @@ test("frontend não reconstrói a máquina de estados e exibe uma ação princip
   assert.match(route, /ultima_atualizacao/);
   assert.match(client, /crypto\.randomUUID\(\)/);
   assert.match(client, /chave_de_idempotencia: novaChaveDeTentativa\(\)/);
+  assert.match(client, /void comandos\.principal\(acaoPrincipal\)/);
+  assert.match(route, /normalizarComandoOperacional\(corpo\.comando\)/);
+  assert.doesNotMatch(
+    route,
+    /corpo\.comando[\s\S]{0,160}proxima_acao_principal/
+  );
   assert.match(client, /proxima_acao_principal/);
   assert.match(client, /acoes_secundarias_permitidas/);
   assert.match(client, /COMANDO CONTEXTUAL/);
   assert.doesNotMatch(route, /async function assegurarFase/);
   assert.doesNotMatch(route, /async function preservarSnapshot/);
+});
+
+test("INICIAR_PRE visível atravessa explicitamente o POST canônico", () => {
+  assert.deepEqual(
+    criarPayloadDoComandoPrincipal(
+      "INICIAR_PRE",
+      "tentativa-global-iniciar-pre"
+    ),
+    {
+      comando: "INICIAR_PRE",
+      chave_de_idempotencia: "tentativa-global-iniciar-pre"
+    }
+  );
+  assert.throws(
+    () => criarPayloadDoComandoPrincipal("", "tentativa-sem-comando"),
+    /comando operacional visível não foi informado/i
+  );
 });
 
 test("comando principal inicia e mantém o Baseline pela rota canônica", async () => {
@@ -177,7 +203,7 @@ test("comando principal inicia e mantém o Baseline pela rota canônica", async 
   );
 
   assert.match(trecho, /acaoPrincipal === "DEFINIR_REFERENCIA_BASELINE"/);
-  assert.match(trecho, /void comandos\.principal\(\)/);
+  assert.match(trecho, /void comandos\.principal\(acaoPrincipal\)/);
   for (const comando of [
     "INICIAR_BASELINE",
     "PAUSAR_BASELINE",

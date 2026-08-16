@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { requisitarNucleoAutenticado } from "@/lib/humanexus-core";
 import { COOKIE_CSRF, COOKIE_SESSAO } from "@/lib/portal-session";
 import { exigirCsrf } from "@/lib/request-security";
+import { normalizarComandoOperacional } from "@/lib/cockpit-operational-command";
 
 type Registro = Record<string, unknown>;
 type SelecaoDeContexto = {
@@ -908,13 +909,14 @@ export async function POST(request: Request) {
       corpo.acao === "acao-operacional"
       || corpo.acao === "acao-principal"
     ) {
-      const comando = String(
-        corpo.comando
-        ?? registro(contexto.estado_operacional).proxima_acao_principal
-        ?? ""
-      ).toUpperCase();
+      // A ação que o profissional confirmou precisa atravessar o contrato
+      // HTTP. Derivá-la novamente de outra leitura do polling permite que
+      // uma revisão anterior repita PREPARAR_SESSAO e neutralize um
+      // INICIAR_PRE já visível. O núcleo continua sendo a autoridade que
+      // valida a ação explícita sob lock e idempotência.
+      const comando = normalizarComandoOperacional(corpo.comando);
       if (!comando) {
-        throw new Error("O estado canônico não possui ação operacional disponível.");
+        throw new Error("O comando operacional confirmado não foi informado.");
       }
       const estadoCanonico = registro(contexto.estado_operacional);
       const chaveFornecida = String(corpo.chave_de_idempotencia ?? "").trim();

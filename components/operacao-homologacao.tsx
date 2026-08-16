@@ -24,6 +24,7 @@ import {
   podeAplicarRespostaCanonica
 } from "@/lib/cockpit-live-coordination";
 import { publicarEstadoDoNucleo } from "@/lib/client-request";
+import { criarPayloadDoComandoPrincipal } from "@/lib/cockpit-operational-command";
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
 
 type Registro = Record<string, unknown>;
@@ -2187,9 +2188,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const novaChaveDeTentativa = () => crypto.randomUUID();
 
   const comandos = useMemo(() => ({
-    principal: () => enviar("acao-principal", {
-      chave_de_idempotencia: novaChaveDeTentativa()
-    }),
+    principal: (comando: string) => enviar(
+      "acao-principal",
+      criarPayloadDoComandoPrincipal(comando, novaChaveDeTentativa())
+    ),
     operacional: (comando: string, justificativa?: string) =>
       enviar("acao-operacional", {
         comando,
@@ -2321,7 +2323,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         ).toLocaleLowerCase("pt-BR")}? Os registros já recebidos serão preservados.`
       )
     ) return;
-    void comandos.principal();
+    void comandos.principal(acaoPrincipal);
   };
   const executarSecundaria = (comando: string) => {
     if (
