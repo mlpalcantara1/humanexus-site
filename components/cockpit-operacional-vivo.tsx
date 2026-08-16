@@ -17,6 +17,7 @@ import {
   estabilizarApresentacaoRegulatoria,
   type RevisaoRegulatoriaVisual
 } from "@/lib/cockpit-regulatory-visual-stability";
+import { resolverTempoCanonicoDoCockpit } from "@/lib/cockpit-canonical-time";
 import {
   tendenciaVetorialCanonica,
   vetoresDaVisao,
@@ -1136,9 +1137,12 @@ export function CockpitOperacionalVivo({
   const registroTemporalDaFase = objeto(
     estadoOperacional.tempo_ativo_da_fase
   );
-  const registroTemporalCanonico = sessaoBaseline
-    ? registroBaseline
-    : registroTemporalDaFase;
+  const tempoCanonicoDoCockpit = resolverTempoCanonicoDoCockpit({
+    sessaoBaseline,
+    baseline: registroBaseline,
+    fase: registroTemporalDaFase
+  });
+  const registroTemporalCanonico = tempoCanonicoDoCockpit.registro;
   const baseline = referenciaDeBaseline(baselineBruto);
   const inicioDoCronometro = registroTemporalCanonico.iniciado_em;
   const fimDoCronometro = registroTemporalCanonico.finalizado_em;
@@ -1805,10 +1809,7 @@ export function CockpitOperacionalVivo({
           registroTemporalCanonico.duracao_segundos,
           registroTemporalCanonico.duracao_calculada_em,
           registroTemporalCanonico.cronometro_em_execucao
-          )}</strong><span>{sessaoBaseline
-            ? "Baseline"
-            : texto(registroTemporalDaFase.fase, "Sem fase ativa")
-          }</span></div>
+          )}</strong><span>{tempoCanonicoDoCockpit.rotulo}</span></div>
         <div className="is-action">
           <button
             className="hx-live-hud__record"

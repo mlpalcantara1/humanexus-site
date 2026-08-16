@@ -1452,6 +1452,7 @@ test("Cockpit usa snapshot e delta incremental sem reler lotes históricos", asy
 
 test("cronômetro do Baseline começa somente no início canônico do Baseline", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const autoridadeTemporal = await source("lib/cockpit-canonical-time.ts");
 
   assert.match(
     cockpit,
@@ -1468,7 +1469,19 @@ test("cronômetro do Baseline começa somente no início canônico do Baseline",
   assert.match(cockpit, /estadoOperacional\.tempo_ativo_da_fase/);
   assert.match(
     cockpit,
-    /const registroTemporalCanonico = sessaoBaseline[\s\S]*?registroBaseline[\s\S]*?: registroTemporalDaFase/
+    /resolverTempoCanonicoDoCockpit\(\{[\s\S]*?baseline: registroBaseline[\s\S]*?fase: registroTemporalDaFase/
+  );
+  assert.match(
+    autoridadeTemporal,
+    /INICIADO[\s\S]*?PAUSADO[\s\S]*?FINALIZADO/
+  );
+  assert.match(
+    autoridadeTemporal,
+    /ESTADOS_TEMPORAIS_DO_BASELINE\.has\(estadoDoBaseline\)[\s\S]*?!faseIdentificada/
+  );
+  assert.match(
+    autoridadeTemporal,
+    /registro: usarBaseline \? baseline : fase/
   );
   assert.match(
     cockpit,
