@@ -93,6 +93,10 @@ const ATALHOS_EVIDENCIA = [
   "OBS-ATT-002", "OBS-DEC-001", "OBS-DEC-003", "OBS-CON-002", "OBS-REC-001",
   "OBS-ADP-002", "OBS-MTR-002", "OBS-SOC-001", "OBS-SOC-002", "OBS-SYM-001"
 ] as const;
+const ESTADOS_SEM_ANCORA = [
+  "NAO_APLICAVEL", "NAO_OBSERVADA", "SEM_OPORTUNIDADE_VALIDA",
+  "EVIDENCIA_INSUFICIENTE", "AUSENTE"
+] as const;
 const METRICAS_TAREFA_RAPIDA = [
   ["task_load", "Carga da tarefa"], ["complexity", "Complexidade"],
   ["ambiguity", "Ambiguidade"], ["temporal_pressure", "Pressão temporal"],
@@ -1101,7 +1105,7 @@ export function CockpitOperacionalVivo({
   const [perfilTarefaAberto, setPerfilTarefaAberto] = useState(false);
   const [evidenciaEmEnvio, setEvidenciaEmEnvio] = useState(false);
   const [estadoDaEvidencia, setEstadoDaEvidencia] = useState("");
-  const [qualificacoes, setQualificacoes] = useState<Record<string, Record<string, string>>>({});
+  const [qualificacoes, setQualificacoes] = useState<Record<string, Record<string, string | boolean>>>({});
   const [perfilTarefa, setPerfilTarefa] = useState<Record<string, string>>({});
   const cockpit = objeto(estado.cockpit_operacional);
   const sessao = objeto(cockpit.sessao);
@@ -1139,7 +1143,7 @@ export function CockpitOperacionalVivo({
       setEstadoDaEvidencia(`${codigoEvento} PRESERVADO NO INSTANTE ATUAL`);
     } finally { setEvidenciaEmEnvio(false); }
   };
-  const atualizarQualificacao = (id: string, campo: string, valor: string) => {
+  const atualizarQualificacao = (id: string, campo: string, valor: string | boolean) => {
     setQualificacoes((atual) => ({ ...atual, [id]: { ...(atual[id] ?? {}), [campo]: valor } }));
   };
   const qualificarCaptura = async (captura: Registro) => {
@@ -1149,14 +1153,19 @@ export function CockpitOperacionalVivo({
     if (!q.estado || !q.qualidade || !q.confianca) {
       setEstadoDaEvidencia("QUALIFICAÇÃO INCOMPLETA · INFORME ESTADO, QUALIDADE E CONFIANÇA"); return;
     }
-    if (semanticaDasAncorasDisponivel && !["NAO_APLICAVEL", "NAO_OBSERVADA"].includes(q.estado) && !q.ancora) {
+    const estadoSemAncora = ESTADOS_SEM_ANCORA.includes(String(q.estado) as typeof ESTADOS_SEM_ANCORA[number]);
+    if (semanticaDasAncorasDisponivel && !estadoSemAncora && !q.ancora) {
       setEstadoDaEvidencia("QUALIFICAÇÃO INCOMPLETA · INFORME A ÂNCORA OFICIAL 0–4"); return;
+    }
+    if (semanticaDasAncorasDisponivel && !estadoSemAncora && q.oportunidade_valida !== true) {
+      setEstadoDaEvidencia("QUALIFICAÇÃO INCOMPLETA · CONFIRME A OPORTUNIDADE VÁLIDA"); return;
     }
     setEvidenciaEmEnvio(true);
     try {
       await registrarEvidenciaProfissional({
         acao: "QUALIFICAR", identificador_da_captura: id, estado: q.estado,
-        ancora: q.ancora, qualidade: q.qualidade, confianca: q.confianca
+        ancora: q.ancora, qualidade: q.qualidade, confianca: q.confianca,
+        oportunidade_valida: q.oportunidade_valida === true
       });
       setEstadoDaEvidencia(`${String(captura.codigo_evidencia ?? "EVIDÊNCIA")} QUALIFICADA · CONTEXTO CIENTÍFICO ATUALIZADO`);
       setQualificacoes((atual) => { const proximo = { ...atual }; delete proximo[id]; return proximo; });
@@ -1955,7 +1964,41 @@ export function CockpitOperacionalVivo({
         </> : null}
       </section>
 
-      {qualificacaoAberta ? <div className="hx-evidence-layer" role="presentation"><button className="hx-evidence-layer__backdrop" type="button" onClick={() => setQualificacaoAberta(false)} aria-label="Fechar qualificação"/><section className="hx-evidence-qualification" role="dialog" aria-modal="true" aria-label="Qualificação profissional das evidências"><header><div><small>QUALIFICAÇÃO PROFISSIONAL</small><strong>{pendentesEvidencia.length} ocorrência(s) aguardando decisão</strong></div><button type="button" onClick={() => setQualificacaoAberta(false)}>Voltar ao Cockpit</button></header><p>{semanticaDasAncorasDisponivel ? "Use o contrato oficial. A decisão permanece profissional e rastreável." : "A qualificação profissional é preservada. A escala 0–4 aguarda definição semântica autoral e, por isso, não produz contribuição numérica."}</p><div className="hx-evidence-qualification__list">{pendentesEvidencia.map((captura) => { const id=String(captura.identificador ?? ""); const q=qualificacoes[id] ?? {}; return <article key={id}><header><span>{String(captura.fase ?? "FASE")}</span><strong>{String(captura.nome ?? captura.codigo_evidencia ?? "Evidência")}</strong><small>{String(captura.codigo_evidencia ?? "")}</small></header><p>{String(captura.definicao ?? "")}</p><div className="hx-evidence-qualification__fields"><label>Estado<select value={q.estado ?? ""} onChange={(evento) => atualizarQualificacao(id,"estado",evento.target.value)}><option value="">Selecionar</option><option value="VALIDA">Válida</option><option value="PARCIAL">Parcial</option><option value="NAO_APLICAVEL">Não aplicável</option><option value="NAO_OBSERVADA">Não observada</option></select></label><label>Âncora oficial<select value={q.ancora ?? ""} onChange={(evento) => atualizarQualificacao(id,"ancora",evento.target.value)} disabled={!semanticaDasAncorasDisponivel || ["NAO_APLICAVEL","NAO_OBSERVADA"].includes(q.estado ?? "")}><option value="">{semanticaDasAncorasDisponivel ? "Selecionar" : "Aguardando definição autoral"}</option>{semanticaDasAncorasDisponivel ? <><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></> : null}</select></label><label>Confiança<select value={q.confianca ?? ""} onChange={(evento) => atualizarQualificacao(id,"confianca",evento.target.value)}><option value="">Selecionar</option><option value="baixa">Baixa</option><option value="moderada">Moderada</option><option value="alta">Alta</option></select></label><label>Qualidade<select value={q.qualidade ?? ""} onChange={(evento) => atualizarQualificacao(id,"qualidade",evento.target.value)}><option value="">Selecionar</option><option value="insuficiente">Insuficiente</option><option value="limitada">Limitada</option><option value="adequada">Adequada</option><option value="elevada">Elevada</option></select></label></div><button className="is-primary" type="button" onClick={() => void qualificarCaptura(captura)} disabled={evidenciaEmEnvio}>Qualificar e preservar</button></article>; })}</div></section></div> : null}
+      {qualificacaoAberta ? (
+        <div className="hx-evidence-layer" role="presentation">
+          <button className="hx-evidence-layer__backdrop" type="button" onClick={() => setQualificacaoAberta(false)} aria-label="Fechar qualificação" />
+          <section className="hx-evidence-qualification" role="dialog" aria-modal="true" aria-label="Qualificação profissional das evidências">
+            <header>
+              <div><small>QUALIFICAÇÃO PROFISSIONAL</small><strong>{pendentesEvidencia.length} ocorrência(s) aguardando decisão</strong></div>
+              <button type="button" onClick={() => setQualificacaoAberta(false)}>Voltar ao Cockpit</button>
+            </header>
+            <p>{semanticaDasAncorasDisponivel
+              ? "Use o contrato oficial: a âncora qualifica a manifestação observada, não atribui nota ao vetor. Confiança e qualidade permanecem dimensões independentes."
+              : "A qualificação profissional é preservada sem produzir contribuição numérica enquanto o contrato autoral estiver indisponível."}</p>
+            <div className="hx-evidence-qualification__list">
+              {pendentesEvidencia.map((captura) => {
+                const id = String(captura.identificador ?? "");
+                const q = qualificacoes[id] ?? {};
+                const estadoSemAncora = ESTADOS_SEM_ANCORA.includes(String(q.estado) as typeof ESTADOS_SEM_ANCORA[number]);
+                return (
+                  <article key={id}>
+                    <header><span>{String(captura.fase ?? "FASE")}</span><strong>{String(captura.nome ?? captura.codigo_evidencia ?? "Evidência")}</strong><small>{String(captura.codigo_evidencia ?? "")}</small></header>
+                    <p>{String(captura.definicao ?? "")}</p>
+                    <div className="hx-evidence-qualification__fields">
+                      <label>Estado<select value={String(q.estado ?? "")} onChange={(evento) => atualizarQualificacao(id, "estado", evento.target.value)}><option value="">Selecionar</option><option value="VALIDA">Válida</option><option value="PARCIAL">Parcial</option><option value="NAO_APLICAVEL">Não aplicável</option><option value="NAO_OBSERVADA">Não observada</option><option value="SEM_OPORTUNIDADE_VALIDA">Sem oportunidade válida</option><option value="EVIDENCIA_INSUFICIENTE">Evidência insuficiente</option><option value="AUSENTE">Ausente</option></select></label>
+                      <label>Oportunidade válida<select value={q.oportunidade_valida === true ? "SIM" : ""} onChange={(evento) => atualizarQualificacao(id, "oportunidade_valida", evento.target.value === "SIM")} disabled={!semanticaDasAncorasDisponivel || estadoSemAncora}><option value="">Confirmar</option><option value="SIM">Sim, confirmada</option></select></label>
+                      <label>Âncora oficial<select value={String(q.ancora ?? "")} onChange={(evento) => atualizarQualificacao(id, "ancora", evento.target.value)} disabled={!semanticaDasAncorasDisponivel || estadoSemAncora}><option value="">Selecionar</option><option value="0">0 · Não manifestado</option><option value="1">1 · Incipiente</option><option value="2">2 · Parcial</option><option value="3">3 · Consistente</option><option value="4">4 · Robusta</option></select></label>
+                      <label>Confiança<select value={String(q.confianca ?? "")} onChange={(evento) => atualizarQualificacao(id, "confianca", evento.target.value)}><option value="">Selecionar</option><option value="baixa">Baixa</option><option value="moderada">Moderada</option><option value="alta">Alta</option></select></label>
+                      <label>Qualidade<select value={String(q.qualidade ?? "")} onChange={(evento) => atualizarQualificacao(id, "qualidade", evento.target.value)}><option value="">Selecionar</option><option value="insuficiente">Insuficiente</option><option value="limitada">Limitada</option><option value="adequada">Adequada</option><option value="elevada">Elevada</option></select></label>
+                    </div>
+                    <button className="is-primary" type="button" onClick={() => void qualificarCaptura(captura)} disabled={evidenciaEmEnvio}>Qualificar e preservar</button>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {perfilTarefaAberto ? <div className="hx-evidence-layer" role="presentation"><button className="hx-evidence-layer__backdrop" type="button" onClick={() => setPerfilTarefaAberto(false)} aria-label="Fechar perfil da tarefa"/><section className="hx-evidence-task-profile" role="dialog" aria-modal="true" aria-label="Perfil explícito da tarefa"><header><div><small>PERFIL DA TAREFA</small><strong>Somente valores que o protocolo/tarefa realmente define</strong></div><button type="button" onClick={() => setPerfilTarefaAberto(false)}>Voltar ao Cockpit</button></header><p>Não estime para preencher vetor. Campo vazio permanece ausente. Os percentuais abaixo só devem ser usados quando a tarefa ou protocolo fornecer essa medida explicitamente.</p><div className="hx-evidence-task-profile__grid">{METRICAS_TAREFA_RAPIDA.map(([codigo,rotulo]) => <label key={codigo}><span>{rotulo}</span><select value={perfilTarefa[codigo] ?? ""} onChange={(evento) => setPerfilTarefa((atual) => ({...atual,[codigo]:evento.target.value}))}><option value="">Ausente</option><option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="75">75%</option><option value="100">100%</option></select></label>)}</div><button className="is-primary" type="button" onClick={() => void salvarPerfilDaTarefa()} disabled={evidenciaEmEnvio}>Preservar perfil explícito</button></section></div> : null}
 
