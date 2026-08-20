@@ -1208,6 +1208,13 @@ export function GestaoOperacional({
       && (!buscaOrganizacao.trim()
         || conjunto.includes(normalizar(buscaOrganizacao.trim())));
   });
+  // HX_ZERO_ORG_AUTOCREATE: base vazia deve abrir em modo de criação.
+  useEffect(() => {
+    if (organizacoesVisiveis.length === 0 && !novaOrganizacao) {
+      setNovaOrganizacao(true);
+    }
+  }, [organizacoesVisiveis.length, novaOrganizacao]);
+
 
   const participantesVisiveis = (dados?.participantes ?? []).filter((item) => {
     const perfil = objeto(item.perfil_operacional);
@@ -1903,7 +1910,7 @@ export function GestaoOperacional({
                 )
               )
             }>
-              {novaOrganizacao ? "Criar organização" : "Salvar nova versão"}
+              {(novaOrganizacao || organizacoesVisiveis.length === 0) ? "Criar organização" : "Salvar nova versão"}
             </button>
             {administradorProprietario
               && organizacaoAtual

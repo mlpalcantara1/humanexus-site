@@ -302,6 +302,7 @@ async function estado(
     { chave: "definicoesVetoriais", caminho: "/api/v1/cientifico/vetores", opcional: true, padrao: [] },
     { chave: "versaoCientifica", caminho: "/api/v1/cientifico/versoes/ativa", opcional: true, padrao: {} },
     { chave: "evidencias", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/evidencias`, opcional: true, padrao: [] },
+    { chave: "evidenciasProfissionais", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/evidencias-profissionais`, opcional: true, padrao: { catalogo: [], capturas: [], pendentes: [], qualificadas: [] } },
     { chave: "estadosVetoriais", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/estados-vetoriais`, opcional: true, padrao: [] },
     { chave: "configuracoesRegulatorias", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/configuracoes-regulatorias`, opcional: true, padrao: [] },
     { chave: "avaliacoesRegulatorias", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/avaliacao-regulatoria`, opcional: true, padrao: [] },
@@ -358,6 +359,12 @@ async function estado(
       padrao: []
     },
     {
+      chave: "evidenciasProfissionais",
+      caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/evidencias-profissionais`,
+      opcional: true,
+      padrao: { catalogo: [], capturas: [], pendentes: [], qualificadas: [] }
+    },
+    {
       chave: "cockpitOperacional",
       caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional?limite_de_amostras=120`
     },
@@ -400,6 +407,7 @@ async function estado(
     definicoesVetoriais: [],
     versaoCientifica: {},
     evidencias: [],
+    evidenciasProfissionais: { catalogo: [], capturas: [], pendentes: [], qualificadas: [] },
     estadosVetoriais: [],
     configuracoesRegulatorias: [],
     avaliacoesRegulatorias: [],
@@ -446,6 +454,7 @@ async function estado(
   const definicoesVetoriais = principais.definicoesVetoriais as Registro[];
   const versaoCientifica = principais.versaoCientifica as Registro;
   const evidencias = principais.evidencias as Registro[];
+  const evidenciasProfissionais = principais.evidenciasProfissionais as Registro;
   const estadosVetoriais = principais.estadosVetoriais as Registro[];
   const configuracoesRegulatorias = principais.configuracoesRegulatorias as Registro[];
   const avaliacoesRegulatorias = principais.avaliacoesRegulatorias as Registro[];
@@ -696,6 +705,7 @@ async function estado(
       vetores: definicoesVetoriais,
       versao: versaoCientifica
     },
+    evidencias_profissionais: evidenciasProfissionais,
     leitura_regulatoria: {
       evidencias,
       estados_vetoriais: estadosVetoriais,
@@ -821,10 +831,17 @@ async function registrarEvento(token: string, contexto: Contexto, dados: Registr
 
 async function gerarRelatorio(token: string, contexto: Contexto) {
   if (contexto.relatorios.length) return;
+  const detalhes = registro(contexto.sessao_operacional?.detalhes);
+  const tipoDaSessao = String(
+    contexto.sessao.tipo_de_sessao
+    ?? detalhes.tipo_de_sessao
+    ?? registro(contexto.estado_operacional).tipo_de_sessao
+    ?? "PRE_TREINO_POS"
+  ).toUpperCase();
   await consultar(`/api/v1/participantes/${encodeURIComponent(String(contexto.participante.identificador))}/relatorios`, token, {
     method: "POST",
     body: JSON.stringify({
-      tipo: "PRE_TREINO_POS",
+      tipo: tipoDaSessao === "BASELINE" ? "INDIVIDUAL_DE_SESSAO" : "PRE_TREINO_POS",
       destinatario: "PROFISSIONAL",
       titulo: `${String(contexto.sessao.nome_operacional ?? "Sessão operacional")} — relatório HUMANEXUS`,
       objetivo: "Consolidar os registros canônicos da sessão para análise profissional.",
@@ -873,6 +890,7 @@ export async function POST(request: Request) {
       justificativa?: string;
       categoria?: string;
       texto?: string;
+      payload?: Registro;
       client_id?: string;
       client_secret?: string;
     };
@@ -885,6 +903,8 @@ export async function POST(request: Request) {
       "comparar",
       "replay",
       "exportar-replay",
+      "consolidar-longitudinal",
+      "materializar-entregas",
       "relatorio"
     ].includes(String(corpo.acao ?? ""));
     const contexto = await estado(token, selecao, {
@@ -947,6 +967,13 @@ export async function POST(request: Request) {
           cobertura: registro(contexto.estado_operacional).cobertura
         }
       });
+    } else if (corpo.acao === "evidencia-profissional") {
+      await consultar(
+        `/api/v1/sessoes/${encodeURIComponent(String(contexto.sessao.identificador))}/evidencias-profissionais`,
+        token,
+        { method: "POST", body: JSON.stringify(registro(corpo.payload)) },
+        organizacaoId
+      );
     } else if (
       corpo.acao === "acao-operacional"
       || corpo.acao === "acao-principal"
@@ -998,7 +1025,11 @@ export async function POST(request: Request) {
         await consultar(`/api/v1/execucoes-thx/${encodeURIComponent(String(contexto.execucao.identificador))}/ciclo/comparar`, token, { method: "POST", body: JSON.stringify({}) });
       }
     } else if (corpo.acao === "replay") {
-      await consultar(`/api/v1/sessoes/${encodeURIComponent(String(contexto.sessao.identificador))}/linha-temporal`, token, { method: "POST", body: JSON.stringify({}) });
+      await consultar(`/api/v1/sessoes/${encodeURIComponent(String(contexto.sessao.identificador))}/linha-temporal`, token, { method: "POST", body: JSON.stringify({}) }, organizacaoId);
+    } else if (corpo.acao === "consolidar-longitudinal") {
+      await consultar(`/api/v1/participantes/${encodeURIComponent(String(contexto.participante.identificador))}/longitudinal/consolidar`, token, { method: "POST", body: JSON.stringify({}) }, organizacaoId);
+    } else if (corpo.acao === "materializar-entregas") {
+      await consultar(`/api/v1/sessoes/${encodeURIComponent(String(contexto.sessao.identificador))}/artefatos-finais/materializar`, token, { method: "POST", body: JSON.stringify({}) }, organizacaoId);
     } else if (corpo.acao === "exportar-replay") {
       const linha = contexto.linhas.at(-1);
       if (!linha?.inicio || !linha?.fim) {

@@ -26,6 +26,7 @@ import {
 import { publicarEstadoDoNucleo } from "@/lib/client-request";
 import { criarPayloadDoComandoPrincipal } from "@/lib/cockpit-operational-command";
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
+import { estadoOperacionalTerminal } from "@/lib/cockpit-terminal-eligibility";
 
 type Registro = Record<string, unknown>;
 type OpcoesDeCarregamento = {
@@ -271,7 +272,8 @@ const BANDAS_ANI_LONGITUDINAIS = [
 ] as const;
 
 function EvolucaoDaAssinaturaNeuroregulatoria({ longitudinal }: { longitudinal: Registro }) {
-  const sinais = objeto(longitudinal.sinais_longitudinais);
+  const atual = objeto(longitudinal.atual ?? longitudinal.projecao_atual ?? longitudinal);
+  const sinais = objeto(atual.sinais_longitudinais);
   const evolucao = objeto(sinais.evolucao_da_assinatura_neuroregulatoria);
   const observacoes = lista(evolucao.observacoes).map(objeto);
   const trilhas: HxTrack[] = BANDAS_ANI_LONGITUDINAIS.map((definicao) => ({
@@ -332,7 +334,7 @@ function faseAtual(estado: Estado | null) {
   if (canonico.fase_cientifica_atual) {
     return texto(canonico.fase_cientifica_atual);
   }
-  if (canonico.estado_da_sessao === "FINALIZADA") {
+  if (estadoOperacionalTerminal(canonico.estado_da_sessao)) {
     return "NENHUMA FASE ATIVA";
   }
   return "NENHUMA FASE ATIVA";
@@ -892,7 +894,7 @@ function valorVetorial(valor: unknown, indisponivel: string) {
 }
 
 function ContextoPersistente({ estado, visao }: { estado: Estado; visao: VisaoCockpit }) {
-  const finalizada = estado.sessao.estado === "FINALIZADA";
+  const finalizada = estadoOperacionalTerminal(estado.sessao.estado);
   const detalhes = objeto(estado.sessao.detalhes_operacionais);
   const tipoDaSessao = String(
     detalhes.tipo_de_sessao
@@ -1928,7 +1930,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   useEffect(() => {
     if (
       !estado
-      || estado.sessao.estado === "FINALIZADA"
+      || estadoOperacionalTerminal(estado.sessao.estado)
       || !selecaoInicial.organizacao
       || !selecaoInicial.participante
       || !selecaoInicial.sessao
@@ -2239,8 +2241,12 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         categoria,
         texto: textoDoRegistro
       }),
+    evidenciaProfissional: (payload: Registro) =>
+      enviar("evidencia-profissional", { payload }),
     replay: () => enviar("replay"),
     exportarReplay: () => enviar("exportar-replay", { inicio_percentual: intervalo[0], fim_percentual: intervalo[1] }),
+    longitudinal: () => enviar("consolidar-longitudinal"),
+    entregas: () => enviar("materializar-entregas"),
     relatorio: () => enviar("relatorio")
   }), [intervalo]);
 
@@ -2628,31 +2634,33 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     </section>
   );
 
-  const historicoLongitudinal = Array.isArray(estado.longitudinal?.historico) ? estado.longitudinal.historico as Registro[] : [];
   const referenciaBaseline = estado.gravacao?.baseline?.referencia;
-  const pontosLongitudinais = historicoLongitudinal.map((item) => ({
-    time: instante(item.ocorrido_em ?? item.criado_em ?? item.iniciado_em),
-    value: typeof item.iirh === "number" && item.iirh_valido !== false ? item.iirh : null,
-    label: texto(
-      item.nome_operacional
-      ?? (item.identificador_da_sessao === estado.sessao.identificador
-        ? estado.sessao.nome_operacional
-        : null),
-      "Sessão histórica"
-    ),
-    source: "Longitudinal oficial",
-    quality: typeof item.confiabilidade === "number" ? item.confiabilidade : null,
-    coverage: typeof item.cobertura === "number" ? item.cobertura : null,
-    phase: texto(item.zona),
-    zone: texto(item.zona),
-    ctr: texto(item.ctr),
-    thx: texto(item.thx),
-    version: texto(item.versao_cientifica),
-    gap: item.comparavel === false
-  }));
+  const pontosLongitudinais = lista(estado.longitudinal?.pontos_regulatorios)
+    .map(objeto)
+    .map((item) => ({
+      time: instante(item.instante ?? item.criado_em),
+      value: typeof item.iirh === "number" && item.iirh_valido !== false ? item.iirh : null,
+      label: texto(
+        item.nome_operacional
+        ?? (item.identificador_da_sessao === estado.sessao.identificador
+          ? estado.sessao.nome_operacional
+          : null),
+        "Sessão histórica"
+      ),
+      source: "Longitudinal oficial · IIRH persistido",
+      quality: typeof item.confiabilidade === "number" ? item.confiabilidade : null,
+      coverage: typeof item.cobertura === "number" ? item.cobertura : null,
+      phase: texto(item.zona),
+      zone: texto(item.zona),
+      ctr: texto(item.ctr),
+      thx: texto(item.thx),
+      version: texto(item.versao_cientifica),
+      gap: item.comparavel === false
+    }));
   const visaoLongitudinal = (
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="LONGITUDINAL" titulo="Histórico do participante sem recálculo silencioso." descricao="Sessões, ciclos, versões, lacunas e comparabilidade metodológica permanecem preservados." />
+      <div className="hx-report-operation"><div><strong>{texto(estado.longitudinal?.estado_da_evidencia, "EVIDÊNCIA LONGITUDINAL")}</strong><span>A trajetória descritiva existe desde o Baseline; tendência madura continua submetida à elegibilidade temporal.</span></div><Botao onClick={comandos.longitudinal} disabled={ocupado !== ""}>Consolidar versão longitudinal</Botao></div>
       <LongitudinalEvolutionChart points={pontosLongitudinais} />
       <EvolucaoDaAssinaturaNeuroregulatoria longitudinal={estado.longitudinal} />
       <ReferenciaBaselineResumo estado={estado} />
@@ -2731,8 +2739,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         </div>
         <div className="hx-replay-filters">
           {modalidadesReplay.map((item) => <label key={item}><input disabled={!replayDisponivel} type="checkbox" checked={trilhas[item] !== false} onChange={(evento) => setTrilhas((atual) => ({ ...atual, [item]: evento.target.checked }))} />{item}</label>)}
-          <label><input type="checkbox" disabled checked={false} readOnly />Vetores · indisponíveis</label>
-          <label><input type="checkbox" disabled checked={false} readOnly />Resultante · indisponível</label>
+          {!modalidadesReplay.includes("VETOR") ? <span>Vetores · não registrados nesta sessão</span> : null}
+          {!modalidadesReplay.includes("RESULTANTE") ? <span>Resultante · não registrada nesta sessão</span> : null}
         </div>
         {!replayDisponivel ? (
           <p className="hx-module__notice">
@@ -2764,7 +2772,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       <ReferenciaBaselineResumo estado={estado} />
       <section className="hx-report-operation">
         <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
-        <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
+        <div><Botao onClick={comandos.entregas} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Materializar entregas finais</Botao><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
       </section>
       <RelatorioCanonico relatorio={estado.relatorios.at(-1)} />
       <div className="hx-report-charts" data-humanexus-report>
@@ -2862,6 +2870,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       executarSecundaria={executarSecundaria}
       registrar={(categoria, textoDoRegistro) =>
         comandos.registro(categoria, textoDoRegistro)}
+      registrarEvidenciaProfissional={(payload) =>
+        comandos.evidenciaProfissional(payload)}
       abrirAnalitico={() => selecionarVisao("evidencias")}
       permitirOperacao={podeConduzirOperacao}
     />
@@ -3053,7 +3063,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             <article><small>Retomada de rede</small><strong>{estado.historicos_conectores.some((item) => item.eventos.length > 2) ? "DEMONSTRADA" : "NÃO DEMONSTRADA"}</strong></article>
           </div>
           <div className="hx-mobile-console__commands">
-            <Botao onClick={comandos.evento} disabled={ocupado !== "" || estado.sessao.estado === "FINALIZADA"}>Registrar evento permitido</Botao>
+            <Botao onClick={comandos.evento} disabled={ocupado !== "" || estadoOperacionalTerminal(estado.sessao.estado)}>Registrar evento permitido</Botao>
             <Botao onClick={comandos.atualizar} disabled={ocupado !== ""}>Atualizar leitura</Botao>
             <span>{estado.movel.comandos.length} comando(s) móvel(is) auditado(s)</span>
           </div>
@@ -3070,7 +3080,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <Contexto estado={estado} />
         <section className="hx-report-operation">
           <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
-          <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || estado.sessao.estado !== "FINALIZADA"}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
+          <div><Botao onClick={comandos.entregas} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Materializar entregas finais</Botao><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
         </section>
         <RelatorioCanonico relatorio={estado.relatorios.at(-1)} />
         <div className="hx-report-charts" data-humanexus-report>
@@ -3083,9 +3093,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   }
 
   if (modulo === "longitudinal") {
-    const historico = Array.isArray(estado.longitudinal?.historico) ? estado.longitudinal.historico as Registro[] : [];
-    const pontos = historico.map((item) => ({
-      time: instante(item.ocorrido_em ?? item.criado_em ?? item.iniciado_em),
+    const pontosRegulatorios = lista(estado.longitudinal?.pontos_regulatorios).map(objeto);
+    const pontos = pontosRegulatorios.map((item) => ({
+      time: instante(item.instante ?? item.criado_em),
       value: typeof item.iirh === "number" && item.iirh_valido !== false ? item.iirh : null,
       label: texto(
         item.nome_operacional

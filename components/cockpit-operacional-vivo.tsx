@@ -58,6 +58,7 @@ type Props = {
   executarPrincipal: () => void;
   executarSecundaria: (comando: string) => void;
   registrar: (categoria: string, texto: string) => Promise<void> | void;
+  registrarEvidenciaProfissional: (payload: Registro) => Promise<void> | void;
   abrirAnalitico: () => void;
   permitirOperacao: boolean;
 };
@@ -77,6 +78,30 @@ const BANDAS_EEG_VISIVEIS = [
   { codigo: "beta_baixa", nome: "Beta baixa", cor: C.cyan },
   { codigo: "beta_alta", nome: "Beta alta", cor: C.amber },
   { codigo: "gamma", nome: "Gamma", cor: C.red }
+] as const;
+
+const ROTULOS_COMPONENTES_EVIDENCIA: Record<string, string> = {
+  attentional: "Atenção", cognitive: "Cognição", decisional: "Decisão",
+  emotional: "Emocional", motivational: "Motivação", reliability: "Confiabilidade",
+  adaptation_recovery: "Recuperação", motor: "Ação / Motor", social: "Social", symbolic: "Simbólico"
+};
+const ORDEM_COMPONENTES_EVIDENCIA = [
+  "attentional", "decisional", "motor", "adaptation_recovery", "reliability",
+  "cognitive", "emotional", "motivational", "social", "symbolic"
+] as const;
+const ATALHOS_EVIDENCIA = [
+  "OBS-ATT-002", "OBS-DEC-001", "OBS-DEC-003", "OBS-CON-002", "OBS-REC-001",
+  "OBS-ADP-002", "OBS-MTR-002", "OBS-SOC-001", "OBS-SOC-002", "OBS-SYM-001"
+] as const;
+const METRICAS_TAREFA_RAPIDA = [
+  ["task_load", "Carga da tarefa"], ["complexity", "Complexidade"],
+  ["ambiguity", "Ambiguidade"], ["temporal_pressure", "Pressão temporal"],
+  ["error_consequence", "Consequência do erro"], ["coordination", "Coordenação exigida"],
+  ["communication", "Comunicação"], ["symbolic_context", "Contexto simbólico"],
+  ["decision_accuracy", "Acurácia decisional"], ["rule_adherence", "Aderência às regras"],
+  ["strategy_change", "Mudança de estratégia"], ["recovery_after_error", "Recuperação após erro"],
+  ["precision", "Precisão"], ["motor_error", "Erro motor"],
+  ["performance_stability", "Estabilidade de performance"]
 ] as const;
 
 const ROTULOS_DAS_ZONAS: Record<string, string> = {
@@ -996,6 +1021,10 @@ function DinamicaDaInteligenciaRegulatoria({
   trajetoria: Registro;
   trajetoriaCalculada: boolean;
 }) {
+  const estadoDaResultante = texto(resultante.estado, "NÃO CALCULÁVEL").toUpperCase();
+  const resultanteDisponivel = ["CALCULAVEL", "CONFLITANTE", "PARCIAL"].includes(
+    estadoDaResultante.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  );
   const magnitude = resultanteCalculada
     ? valorNormalizado(resultante.valor)
     : null;
@@ -1026,14 +1055,22 @@ function DinamicaDaInteligenciaRegulatoria({
       <dl>
         <div><dt>Resultante</dt><dd>{resultanteCalculada
           ? `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`
-          : texto(resultante.estado, "NÃO CALCULÁVEL")}</dd></div>
+          : resultanteDisponivel
+            ? texto(resultante.estado, "PARCIAL")
+            : texto(resultante.estado, "NÃO CALCULÁVEL")}</dd></div>
         <div><dt>Direção</dt><dd>{texto(resultante.vetor_dominante, "NÃO DETERMINÁVEL")}</dd></div>
         <div><dt>Sentido</dt><dd>{texto(resultante.sentido_contextual, "NÃO DETERMINÁVEL")}</dd></div>
         <div><dt>Tendência</dt><dd>{trajetoriaCalculada
           ? texto(trajetoria.valor)
           : "AINDA NÃO INFERÍVEL"}</dd></div>
+        {resultanteDisponivel ? (
+          <>
+            <div><dt>Cobertura</dt><dd>{percentual(resultante.cobertura)} · confiança {percentual(resultante.confianca ?? resultante.confiabilidade)}</dd></div>
+            <div><dt>Evidência</dt><dd>{fontesDoIndicador(resultante.vetores_contribuintes ?? resultante.vetores_utilizados)} · ausências {fontesDoIndicador(resultante.vetores_ausentes)}</dd></div>
+          </>
+        ) : null}
       </dl>
-      <p>Geometria de apresentação da Resultante canônica. Nenhuma composição científica é calculada no portal.</p>
+      <p>Geometria de apresentação da Resultante canônica. Nenhuma composição científica é calculada no portal; critérios e proveniência detalhados permanecem na Inspeção TIRH.</p>
     </section>
   );
 }
@@ -1049,6 +1086,7 @@ export function CockpitOperacionalVivo({
   executarPrincipal,
   executarSecundaria,
   registrar,
+  registrarEvidenciaProfissional,
   abrirAnalitico,
   permitirOperacao
 }: Props) {
@@ -1058,10 +1096,84 @@ export function CockpitOperacionalVivo({
   const [registroAberto, setRegistroAberto] = useState(false);
   const [registroEmEnvio, setRegistroEmEnvio] = useState(false);
   const [estadoDoRascunho, setEstadoDoRascunho] = useState("");
+  const [paletaEvidenciaAberta, setPaletaEvidenciaAberta] = useState(true);
+  const [qualificacaoAberta, setQualificacaoAberta] = useState(false);
+  const [perfilTarefaAberto, setPerfilTarefaAberto] = useState(false);
+  const [evidenciaEmEnvio, setEvidenciaEmEnvio] = useState(false);
+  const [estadoDaEvidencia, setEstadoDaEvidencia] = useState("");
+  const [qualificacoes, setQualificacoes] = useState<Record<string, Record<string, string>>>({});
+  const [perfilTarefa, setPerfilTarefa] = useState<Record<string, string>>({});
   const cockpit = objeto(estado.cockpit_operacional);
   const sessao = objeto(cockpit.sessao);
   const contextoSessao = objeto(estado.sessao);
   const estadoOperacional = objeto(estado.estado_operacional);
+  const evidenciasProfissionais = objeto(estado.evidencias_profissionais);
+  const regraQualificacao = objeto(evidenciasProfissionais.regra_de_qualificacao);
+  const semanticaDasAncorasDisponivel = regraQualificacao.semantica_das_ancoras_disponivel === true;
+  const catalogoEvidencia = lista(evidenciasProfissionais.catalogo);
+  const pendentesEvidencia = lista(evidenciasProfissionais.pendentes);
+  const qualificadasEvidencia = lista(evidenciasProfissionais.qualificadas);
+  const faseDaPaleta = objeto(evidenciasProfissionais.fase_atual);
+  const capturaRapidaPermitida = String(faseDaPaleta.estado ?? "").toUpperCase() === "INICIADA" || String(faseDaPaleta.estado ?? "").toUpperCase() === "INICIADO";
+  const atalhosEvidencia = ATALHOS_EVIDENCIA
+    .map((codigo) => catalogoEvidencia.find((item) => String(item.codigo ?? "") === codigo))
+    .filter(Boolean) as Registro[];
+  const catalogoPorComponente = ORDEM_COMPONENTES_EVIDENCIA.map((componente) => ({
+    componente, rotulo: ROTULOS_COMPONENTES_EVIDENCIA[componente],
+    itens: catalogoEvidencia.filter((item) => String(item.componente ?? "") === componente)
+  })).filter((grupo) => grupo.itens.length);
+
+  const capturarEvidenciaRapida = async (codigoEvidencia: string) => {
+    if (evidenciaEmEnvio || !capturaRapidaPermitida) return;
+    setEvidenciaEmEnvio(true);
+    try {
+      await registrarEvidenciaProfissional({ acao: "CAPTURAR", codigo_evidencia: codigoEvidencia });
+      setEstadoDaEvidencia(`CAPTURA ${codigoEvidencia} PRESERVADA · QUALIFICAR DEPOIS`);
+    } finally { setEvidenciaEmEnvio(false); }
+  };
+  const capturarEventoObjetivo = async (codigoEvento: string) => {
+    if (evidenciaEmEnvio || !capturaRapidaPermitida) return;
+    setEvidenciaEmEnvio(true);
+    try {
+      await registrarEvidenciaProfissional({ acao: "EVENTO_TAREFA", codigo_evento: codigoEvento });
+      setEstadoDaEvidencia(`${codigoEvento} PRESERVADO NO INSTANTE ATUAL`);
+    } finally { setEvidenciaEmEnvio(false); }
+  };
+  const atualizarQualificacao = (id: string, campo: string, valor: string) => {
+    setQualificacoes((atual) => ({ ...atual, [id]: { ...(atual[id] ?? {}), [campo]: valor } }));
+  };
+  const qualificarCaptura = async (captura: Registro) => {
+    const id = String(captura.identificador ?? "");
+    const q = qualificacoes[id] ?? {};
+    if (!id || evidenciaEmEnvio) return;
+    if (!q.estado || !q.qualidade || !q.confianca) {
+      setEstadoDaEvidencia("QUALIFICAÇÃO INCOMPLETA · INFORME ESTADO, QUALIDADE E CONFIANÇA"); return;
+    }
+    if (semanticaDasAncorasDisponivel && !["NAO_APLICAVEL", "NAO_OBSERVADA"].includes(q.estado) && !q.ancora) {
+      setEstadoDaEvidencia("QUALIFICAÇÃO INCOMPLETA · INFORME A ÂNCORA OFICIAL 0–4"); return;
+    }
+    setEvidenciaEmEnvio(true);
+    try {
+      await registrarEvidenciaProfissional({
+        acao: "QUALIFICAR", identificador_da_captura: id, estado: q.estado,
+        ancora: q.ancora, qualidade: q.qualidade, confianca: q.confianca
+      });
+      setEstadoDaEvidencia(`${String(captura.codigo_evidencia ?? "EVIDÊNCIA")} QUALIFICADA · CONTEXTO CIENTÍFICO ATUALIZADO`);
+      setQualificacoes((atual) => { const proximo = { ...atual }; delete proximo[id]; return proximo; });
+    } finally { setEvidenciaEmEnvio(false); }
+  };
+  const salvarPerfilDaTarefa = async () => {
+    const metricas = Object.fromEntries(Object.entries(perfilTarefa).filter(([, valor]) => valor !== "").map(([codigo, valor]) => [codigo, Number(valor)]));
+    if (!Object.keys(metricas).length || evidenciaEmEnvio) {
+      setEstadoDaEvidencia("PERFIL DA TAREFA SEM VALORES EXPLÍCITOS"); return;
+    }
+    setEvidenciaEmEnvio(true);
+    try {
+      await registrarEvidenciaProfissional({ acao: "PERFIL_TAREFA", metricas });
+      setEstadoDaEvidencia("PERFIL DA TAREFA PRESERVADO · SEM DEFAULT");
+      setPerfilTarefa({}); setPerfilTarefaAberto(false);
+    } finally { setEvidenciaEmEnvio(false); }
+  };
   const tipoDaSessao = String(
     objeto(contextoSessao.detalhes_operacionais).tipo_de_sessao
     ?? estadoOperacional.tipo_de_sessao
@@ -1829,6 +1941,23 @@ export function CockpitOperacionalVivo({
           </button>
         </div>
       </section>
+
+      <section id="hx-evidence-professional-palette" className="hx-evidence-palette" aria-label="Paleta profissional de evidências TIRH">
+        <header className="hx-evidence-palette__header">
+          <div><small>EVIDÊNCIA PROFISSIONAL + TAREFA</small><strong>Um clique durante a execução. Qualificação depois.</strong><span>O clique preserva o acontecimento e o instante. Nenhum clique cria nota, vetor ou interpretação automática.</span></div>
+          <div className="hx-evidence-palette__status"><b>{pendentesEvidencia.length} pendente(s)</b><span>{qualificadasEvidencia.length} qualificada(s)</span><button type="button" onClick={() => setPaletaEvidenciaAberta((valor) => !valor)}>{paletaEvidenciaAberta ? "Recolher" : "Abrir"}</button></div>
+        </header>
+        {paletaEvidenciaAberta ? <>
+          <div className="hx-evidence-palette__objective"><span>EVENTOS OBJETIVOS</span><button type="button" onClick={() => void capturarEventoObjetivo("ERRO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Erro</button><button type="button" onClick={() => void capturarEventoObjetivo("OMISSAO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Omissão</button><button type="button" onClick={() => void capturarEventoObjetivo("FALSO_POSITIVO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Falso positivo</button><em>{capturaRapidaPermitida ? "Captura disponível na fase em execução." : "Captura bloqueada fora de uma fase em execução; qualificação continua disponível."}</em></div>
+          <div className="hx-evidence-palette__quick"><span>ATALHOS</span>{atalhosEvidencia.map((item) => <button key={String(item.codigo)} type="button" title={String(item.definicao ?? "")} onClick={() => void capturarEvidenciaRapida(String(item.codigo))} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}><b>{String(item.nome ?? item.codigo)}</b><small>{String(item.codigo)}</small></button>)}</div>
+          <details className="hx-evidence-palette__all"><summary>Mais evidências estruturadas</summary><div className="hx-evidence-palette__groups">{catalogoPorComponente.map((grupo) => <details key={grupo.componente}><summary>{grupo.rotulo}</summary><div>{grupo.itens.map((item) => <button key={String(item.codigo)} type="button" title={String(item.definicao ?? "")} onClick={() => void capturarEvidenciaRapida(String(item.codigo))} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}><b>{String(item.nome ?? item.codigo)}</b><small>{String(item.codigo)}</small></button>)}</div></details>)}</div></details>
+          <div className="hx-evidence-palette__actions"><button className={pendentesEvidencia.length ? "is-attention" : ""} type="button" onClick={() => setQualificacaoAberta(true)} disabled={!pendentesEvidencia.length}>Qualificar {pendentesEvidencia.length} pendência(s)</button><button type="button" onClick={() => setPerfilTarefaAberto(true)}>Perfil explícito da tarefa</button><button type="button" onClick={() => abrirRegistroProfissional()}>Registro narrativo</button><span>{estadoDaEvidencia || "Observações qualificadas preservam o contexto científico; somente regras autorais completas autorizam contribuição numérica."}</span></div>
+        </> : null}
+      </section>
+
+      {qualificacaoAberta ? <div className="hx-evidence-layer" role="presentation"><button className="hx-evidence-layer__backdrop" type="button" onClick={() => setQualificacaoAberta(false)} aria-label="Fechar qualificação"/><section className="hx-evidence-qualification" role="dialog" aria-modal="true" aria-label="Qualificação profissional das evidências"><header><div><small>QUALIFICAÇÃO PROFISSIONAL</small><strong>{pendentesEvidencia.length} ocorrência(s) aguardando decisão</strong></div><button type="button" onClick={() => setQualificacaoAberta(false)}>Voltar ao Cockpit</button></header><p>{semanticaDasAncorasDisponivel ? "Use o contrato oficial. A decisão permanece profissional e rastreável." : "A qualificação profissional é preservada. A escala 0–4 aguarda definição semântica autoral e, por isso, não produz contribuição numérica."}</p><div className="hx-evidence-qualification__list">{pendentesEvidencia.map((captura) => { const id=String(captura.identificador ?? ""); const q=qualificacoes[id] ?? {}; return <article key={id}><header><span>{String(captura.fase ?? "FASE")}</span><strong>{String(captura.nome ?? captura.codigo_evidencia ?? "Evidência")}</strong><small>{String(captura.codigo_evidencia ?? "")}</small></header><p>{String(captura.definicao ?? "")}</p><div className="hx-evidence-qualification__fields"><label>Estado<select value={q.estado ?? ""} onChange={(evento) => atualizarQualificacao(id,"estado",evento.target.value)}><option value="">Selecionar</option><option value="VALIDA">Válida</option><option value="PARCIAL">Parcial</option><option value="NAO_APLICAVEL">Não aplicável</option><option value="NAO_OBSERVADA">Não observada</option></select></label><label>Âncora oficial<select value={q.ancora ?? ""} onChange={(evento) => atualizarQualificacao(id,"ancora",evento.target.value)} disabled={!semanticaDasAncorasDisponivel || ["NAO_APLICAVEL","NAO_OBSERVADA"].includes(q.estado ?? "")}><option value="">{semanticaDasAncorasDisponivel ? "Selecionar" : "Aguardando definição autoral"}</option>{semanticaDasAncorasDisponivel ? <><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></> : null}</select></label><label>Confiança<select value={q.confianca ?? ""} onChange={(evento) => atualizarQualificacao(id,"confianca",evento.target.value)}><option value="">Selecionar</option><option value="baixa">Baixa</option><option value="moderada">Moderada</option><option value="alta">Alta</option></select></label><label>Qualidade<select value={q.qualidade ?? ""} onChange={(evento) => atualizarQualificacao(id,"qualidade",evento.target.value)}><option value="">Selecionar</option><option value="insuficiente">Insuficiente</option><option value="limitada">Limitada</option><option value="adequada">Adequada</option><option value="elevada">Elevada</option></select></label></div><button className="is-primary" type="button" onClick={() => void qualificarCaptura(captura)} disabled={evidenciaEmEnvio}>Qualificar e preservar</button></article>; })}</div></section></div> : null}
+
+      {perfilTarefaAberto ? <div className="hx-evidence-layer" role="presentation"><button className="hx-evidence-layer__backdrop" type="button" onClick={() => setPerfilTarefaAberto(false)} aria-label="Fechar perfil da tarefa"/><section className="hx-evidence-task-profile" role="dialog" aria-modal="true" aria-label="Perfil explícito da tarefa"><header><div><small>PERFIL DA TAREFA</small><strong>Somente valores que o protocolo/tarefa realmente define</strong></div><button type="button" onClick={() => setPerfilTarefaAberto(false)}>Voltar ao Cockpit</button></header><p>Não estime para preencher vetor. Campo vazio permanece ausente. Os percentuais abaixo só devem ser usados quando a tarefa ou protocolo fornecer essa medida explicitamente.</p><div className="hx-evidence-task-profile__grid">{METRICAS_TAREFA_RAPIDA.map(([codigo,rotulo]) => <label key={codigo}><span>{rotulo}</span><select value={perfilTarefa[codigo] ?? ""} onChange={(evento) => setPerfilTarefa((atual) => ({...atual,[codigo]:evento.target.value}))}><option value="">Ausente</option><option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="75">75%</option><option value="100">100%</option></select></label>)}</div><button className="is-primary" type="button" onClick={() => void salvarPerfilDaTarefa()} disabled={evidenciaEmEnvio}>Preservar perfil explícito</button></section></div> : null}
 
       {registroAberto ? (
         <div className="hx-live-register-layer" role="presentation">

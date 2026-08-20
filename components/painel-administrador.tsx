@@ -203,7 +203,7 @@ export function PainelAdministrador({
                   Administrador Proprietário
                 </option>
               ) : null}
-              {["ADMINISTRADOR_DO_SISTEMA","GOVERNANCA_CIENTIFICA","ADMINISTRADOR_DA_ORGANIZACAO","PROFISSIONAL_HUMANEXUS","VISUALIZADOR_OPERACIONAL","AUDITOR"].map((perfil) => <option key={perfil} value={perfil}>{rotuloDoPerfil(perfil)}</option>)}
+              {["ADMINISTRADOR_DO_SISTEMA", "ADMINISTRADOR_PROPRIETARIO","GOVERNANCA_CIENTIFICA","ADMINISTRADOR_DA_ORGANIZACAO","PROFISSIONAL_HUMANEXUS","VISUALIZADOR_OPERACIONAL","AUDITOR"].map((perfil) => <option key={perfil} value={perfil}>{rotuloDoPerfil(perfil)}</option>)}
             </select>
             <select aria-label="Organização autorizada" required={exigeOrganizacao} disabled={edicaoProprietaria} value={novoUsuario.identificador_da_organizacao} onChange={(e) => setNovoUsuario({ ...novoUsuario, identificador_da_organizacao: e.target.value })}>
               <option value="">{exigeOrganizacao ? "Selecione uma organização" : "Todas as organizações autorizadas"}</option>
