@@ -97,6 +97,18 @@ const ESTADOS_SEM_ANCORA = [
   "NAO_APLICAVEL", "NAO_OBSERVADA", "SEM_OPORTUNIDADE_VALIDA",
   "EVIDENCIA_INSUFICIENTE", "AUSENTE"
 ] as const;
+const ROTULOS_CATEGORIAS_SIMBOLICAS: Record<string, string> = {
+  AMEACA: "Ameaça",
+  FRACASSO: "Fracasso",
+  APRENDIZAGEM: "Aprendizagem",
+  DESAFIO: "Desafio",
+  RESPONSABILIDADE: "Responsabilidade",
+  PROTECAO: "Proteção",
+  COMPETENCIA: "Competência",
+  RECONHECIMENTO: "Reconhecimento",
+  DEVER: "Dever",
+  OUTRO: "Outro"
+};
 const METRICAS_TAREFA_RAPIDA = [
   ["task_load", "Carga da tarefa"], ["complexity", "Complexidade"],
   ["ambiguity", "Ambiguidade"], ["temporal_pressure", "Pressão temporal"],
@@ -1149,22 +1161,38 @@ export function CockpitOperacionalVivo({
   const qualificarCaptura = async (captura: Registro) => {
     const id = String(captura.identificador ?? "");
     const q = qualificacoes[id] ?? {};
+    const definicaoDaCaptura = catalogoEvidencia.find(
+      (item) => String(item.codigo ?? "") === String(captura.codigo_evidencia ?? "")
+    );
+    const registroCategorial = String(definicaoDaCaptura?.transformacao ?? "") ===
+      "REGISTRO_CATEGORIAL_SEM_CONTRIBUICAO_NUMERICA";
     if (!id || evidenciaEmEnvio) return;
     if (!q.estado || !q.qualidade || !q.confianca) {
       setEstadoDaEvidencia("QUALIFICAÇÃO INCOMPLETA · INFORME ESTADO, QUALIDADE E CONFIANÇA"); return;
     }
     const estadoSemAncora = ESTADOS_SEM_ANCORA.includes(String(q.estado) as typeof ESTADOS_SEM_ANCORA[number]);
-    if (semanticaDasAncorasDisponivel && !estadoSemAncora && !q.ancora) {
+    if (semanticaDasAncorasDisponivel && !registroCategorial && !estadoSemAncora && !q.ancora) {
       setEstadoDaEvidencia("QUALIFICAÇÃO INCOMPLETA · INFORME A ÂNCORA OFICIAL 0–4"); return;
     }
     if (semanticaDasAncorasDisponivel && !estadoSemAncora && q.oportunidade_valida !== true) {
       setEstadoDaEvidencia("QUALIFICAÇÃO INCOMPLETA · CONFIRME A OPORTUNIDADE VÁLIDA"); return;
     }
+    if (
+      registroCategorial
+      && !estadoSemAncora
+      && (!q.categoria_qualitativa || !q.resposta_estruturada_do_participante || !q.sintese_profissional_contextual)
+    ) {
+      setEstadoDaEvidencia("QUALIFICAÇÃO INCOMPLETA · INFORME CATEGORIA, RESPOSTA DO PARTICIPANTE E SÍNTESE PROFISSIONAL"); return;
+    }
     setEvidenciaEmEnvio(true);
     try {
       await registrarEvidenciaProfissional({
         acao: "QUALIFICAR", identificador_da_captura: id, estado: q.estado,
-        ancora: q.ancora, qualidade: q.qualidade, confianca: q.confianca,
+        ancora: registroCategorial ? undefined : q.ancora,
+        categoria_qualitativa: registroCategorial ? q.categoria_qualitativa : undefined,
+        resposta_estruturada_do_participante: registroCategorial ? q.resposta_estruturada_do_participante : undefined,
+        sintese_profissional_contextual: registroCategorial ? q.sintese_profissional_contextual : undefined,
+        qualidade: q.qualidade, confianca: q.confianca,
         oportunidade_valida: q.oportunidade_valida === true
       });
       setEstadoDaEvidencia(`${String(captura.codigo_evidencia ?? "EVIDÊNCIA")} QUALIFICADA · CONTEXTO CIENTÍFICO ATUALIZADO`);
@@ -1980,6 +2008,14 @@ export function CockpitOperacionalVivo({
                 const id = String(captura.identificador ?? "");
                 const q = qualificacoes[id] ?? {};
                 const estadoSemAncora = ESTADOS_SEM_ANCORA.includes(String(q.estado) as typeof ESTADOS_SEM_ANCORA[number]);
+                const definicaoDaCaptura = catalogoEvidencia.find(
+                  (item) => String(item.codigo ?? "") === String(captura.codigo_evidencia ?? "")
+                );
+                const registroCategorial = String(definicaoDaCaptura?.transformacao ?? "") ===
+                  "REGISTRO_CATEGORIAL_SEM_CONTRIBUICAO_NUMERICA";
+                const categoriasPermitidas = Array.isArray(definicaoDaCaptura?.categorias_permitidas)
+                  ? definicaoDaCaptura.categorias_permitidas.map((categoria) => String(categoria))
+                  : [];
                 return (
                   <article key={id}>
                     <header><span>{String(captura.fase ?? "FASE")}</span><strong>{String(captura.nome ?? captura.codigo_evidencia ?? "Evidência")}</strong><small>{String(captura.codigo_evidencia ?? "")}</small></header>
@@ -1987,9 +2023,15 @@ export function CockpitOperacionalVivo({
                     <div className="hx-evidence-qualification__fields">
                       <label>Estado<select value={String(q.estado ?? "")} onChange={(evento) => atualizarQualificacao(id, "estado", evento.target.value)}><option value="">Selecionar</option><option value="VALIDA">Válida</option><option value="PARCIAL">Parcial</option><option value="NAO_APLICAVEL">Não aplicável</option><option value="NAO_OBSERVADA">Não observada</option><option value="SEM_OPORTUNIDADE_VALIDA">Sem oportunidade válida</option><option value="EVIDENCIA_INSUFICIENTE">Evidência insuficiente</option><option value="AUSENTE">Ausente</option></select></label>
                       <label>Oportunidade válida<select value={q.oportunidade_valida === true ? "SIM" : ""} onChange={(evento) => atualizarQualificacao(id, "oportunidade_valida", evento.target.value === "SIM")} disabled={!semanticaDasAncorasDisponivel || estadoSemAncora}><option value="">Confirmar</option><option value="SIM">Sim, confirmada</option></select></label>
-                      <label>Âncora oficial<select value={String(q.ancora ?? "")} onChange={(evento) => atualizarQualificacao(id, "ancora", evento.target.value)} disabled={!semanticaDasAncorasDisponivel || estadoSemAncora}><option value="">Selecionar</option><option value="0">0 · Não manifestado</option><option value="1">1 · Incipiente</option><option value="2">2 · Parcial</option><option value="3">3 · Consistente</option><option value="4">4 · Robusta</option></select></label>
+                      {registroCategorial
+                        ? <label>Significado atribuído<select value={String(q.categoria_qualitativa ?? "")} onChange={(evento) => atualizarQualificacao(id, "categoria_qualitativa", evento.target.value)} disabled={estadoSemAncora}><option value="">Selecionar categoria</option>{categoriasPermitidas.map((categoria) => <option key={categoria} value={categoria}>{ROTULOS_CATEGORIAS_SIMBOLICAS[categoria] ?? categoria.replaceAll("_", " ")}</option>)}</select></label>
+                        : <label>Âncora oficial<select value={String(q.ancora ?? "")} onChange={(evento) => atualizarQualificacao(id, "ancora", evento.target.value)} disabled={!semanticaDasAncorasDisponivel || estadoSemAncora}><option value="">Selecionar</option><option value="0">0 · Não manifestado</option><option value="1">1 · Incipiente</option><option value="2">2 · Parcial</option><option value="3">3 · Consistente</option><option value="4">4 · Robusta</option></select></label>}
                       <label>Confiança<select value={String(q.confianca ?? "")} onChange={(evento) => atualizarQualificacao(id, "confianca", evento.target.value)}><option value="">Selecionar</option><option value="baixa">Baixa</option><option value="moderada">Moderada</option><option value="alta">Alta</option></select></label>
                       <label>Qualidade<select value={String(q.qualidade ?? "")} onChange={(evento) => atualizarQualificacao(id, "qualidade", evento.target.value)}><option value="">Selecionar</option><option value="insuficiente">Insuficiente</option><option value="limitada">Limitada</option><option value="adequada">Adequada</option><option value="elevada">Elevada</option></select></label>
+                      {registroCategorial && !estadoSemAncora ? <>
+                        <label className="is-wide">Resposta estruturada do participante<textarea value={String(q.resposta_estruturada_do_participante ?? "")} onChange={(evento) => atualizarQualificacao(id, "resposta_estruturada_do_participante", evento.target.value)} placeholder="Registre o significado atribuído pelo participante." /></label>
+                        <label className="is-wide">Síntese profissional contextual<textarea value={String(q.sintese_profissional_contextual ?? "")} onChange={(evento) => atualizarQualificacao(id, "sintese_profissional_contextual", evento.target.value)} placeholder="Interprete no contexto da ação e da trajetória, sem polaridade automática." /></label>
+                      </> : null}
                     </div>
                     <button className="is-primary" type="button" onClick={() => void qualificarCaptura(captura)} disabled={evidenciaEmEnvio}>Qualificar e preservar</button>
                   </article>

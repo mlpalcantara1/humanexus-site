@@ -29,6 +29,17 @@ test("qualificacao explicita usa contrato oficial", () => {
   assert.match(cockpit, /Qualificar e preservar/);
 });
 
+test("OBS-SYM-002 preserva significado categorial sem numerizacao", () => {
+  assert.match(cockpit, /REGISTRO_CATEGORIAL_SEM_CONTRIBUICAO_NUMERICA/);
+  assert.match(cockpit, /Significado atribuído/);
+  assert.match(cockpit, /Resposta estruturada do participante/);
+  assert.match(cockpit, /Síntese profissional contextual/);
+  assert.match(cockpit, /sem polaridade automática/);
+  assert.match(cockpit, /categoria_qualitativa/);
+  assert.match(cockpit, /resposta_estruturada_do_participante/);
+  assert.match(cockpit, /sintese_profissional_contextual/);
+});
+
 test("ponte API existe", () => {
   assert.match(rota, /evidencias-profissionais/);
   assert.match(rota, /evidencia-profissional/);
@@ -40,6 +51,7 @@ test("tipografia da paleta foi ampliada na regra original sem camada de override
   assert.match(estilos, /font:12px\/1\.5 Arial,Helvetica,sans-serif/);
   assert.match(estilos, /\.hx-evidence-palette__groups button\{[^}]*font:12px\/1\.4/);
   assert.match(estilos, /\.hx-evidence-qualification select,[^{]+\{[^}]*font-size:12px/);
+  assert.match(estilos, /\.hx-evidence-qualification textarea\{[^}]*min-height:82px/);
 });
 
 test("tipografia da paleta permanece isolada da plataforma", () => {
