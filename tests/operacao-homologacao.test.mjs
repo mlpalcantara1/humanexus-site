@@ -221,6 +221,26 @@ test("INICIAR_PRE visível atravessa explicitamente o POST canônico", () => {
   );
 });
 
+test("Resultante parcial movimenta apenas vetores canônicos sem fabricar magnitude", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const css = await source("app/globals.css");
+  const dinamica = cockpit.slice(
+    cockpit.indexOf("function DinamicaDaInteligenciaRegulatoria"),
+    cockpit.indexOf("export function CockpitOperacionalVivo")
+  );
+
+  assert.match(dinamica, /const vetoresCalculaveis = vetores\.filter/);
+  assert.match(dinamica, /data-partial=\{configuracaoParcial\}/);
+  assert.match(dinamica, /CONFIGURAÇÃO VETORIAL PARCIAL EM EVOLUÇÃO/);
+  assert.match(dinamica, /movimentos representam somente os vetores canônicos calculáveis/);
+  assert.match(dinamica, /magnitude == null \? null :/);
+  assert.match(dinamica, /"--hx-vector-top":[\s\S]*?86 - vetor\.value \* 72/);
+  assert.match(css, /top: var\(--hx-vector-top\)/);
+  assert.match(css, /top 620ms cubic-bezier/);
+  assert.match(css, /\.hx-live-regulatory-dynamics__field > i\.is-missing \{[\s\S]*?top: 50%/);
+  assert.doesNotMatch(dinamica, /reduce\(|média|media|fallback|valor padrão/i);
+});
+
 test("comando principal inicia e mantém o Baseline pela rota canônica", async () => {
   const client = await source("components/operacao-homologacao.tsx");
   const trecho = client.slice(

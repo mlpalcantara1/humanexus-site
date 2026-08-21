@@ -2894,20 +2894,54 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 .hx-live-regulatory-dynamics__field > i {
   --hx-vector-position: 50%;
   --hx-vector-intensity: 0;
+  --hx-vector-top: 50%;
   position: absolute;
   left: var(--hx-vector-position);
-  top: calc(50% - 4px);
+  top: var(--hx-vector-top);
   width: 7px;
   height: 7px;
   border: 1px solid rgba(205, 178, 116, .35);
   border-radius: 50%;
   opacity: calc(.28 + var(--hx-vector-intensity) * .72);
   transform: translate(-50%, -50%) scale(calc(.7 + var(--hx-vector-intensity) * .8));
+  background: rgba(205, 178, 116, .18);
+  box-shadow: 0 0 14px rgba(205, 178, 116, .16);
+  transition:
+    top 620ms cubic-bezier(.22, 1, .36, 1),
+    opacity 420ms ease,
+    transform 620ms cubic-bezier(.22, 1, .36, 1);
 }
 
 .hx-live-regulatory-dynamics__field > i.is-missing {
+  top: 50%;
   border-style: dashed;
+  background: transparent;
+  box-shadow: none;
   opacity: .22;
+}
+
+.hx-live-regulatory-dynamics__partial-state {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  display: grid;
+  gap: 4px;
+  max-width: min(72%, 420px);
+  padding: 8px 10px;
+  border: 1px solid rgba(205, 178, 116, .18);
+  background: rgba(2, 7, 9, .78);
+  text-align: right;
+}
+
+.hx-live-regulatory-dynamics__partial-state b {
+  color: #d0b875;
+  letter-spacing: .12em;
+  font: 7px/1.4 var(--font-geist-mono), monospace;
+}
+
+.hx-live-regulatory-dynamics__partial-state small {
+  color: #83918e;
+  font: 8px/1.45 Arial, Helvetica, sans-serif;
 }
 
 .hx-live-regulatory-dynamics__resultant {

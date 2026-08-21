@@ -1044,9 +1044,17 @@ function DinamicaDaInteligenciaRegulatoria({
   const magnitude = resultanteCalculada
     ? valorNormalizado(resultante.valor)
     : null;
+  const vetoresCalculaveis = vetores.filter((vetor) => vetor.value != null).length;
+  const configuracaoParcial = magnitude == null
+    && resultanteDisponivel
+    && vetoresCalculaveis > 0;
   return (
     <section className="hx-live-regulatory-dynamics" aria-label="Dinâmica da Inteligência Regulatória Humana">
-      <div className="hx-live-regulatory-dynamics__field" data-has-resultant={magnitude != null}>
+      <div
+        className="hx-live-regulatory-dynamics__field"
+        data-has-resultant={magnitude != null}
+        data-partial={configuracaoParcial}
+      >
         <span className="hx-live-regulatory-dynamics__axis" aria-hidden="true" />
         {vetores.map((vetor, indice) => (
           <i
@@ -1055,7 +1063,10 @@ function DinamicaDaInteligenciaRegulatoria({
             key={vetor.code}
             style={{
               "--hx-vector-position": `${(indice + 1) * 100 / (vetores.length + 1)}%`,
-              "--hx-vector-intensity": vetor.value == null ? "0" : String(vetor.value)
+              "--hx-vector-intensity": vetor.value == null ? "0" : String(vetor.value),
+              "--hx-vector-top": vetor.value == null
+                ? "50%"
+                : `${86 - vetor.value * 72}%`
             } as CSSProperties}
           />
         ))}
@@ -1067,6 +1078,12 @@ function DinamicaDaInteligenciaRegulatoria({
             <b aria-hidden="true" />
           </span>
         )}
+        {configuracaoParcial ? (
+          <span className="hx-live-regulatory-dynamics__partial-state">
+            <b>CONFIGURAÇÃO VETORIAL PARCIAL EM EVOLUÇÃO</b>
+            <small>{vetoresCalculaveis} de {vetores.length} vetores canônicos com valor atual</small>
+          </span>
+        ) : null}
       </div>
       <dl>
         <div><dt>Resultante</dt><dd>{resultanteCalculada
@@ -1086,7 +1103,9 @@ function DinamicaDaInteligenciaRegulatoria({
           </>
         ) : null}
       </dl>
-      <p>Geometria de apresentação da Resultante canônica. Nenhuma composição científica é calculada no portal; critérios e proveniência detalhados permanecem na Inspeção TIRH.</p>
+      <p>{configuracaoParcial
+        ? "Os movimentos representam somente os vetores canônicos calculáveis. A magnitude da Resultante permanece ausente até o núcleo autorizá-la cientificamente."
+        : "Geometria de apresentação da Resultante canônica. Nenhuma composição científica é calculada no portal; critérios e proveniência detalhados permanecem na Inspeção TIRH."}</p>
     </section>
   );
 }
