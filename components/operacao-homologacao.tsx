@@ -342,6 +342,10 @@ function faseAtual(estado: Estado | null) {
 
 function comandoPermitido(estado: Estado, comando: string) {
   const canonico = objeto(estado.estado_operacional);
+  const permitidas = Array.isArray(canonico.acoes_operacionais_permitidas)
+    ? canonico.acoes_operacionais_permitidas.map(String)
+    : [];
+  if (permitidas.length) return permitidas.includes(comando);
   const secundarias = Array.isArray(canonico.acoes_secundarias_permitidas)
     ? canonico.acoes_secundarias_permitidas.map(String)
     : [];
@@ -369,6 +373,7 @@ const ROTULOS_DOS_COMANDOS: Record<string, string> = {
   RETOMAR_POS: "Retomar PÓS",
   ENCERRAR_POS: "Encerrar PÓS",
   CONCLUIR_SESSAO: "Concluir sessão",
+  RECUPERAR_ESTACAO: "Recuperar estação",
   ENCERRAR_TECNICAMENTE_POR_INCIDENTE:
     "Encerrar tecnicamente por incidente",
   REGISTRAR_EVENTO: "Registrar evento",
@@ -2333,6 +2338,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   )
     ? fluxoOperacional.acoes_secundarias_permitidas.map(String)
     : [];
+  const controlesOperacionais = objeto(
+    fluxoOperacional.controles_operacionais
+  );
   const executarPrincipal = () => {
     if (acaoPrincipal === "PREPARAR_SESSAO") {
       window.location.assign(`/plataforma/sessoes?${parametrosDoContexto}`);
@@ -2363,6 +2371,13 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     void comandos.principal(acaoPrincipal);
   };
   const executarSecundaria = (comando: string) => {
+    if (comando === "RECUPERAR_ESTACAO") {
+      const justificativa = window.prompt(
+        "Informe o motivo da recuperação segura da estação. A sessão e os dados científicos não serão alterados."
+      );
+      if (!justificativa?.trim()) return;
+      return void comandos.operacional(comando, justificativa.trim());
+    }
     if (
       (comando.startsWith("ENCERRAR_") || comando === "CONCLUIR_SESSAO")
       && !window.confirm(
@@ -2865,6 +2880,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       acaoPrincipal={acaoPrincipal}
       rotuloDaAcao={rotuloDoComandoCentral(acaoPrincipal)}
       acoesSecundarias={acoesSecundarias}
+      controlesOperacionais={controlesOperacionais}
       rotuloDaSecundaria={rotuloDoComandoCentral}
       executarPrincipal={executarPrincipal}
       executarSecundaria={executarSecundaria}

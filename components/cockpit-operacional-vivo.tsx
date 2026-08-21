@@ -24,8 +24,7 @@ import {
   type VisaoVetorial
 } from "@/lib/cockpit-vector-views";
 import {
-  estadoOperacionalTerminal,
-  operacaoCanonicaTerminal
+  estadoOperacionalTerminal
 } from "@/lib/cockpit-terminal-eligibility";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 
@@ -54,6 +53,7 @@ type Props = {
   acaoPrincipal: string;
   rotuloDaAcao: string;
   acoesSecundarias: string[];
+  controlesOperacionais: Registro;
   rotuloDaSecundaria: (comando: string) => string;
   executarPrincipal: () => void;
   executarSecundaria: (comando: string) => void;
@@ -1117,6 +1117,7 @@ export function CockpitOperacionalVivo({
   acaoPrincipal,
   rotuloDaAcao,
   acoesSecundarias,
+  controlesOperacionais,
   rotuloDaSecundaria,
   executarPrincipal,
   executarSecundaria,
@@ -1317,19 +1318,32 @@ export function CockpitOperacionalVivo({
   const estadoDoBaseline = registroBaseline.estado === "INICIADO"
     ? "EM EXECUÇÃO"
     : texto(registroBaseline.estado, texto(contextoSessao.estado));
-  const fluxoIndependente = tipoDaSessao !== "PRE_TREINO_POS";
-  const estadoDaFaseIndependente = registroBaseline.estado
-    ?? estadoOperacional.estado_da_fase
-    ?? execucao.estado;
-  const operacaoFinalizada = operacaoCanonicaTerminal({
-    estadoDaSessao: contextoSessao.estado,
-    fluxoIndependente,
-    estadoDaFaseIndependente
-  });
-  const acaoPrincipalVisivel = operacaoFinalizada ? "" : acaoPrincipal;
+  // A matriz operacional do núcleo é a autoridade exclusiva. O portal não
+  // pode inferir terminalidade por uma execução científica auxiliar e ocultar
+  // controles que o backend declarou válidos para a sessão.
+  const operacaoFinalizada = estadoOperacionalTerminal(
+    estadoOperacional.estado_da_sessao ?? contextoSessao.estado
+  );
+  const grupoDeControlesAtual = objeto(controlesOperacionais.grupo_atual);
+  const leaseDaEstacao = objeto(estadoOperacional.lease_da_estacao);
+  const mostrarLeaseDaEstacao = texto(
+    leaseDaEstacao.estado,
+    "SEM_VINCULO"
+  ) !== "SEM_VINCULO";
+  const controlesDaFase = lista(grupoDeControlesAtual.controles).filter(
+    (controle) => /^(PAUSAR|RETOMAR|ENCERRAR)_/.test(
+      String(controle.comando ?? "")
+    )
+  );
+  const comandosDaFase = new Set(
+    controlesDaFase.map((controle) => String(controle.comando ?? ""))
+  );
+  const acaoPrincipalVisivel = operacaoFinalizada || comandosDaFase.has(acaoPrincipal)
+    ? ""
+    : acaoPrincipal;
   const acoesSecundariasVisiveis = operacaoFinalizada
     ? acoesSecundarias.filter((comando) => comando === "ABRIR_REPLAY")
-    : acoesSecundarias;
+    : acoesSecundarias.filter((comando) => !comandosDaFase.has(comando));
   const ciencia = objeto(estado.ciencia);
   const leituraCientifica = objeto(cockpit.leitura_cientifica);
   const inrExperimental = objeto(
@@ -2275,10 +2289,61 @@ export function CockpitOperacionalVivo({
               </span>
             ))}
           </div>
+          {mostrarLeaseDaEstacao ? (
+            <dl className="hx-live-station-lease" aria-label="Vínculo da estação física">
+              <div>
+                <dt>ESTAÇÃO VINCULADA</dt>
+                <dd>{texto(leaseDaEstacao.identificador_da_estacao, "Aguardando estação")}</dd>
+              </div>
+              <div>
+                <dt>SESSÃO</dt>
+                <dd>{texto(contextoSessao.nome, texto(contextoSessao.identificador, "Sessão atual"))}</dd>
+              </div>
+              <div>
+                <dt>FASE</dt>
+                <dd>{texto(leaseDaEstacao.fase_ativa, "Sem fase ativa")}</dd>
+              </div>
+              <div>
+                <dt>ÚLTIMA ATIVIDADE</dt>
+                <dd>{texto(leaseDaEstacao.heartbeat, texto(leaseDaEstacao.renovado_em, "Não confirmada"))}</dd>
+              </div>
+              <div>
+                <dt>AQUISIÇÃO ATIVA</dt>
+                <dd>{leaseDaEstacao.aquisicao_ativa === true ? "SIM" : "NÃO"}</dd>
+              </div>
+              <div>
+                <dt>LEASE</dt>
+                <dd>{leaseDaEstacao.lease_stale === true ? "STALE" : texto(leaseDaEstacao.estado, "NÃO ATIVO")}</dd>
+              </div>
+            </dl>
+          ) : null}
         </div>
         <div className="hx-live-operation-action">
-          <small>COMANDO PRINCIPAL</small>
-          {acaoPrincipalVisivel === "PREPARAR_SESSAO" ? (
+          <small>{controlesDaFase.length ? "CONTROLES DA FASE" : "COMANDO PRINCIPAL"}</small>
+          {controlesDaFase.length ? (
+            <div
+              className="hx-live-operation-action__phase-controls"
+              aria-label={`Controles operacionais de ${texto(grupoDeControlesAtual.fase, "fase atual")}`}
+            >
+              {controlesDaFase.map((controle) => {
+                const comando = String(controle.comando ?? "");
+                const habilitado = controle.habilitado === true;
+                return (
+                  <button
+                    className={comando.startsWith("ENCERRAR_") ? "is-critical" : ""}
+                    key={comando}
+                    type="button"
+                    onClick={() => executarSecundaria(comando)}
+                    disabled={ocupado || !permitirOperacao || !habilitado}
+                    aria-disabled={ocupado || !permitirOperacao || !habilitado}
+                    title={habilitado ? rotuloDaSecundaria(comando) : texto(controle.motivo, "Indisponível no estado atual")}
+                  >
+                    {rotuloDaSecundaria(comando)}
+                  </button>
+                );
+              })}
+            </div>
+          ) : acaoPrincipalVisivel === "PREPARAR_SESSAO" ? (
             <button
               className="hx-live-command__route"
               type="button"
@@ -2299,9 +2364,13 @@ export function CockpitOperacionalVivo({
             >
               {rotuloDaAcao}
             </button>
-          ) : (
+          ) : operacaoFinalizada ? (
             <strong className="hx-live-command__done">
-              Sessão sem ação pendente
+              Sessão encerrada
+            </strong>
+          ) : (
+            <strong className="hx-live-command__blocked" role="alert">
+              Estado operacional sem saída — abra a recuperação
             </strong>
           )}
           {acoesSecundariasVisiveis.length ? (

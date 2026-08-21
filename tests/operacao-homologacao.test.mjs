@@ -7,8 +7,7 @@ import {
   podeAplicarRespostaCanonica
 } from "../lib/cockpit-live-coordination.ts";
 import {
-  estadoOperacionalTerminal,
-  operacaoCanonicaTerminal
+  estadoOperacionalTerminal
 } from "../lib/cockpit-terminal-eligibility.ts";
 import {
   criarPayloadDoComandoPrincipal
@@ -202,6 +201,35 @@ test("frontend não reconstrói a máquina de estados e exibe uma ação princip
   assert.match(client, /COMANDO CONTEXTUAL/);
   assert.doesNotMatch(route, /async function assegurarFase/);
   assert.doesNotMatch(route, /async function preservarSnapshot/);
+});
+
+test("Cockpit usa matriz canônica e mantém pausa retomada encerramento sempre visíveis", async () => {
+  const shell = await source("components/operacao-homologacao.tsx");
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+
+  assert.match(shell, /acoes_operacionais_permitidas/);
+  assert.match(shell, /controles_operacionais/);
+  assert.match(cockpit, /controlesOperacionais\.grupo_atual/);
+  assert.match(cockpit, /\^\(PAUSAR\|RETOMAR\|ENCERRAR\)_/);
+  assert.match(cockpit, /controle\.habilitado === true/);
+  assert.match(cockpit, /CONTROLES DA FASE/);
+  assert.doesNotMatch(cockpit, /operacaoCanonicaTerminal/);
+  assert.doesNotMatch(cockpit, /estadoDaFaseIndependente/);
+});
+
+test("recovery de estação é explícito auditável e exige motivo", async () => {
+  const shell = await source("components/operacao-homologacao.tsx");
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+
+  assert.match(shell, /RECUPERAR_ESTACAO: "Recuperar estação"/);
+  assert.match(shell, /Recuperação segura da estação|recuperação segura da estação/);
+  assert.match(cockpit, /lease_da_estacao/);
+  for (const rotulo of [
+    "ESTAÇÃO VINCULADA",
+    "ÚLTIMA ATIVIDADE",
+    "AQUISIÇÃO ATIVA",
+    "LEASE"
+  ]) assert.match(cockpit, new RegExp(rotulo));
 });
 
 test("INICIAR_PRE visível atravessa explicitamente o POST canônico", () => {
@@ -618,24 +646,15 @@ test("sessão finalizada não oferece novo encerramento no Cockpit", async () =>
   assert.equal(estadoOperacionalTerminal("FINALIZADA"), true);
   assert.equal(estadoOperacionalTerminal("concluído"), true);
   assert.equal(estadoOperacionalTerminal("PAUSADA"), false);
-  assert.equal(operacaoCanonicaTerminal({
-    estadoDaSessao: "CRIADA",
-    fluxoIndependente: true,
-    estadoDaFaseIndependente: "REALIZADO"
-  }), true);
-  assert.equal(operacaoCanonicaTerminal({
-    estadoDaSessao: "CRIADA",
-    fluxoIndependente: false,
-    estadoDaFaseIndependente: "FINALIZADO"
-  }), false);
-  assert.match(operacional, /const fluxoIndependente = tipoDaSessao !== "PRE_TREINO_POS"/);
+  assert.doesNotMatch(operacional, /operacaoCanonicaTerminal/);
+  assert.doesNotMatch(operacional, /estadoDaFaseIndependente/);
   assert.match(
     operacional,
-    /const operacaoFinalizada = operacaoCanonicaTerminal/
+    /const operacaoFinalizada = estadoOperacionalTerminal\([\s\S]*?estadoOperacional\.estado_da_sessao \?\? contextoSessao\.estado[\s\S]*?\)/
   );
   assert.match(
     operacional,
-    /const acaoPrincipalVisivel = operacaoFinalizada \? "" : acaoPrincipal/
+    /const acaoPrincipalVisivel = operacaoFinalizada \|\| comandosDaFase\.has\(acaoPrincipal\)/
   );
   assert.match(
     operacional,
@@ -643,6 +662,7 @@ test("sessão finalizada não oferece novo encerramento no Cockpit", async () =>
   );
   assert.match(operacional, /acaoPrincipalVisivel === "PREPARAR_SESSAO"/);
   assert.match(operacional, /acoesSecundariasVisiveis\.map/);
+  assert.match(operacional, /Sessão encerrada/);
 });
 
 test("Cockpit Vivo Premium anima instrumentos sem fabricar dado operacional", async () => {
