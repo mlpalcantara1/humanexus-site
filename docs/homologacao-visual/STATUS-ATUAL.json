@@ -1,0 +1,23 @@
+{
+  "site": {
+    "status": "golden_preserved"
+  },
+  "platform_operational_ui": {
+    "status": "approved_and_frozen"
+  },
+  "reports": {
+    "status": "final_candidate"
+  },
+  "physical_homologation": {
+    "status": "pending"
+  },
+  "functional_golden": {
+    "status": "not_declared"
+  },
+  "integration": {
+    "status": "blocked_until_functional_golden"
+  },
+  "production": {
+    "status": "unchanged_by_this_mission"
+  }
+}

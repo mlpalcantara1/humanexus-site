@@ -1,0 +1,29 @@
+{
+  "site_institutional": {
+    "status": "golden_approved",
+    "sha": "e9bee1b5339920ecbfba9f2163662bd8d28ac32d",
+    "tag": "site-institucional-golden-v1"
+  },
+  "frontend_functional_initial": {
+    "status": "reference",
+    "sha": "580ea6bccffa5b9251b7ca99356f0ab2c41cbf57"
+  },
+  "backend_reference": {
+    "status": "published_reference",
+    "sha": "b9ae30713fe201c7e0be1327f8131c50760a8998"
+  },
+  "operational_ui": {
+    "status": "human_approved",
+    "sha": "79202dd6441f4e0f987e50f0140aea7d7fa60684",
+    "tag": "platform-ui-operational-approved-v1"
+  },
+  "reports_ui": {
+    "status": "ready_for_final_human_inspection",
+    "sha": "96d5f6e3d32a8b02dd24a7d9c9c09bc2f1e97b86",
+    "tag": "platform-reports-final-candidate-v1"
+  },
+  "functional_golden": {
+    "status": "pending_physical_homologation",
+    "sha": null
+  }
+}
