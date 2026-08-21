@@ -1,0 +1,1169 @@
+/* Portal-only visual layer. Functional and scientific contracts remain in their source components. */
+.hx-app--executive {
+  --command-bg: #030506;
+  --command-carbon: #080b0d;
+  --command-graphite: #101416;
+  --command-surface: rgba(13, 17, 19, 0.96);
+  --command-surface-raised: rgba(18, 23, 25, 0.96);
+  --command-line: rgba(217, 185, 112, 0.17);
+  --command-line-strong: rgba(217, 185, 112, 0.34);
+  --command-gold: #cdb274;
+  --command-gold-hi: #e2cb91;
+  --command-cyan: #78a9ad;
+  --command-safe: #7fb590;
+  --command-danger: #d18480;
+  --command-text: #f1f0ea;
+  --command-muted: #9da8a7;
+  --command-dim: #6f7a7b;
+  --command-nav: 280px;
+  --command-header: 88px;
+  --command-radius: 3px;
+  --command-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+  --hx-line: var(--command-line);
+  --hx-panel: var(--command-surface);
+  --hx-muted: var(--command-muted);
+  min-height: 100vh;
+  background: var(--command-bg);
+  color: var(--command-text);
+  font-family: var(--font-geist-sans), "Helvetica Neue", sans-serif;
+}
+
+.hx-app--executive .hx-app__atmosphere {
+  opacity: 1;
+  background:
+    radial-gradient(circle at 78% 8%, rgba(205, 178, 116, 0.1), transparent 24rem),
+    radial-gradient(circle at 44% 70%, rgba(50, 106, 112, 0.08), transparent 34rem),
+    linear-gradient(135deg, #040708 0%, #030506 52%, #070a0b 100%);
+}
+
+.hx-app--executive::after {
+  opacity: 0.38;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, black, rgba(0, 0, 0, 0.2) 72%, transparent);
+}
+
+/* Global shell */
+.hx-app--executive .hx-app__header {
+  min-height: var(--command-header);
+  padding: 0 clamp(22px, 2.7vw, 46px);
+  border-color: var(--command-line);
+  background: rgba(3, 6, 7, 0.94);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(18px) saturate(120%);
+}
+
+.hx-app--executive .hx-app__brand {
+  gap: 14px;
+}
+
+.hx-app--executive .hx-app__brand-mark {
+  width: 46px;
+  height: 46px;
+  border-color: rgba(226, 203, 145, 0.54);
+  box-shadow: 0 0 28px rgba(205, 178, 116, 0.1);
+}
+
+.hx-app--executive .hx-app__brand strong {
+  color: var(--command-text);
+  font-size: 15px;
+  font-weight: 610;
+  letter-spacing: 0.24em;
+}
+
+.hx-app--executive .hx-app__brand small,
+.hx-app--executive .hx-app__product-signature small,
+.hx-app--executive .hx-app__environment,
+.hx-app--executive .hx-app__connection,
+.hx-app--executive .hx-app__identity small {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
+.hx-app--executive .hx-app__product-signature {
+  display: grid;
+  gap: 4px;
+  padding-left: 28px;
+  border-left: 1px solid var(--command-line);
+}
+
+.hx-app--executive .hx-app__product-signature small {
+  color: var(--command-dim);
+}
+
+.hx-app--executive .hx-app__product-signature strong {
+  color: var(--command-gold-hi);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+}
+
+.hx-app--executive .hx-app__header-meta {
+  gap: 14px;
+}
+
+.hx-app--executive .hx-app__identity b {
+  color: var(--command-text);
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: 12px;
+  font-weight: 530;
+}
+
+.hx-app--executive .hx-app__header button,
+.hx-app--executive .hx-app__header a[role="button"] {
+  min-height: 36px;
+  border-radius: var(--command-radius);
+  font-size: 9px;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.hx-app--executive .hx-nav {
+  top: var(--command-header);
+  width: var(--command-nav);
+  min-height: calc(100vh - var(--command-header));
+  border-color: var(--command-line);
+  background: linear-gradient(180deg, rgba(7, 11, 13, 0.98), rgba(4, 7, 8, 0.96));
+  box-shadow: 22px 0 60px rgba(0, 0, 0, 0.18);
+}
+
+.hx-app--executive .hx-nav__rail {
+  padding: 27px 15px 76px;
+}
+
+.hx-app--executive .hx-nav__caption {
+  margin-inline: 10px;
+  padding-bottom: 15px;
+  color: var(--command-dim);
+  font-size: 9px;
+}
+
+.hx-app--executive .hx-nav__group {
+  margin-bottom: 27px;
+}
+
+.hx-app--executive .hx-nav__group > p {
+  margin: 0 10px 9px;
+  color: #a88f59;
+  font-size: 9px;
+}
+
+.hx-app--executive .hx-nav__link {
+  min-height: 43px;
+  gap: 12px;
+  margin: 2px 0;
+  padding: 8px 11px;
+  color: #aeb8b7;
+  border: 1px solid transparent;
+  border-radius: var(--command-radius);
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: 12px;
+  line-height: 1.25;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.hx-app--executive .hx-nav__link:hover {
+  color: var(--command-text);
+  border-color: rgba(205, 178, 116, 0.12);
+  background: linear-gradient(90deg, rgba(205, 178, 116, 0.1), rgba(205, 178, 116, 0.015));
+  transform: translateX(2px);
+}
+
+.hx-app--executive .hx-nav__link--active {
+  color: #f5f1e7;
+  border-color: rgba(205, 178, 116, 0.2);
+  background: linear-gradient(90deg, rgba(205, 178, 116, 0.16), rgba(205, 178, 116, 0.025));
+}
+
+.hx-app--executive .hx-nav__mark {
+  width: 31px;
+  color: #7d8989;
+  font-size: 8px;
+}
+
+.hx-app--executive .hx-nav__icon {
+  width: 17px;
+  height: 17px;
+}
+
+.hx-app--executive .hx-nav__foot {
+  padding: 19px 25px;
+  color: var(--command-dim);
+  font-size: 8px;
+}
+
+.hx-app--executive .hx-app__content--signed,
+.hx-app--executive .hx-app__footer {
+  margin-left: 0;
+  padding-left: var(--command-nav);
+}
+
+.hx-app--executive .hx-app__content--signed {
+  min-height: calc(100vh - var(--command-header));
+}
+
+.hx-app--executive .hx-app__footer {
+  min-height: 58px;
+  padding-top: 20px;
+  padding-right: clamp(24px, 3vw, 52px);
+  padding-bottom: 20px;
+  border-color: var(--command-line);
+  color: var(--command-dim);
+  background: rgba(3, 6, 7, 0.86);
+  font-size: 8px;
+}
+
+/* Page composition */
+.hx-app--executive .hx-module {
+  min-height: calc(100vh - var(--command-header) - 58px);
+  overflow: visible;
+}
+
+.hx-app--executive .hx-module::before {
+  opacity: 0.72;
+  background:
+    radial-gradient(circle at 73% 2%, rgba(205, 178, 116, 0.09), transparent 25rem),
+    radial-gradient(circle at 92% 66%, rgba(71, 130, 136, 0.07), transparent 28rem);
+}
+
+.hx-app--executive .hx-module__grid {
+  opacity: 0.36;
+  background-size: 72px 72px;
+}
+
+.hx-app--executive .hx-module__inner {
+  width: min(1680px, 100%);
+  padding: clamp(38px, 4vw, 66px) clamp(26px, 3.3vw, 58px) 96px;
+}
+
+.hx-app--executive .hx-module-head,
+.hx-app--executive .hx-ds-page-head {
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 260px);
+  gap: clamp(28px, 4vw, 72px);
+  padding-bottom: 30px;
+  border-color: var(--command-line);
+}
+
+.hx-app--executive .hx-ds-eyebrow,
+.hx-app--executive .hx-kicker {
+  color: var(--command-gold-hi);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+}
+
+.hx-app--executive .hx-module h1,
+.hx-app--executive .hx-ds-page-head h1 {
+  max-width: 940px;
+  margin: 17px 0 14px;
+  color: var(--command-text);
+  font-family: var(--font-geist-sans), "Helvetica Neue", sans-serif;
+  font-size: clamp(40px, 4.2vw, 68px);
+  font-weight: 520;
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.hx-app--executive .hx-ds-page-head__description,
+.hx-app--executive .hx-module-head > div > p:last-child {
+  max-width: 760px;
+  color: var(--command-muted);
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.hx-app--executive .hx-module-head__status {
+  gap: 11px;
+  padding: 7px 0 7px 24px;
+  border-color: var(--command-line);
+}
+
+.hx-app--executive .hx-module-head__status > span,
+.hx-app--executive .hx-module-head__status strong,
+.hx-app--executive .hx-state {
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.hx-app--executive .hx-module__notice,
+.hx-app--executive .hx-module__loading,
+.hx-app--executive .hx-module__error,
+.hx-app--executive .hx-module__success {
+  max-width: 920px;
+  margin-top: 22px;
+  padding: 13px 17px;
+  border: 1px solid rgba(205, 178, 116, 0.14);
+  border-left: 2px solid var(--command-gold);
+  background: rgba(10, 14, 16, 0.78);
+  color: #aeb8b6;
+  font-size: 9px;
+  line-height: 1.65;
+}
+
+.hx-app--executive .hx-module__error {
+  border-left-color: var(--command-danger);
+  color: #d9aaa6;
+}
+
+/* Shared operational surfaces */
+.hx-app--executive :where(
+  .hx-ds-surface,
+  .hx-source-card,
+  .hx-management-grid > article,
+  .hx-management-table,
+  .hx-record-form,
+  .hx-record-section,
+  .hx-organizational-panel,
+  .hx-invites__panel,
+  .hx-invites__table,
+  .hx-training-group,
+  .hx-training-decision,
+  .hx-admin__form,
+  .hx-admin__directory,
+  .hx-cockpit-panel:not(.hx-report-view),
+  .hx-live-intelligence-instrument
+) {
+  border-color: var(--command-line);
+  border-radius: var(--command-radius);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.012), transparent 36%),
+    linear-gradient(145deg, var(--command-surface-raised), var(--command-surface));
+  box-shadow: var(--command-shadow);
+}
+
+.hx-app--executive :where(
+  .hx-ds-surface,
+  .hx-source-card,
+  .hx-management-grid > article,
+  .hx-record-form,
+  .hx-record-section,
+  .hx-organizational-panel,
+  .hx-invites__panel,
+  .hx-training-group,
+  .hx-training-decision,
+  .hx-admin__form,
+  .hx-admin__directory,
+  .hx-cockpit-panel:not(.hx-report-view),
+  .hx-live-intelligence-instrument
+) {
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.hx-app--executive :where(
+  .hx-source-card,
+  .hx-management-grid > article,
+  .hx-training-group,
+  .hx-cockpit-panel:not(.hx-report-view)
+):hover {
+  border-color: rgba(205, 178, 116, 0.28);
+}
+
+.hx-app--executive .hx-management,
+.hx-app--executive .hx-command-dashboard,
+.hx-app--executive .hx-lab,
+.hx-app--executive .hx-operacao {
+  margin-top: 30px;
+}
+
+.hx-app--executive .hx-command-dashboard__actions {
+  min-height: 148px;
+  padding: 25px 28px;
+  border: 1px solid var(--command-line);
+  background: linear-gradient(120deg, rgba(17, 22, 24, 0.97), rgba(6, 9, 11, 0.96));
+  box-shadow: var(--command-shadow);
+}
+
+.hx-app--executive .hx-command-dashboard__actions > div > p,
+.hx-app--executive .hx-command-dashboard__metrics small,
+.hx-app--executive .hx-command-dashboard__lower p {
+  color: var(--command-dim);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+}
+
+.hx-app--executive .hx-command-dashboard__actions > div > strong {
+  color: var(--command-text);
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: clamp(22px, 2vw, 30px);
+  font-weight: 510;
+}
+
+.hx-app--executive .hx-command-dashboard__actions nav {
+  gap: 8px;
+}
+
+.hx-app--executive .hx-command-dashboard__actions nav a,
+.hx-app--executive :where(.hx-management-actions, .hx-invite-actions, .hx-training-card__actions) :where(a, button),
+.hx-app--executive :where(.hx-record-form, .hx-admin__form, .hx-op-controls) button,
+.hx-app--executive :where(.hx-op-controls, .hx-telemetry, .hx-cortex-config) .hx-op-button {
+  min-height: 40px;
+  border-radius: var(--command-radius);
+  border-color: rgba(205, 178, 116, 0.24);
+  color: #d7c892;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.hx-app--executive .hx-command-dashboard__actions nav a:hover,
+.hx-app--executive :where(.hx-management-actions, .hx-invite-actions, .hx-training-card__actions) :where(a, button):hover:not(:disabled),
+.hx-app--executive :where(.hx-record-form, .hx-admin__form, .hx-op-controls) button:hover:not(:disabled),
+.hx-app--executive :where(.hx-op-controls, .hx-telemetry, .hx-cortex-config) .hx-op-button:hover:not(:disabled) {
+  border-color: var(--command-gold);
+  color: var(--command-gold-hi);
+  background: rgba(205, 178, 116, 0.08);
+  transform: translateY(-1px);
+}
+
+.hx-app--executive .hx-command-dashboard__actions nav a.is-primary,
+.hx-app--executive :where(.hx-admin__primary, button.is-primary),
+.hx-app--executive .hx-cortex-config .hx-op-button--gold {
+  border-color: var(--command-gold);
+  background: linear-gradient(135deg, #dac283, #aa8b4e);
+  color: #090b0c;
+}
+
+.hx-app--executive .hx-command-dashboard__metrics {
+  gap: 1px;
+  margin-top: 1px;
+  background: var(--command-line);
+}
+
+.hx-app--executive .hx-command-dashboard__metrics article {
+  min-height: 150px;
+  padding: 24px;
+  background: linear-gradient(145deg, #101619, #080c0e);
+}
+
+.hx-app--executive .hx-command-dashboard__metrics strong {
+  color: var(--command-text);
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: 34px;
+  font-weight: 490;
+}
+
+.hx-app--executive .hx-command-dashboard__metrics span,
+.hx-app--executive .hx-command-dashboard__lower span {
+  color: var(--command-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.hx-app--executive .hx-command-dashboard__lower {
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.hx-app--executive .hx-command-dashboard__lower article {
+  min-height: 145px;
+  padding: 21px;
+  border-color: var(--command-line);
+  background: rgba(11, 15, 17, 0.92);
+}
+
+/* Forms, records and tables */
+.hx-app--executive :where(.hx-fields-grid, .hx-management-grid, .hx-admin__layout) {
+  gap: 14px;
+}
+
+.hx-app--executive :where(.hx-record-form, .hx-record-section, .hx-admin__form, .hx-invites__panel) {
+  padding: clamp(20px, 2vw, 29px);
+}
+
+.hx-app--executive :where(label, .hx-field-origin) {
+  color: #aeb8b6;
+}
+
+.hx-app--executive :where(
+  .hx-management,
+  .hx-record-form,
+  .hx-admin,
+  .hx-secure-panel,
+  .hx-invites,
+  .hx-training-library,
+  .hx-live-cockpit
+) :where(input, select, textarea) {
+  min-height: 46px;
+  border: 1px solid rgba(205, 178, 116, 0.2);
+  border-radius: var(--command-radius);
+  background: #05090b;
+  color: var(--command-text);
+  padding: 10px 12px;
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.hx-app--executive :where(
+  .hx-management,
+  .hx-record-form,
+  .hx-admin,
+  .hx-secure-panel,
+  .hx-invites,
+  .hx-training-library,
+  .hx-live-cockpit
+) :where(input, select, textarea):focus {
+  border-color: var(--command-gold);
+  background: #070c0e;
+  box-shadow: 0 0 0 3px rgba(205, 178, 116, 0.08);
+}
+
+.hx-app--executive :where(textarea) {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.hx-app--executive :where(.hx-management-table, .hx-invites__table, .hx-admin__table-wrap, .hx-evidence-table, .hx-vector-table) {
+  overflow-x: auto;
+  border: 1px solid var(--command-line);
+  border-radius: var(--command-radius);
+  background: rgba(7, 11, 13, 0.94);
+  box-shadow: var(--command-shadow);
+  scrollbar-color: rgba(205, 178, 116, 0.35) #070a0c;
+}
+
+.hx-app--executive :where(
+  .hx-management-table,
+  .hx-invites__table,
+  .hx-admin__table-wrap,
+  .hx-evidence-table,
+  .hx-vector-table
+) table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.hx-app--executive :where(
+  .hx-management-table,
+  .hx-invites__table,
+  .hx-admin__table-wrap,
+  .hx-evidence-table,
+  .hx-vector-table
+) th {
+  padding: 13px 14px;
+  color: #9aa5a4;
+  background: #0d1214;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.hx-app--executive :where(
+  .hx-management-table,
+  .hx-invites__table,
+  .hx-admin__table-wrap,
+  .hx-evidence-table,
+  .hx-vector-table
+) td {
+  padding: 14px;
+  color: #cbd1ce;
+  border-color: rgba(255, 255, 255, 0.055);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.hx-app--executive :where(
+  .hx-management-table,
+  .hx-invites__table,
+  .hx-admin__table-wrap,
+  .hx-evidence-table,
+  .hx-vector-table
+) tbody tr {
+  transition: background 150ms ease;
+}
+
+.hx-app--executive :where(
+  .hx-management-table,
+  .hx-invites__table,
+  .hx-admin__table-wrap,
+  .hx-evidence-table,
+  .hx-vector-table
+) tbody tr:hover {
+  background: rgba(205, 178, 116, 0.045);
+}
+
+.hx-app--executive :where(.hx-management-metrics, .hx-invites__metrics, .hx-admin__metrics) {
+  gap: 1px;
+  border: 1px solid var(--command-line);
+  background: var(--command-line);
+}
+
+.hx-app--executive :where(.hx-management-metrics, .hx-invites__metrics, .hx-admin__metrics) > * {
+  min-height: 126px;
+  padding: 20px;
+  background: linear-gradient(145deg, #101619, #080c0e);
+}
+
+/* LAB and administration */
+.hx-app--executive .hx-lab__intro,
+.hx-app--executive .hx-lab__cockpit,
+.hx-app--executive .hx-secure-panel__grid > article {
+  border-color: var(--command-line);
+  border-radius: var(--command-radius);
+  background: linear-gradient(145deg, rgba(16, 22, 24, 0.97), rgba(7, 10, 12, 0.96));
+  box-shadow: var(--command-shadow);
+}
+
+.hx-app--executive .hx-lab__intro {
+  padding: 34px;
+}
+
+.hx-app--executive .hx-lab__intro h2 {
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: clamp(27px, 3vw, 43px);
+  font-weight: 490;
+}
+
+.hx-app--executive .hx-lab__grid {
+  gap: 1px;
+  border: 1px solid var(--command-line);
+  background: var(--command-line);
+}
+
+.hx-app--executive .hx-lab-card {
+  min-height: 220px;
+  padding: 25px;
+  background: linear-gradient(145deg, #0e1416, #070a0c);
+}
+
+.hx-app--executive .hx-lab-card > p,
+.hx-app--executive .hx-lab-card small,
+.hx-app--executive .hx-admin__metric p,
+.hx-app--executive .hx-admin__metric small {
+  font-size: 8px;
+}
+
+.hx-app--executive .hx-admin-stage,
+.hx-app--executive .hx-secure-panel,
+.hx-app--executive .hx-admin {
+  width: min(1680px, 100%);
+  margin-inline: auto;
+}
+
+/* Cockpit command instrumentation */
+.hx-app--executive .hx-module--cockpit .hx-module__inner {
+  width: min(1840px, 100%);
+  padding-inline: clamp(18px, 2.4vw, 44px);
+}
+
+.hx-app--executive .hx-live-cockpit {
+  --live-border: var(--command-line);
+  border-color: var(--command-line);
+  border-radius: var(--command-radius);
+  background: #050809;
+  box-shadow: 0 38px 120px rgba(0, 0, 0, 0.44);
+}
+
+.hx-app--executive .hx-live-cockpit__masthead {
+  min-height: 170px;
+  padding: clamp(24px, 3vw, 44px);
+  border-color: var(--command-line);
+  background:
+    radial-gradient(circle at 78% 15%, rgba(205, 178, 116, 0.11), transparent 26rem),
+    linear-gradient(125deg, #111719, #06090a 72%);
+}
+
+.hx-app--executive .hx-live-cockpit__masthead h1 {
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: clamp(34px, 4vw, 60px);
+  font-weight: 510;
+  letter-spacing: -0.045em;
+}
+
+.hx-app--executive .hx-live-hud {
+  gap: 1px;
+  border-color: var(--command-line);
+  background: var(--command-line);
+}
+
+.hx-app--executive .hx-live-hud > div {
+  min-height: 102px;
+  padding: 13px;
+  background: #0a0f11;
+}
+
+.hx-app--executive .hx-live-hud small,
+.hx-app--executive .hx-live-hud span,
+.hx-app--executive .hx-live-state {
+  font-size: 8px;
+}
+
+.hx-app--executive .hx-live-hud strong {
+  font-size: 15px;
+}
+
+.hx-app--executive .hx-live-command-center--premium {
+  gap: 14px;
+}
+
+.hx-app--executive .hx-live-intelligence-instruments {
+  gap: 14px;
+}
+
+.hx-app--executive .hx-live-primary-physiology {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.hx-app--executive .hx-live-primary-physiology > .hx-live-eeg-bands {
+  grid-column: 1;
+}
+
+.hx-app--executive .hx-live-intelligence-instrument {
+  padding: clamp(17px, 1.8vw, 25px);
+}
+
+.hx-app--executive .hx-live-intelligence-instrument > header,
+.hx-app--executive .hx-ds-section-head {
+  gap: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(205, 178, 116, 0.12);
+}
+
+.hx-app--executive .hx-ds-section-head small {
+  color: var(--command-gold);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+}
+
+.hx-app--executive .hx-ds-section-head h2 {
+  margin-top: 8px;
+  color: var(--command-text);
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: clamp(21px, 2vw, 31px);
+  font-weight: 510;
+  letter-spacing: -0.025em;
+}
+
+.hx-app--executive .hx-ds-section-head span {
+  color: var(--command-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.hx-app--executive .hx-live-eeg-workspace {
+  grid-template-columns: minmax(250px, 0.52fr) minmax(0, 1.48fr);
+  gap: 16px;
+  margin-top: 17px;
+}
+
+.hx-app--executive .hx-live-eeg-band-values > span {
+  min-height: 94px;
+  padding: 13px;
+}
+
+.hx-app--executive .hx-live-eeg-band-values small,
+.hx-app--executive .hx-live-eeg-quality small,
+.hx-app--executive .hx-live-eeg-chart > header small,
+.hx-app--executive .hx-live-eeg-band-values em {
+  font-size: 8px;
+}
+
+.hx-app--executive .hx-live-eeg-band-values b {
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: 17px;
+  font-weight: 510;
+}
+
+.hx-app--executive .hx-live-eeg-chart {
+  padding: 15px;
+  border-color: rgba(205, 178, 116, 0.2);
+  background: #030708;
+}
+
+.hx-app--executive .hx-live-eeg-chart .hx-signal-stack {
+  min-height: 380px;
+}
+
+.hx-app--executive .hx-live-eeg-chart .hx-live-instrument-empty {
+  min-height: 380px;
+}
+
+.hx-app--executive .hx-live-autonomic-values {
+  margin: 17px 0;
+}
+
+.hx-app--executive .hx-live-autonomic-values > span {
+  min-height: 88px;
+  padding: 13px;
+}
+
+.hx-app--executive .hx-live-autonomic-values small,
+.hx-app--executive .hx-live-autonomic-values em {
+  font-size: 8px;
+}
+
+.hx-app--executive .hx-live-autonomic-values b {
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: 18px;
+  font-weight: 510;
+}
+
+.hx-app--executive .hx-live-autonomic-dynamics .hx-signal-stack,
+.hx-app--executive .hx-live-graphs .hx-signal-stack {
+  min-height: 330px;
+}
+
+.hx-app--executive .hx-live-temporal-disclosure > summary {
+  min-height: 76px;
+  padding: 18px 21px;
+  border-color: var(--command-line);
+  background: linear-gradient(110deg, #101517, #070a0c);
+}
+
+.hx-app--executive .hx-live-temporal-disclosure > summary strong {
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: 17px;
+  font-weight: 510;
+}
+
+.hx-app--executive .hx-live-temporal-disclosure > .hx-live-graphs,
+.hx-app--executive .hx-live-vector-stage,
+.hx-app--executive .hx-live-conduction,
+.hx-app--executive .hx-live-scientific-chain,
+.hx-app--executive .hx-live-technical-drawer {
+  border-color: var(--command-line);
+  background: linear-gradient(145deg, #0d1214, #050809);
+}
+
+.hx-app--executive .hx-live-vector-list > div,
+.hx-app--executive .hx-live-regulatory-readout article {
+  min-height: 92px;
+  border-color: var(--command-line);
+  background: #0a0f11;
+}
+
+/* Entry and authentication */
+.hx-app--executive .platform-login,
+.hx-app--executive .platform-entry {
+  min-height: calc(100vh - var(--command-header) - 58px);
+  display: grid;
+  align-items: center;
+  padding: clamp(52px, 8vw, 110px) 24px;
+}
+
+.hx-app--executive .platform-login__media,
+.hx-app--executive .platform-entry__media {
+  opacity: 0.32;
+  background:
+    linear-gradient(90deg, rgba(3, 6, 7, 0.98), rgba(3, 6, 7, 0.82)),
+    radial-gradient(circle at 72% 38%, rgba(205, 178, 116, 0.15), transparent 24rem);
+}
+
+.hx-app--executive .platform-login form {
+  width: min(100%, 520px);
+  border-radius: var(--command-radius);
+  border-color: var(--command-line-strong);
+  background: linear-gradient(145deg, rgba(16, 21, 23, 0.98), rgba(6, 9, 11, 0.98));
+  box-shadow: 0 42px 120px rgba(0, 0, 0, 0.5);
+}
+
+.hx-app--executive .platform-login form h1 {
+  font-size: clamp(31px, 5vw, 43px);
+  font-weight: 520;
+  letter-spacing: -0.04em;
+}
+
+.hx-app--executive .platform-login form label {
+  color: #c9cfcc;
+  font-size: 12px;
+}
+
+.hx-app--executive .platform-login form input {
+  min-height: 50px;
+  border-radius: var(--command-radius);
+  border-color: rgba(205, 178, 116, 0.22);
+  background: #050809;
+  font-size: 14px;
+}
+
+.hx-app--executive .platform-login form > button {
+  min-height: 50px;
+  border-radius: var(--command-radius);
+  background: linear-gradient(135deg, #dec78d, #ae9052);
+  color: #090b0c;
+  font-size: 12px;
+  transition: filter 160ms ease, transform 160ms ease;
+}
+
+.hx-app--executive .platform-login form > button:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.hx-app--executive .platform-entry article {
+  min-height: 280px;
+  border-radius: var(--command-radius);
+  border-color: var(--command-line);
+  background: linear-gradient(145deg, rgba(16, 21, 23, 0.96), rgba(7, 10, 12, 0.96));
+  box-shadow: var(--command-shadow);
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+
+.hx-app--executive .platform-entry article:hover {
+  border-color: rgba(205, 178, 116, 0.38);
+  transform: translateY(-2px);
+}
+
+.hx-app--executive .platform-entry h1,
+.hx-app--executive .platform-entry h2 {
+  font-weight: 520;
+}
+
+/* Responsive command layout */
+@media (max-width: 1320px) {
+  .hx-app--executive {
+    --command-nav: 252px;
+  }
+
+  .hx-app--executive .hx-app__product-signature,
+  .hx-app--executive .hx-app__environment {
+    display: none;
+  }
+
+  .hx-app--executive .hx-command-dashboard__metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .hx-app--executive .hx-module-head,
+  .hx-app--executive .hx-ds-page-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hx-app--executive .hx-module-head__status {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    padding: 17px 0 0;
+    border-top: 1px solid var(--command-line);
+    border-left: 0;
+  }
+
+  .hx-app--executive .hx-live-eeg-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hx-app--executive .hx-live-eeg-chart {
+    min-height: 400px;
+  }
+
+  .hx-app--executive .hx-live-intelligence-instruments {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .hx-app--executive {
+    --command-header: 72px;
+  }
+
+  .hx-app--executive .hx-app__header {
+    padding-inline: 18px;
+  }
+
+  .hx-app--executive .hx-app__brand-mark {
+    width: 39px;
+    height: 39px;
+  }
+
+  .hx-app--executive .hx-app__brand small,
+  .hx-app--executive .hx-app__header-meta > :not(.hx-app__connection) {
+    display: none;
+  }
+
+  .hx-app--executive .hx-nav {
+    display: none;
+  }
+
+  .hx-app--executive .hx-nav-toggle {
+    display: flex;
+    position: sticky;
+    z-index: 24;
+    top: var(--command-header);
+    width: 100%;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 0;
+    border-bottom: 1px solid var(--command-line);
+    background: rgba(6, 10, 12, 0.96);
+    color: var(--command-gold-hi);
+    font: 9px var(--font-geist-mono), monospace;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .hx-app--executive .hx-mobile-nav {
+    display: block;
+    position: fixed;
+    z-index: 100;
+    inset: 0;
+    overflow-y: auto;
+    padding: 18px;
+    background: rgba(4, 7, 8, 0.985);
+  }
+
+  .hx-app--executive .hx-mobile-nav__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--command-line);
+    color: var(--command-gold-hi);
+    font: 9px var(--font-geist-mono), monospace;
+    letter-spacing: 0.14em;
+  }
+
+  .hx-app--executive .hx-mobile-nav__top button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--command-line);
+    background: #0c1113;
+    color: var(--command-text);
+    font-size: 22px;
+  }
+
+  .hx-app--executive .hx-app__content--signed,
+  .hx-app--executive .hx-app__footer {
+    padding-left: 0;
+  }
+
+  .hx-app--executive .hx-app__footer {
+    padding-inline: 20px;
+  }
+
+  .hx-app--executive .hx-module__inner {
+    padding: 34px 20px 78px;
+  }
+
+  .hx-app--executive .hx-command-dashboard__actions {
+    align-items: stretch;
+    gap: 22px;
+  }
+
+  .hx-app--executive .hx-command-dashboard__actions nav {
+    width: 100%;
+  }
+
+  .hx-app--executive .hx-command-dashboard__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hx-app--executive .hx-command-dashboard__lower,
+  .hx-app--executive .hx-management-grid,
+  .hx-app--executive .hx-admin__layout,
+  .hx-app--executive .hx-secure-panel__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .hx-app--executive .hx-app__brand strong {
+    font-size: 13px;
+    letter-spacing: 0.18em;
+  }
+
+  .hx-app--executive .hx-app__connection {
+    max-width: 92px;
+    font-size: 7px;
+  }
+
+  .hx-app--executive .hx-module h1,
+  .hx-app--executive .hx-ds-page-head h1 {
+    font-size: clamp(34px, 11vw, 48px);
+    line-height: 1;
+  }
+
+  .hx-app--executive .hx-ds-page-head__description,
+  .hx-app--executive .hx-module-head > div > p:last-child {
+    font-size: 14px;
+  }
+
+  .hx-app--executive .hx-module-head__status {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hx-app--executive .hx-command-dashboard__metrics,
+  .hx-app--executive :where(.hx-management-metrics, .hx-invites__metrics, .hx-admin__metrics),
+  .hx-app--executive .hx-live-eeg-quality,
+  .hx-app--executive .hx-live-autonomic-values {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hx-app--executive .hx-command-dashboard__metrics article {
+    min-height: 122px;
+  }
+
+  .hx-app--executive .hx-live-intelligence-instrument > header,
+  .hx-app--executive .hx-ds-section-head,
+  .hx-app--executive .hx-live-eeg-scope {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hx-app--executive .hx-live-eeg-scope,
+  .hx-app--executive .hx-live-eeg-scope > div,
+  .hx-app--executive .hx-live-eeg-scope label,
+  .hx-app--executive .hx-live-eeg-scope select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .hx-app--executive .hx-live-eeg-scope button {
+    flex: 1;
+  }
+
+  .hx-app--executive .hx-live-eeg-band-values {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hx-app--executive .hx-live-eeg-band-values > span:last-child {
+    grid-column: auto;
+  }
+
+  .hx-app--executive .hx-live-eeg-chart,
+  .hx-app--executive .hx-live-eeg-chart .hx-signal-stack,
+  .hx-app--executive .hx-live-eeg-chart .hx-live-instrument-empty {
+    min-height: 330px;
+  }
+
+  .hx-app--executive .hx-live-temporal-disclosure > summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hx-app--executive .platform-login,
+  .hx-app--executive .platform-entry {
+    padding: 42px 16px 64px;
+  }
+
+  .hx-app--executive .platform-login form {
+    padding: 25px 20px;
+  }
+
+  .hx-app--executive .platform-entry article {
+    min-height: 240px;
+    padding: 23px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hx-app--executive *,
+  .hx-app--executive *::before,
+  .hx-app--executive *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
