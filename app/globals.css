@@ -725,8 +725,17 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 }
 
 @media (width <= 760px) {
-  .header-area {
+  .header-inner {
+    gap: 10px;
+  }
+  .site-header .brand-name {
     display: none;
+  }
+  .header-area {
+    margin-left: auto;
+    padding: 8px 0 6px;
+    font-size: 7px;
+    letter-spacing: .08em;
   }
 }
 /* Plataforma: shell isolado do site institucional. */

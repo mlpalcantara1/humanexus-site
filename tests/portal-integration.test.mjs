@@ -5,10 +5,11 @@ import test from "node:test";
 const root = new URL("../", import.meta.url);
 const source = (path) => readFile(new URL(path, root), "utf8");
 
-test("site expõe Área HUMANEXUS sem substituir AGENDAR", async () => {
+test("site expõe entrada direta da plataforma sem substituir AGENDAR", async () => {
   const header = await source("components/site-header.tsx");
   const footer = await source("components/site-footer.tsx");
-  assert.match(header, /Área HUMANEXUS/);
+  assert.match(header, /href=\{entradaDaArea\} className="header-area"/);
+  assert.match(header, /ENTRAR NA PLATAFORMA →/);
   assert.match(header, /Agendar/);
   assert.match(footer, /Área HUMANEXUS/);
 });
