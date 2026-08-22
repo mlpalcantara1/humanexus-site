@@ -59,6 +59,7 @@ type Props = {
   executarSecundaria: (comando: string) => void;
   registrar: (categoria: string, texto: string) => Promise<void> | void;
   registrarEvidenciaProfissional: (payload: Registro) => Promise<void> | void;
+  validarClaimTirhV1: (payload: Registro) => Promise<void> | void;
   abrirAnalitico: () => void;
   permitirOperacao: boolean;
 };
@@ -1123,6 +1124,7 @@ export function CockpitOperacionalVivo({
   executarSecundaria,
   registrar,
   registrarEvidenciaProfissional,
+  validarClaimTirhV1,
   abrirAnalitico,
   permitirOperacao
 }: Props) {
@@ -1137,6 +1139,12 @@ export function CockpitOperacionalVivo({
   const [perfilTarefaAberto, setPerfilTarefaAberto] = useState(false);
   const [evidenciaEmEnvio, setEvidenciaEmEnvio] = useState(false);
   const [estadoDaEvidencia, setEstadoDaEvidencia] = useState("");
+  const [claimSelecionado, setClaimSelecionado] = useState("");
+  const [decisaoDoClaim, setDecisaoDoClaim] = useState("VALIDAR");
+  const [justificativaDoClaim, setJustificativaDoClaim] = useState("");
+  const [ajusteDoClaim, setAjusteDoClaim] = useState("");
+  const [validacaoEmEnvio, setValidacaoEmEnvio] = useState(false);
+  const [estadoDaValidacaoTirh, setEstadoDaValidacaoTirh] = useState("");
   const [qualificacoes, setQualificacoes] = useState<Record<string, Record<string, string | boolean>>>({});
   const [perfilTarefa, setPerfilTarefa] = useState<Record<string, string>>({});
   const cockpit = objeto(estado.cockpit_operacional);
@@ -1346,6 +1354,63 @@ export function CockpitOperacionalVivo({
     : acoesSecundarias.filter((comando) => !comandosDaFase.has(comando));
   const ciencia = objeto(estado.ciencia);
   const leituraCientifica = objeto(cockpit.leitura_cientifica);
+  const tirhV1AoVivo = objeto(leituraCientifica.tirh_operacional_v1);
+  const tirhV1Persistida = objeto(estado.tirh_v1);
+  const sinteseTirhV1Persistida = objeto(tirhV1Persistida.sintese);
+  const tirhV1 = Object.keys(tirhV1AoVivo).length
+    ? tirhV1AoVivo
+    : sinteseTirhV1Persistida;
+  const macrocamposTirhV1 = objeto(tirhV1.macrocampos);
+  const vetoresTirhV1 = objeto(tirhV1.vetores);
+  const resultanteTirhV1 = objeto(tirhV1.resultante);
+  const iirhTirhV1 = objeto(tirhV1.iirh);
+  const zonaTirhV1 = objeto(tirhV1.zona);
+  const claimsTirhV1 = lista(
+    Array.isArray(tirhV1Persistida.claims)
+      ? tirhV1Persistida.claims
+      : tirhV1.claims
+  );
+  const validacaoTirhV1 = objeto(tirhV1Persistida.validacao_profissional);
+  const claimsPendentesTirhV1 = claimsTirhV1.filter(
+    (claim) => claim.requer_validacao_profissional === true
+      && claim.reportavel === true
+      && ["PENDENTE", "AJUSTE_PENDENTE"].includes(
+        String(claim.estado_da_validacao_profissional ?? "PENDENTE")
+      )
+  );
+  const enviarValidacaoTirhV1 = async () => {
+    if (!claimSelecionado || justificativaDoClaim.trim().length < 5 || validacaoEmEnvio) return;
+    const claim = claimsTirhV1.find((item) => String(item.claim_id ?? "") === claimSelecionado);
+    if (!claim) return;
+    let valorFinal: unknown;
+    if (decisaoDoClaim === "AJUSTAR") {
+      try {
+        valorFinal = JSON.parse(ajusteDoClaim);
+      } catch {
+        setEstadoDaValidacaoTirh("O ajuste deve ser informado em estrutura JSON válida.");
+        return;
+      }
+    }
+    setValidacaoEmEnvio(true);
+    setEstadoDaValidacaoTirh("");
+    try {
+      await validarClaimTirhV1({
+        claim_id: claimSelecionado,
+        decisao: decisaoDoClaim,
+        justificativa: justificativaDoClaim.trim(),
+        chave_de_idempotencia: crypto.randomUUID(),
+        versao_esperada: Number(
+          objeto(claim.validacao_profissional).versao_da_validacao ?? 0
+        ),
+        ...(decisaoDoClaim === "AJUSTAR" ? { valor_final: valorFinal } : {})
+      });
+      setEstadoDaValidacaoTirh("Decisão profissional preservada com versão e auditoria.");
+      setJustificativaDoClaim("");
+      setAjusteDoClaim("");
+    } finally {
+      setValidacaoEmEnvio(false);
+    }
+  };
   const inrExperimental = objeto(
     cockpit.indicadores_neuroregulatorios_experimentais
   );
@@ -1401,9 +1466,13 @@ export function CockpitOperacionalVivo({
       ?? estadosVetoriaisPorDefinicao.get(codigo);
     const vetorBasal = vetoresBasaisPorCodigo.get(codigo);
     const vetorCanonicoDoContexto = leituraAoVivo
-      ? estadoVetorial
+      ? Object.keys(tirhV1AoVivo).length
+        ? objeto(objeto(tirhV1AoVivo.vetores)[codigo])
+        : estadoVetorial
       : configuracaoBasalCanonica
-        ? vetorBasal
+        ? Object.keys(sinteseTirhV1Persistida).length
+          ? objeto(objeto(sinteseTirhV1Persistida.vetores)[codigo])
+          : vetorBasal
         : undefined;
     return {
       code: codigo,
@@ -1414,14 +1483,22 @@ export function CockpitOperacionalVivo({
     };
   });
   const cienciaAtualAdmissivel = leituraAoVivo || configuracaoBasalCanonica;
-  const iirhCanonicoCalculado = cienciaAtualAdmissivel && iirh.estado === "CALCULADO"
-    && typeof iirh.valor === "number";
+  const iirhCanonicoCalculado = cienciaAtualAdmissivel && (
+    Object.keys(tirhV1).length
+      ? ["PARCIAL", "PLENO"].includes(String(iirhTirhV1.estado ?? ""))
+        && typeof iirhTirhV1.valor === "number"
+      : iirh.estado === "CALCULADO" && typeof iirh.valor === "number"
+  );
   const resultanteCalculada = cienciaAtualAdmissivel
+    && !Object.keys(tirhV1).length
     && (resultante.estado === "CALCULAVEL" || resultante.estado === "CONFLITANTE")
     && typeof resultante.valor === "number";
-  const zonaCanonicaCalculada = cienciaAtualAdmissivel
-    && iirhCanonicoCalculado
-    && Boolean(zona.nome ?? zona.codigo);
+  const zonaCanonicaCalculada = cienciaAtualAdmissivel && (
+    Object.keys(tirhV1).length
+      ? zonaTirhV1.estado === "VALIDADA_PROFISSIONALMENTE"
+        && Boolean(zonaTirhV1.nome ?? zonaTirhV1.codigo)
+      : iirhCanonicoCalculado && Boolean(zona.nome ?? zona.codigo)
+  );
   const contextoDaApresentacaoRegulatoria = [
     texto(organizacao.identificador, "sem-organizacao"),
     texto(participante.identificador, "sem-participante"),
@@ -1441,9 +1518,15 @@ export function CockpitOperacionalVivo({
       : 0,
     ativo: cienciaAtualAdmissivel,
     vetores: radarVetorialCanonico,
-    iirh: iirhCanonicoCalculado ? Number(iirh.valor) : null,
+    iirh: iirhCanonicoCalculado
+      ? Number(Object.keys(tirhV1).length ? iirhTirhV1.valor : iirh.valor)
+      : null,
     zona: zonaCanonicaCalculada
-      ? String(zona.codigo ?? zona.nome)
+      ? String(
+          Object.keys(tirhV1).length
+            ? zonaTirhV1.codigo ?? zonaTirhV1.nome
+            : zona.codigo ?? zona.nome
+        )
       : null
   };
   const revisaoRegulatoriaVisualRef = useRef(revisaoRegulatoriaVisual);
@@ -1554,6 +1637,7 @@ export function CockpitOperacionalVivo({
   const ganhosCadeia = objeto(cadeiaCientifica.resposta_e_ganhos);
   const longitudinalCadeia = objeto(cadeiaCientifica.longitudinal);
   const relatoriosCadeia = objeto(cadeiaCientifica.relatorios);
+  const contratoTirhV1Ativo = Object.keys(tirhV1).length > 0;
   const etapasDaCadeia = [
     {
       codigo: "01",
@@ -1591,36 +1675,37 @@ export function CockpitOperacionalVivo({
     },
     {
       codigo: "05",
-      nome: "Vetores oficiais · dez vetores e radar",
-      estado: `${Number(vetoresCadeia.calculaveis ?? radarVetorial.filter((item) => item.value != null).length)}/10 calculáveis`,
-      motivo: texto(vetoresCadeia.motivo, "Ausência permanece ausência; VEV não é inferido.")
+      nome: "Vetores oficiais · dez vetores e radar · nove momentâneos + VEV longitudinal",
+      estado: contratoTirhV1Ativo
+        ? `${Object.values(vetoresTirhV1).filter((item) => objeto(item).magnitude != null).length}/10 com magnitude admissível`
+        : `${Number(vetoresCadeia.calculaveis ?? radarVetorial.filter((item) => item.value != null).length)}/10 calculáveis`,
+      motivo: contratoTirhV1Ativo
+        ? "VEV permanece fora da Resultante momentânea; ausência nunca é zero."
+        : texto(vetoresCadeia.motivo, "Ausência permanece ausência; VEV não é inferido.")
     },
     {
       codigo: "06",
       nome: "Resultante Regulatória",
-      estado: texto(resultante.estado, "NAO DEFINIDA"),
-      motivo: texto(
-        resultante.justificativa ?? resultante.motivo,
-        "Fórmula autoral de composição ainda não operacionalizada."
-      )
+      estado: texto(contratoTirhV1Ativo ? resultanteTirhV1.estado : resultante.estado, "NAO DEFINIDA"),
+      motivo: contratoTirhV1Ativo
+        ? "Configuração emergente multivetorial estruturada; nenhum escore único foi fabricado."
+        : texto(resultante.justificativa ?? resultante.motivo, "Composição histórica reproduzível.")
     },
     {
       codigo: "07",
       nome: "IIRH",
-      estado: texto(iirhCadeia.estado, "NAO CALCULAVEL"),
-      motivo: texto(
-        objeto(iirhCadeia.por_que_este_resultado).resumo,
-        "Exige amplitude e cobertura humana suficientes."
-      )
+      estado: texto(contratoTirhV1Ativo ? iirhTirhV1.estado : iirhCadeia.estado, "NAO CALCULAVEL"),
+      motivo: contratoTirhV1Ativo
+        ? "Média com pesos iguais somente dos macrocampos funcionalmente admissíveis; magnitude vetorial não é reinterpretada."
+        : texto(objeto(iirhCadeia.por_que_este_resultado).resumo, "Exige amplitude e cobertura humana suficientes.")
     },
     {
       codigo: "08",
       nome: "Zona Operacional",
-      estado: texto(zonaCadeia.estado, "NAO CALCULAVEL"),
-      motivo: texto(
-        objeto(zonaCadeia.por_que_este_resultado).resumo ?? zonaCadeia.motivo,
-        "A Zona depende de IIRH admissível e precondições multifonte."
-      )
+      estado: texto(contratoTirhV1Ativo ? zonaTirhV1.estado : zonaCadeia.estado, "NAO CALCULAVEL"),
+      motivo: contratoTirhV1Ativo
+        ? "Classificação semântica multifonte; o IIRH isoladamente não determina Zona."
+        : texto(objeto(zonaCadeia.por_que_este_resultado).resumo ?? zonaCadeia.motivo, "Precondições históricas do contrato de origem.")
     },
     {
       codigo: "09",
@@ -1636,7 +1721,7 @@ export function CockpitOperacionalVivo({
     },
     {
       codigo: "11",
-      nome: "Rota dominante",
+      nome: "RRD · Rota Regulatória Dominante candidata",
       estado: texto(rotaDominanteCadeia.estado, "NAO CALCULAVEL"),
       motivo: texto(rotaDominanteCadeia.motivo, "Nenhuma rota dominante é escolhida automaticamente.")
     },
@@ -1648,9 +1733,15 @@ export function CockpitOperacionalVivo({
     },
     {
       codigo: "13",
-      nome: "Reorganização da Rota Operacional — RRO",
-      estado: texto(rroCadeia.estado, "NAO CALCULAVEL"),
-      motivo: texto(rroCadeia.motivo, "Operacionalização autoral ainda ausente.")
+      nome: contratoTirhV1Ativo
+        ? "RRO · registro histórico separado do contrato V1"
+        : "Reorganização da Rota Operacional — RRO",
+      estado: contratoTirhV1Ativo
+        ? "LEGACY REPRODUZÍVEL"
+        : texto(rroCadeia.estado, "NAO CALCULAVEL"),
+      motivo: contratoTirhV1Ativo
+        ? "Não é promovido automaticamente a RRD nem reinterpretado como regra canônica."
+        : texto(rroCadeia.motivo, "Operacionalização autoral ainda ausente.")
     },
     {
       codigo: "14",
@@ -1732,10 +1823,12 @@ export function CockpitOperacionalVivo({
     },
     "03": anamneseCadeia,
     "04": evidenciasCadeia,
-    "05": { resumo: vetoresCadeia, vetores: estadosVetoriais },
-    "06": resultante,
-    "07": iirhCadeia,
-    "08": zonaCadeia,
+    "05": contratoTirhV1Ativo
+      ? { contrato: "TIRH V1", vetores: vetoresTirhV1 }
+      : { resumo: vetoresCadeia, vetores: estadosVetoriais },
+    "06": contratoTirhV1Ativo ? resultanteTirhV1 : resultante,
+    "07": contratoTirhV1Ativo ? iirhTirhV1 : iirhCadeia,
+    "08": contratoTirhV1Ativo ? zonaTirhV1 : zonaCadeia,
     "09": gatilhosCadeia,
     "10": rotasCadeia,
     "11": rotaDominanteCadeia,
@@ -2583,6 +2676,135 @@ export function CockpitOperacionalVivo({
           </div>
           <span>Somente relações autorais rastreáveis · nenhuma decisão automática</span>
         </header>
+        {Object.keys(tirhV1).length ? (
+          <section className="hx-tirh-v1-summary" aria-label="Síntese TIRH operacional autoral V1">
+            <header>
+              <div>
+                <small>TIRH OPERACIONAL AUTORAL V1</small>
+                <strong>Estado regulatório sustentado pelas evidências admissíveis</strong>
+              </div>
+              <span>{texto(
+                tirhV1.versao_cientifica ?? tirhV1Persistida.versao_cientifica,
+                "TIRH-OPERACIONAL-AUTORAL-1.0.0"
+              )}</span>
+            </header>
+            <div className="hx-tirh-v1-summary__primary">
+              <article>
+                <small>Resultante Regulatória</small>
+                <strong>{texto(resultanteTirhV1.estado, "NÃO CALCULÁVEL")}</strong>
+                <span>{texto(
+                  resultanteTirhV1.motivo,
+                  "A Resultante é um estado vetorial estruturado; não é reduzida a um escalar."
+                )}</span>
+              </article>
+              <article>
+                <small>IIRH operacional</small>
+                <strong>{typeof iirhTirhV1.valor === "number"
+                  ? `${numero(iirhTirhV1.valor, 1)} / 100`
+                  : "NÃO CALCULÁVEL"}</strong>
+                <span>{texto(
+                  iirhTirhV1.estado,
+                  "Aguardando adequação funcional explícita dos macrocampos."
+                )}</span>
+              </article>
+              <article>
+                <small>Zona Operacional</small>
+                <strong>{rotuloDaZona(zonaTirhV1.codigo)}</strong>
+                <span>{texto(
+                  zonaTirhV1.estado,
+                  "NÃO CLASSIFICÁVEL sem síntese semântica sustentada."
+                )}</span>
+              </article>
+              <article>
+                <small>Claims profissionais</small>
+                <strong>{claimsPendentesTirhV1.length} PENDENTE(S)</strong>
+                <span>Fatos objetivos e aritmética não são submetidos a revalidação profissional.</span>
+              </article>
+            </div>
+            <div className="hx-tirh-v1-summary__macrofields">
+              {Object.entries(macrocamposTirhV1).map(([codigo, campo]) => {
+                const registroDoCampo = objeto(campo);
+                return (
+                  <article key={codigo}>
+                    <small>{texto(codigo)}</small>
+                    <strong>{typeof registroDoCampo.valor === "number"
+                      ? `${numero(registroDoCampo.valor, 1)} / 100`
+                      : texto(registroDoCampo.estado, "NÃO CALCULÁVEL")}</strong>
+                    <span>{fontesDoIndicador(registroDoCampo.fontes)}</span>
+                  </article>
+                );
+              })}
+            </div>
+            <details className="hx-live-vector-trace" open={claimsPendentesTirhV1.length > 0}>
+              <summary>Validação Profissional · quadro único pós-sessão</summary>
+              <p>Este quadro valida interpretações ou ajustes autorais sem reabrir a sessão, a máquina de estados, o lease da estação ou qualquer sensor.</p>
+              {claimsTirhV1.length ? (
+                <div className="hx-tirh-v1-claims">
+                  {claimsTirhV1.map((claim) => (
+                    <article key={texto(claim.claim_id)}>
+                      <small>{texto(claim.tipo)} · {texto(claim.estado_epistemico)}</small>
+                      <strong>{texto(claim.claim_id)}</strong>
+                      <span>{texto(claim.explicacao_humana, texto(claim.valor_bruto))}</span>
+                      <em>{claim.requer_validacao_profissional === true
+                        ? texto(claim.estado_da_validacao_profissional, "PENDENTE")
+                        : "FATO OBJETIVO / ARITMÉTICA CANÔNICA"}</em>
+                    </article>
+                  ))}
+                </div>
+              ) : <p>Nenhum claim foi materializado neste recorte.</p>}
+              {claimsPendentesTirhV1.length ? (
+                <div className="hx-tirh-v1-validation-form">
+                  <label>
+                    Item para decisão
+                    <select value={claimSelecionado} onChange={(evento) => setClaimSelecionado(evento.target.value)}>
+                      <option value="">Selecione um claim pendente</option>
+                      {claimsPendentesTirhV1.map((claim) => (
+                        <option value={texto(claim.claim_id, "")} key={texto(claim.claim_id)}>
+                          {texto(claim.claim_id)} · {texto(claim.tipo)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Decisão profissional
+                    <select value={decisaoDoClaim} onChange={(evento) => setDecisaoDoClaim(evento.target.value)}>
+                      <option value="VALIDAR">Validar</option>
+                      <option value="AJUSTAR">Ajustar</option>
+                      <option value="MANTER_PENDENTE">Manter pendente</option>
+                    </select>
+                  </label>
+                  {decisaoDoClaim === "AJUSTAR" ? (
+                    <label className="is-wide">
+                      Valor final estruturado (JSON)
+                      <textarea value={ajusteDoClaim} onChange={(evento) => setAjusteDoClaim(evento.target.value)} rows={4} />
+                    </label>
+                  ) : null}
+                  <label className="is-wide">
+                    Fundamentação profissional
+                    <textarea value={justificativaDoClaim} onChange={(evento) => setJustificativaDoClaim(evento.target.value)} rows={4} />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={validacaoEmEnvio || !claimSelecionado || justificativaDoClaim.trim().length < 5}
+                    onClick={() => void enviarValidacaoTirhV1()}
+                  >
+                    {validacaoEmEnvio ? "PRESERVANDO…" : "PRESERVAR DECISÃO PROFISSIONAL"}
+                  </button>
+                  {estadoDaValidacaoTirh ? <p role="status">{estadoDaValidacaoTirh}</p> : null}
+                </div>
+              ) : null}
+              <details>
+                <summary>Proveniência e contrato de claims</summary>
+                <pre>{JSON.stringify({
+                  snapshot: tirhV1Persistida.snapshot,
+                  validacao: validacaoTirhV1,
+                  contrato: tirhV1Persistida.versao_cientifica,
+                  vetores: vetoresTirhV1
+                }, null, 2)}</pre>
+              </details>
+            </details>
+          </section>
+        ) : null}
         <div className="hx-live-scientific-chain__rail">
           {etapasDaCadeia.map((etapa) => {
             const estadoNormalizado = etapa.estado.toUpperCase();

@@ -303,6 +303,7 @@ async function estado(
     { chave: "versaoCientifica", caminho: "/api/v1/cientifico/versoes/ativa", opcional: true, padrao: {} },
     { chave: "evidencias", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/evidencias`, opcional: true, padrao: [] },
     { chave: "evidenciasProfissionais", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/evidencias-profissionais`, opcional: true, padrao: { catalogo: [], capturas: [], pendentes: [], qualificadas: [] } },
+    { chave: "tirhV1", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/tirh-v1`, opcional: true, padrao: {} },
     { chave: "estadosVetoriais", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/estados-vetoriais`, opcional: true, padrao: [] },
     { chave: "configuracoesRegulatorias", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/configuracoes-regulatorias`, opcional: true, padrao: [] },
     { chave: "avaliacoesRegulatorias", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/avaliacao-regulatoria`, opcional: true, padrao: [] },
@@ -365,6 +366,12 @@ async function estado(
       padrao: { catalogo: [], capturas: [], pendentes: [], qualificadas: [] }
     },
     {
+      chave: "tirhV1",
+      caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/tirh-v1`,
+      opcional: true,
+      padrao: {}
+    },
+    {
       chave: "cockpitOperacional",
       caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional?limite_de_amostras=120`
     },
@@ -408,6 +415,7 @@ async function estado(
     versaoCientifica: {},
     evidencias: [],
     evidenciasProfissionais: { catalogo: [], capturas: [], pendentes: [], qualificadas: [] },
+    tirhV1: {},
     estadosVetoriais: [],
     configuracoesRegulatorias: [],
     avaliacoesRegulatorias: [],
@@ -455,6 +463,7 @@ async function estado(
   const versaoCientifica = principais.versaoCientifica as Registro;
   const evidencias = principais.evidencias as Registro[];
   const evidenciasProfissionais = principais.evidenciasProfissionais as Registro;
+  const tirhV1 = principais.tirhV1 as Registro;
   const estadosVetoriais = principais.estadosVetoriais as Registro[];
   const configuracoesRegulatorias = principais.configuracoesRegulatorias as Registro[];
   const avaliacoesRegulatorias = principais.avaliacoesRegulatorias as Registro[];
@@ -606,6 +615,7 @@ async function estado(
     sessao,
     estado_operacional: estadoOperacional,
     cockpit_operacional: cockpitOperacional,
+    tirh_v1: tirhV1,
     contrato_cientifico: registro(
       estadoOperacional.contrato_cientifico
     ),
@@ -970,6 +980,13 @@ export async function POST(request: Request) {
     } else if (corpo.acao === "evidencia-profissional") {
       await consultar(
         `/api/v1/sessoes/${encodeURIComponent(String(contexto.sessao.identificador))}/evidencias-profissionais`,
+        token,
+        { method: "POST", body: JSON.stringify(registro(corpo.payload)) },
+        organizacaoId
+      );
+    } else if (corpo.acao === "validar-claim-tirh-v1") {
+      await consultar(
+        `/api/v1/sessoes/${encodeURIComponent(String(contexto.sessao.identificador))}/tirh-v1/validacoes`,
         token,
         { method: "POST", body: JSON.stringify(registro(corpo.payload)) },
         organizacaoId

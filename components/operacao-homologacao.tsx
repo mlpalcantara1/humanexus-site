@@ -2888,6 +2888,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         comandos.registro(categoria, textoDoRegistro)}
       registrarEvidenciaProfissional={(payload) =>
         comandos.evidenciaProfissional(payload)}
+      validarClaimTirhV1={(payload) =>
+        enviar("validar-claim-tirh-v1", { payload })}
       abrirAnalitico={() => selecionarVisao("evidencias")}
       permitirOperacao={podeConduzirOperacao}
     />

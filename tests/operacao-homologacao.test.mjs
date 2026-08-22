@@ -1407,7 +1407,7 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
     "Zona Operacional",
     "Gatilhos regulatórios",
     "Rotas regulatórias possíveis",
-    "Rota dominante",
+    "RRD · Rota Regulatória Dominante candidata",
     "PRÉ → TREINO → PÓS",
     "Resposta e ganhos regulatórios",
     "Relatório rastreável"
