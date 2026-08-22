@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { HxPageHeader, HxSurface } from "@/components/hx-design-system";
@@ -151,6 +152,9 @@ export function GovernancaDeRelatorios({
                   />
               </label>
               <div className="hx-report-governance__actions">
+                <Link href={`/profissional/relatorios/${encodeURIComponent(relatorio.identificador)}?organizacao=${encodeURIComponent(identificadorDaOrganizacao)}`}>
+                  Abrir relatório
+                </Link>
                 {podeConduzir && proximo ? (
                   <button disabled={emCurso !== ""} onClick={() => executar(relatorio, {
                     acao: "TRANSICIONAR", estado: proximo.estado, justificativa,

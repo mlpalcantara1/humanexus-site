@@ -37,6 +37,23 @@ test("consulta e download usam somente a rota de relatórios liberados", async (
   assert.doesNotMatch(download, /operacao-homologacao/);
 });
 
+test("governança interna abre, baixa e imprime o relatório autenticado", async () => {
+  const pagina = await source("app/(platform)/profissional/relatorios/[id]/page.tsx");
+  const detalhe = await source("components/detalhe-relatorio-governanca.tsx");
+  const download = await source("app/api/governanca-relatorios/[id]/pdf/route.ts");
+  const impressao = await source("components/botao-imprimir-relatorio.tsx");
+  assert.match(pagina, /obterRelatorioEmGovernanca/);
+  assert.match(pagina, /PERFIS/);
+  assert.match(detalhe, /Baixar PDF/);
+  assert.match(detalhe, /BotaoImprimirRelatorio/);
+  assert.match(detalhe, /LINHAGEM DOCUMENTAL/);
+  assert.match(download, /\/api\/v1\/relatorios\/\$\{encodeURIComponent\(id\)\}\/pdf/);
+  assert.match(download, /COOKIE_SESSAO/);
+  assert.match(download, /private, no-store/);
+  assert.match(impressao, /window\.print/);
+  assert.match(impressao, /Imprimir relatório/);
+});
+
 test("relatório externo oferece duas camadas em linguagem humana", async () => {
   const componente = await source("components/relatorios-liberados.tsx");
   assert.match(componente, /Leitura executiva/);

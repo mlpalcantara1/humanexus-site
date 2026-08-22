@@ -16,6 +16,7 @@ export type RelatorioEmGovernanca = {
   validado_em: string | null;
   concluido_em: string | null;
   liberado_em: string | null;
+  secoes?: Array<{ codigo: string; titulo: string; itens: string[] }>;
   linhagem: {
     participante: string | null;
     origem: {
@@ -33,6 +34,19 @@ export type RelatorioEmGovernanca = {
       estado: string;
       liberado_em: string | null;
       revogado_em: string | null;
+    }>;
+    versoes?: Array<{
+      codigo: string;
+      numero: number;
+      estado: string;
+      criado_em: string | null;
+      liberado_em: string | null;
+    }>;
+    eventos?: Array<{
+      acao: string;
+      estado_anterior: string | null;
+      estado_atual: string;
+      criado_em: string;
     }>;
   };
 };
@@ -59,6 +73,16 @@ export function listarRelatoriosEmGovernanca(
     : "";
   return requisitarNucleoAutenticado<RelatorioEmGovernanca[]>(
     `/api/v1/relatorios${consulta}`,
+    token,
+  );
+}
+
+export function obterRelatorioEmGovernanca(
+  token: string,
+  identificador: string,
+) {
+  return requisitarNucleoAutenticado<RelatorioEmGovernanca>(
+    `/api/v1/relatorios/${encodeURIComponent(identificador)}`,
     token,
   );
 }

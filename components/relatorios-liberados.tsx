@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BotaoImprimirRelatorio } from "@/components/botao-imprimir-relatorio";
 import { HxPageHeader, HxSurface } from "@/components/hx-design-system";
 import type { RelatorioLiberado, SecaoDoRelatorio } from "@/lib/relatorios-liberados";
 
@@ -122,9 +123,12 @@ export function DetalheDoRelatorioLiberado({
           <div><dt>Liberado em</dt><dd>{dataHumana(relatorio.liberado_em)}</dd></div>
           <div><dt>Responsável</dt><dd>{relatorio.profissional}</dd></div>
         </dl>
-        <a href={`/api/relatorios-liberados/${encodeURIComponent(relatorio.identificador)}/pdf`}>
-          Baixar PDF <span aria-hidden="true">↓</span>
-        </a>
+        <div className="hx-released-report__cover-actions">
+          <a href={`/api/relatorios-liberados/${encodeURIComponent(relatorio.identificador)}/pdf`}>
+            Baixar PDF <span aria-hidden="true">↓</span>
+          </a>
+          <BotaoImprimirRelatorio />
+        </div>
       </header>
 
       <section className="hx-released-report__layer">
