@@ -17,6 +17,16 @@ export async function POST(request: Request) {
     const acao = String(corpo.acao ?? "");
     const identificador = String(corpo.identificador_do_relatorio ?? "");
 
+    if (acao === "CRIAR_NOVA_VERSAO_TIRH") {
+      return NextResponse.json(await requisitarNucleoAutenticado(
+        `/api/v1/relatorios/${encodeURIComponent(identificador)}/versoes`,
+        token,
+        {
+          method: "POST",
+          body: JSON.stringify({ justificativa: corpo.justificativa }),
+        },
+      ), { status: 201 });
+    }
     if (acao === "TRANSICIONAR") {
       return NextResponse.json(await requisitarNucleoAutenticado(
         `/api/v1/relatorios/${encodeURIComponent(identificador)}/transicoes`,

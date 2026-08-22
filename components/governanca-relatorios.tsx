@@ -20,6 +20,8 @@ const ROTULOS: Record<string, string> = {
   CANCELADO: "Cancelado",
 };
 
+const CONTRATO_TIRH_ATUAL = "RELATORIOS-TIRH-TCO-3.0";
+
 function proximoEstado(estado: string) {
   if (["RASCUNHO", "EM_ELABORACAO"].includes(estado)) {
     return { estado: "AGUARDANDO_VALIDACAO", rotulo: "Enviar para validação" };
@@ -155,6 +157,19 @@ export function GovernancaDeRelatorios({
                 <Link href={`/profissional/relatorios/${encodeURIComponent(relatorio.identificador)}?organizacao=${encodeURIComponent(identificadorDaOrganizacao)}`}>
                   Abrir relatório
                 </Link>
+                {podeConduzir && relatorio.versao_do_contrato !== CONTRATO_TIRH_ATUAL ? (
+                  <button
+                    className="hx-report-governance__primary"
+                    disabled={emCurso !== ""}
+                    onClick={() => executar(relatorio, {
+                      acao: "CRIAR_NOVA_VERSAO_TIRH",
+                      justificativa: (
+                        "Atualização documental para a leitura humana TIRH vigente, "
+                        + "sem alteração das evidências primárias."
+                      ),
+                    })}
+                  >Atualizar leitura TIRH</button>
+                ) : null}
                 {podeConduzir && proximo ? (
                   <button disabled={emCurso !== ""} onClick={() => executar(relatorio, {
                     acao: "TRANSICIONAR", estado: proximo.estado, justificativa,

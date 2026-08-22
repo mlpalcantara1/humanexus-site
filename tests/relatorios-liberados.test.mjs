@@ -86,6 +86,18 @@ test("ciclo documental exige validação, destinatário nominal e liberação ex
   assert.match(rota, /exigirCsrf/);
 });
 
+test("governança cria nova versão TIRH sem substituir o documento anterior", async () => {
+  const componente = await source("components/governanca-relatorios.tsx");
+  const rota = await source("app/api/governanca-relatorios/route.ts");
+  const contrato = await source("lib/governanca-relatorios.ts");
+  assert.match(componente, /RELATORIOS-TIRH-TCO-3\.0/);
+  assert.match(componente, /Atualizar leitura TIRH/);
+  assert.match(componente, /CRIAR_NOVA_VERSAO_TIRH/);
+  assert.match(rota, /CRIAR_NOVA_VERSAO_TIRH/);
+  assert.match(rota, /\/api\/v1\/relatorios\/\$\{encodeURIComponent\(identificador\)\}\/versoes/);
+  assert.match(contrato, /versao_do_contrato/);
+});
+
 test("auditoria externa recolhida mostra origem, validação, versões e liberação", async () => {
   const componente = await source("components/relatorios-liberados.tsx");
   for (const texto of [

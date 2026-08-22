@@ -6,6 +6,7 @@ export type RelatorioEmGovernanca = {
   identificador: string;
   codigo_publico: string;
   numero_da_versao: number;
+  versao_do_contrato?: string | null;
   tipo: string;
   destinatario: string;
   titulo: string;
