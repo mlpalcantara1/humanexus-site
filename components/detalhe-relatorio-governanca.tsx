@@ -10,6 +10,7 @@ function dataHumana(valor?: string | null) {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "America/Manaus",
   }).format(data);
 }
 
@@ -23,6 +24,9 @@ export function DetalheDoRelatorioEmGovernanca({
   const retorno = organizacao
     ? `/profissional/relatorios?organizacao=${encodeURIComponent(organizacao)}`
     : "/profissional/relatorios";
+  const finalidade = relatorio.secoes?.find(
+    (item) => item.codigo === "FINALIDADE_DO_TREINAMENTO"
+  )?.itens[0] ?? relatorio.objetivo;
   return (
     <article className="hx-released-report">
       <Link className="hx-released-report__back" href={retorno}>
@@ -32,7 +36,7 @@ export function DetalheDoRelatorioEmGovernanca({
         <p>HUMANEXUS / DOCUMENTO PROFISSIONAL</p>
         <span>{relatorio.codigo_publico}</span>
         <h1>{relatorio.titulo}</h1>
-        <p>{relatorio.objetivo}</p>
+        <p>{finalidade}</p>
         <dl>
           <div><dt>Versão</dt><dd>{relatorio.numero_da_versao}</dd></div>
           <div><dt>Estado</dt><dd>{relatorio.estado_documental}</dd></div>
@@ -47,13 +51,12 @@ export function DetalheDoRelatorioEmGovernanca({
         </div>
       </header>
       <section className="hx-released-report__layer">
-        <small>CONTEÚDO PRESERVADO</small>
-        <h2>Leitura profissional</h2>
-        <p>Conteúdo versionado, rastreável e sujeito à governança documental.</p>
+        <small>LEITURA TIRH</small>
+        <h2>Leitura operacional TIRH para o treinamento cognitivo operacional</h2>
+        <p>A narrativa principal traduz os resultados canônicos sem alterar evidências, regras científicas ou limites da leitura.</p>
         <div className="hx-released-report__sections">
           {(relatorio.secoes ?? []).map((secao) => (
             <HxSurface as="section" key={secao.codigo}>
-              <small>{secao.codigo.replaceAll("_", " ")}</small>
               <h3>{secao.titulo}</h3>
               {secao.itens.map((item, indice) => (
                 <p key={`${secao.codigo}-${indice}`}>{item}</p>
@@ -62,11 +65,26 @@ export function DetalheDoRelatorioEmGovernanca({
           ))}
         </div>
       </section>
-      <section className="hx-released-report__lineage">
+      <details className="hx-released-report__lineage">
+        <summary>Consultar anexo científico e rastreabilidade</summary>
+        <section>
         <header>
-          <small>LINHAGEM DOCUMENTAL</small>
-          <h2>Origem e versões preservadas</h2>
+          <small>ANEXO TÉCNICO-CIENTÍFICO / AUDITORIA</small>
+          <h2>Proveniência, origem e versões preservadas</h2>
         </header>
+        {(relatorio.anexo_tecnico ?? []).length ? (
+          <div className="hx-released-report__sections hx-released-report__sections--audit">
+            {(relatorio.anexo_tecnico ?? []).map((secao) => (
+              <HxSurface as="section" key={secao.codigo}>
+                <small>{secao.codigo.replaceAll("_", " ")}</small>
+                <h3>{secao.titulo}</h3>
+                {secao.itens.map((item, indice) => (
+                  <p key={`${secao.codigo}-${indice}`}>{item}</p>
+                ))}
+              </HxSurface>
+            ))}
+          </div>
+        ) : null}
         <dl>
           <div><dt>Organização</dt><dd>{relatorio.linhagem.origem.organizacao ?? "Não informada"}</dd></div>
           <div><dt>Participante</dt><dd>{relatorio.linhagem.origem.participante ?? "Documento coletivo"}</dd></div>
@@ -83,7 +101,8 @@ export function DetalheDoRelatorioEmGovernanca({
             </article>
           ))}
         </div>
-      </section>
+        </section>
+      </details>
     </article>
   );
 }

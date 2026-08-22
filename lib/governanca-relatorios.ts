@@ -17,6 +17,7 @@ export type RelatorioEmGovernanca = {
   concluido_em: string | null;
   liberado_em: string | null;
   secoes?: Array<{ codigo: string; titulo: string; itens: string[] }>;
+  anexo_tecnico?: Array<{ codigo: string; titulo: string; itens: string[] }>;
   linhagem: {
     participante: string | null;
     origem: {

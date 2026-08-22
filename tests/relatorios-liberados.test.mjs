@@ -46,7 +46,7 @@ test("governança interna abre, baixa e imprime o relatório autenticado", async
   assert.match(pagina, /PERFIS/);
   assert.match(detalhe, /Baixar PDF/);
   assert.match(detalhe, /BotaoImprimirRelatorio/);
-  assert.match(detalhe, /LINHAGEM DOCUMENTAL/);
+  assert.match(detalhe, /ANEXO TÉCNICO-CIENTÍFICO \/ AUDITORIA/);
   assert.match(download, /\/api\/v1\/relatorios\/\$\{encodeURIComponent\(id\)\}\/pdf/);
   assert.match(download, /COOKIE_SESSAO/);
   assert.match(download, /private, no-store/);
@@ -54,12 +54,13 @@ test("governança interna abre, baixa e imprime o relatório autenticado", async
   assert.match(impressao, /Imprimir relatório/);
 });
 
-test("relatório externo oferece duas camadas em linguagem humana", async () => {
+test("relatório externo oferece leitura TIRH humana e auditoria documental separada", async () => {
   const componente = await source("components/relatorios-liberados.tsx");
-  assert.match(componente, /Leitura operacional/);
-  assert.match(componente, /Sustentação TIRH/);
-  assert.match(componente, /TREINAMENTO_COGNITIVO_OPERACIONAL/);
-  assert.match(componente, /Como o funcionamento se sustentou/);
+  assert.match(componente, /LEITURA TIRH/);
+  assert.match(componente, /treinamento cognitivo operacional/);
+  assert.match(componente, /Consultar versões e referência metodológica/);
+  assert.doesNotMatch(componente, /EXECUTIVAS/);
+  assert.doesNotMatch(componente, /replaceAll\("_", " "\)/);
   assert.match(componente, /Ainda não há relatórios disponíveis nesta área/);
   for (const termo of [
     "payload", "endpoint", "snapshot", "schema", "JSON", "cache", "query",
@@ -85,10 +86,19 @@ test("ciclo documental exige validação, destinatário nominal e liberação ex
   assert.match(rota, /exigirCsrf/);
 });
 
-test("linhagem externa mostra origem, validação, versões e liberação", async () => {
+test("auditoria externa recolhida mostra origem, validação, versões e liberação", async () => {
   const componente = await source("components/relatorios-liberados.tsx");
   for (const texto of [
-    "LINHAGEM DOCUMENTAL", "Organização", "Participante", "Validação profissional",
+    "AUDITORIA DOCUMENTAL", "Organização", "Participante", "Validação profissional",
     "Versão", "Liberado em", "Responsável",
   ]) assert.match(componente, new RegExp(texto));
+});
+
+test("governança separa leitura humana do anexo técnico-científico", async () => {
+  const componente = await source("components/detalhe-relatorio-governanca.tsx");
+  const contrato = await source("lib/governanca-relatorios.ts");
+  assert.match(componente, /Leitura operacional TIRH/);
+  assert.match(componente, /ANEXO TÉCNICO-CIENTÍFICO \/ AUDITORIA/);
+  assert.match(componente, /Consultar anexo científico e rastreabilidade/);
+  assert.match(contrato, /anexo_tecnico/);
 });

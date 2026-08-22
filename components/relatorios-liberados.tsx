@@ -14,15 +14,6 @@ const DESTINATARIOS: Record<string, string> = {
   GESTOR_AUTORIZADO: "Organização autorizada",
 };
 
-const EXECUTIVAS = new Set([
-  "IDENTIFICACAO", "OBJETIVO", "CONTEXTO", "RESULTADOS_AUTORIZADOS",
-  "RESULTADOS_COLETIVOS", "INTERPRETACAO", "PROXIMOS_PASSOS",
-  "FUNDAMENTOS_TIRH", "SUSTENTACAO_DO_FUNCIONAMENTO",
-  "GATILHOS_E_EXIGENCIAS", "ROTAS_REGULATORIAS",
-  "CONDICOES_REGULATORIAS", "TREINAMENTO_COGNITIVO_OPERACIONAL",
-  "EVOLUCAO_LONGITUDINAL",
-]);
-
 function dataHumana(valor?: string | null) {
   if (!valor) return "Não registrado";
   const data = new Date(valor);
@@ -30,11 +21,18 @@ function dataHumana(valor?: string | null) {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "America/Manaus",
   }).format(data);
 }
 
 function tituloDaArea(organizacional: boolean) {
   return organizacional ? "Relatórios da organização" : "Meus Relatórios";
+}
+
+function finalidadeDoRelatorio(relatorio: RelatorioLiberado) {
+  return relatorio.secoes.find(
+    (item) => item.codigo === "FINALIDADE_DO_TREINAMENTO"
+  )?.itens[0] ?? relatorio.objetivo;
 }
 
 function Secoes({ itens }: { itens: SecaoDoRelatorio[] }) {
@@ -43,7 +41,6 @@ function Secoes({ itens }: { itens: SecaoDoRelatorio[] }) {
     <div className="hx-released-report__sections">
       {itens.map((secao) => (
         <HxSurface as="section" key={secao.codigo}>
-          <small>{secao.codigo.replaceAll("_", " ")}</small>
           <h3>{secao.titulo}</h3>
           {secao.itens.map((item, indice) => <p key={`${secao.codigo}-${indice}`}>{item}</p>)}
         </HxSurface>
@@ -80,7 +77,7 @@ export function ListaDeRelatoriosLiberados({
               </div>
               <p className="hx-released-reports__code">{relatorio.codigo_publico}</p>
               <h2>{relatorio.titulo}</h2>
-              <p>{relatorio.objetivo}</p>
+              <p>{finalidadeDoRelatorio(relatorio)}</p>
               <dl>
                 <div><dt>Destinatário</dt><dd>{DESTINATARIOS[relatorio.destinatario] ?? relatorio.destinatario}</dd></div>
                 <div><dt>Liberado em</dt><dd>{dataHumana(relatorio.liberado_em)}</dd></div>
@@ -111,8 +108,7 @@ export function DetalheDoRelatorioLiberado({
   organizacional: boolean;
 }) {
   const base = organizacional ? "/organizacao/relatorios" : "/meus-relatorios";
-  const executivas = relatorio.secoes.filter((item) => EXECUTIVAS.has(item.codigo));
-  const tecnicas = relatorio.secoes.filter((item) => !EXECUTIVAS.has(item.codigo));
+  const finalidade = finalidadeDoRelatorio(relatorio);
   return (
     <article className="hx-released-report">
       <Link className="hx-released-report__back" href={base}>← Voltar aos relatórios</Link>
@@ -120,7 +116,7 @@ export function DetalheDoRelatorioLiberado({
         <p>HUMANEXUS / DOCUMENTO LIBERADO</p>
         <span>{relatorio.codigo_publico}</span>
         <h1>{relatorio.titulo}</h1>
-        <p>{relatorio.objetivo}</p>
+        <p>{finalidade}</p>
         <dl>
           <div><dt>Versão</dt><dd>{relatorio.numero_da_versao}</dd></div>
           <div><dt>Estado</dt><dd>{ESTADOS[relatorio.estado_documental] ?? relatorio.estado_documental}</dd></div>
@@ -136,20 +132,16 @@ export function DetalheDoRelatorioLiberado({
       </header>
 
       <section className="hx-released-report__layer">
-        <small>LEITURA 01</small>
-        <h2>Leitura operacional</h2>
-        <p>Como o funcionamento se sustentou, quais Rotas Regulatórias foram observadas e como o treinamento cognitivo operacional foi direcionado.</p>
-        <Secoes itens={executivas} />
-      </section>
-      <section className="hx-released-report__layer">
-        <small>LEITURA 02</small>
-        <h2>Sustentação TIRH</h2>
-        <p>Vetores, Resultante, IIRH, Zona, condições regulatórias, evidências, limites e proveniência que sustentam a leitura.</p>
-        <Secoes itens={tecnicas} />
+        <small>LEITURA TIRH</small>
+        <h2>Leitura para o treinamento cognitivo operacional</h2>
+        <p>Condição regulatória, Vetores, Resultante, Zona, Rotas, CTR, THX, resposta ao treinamento e próximo ciclo, sempre limitados às evidências admissíveis.</p>
+        <Secoes itens={relatorio.secoes} />
       </section>
 
-      <section className="hx-released-report__lineage">
-        <header><small>LINHAGEM DOCUMENTAL</small><h2>Origem, validação e versões preservadas</h2></header>
+      <details className="hx-released-report__lineage">
+        <summary>Consultar versões e referência metodológica</summary>
+        <section>
+        <header><small>AUDITORIA DOCUMENTAL</small><h2>Origem, validação e versões preservadas</h2></header>
         <dl>
           <div><dt>Organização</dt><dd>{relatorio.linhagem.origem.organizacao ?? "Não se aplica"}</dd></div>
           <div><dt>Participante</dt><dd>{relatorio.linhagem.origem.participante ?? "Documento coletivo"}</dd></div>
@@ -167,7 +159,8 @@ export function DetalheDoRelatorioLiberado({
           ))}
         </div>
         <p className="hx-released-report__method">{relatorio.linhagem.metodologia.referencia}. {relatorio.linhagem.metodologia.observacao}</p>
-      </section>
+        </section>
+      </details>
     </article>
   );
 }
