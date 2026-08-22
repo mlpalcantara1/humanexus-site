@@ -2847,7 +2847,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         </section>
       ) : null}
       <details className="hx-technical-details">
-        <summary>Diagnóstico técnico protegido</summary>
+        <summary>Inspeção técnica protegida</summary>
         <div className="hx-source-health">
           <article><small>Frequência</small><strong>{frequencia.at(-1)?.value != null ? `${frequencia.at(-1)?.value?.toFixed(2)} Hz` : "SEM LEITURA"}</strong><span>Janela técnica observada</span></article>
           <article><small>Latência</small><strong>{ultimoPacote ? `${Number(ultimoPacote.latencia_ms).toFixed(2)} ms` : "SEM LEITURA"}</strong><span>Último dado recebido</span></article>

@@ -106,7 +106,7 @@ export function ParametrizacaoProspectiva({
         </span>
       </header>
       <div className={styles.guard}>
-        <strong>NÃO É RESULTANTE OFICIAL, IIRH OU ZONA FUNCIONAL</strong>
+        <strong>NÃO É RESULTANTE OFICIAL, IIRH OU ZONA OPERACIONAL</strong>
         <span>
           Não altera os Algoritmos 0.1 e 0.2, não autoriza ação automática e não
           transforma simulação em evidência humana.

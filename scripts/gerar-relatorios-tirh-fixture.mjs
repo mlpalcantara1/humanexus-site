@@ -26,7 +26,7 @@ const vetores = [
   magnitude,
   confianca,
   estado: magnitude == null ? "NÃO DEFINIDO" : "CALCULÁVEL",
-  motivo: magnitude == null ? "Não existe fórmula autoral vigente para magnitude do VEV." : undefined
+  motivo: magnitude == null ? "VEV não elegível antes de Baseline e quatro sessões válidas comparáveis." : undefined
 }));
 
 const documento_tirh = {
@@ -66,10 +66,10 @@ const documento_tirh = {
     versao: "HIPÓTESE OPERACIONAL v0.1 — EM VALIDAÇÃO EMPÍRICA"
   },
   iirh: 78.4,
-  zona: { codigo: "ZF", nome: "Zona Funcional", confianca: .84 },
+  zona: { codigo: "ZA", nome: "Zona Adaptativa", confianca: .84 },
   trajetoria: [
-    { rotulo: "PRÉ", valor: 58, zona: "ZS" },
-    { rotulo: "TREINO", valor: 72, zona: "ZF" },
+    { rotulo: "PRÉ", valor: 58, zona: "ZI" },
+    { rotulo: "TREINO", valor: 72, zona: "ZA" },
     { rotulo: "PÓS", valor: 83, zona: "ZO" }
   ],
   arr: {
@@ -207,7 +207,53 @@ for (const [arquivo, tipoDocumento, titulo] of documentos) {
       objetivo: "Demonstrar a arquitetura documental premium com dados exclusivamente fictícios.",
       interpretacao_profissional: documento_tirh.conclusao_operacional,
       criado_em: "2026-08-05T18:45:00Z",
-      versao_do_contrato: "RELATORIOS-PREMIUM-G3-1.0",
+      versao_do_contrato: "RELATORIOS-TIRH-TCO-2.0",
+      numero_da_versao: 1,
+      secoes: [
+        {
+          codigo: "IDENTIFICACAO",
+          titulo: "Identificação",
+          itens: ["Nome completo: Participante de Verificação", "CPF: 000.000.000-00"]
+        },
+        {
+          codigo: "FUNDAMENTOS_TIRH",
+          titulo: "Fundamentos da leitura TIRH",
+          itens: [
+            "A TIRH explica como o funcionamento se sustenta pela organização integrada dos recursos regulatórios.",
+            "A leitura preserva os sete postulados, os quatro macrocampos, os Vetores, a Resultante, as Zonas e as Trajetórias Adaptativas."
+          ]
+        },
+        {
+          codigo: "SUSTENTACAO_DO_FUNCIONAMENTO",
+          titulo: "Como o funcionamento se sustentou",
+          itens: ["Dez Vetores Regulatórios foram confrontados com as evidências admissíveis."]
+        },
+        {
+          codigo: "GATILHOS_E_EXIGENCIAS",
+          titulo: "Gatilhos e exigências",
+          itens: ["Pressão temporal registrada como exigência contextual."]
+        },
+        {
+          codigo: "ROTAS_REGULATORIAS",
+          titulo: "Rotas Regulatórias",
+          itens: ["A Rota Regulatória observada permanece contextual."]
+        },
+        {
+          codigo: "CONDICOES_REGULATORIAS",
+          titulo: "Condições regulatórias",
+          itens: ["Condições basais, autonômicas, cognitivas e neuroregulatórias preservadas por fonte."]
+        },
+        {
+          codigo: "TREINAMENTO_COGNITIVO_OPERACIONAL",
+          titulo: "Treinamento cognitivo operacional",
+          itens: ["CTR, THX e resposta observada orientam a aquisição de Rotas Adaptativas."]
+        },
+        {
+          codigo: "EVOLUCAO_LONGITUDINAL",
+          titulo: "Evolução longitudinal",
+          itens: ["VEV permanece não elegível antes de Baseline e quatro sessões válidas comparáveis."]
+        }
+      ],
       documento_tirh
     }
   });

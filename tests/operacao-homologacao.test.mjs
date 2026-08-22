@@ -415,7 +415,7 @@ test("produtos científicos e infraestrutura estão integrados sem virar módulo
     "RELATÓRIO E PDF GOVERNADOS", "MODO COLETIVO DO COCKPIT"
   ]) assert.match(client, new RegExp(item));
   assert.match(client, /<details className="hx-technical-details">/);
-  assert.match(client, /Diagnóstico técnico protegido/);
+  assert.match(client, /Inspeção técnica protegida/);
 });
 
 test("Modo Coletivo identifica a visão ativa sem fabricar amostra ou índice", async () => {

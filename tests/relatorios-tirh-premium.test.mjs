@@ -9,11 +9,11 @@ const root = new URL("../", import.meta.url);
 const source = (path) => readFile(new URL(path, root), "utf8");
 
 const documentos = [
-  ["relatorio-operacional-tirh-fixture.pdf", 6],
-  ["relatorio-cientifico-tirh-fixture.pdf", 5],
-  ["relatorio-executivo-tirh-fixture.pdf", 3],
+  ["relatorio-operacional-tirh-fixture.pdf", 9],
+  ["relatorio-cientifico-tirh-fixture.pdf", 8],
+  ["relatorio-executivo-tirh-fixture.pdf", 6],
   ["relatorio-tecnico-sistema-fixture.pdf", 3],
-  ["formulacao-regulatoria-tirh-fixture.pdf", 3],
+  ["formulacao-regulatoria-tirh-fixture.pdf", 6],
 ];
 
 test("arquitetura documental contém cinco produtos TIRH independentes", async () => {
@@ -30,6 +30,10 @@ test("arquitetura documental contém cinco produtos TIRH independentes", async (
   assert.match(pdf, /HIPÓTESE OPERACIONAL v0\.1 — EM VALIDAÇÃO EMPÍRICA/);
   assert.match(pdf, /Reorganização da Rota Operacional/);
   assert.match(pdf, /Nova Rota Adaptativa/);
+  for (const zona of ["Zona Ótima", "Zona Adaptativa", "Zona de Instabilidade", "Zona de Comprometimento Funcional"])
+    assert.match(pdf, new RegExp(zona));
+  for (const zonaAntiga of ["Zona Funcional", "Zona de Sobrecarga", "Zona de Desregulação", "Zona de Colapso"])
+    assert.doesNotMatch(pdf, new RegExp(zonaAntiga));
 });
 
 test("telemetria técnica não vaza para produtos profissional, científico, executivo ou formulação", async () => {
@@ -54,10 +58,15 @@ test("telemetria técnica não vaza para produtos profissional, científico, exe
 
 test("ausência permanece nula e nenhuma decisão profissional é automática", async () => {
   const pdf = await source("lib/tirh-report-document.ts");
+  const fixture = await source("scripts/gerar-relatorios-tirh-fixture.mjs");
   assert.match(pdf, /Ausência de evidência permanece nula/i);
   assert.match(pdf, /não constituem decisão automática/i);
   assert.match(pdf, /proporcao\(item\.qualidade\) == null \? "—"/);
   assert.doesNotMatch(pdf, /magnitude\s*\|\|\s*0/);
+  assert.doesNotMatch(pdf, /vetor\.magnitude \?\? 0/);
+  assert.match(pdf, /validos\.length === vetores\.length/);
+  assert.match(pdf, /EVOLUCAO_LONGITUDINAL/);
+  assert.match(fixture, /VEV permanece não elegível/);
 });
 
 test("fixtures geram os cinco PDFs premium com paginação esperada", async () => {

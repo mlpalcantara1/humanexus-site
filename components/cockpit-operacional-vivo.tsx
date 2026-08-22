@@ -866,7 +866,7 @@ function AtividadeDasBandasEeg({
       <div className="hx-live-eeg-ani-status">
         <strong>ANI-TIRH v0.1</strong>
         <span>{texto(aniTirh.status_cientifico, "EXPERIMENTAL — EM VALIDAÇÃO LONGITUDINAL")}</span>
-        <em>Descrição individual contextual · não diagnóstica · sem decisão automática</em>
+        <em>Descrição individual contextual segundo a TIRH · sem decisão automática</em>
       </div>
 
       <div className="hx-live-eeg-workspace">
@@ -1705,7 +1705,7 @@ export function CockpitOperacionalVivo({
       estado: texto(objeto(longitudinalCadeia.trajetoria).estado ?? trajetoria.estado, "NAO INFERIVEL"),
       motivo: texto(
         objeto(longitudinalCadeia.por_que_este_resultado).resumo,
-        "Trajetória exige estados comparáveis; VEV permanece não definido."
+        "Trajetória exige estados comparáveis; VEV permanece não elegível até Baseline e quatro sessões válidas comparáveis."
       )
     },
     {
@@ -2697,7 +2697,7 @@ export function CockpitOperacionalVivo({
                 aniTirh.status_cientifico,
                 "EXPERIMENTAL — EM VALIDAÇÃO LONGITUDINAL"
               )}</p>
-              <p>Descrição individual contextual, não diagnóstica e sem inferência causal automática. O stream met permanece independente do pow.</p>
+              <p>Leitura TIRH individual e contextual, sem inferência causal automática. As métricas nativas permanecem independentes das bandas EEG.</p>
               <dl>
                 {bandasAniGlobais.map((banda) => (
                   <div key={texto(banda.codigo)}>
@@ -2799,7 +2799,7 @@ export function CockpitOperacionalVivo({
                 <small>{rotulo}</small>
                 <strong>{texto(
                   diagnostico.motivo_objetivo,
-                  "Aguardando diagnóstico do núcleo"
+                  "Aguardando leitura do núcleo"
                 )}</strong>
                 <dl>
                   <div>

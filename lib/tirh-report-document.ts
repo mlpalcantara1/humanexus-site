@@ -1,6 +1,6 @@
 import PDFDocument from "pdfkit";
 
-export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-2.0";
+export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.0";
 
 export type TipoDocumentoTirh =
   | "OPERACIONAL_TIRH"
@@ -147,10 +147,9 @@ function normalizarZona(valor: unknown) {
   const zona = texto(valor, "Não classificada").toUpperCase();
   const mapa: Record<string, string> = {
     ZO: "Zona Ótima",
-    ZF: "Zona Funcional",
-    ZS: "Zona de Sobrecarga",
-    ZD: "Zona de Desregulação",
-    ZC: "Zona de Colapso"
+    ZA: "Zona Adaptativa",
+    ZI: "Zona de Instabilidade",
+    ZCF: "Zona de Comprometimento Funcional"
   };
   return mapa[zona] ?? texto(valor, "Não classificada");
 }
@@ -183,6 +182,8 @@ function capa(
   entrada: EntradaRelatorioHumanexus
 ) {
   const { relatorio, participante, sessao, usuario } = entrada;
+  const identificacao = identificacaoDocumental(entrada);
+  const relatorioColetivo = tipo === "EXECUTIVO";
   doc.rect(0, 0, 595.28, 841.89).fill(CORES.noite);
   doc.circle(515, 90, 170).fillOpacity(.08).fill(CORES.ouro).fillOpacity(1);
   doc.circle(508, 98, 112).lineWidth(.6).strokeColor(CORES.ouro).strokeOpacity(.25).stroke().strokeOpacity(1);
@@ -206,12 +207,17 @@ function capa(
   });
   doc.moveTo(47, 489).lineTo(548, 489).lineWidth(.7).strokeColor(CORES.ouro).strokeOpacity(.55).stroke().strokeOpacity(1);
   const metadados: Array<[string, unknown]> = [
-    ["PARTICIPANTE", participante.nome ?? participante.referencia_externa ?? participante.identificador],
-    ["SESSÃO", sessao.nome_operacional ?? sessao.nome ?? sessao.identificador],
-    ["ORGANIZAÇÃO", participante.nome_da_organizacao ?? sessao.nome_da_organizacao ?? participante.identificador_da_organizacao],
-    ["RESPONSABILIDADE PROFISSIONAL", usuario.nome ?? usuario.identificador],
+    [
+      relatorioColetivo ? "ESCOPO" : "PARTICIPANTE",
+      relatorioColetivo
+        ? identificacao.organizacao
+        : `${identificacao.nomeCompleto} · CPF ${identificacao.cpf}`
+    ],
+    ["SESSÃO", sessao.nome_operacional ?? sessao.nome ?? "Sessão registrada"],
+    ["ORGANIZAÇÃO", identificacao.organizacao],
+    ["RESPONSABILIDADE PROFISSIONAL", usuario.nome ?? "Profissional responsável registrado"],
     ["DATA", data(sessao.finalizado_em ?? sessao.iniciado_em ?? relatorio.criado_em)],
-    ["VERSÃO CIENTÍFICA", sessao.identificador_da_versao_cientifica ?? relatorio.versao_do_contrato ?? "Não registrada"]
+    ["VERSÃO DOCUMENTAL", relatorio.numero_da_versao ?? "Não registrada"]
   ];
   metadados.forEach(([rotulo, valor], indice) => {
     const coluna = indice % 2;
@@ -228,7 +234,9 @@ function capa(
     });
   });
   doc.fillColor("#8f9997").font("Helvetica").fontSize(7).text(
-    `Rastreabilidade ${texto(relatorio.identificador, "não registrada")} · ${VERSAO_DOCUMENTAL_TIRH}`,
+    tipo === "CIENTIFICO_TIRH" || tipo === "TECNICO"
+      ? `Rastreabilidade científica e técnica preservada · ${VERSAO_DOCUMENTAL_TIRH}`
+      : `Documento versionado pela HUMANEXUS · ${VERSAO_DOCUMENTAL_TIRH}`,
     47,
     779,
     { width: 500, height: 9, lineBreak: false }
@@ -362,13 +370,30 @@ function estadoZona(entrada: EntradaRelatorioHumanexus) {
   return objeto(origem.zona ?? entrada.relatorio.zona_json);
 }
 
-function textoDeSecao(entrada: EntradaRelatorioHumanexus, codigo: string, ausenciaTexto: string) {
+function itensDeSecao(entrada: EntradaRelatorioHumanexus, codigo: string) {
   const secoes = lista(
     entrada.relatorio.secoes ?? entrada.relatorio.secoes_json
   ).map((item) => objeto(item));
   const secao = secoes.find((item) => texto(item.codigo, "") === codigo);
-  const itens = lista(secao?.itens).map((item) => texto(item, "")).filter(Boolean);
+  return lista(secao?.itens).map((item) => texto(item, "")).filter(Boolean);
+}
+
+function textoDeSecao(entrada: EntradaRelatorioHumanexus, codigo: string, ausenciaTexto: string) {
+  const itens = itensDeSecao(entrada, codigo);
   return itens.length ? itens.join(" ") : ausenciaTexto;
+}
+
+function identificacaoDocumental(entrada: EntradaRelatorioHumanexus) {
+  const itens = itensDeSecao(entrada, "IDENTIFICACAO");
+  const valor = (prefixo: string) => {
+    const item = itens.find((registro) => registro.toLocaleLowerCase("pt-BR").startsWith(prefixo));
+    return item?.split(":").slice(1).join(":").trim() || null;
+  };
+  return {
+    nomeCompleto: valor("nome completo:") ?? "Nome completo não informado no cadastro",
+    cpf: valor("cpf:") ?? "Não informado no cadastro",
+    organizacao: valor("organização:") ?? "Organização vinculada"
+  };
 }
 
 function desenharRadarVetorial(doc: PDFKit.PDFDocument, vetores: Vetor[], x: number, y: number, raio: number) {
@@ -392,16 +417,35 @@ function desenharRadarVetorial(doc: PDFKit.PDFDocument, vetores: Vetor[], x: num
     const ly = centroY + Math.sin(angulo) * (raio + 15) - 3;
     doc.fillColor(CORES.suave).font("Helvetica-Bold").fontSize(6).text(vetor.codigo, lx, ly, { width: 32, align: "center" });
   });
-  if (validos.length >= 2) {
-    const pontos = vetores.map((vetor, indice) => {
-      const valor = Math.max(0, Math.min(100, vetor.magnitude ?? 0)) / 100;
+  if (validos.length) {
+    const pontos = vetores.map((vetor, indice): [number, number] | null => {
+      if (vetor.magnitude == null) return null;
+      const valor = Math.max(0, Math.min(100, vetor.magnitude)) / 100;
       const angulo = -Math.PI / 2 + indice * Math.PI * 2 / vetores.length;
-      return [centroX + Math.cos(angulo) * raio * valor, centroY + Math.sin(angulo) * raio * valor];
+      return [
+        centroX + Math.cos(angulo) * raio * valor,
+        centroY + Math.sin(angulo) * raio * valor
+      ];
     });
-    doc.save().polygon(...pontos).fillOpacity(.13).fillAndStroke(CORES.petroleo, CORES.petroleo).fillOpacity(1).restore();
-    pontos.forEach(([px, py], indice) => {
-      if (vetores[indice].magnitude == null) return;
-      doc.circle(px, py, 2.4).fillColor(CORES.papel).fillAndStroke(CORES.papel, CORES.petroleo);
+    if (validos.length === vetores.length) {
+      doc.save()
+        .polygon(...pontos.filter((item): item is [number, number] => item != null))
+        .fillOpacity(.13)
+        .fillAndStroke(CORES.petroleo, CORES.petroleo)
+        .fillOpacity(1)
+        .restore();
+    } else {
+      pontos.forEach((ponto, indice) => {
+        const proximo = pontos[indice + 1];
+        if (!ponto || !proximo) return;
+        doc.moveTo(ponto[0], ponto[1]).lineTo(proximo[0], proximo[1])
+          .lineWidth(1.2).strokeColor(CORES.petroleo).stroke();
+      });
+    }
+    pontos.forEach((ponto) => {
+      if (!ponto) return;
+      doc.circle(ponto[0], ponto[1], 2.4)
+        .fillColor(CORES.papel).fillAndStroke(CORES.papel, CORES.petroleo);
     });
   } else {
     doc.circle(centroX, centroY, 3).fill(CORES.cinza);
@@ -462,15 +506,12 @@ function desenharResultante(doc: PDFKit.PDFDocument, resultante: Registro, x: nu
 }
 
 function desenharTrajetoria(doc: PDFKit.PDFDocument, pontos: PontoTrajetoria[], x: number, y: number, width: number, height: number) {
-  const zonas = [
-    [80, 100, "ZO", "#dfece2"], [65, 80, "ZF", "#e7eee4"],
-    [50, 65, "ZS", "#f3ead6"], [35, 50, "ZD", "#f1dfd7"], [0, 35, "ZC", "#ead5d4"]
-  ] as const;
-  zonas.forEach(([minimo, maximo, codigo, cor]) => {
-    const top = y + height - height * maximo / 100;
-    const h = height * (maximo - minimo) / 100;
-    doc.rect(x, top, width, h).fill(cor);
-    doc.fillColor(CORES.suave).font("Helvetica-Bold").fontSize(5.5).text(codigo, x + width + 5, top + h / 2 - 3, { width: 20 });
+  [0, 25, 50, 75, 100].forEach((marco) => {
+    const py = y + height - height * marco / 100;
+    doc.moveTo(x, py).lineTo(x + width, py)
+      .lineWidth(.35).strokeColor(CORES.linha).stroke();
+    doc.fillColor(CORES.suave).font("Helvetica").fontSize(5.5)
+      .text(`${marco}`, x - 22, py - 3, { width: 18, align: "right" });
   });
   const validos = pontos.filter((item) => item.valor != null);
   if (validos.length) {
@@ -482,11 +523,13 @@ function desenharTrajetoria(doc: PDFKit.PDFDocument, pontos: PontoTrajetoria[], 
       if (anterior) {
         const anteriorIndice = pontos.indexOf(anterior);
         const ax = x + 18 + (width - 36) * anteriorIndice / Math.max(1, pontos.length - 1);
-        const ay = y + height - height * Math.max(0, Math.min(100, anterior.valor ?? 0)) / 100;
+        const ay = y + height - height * Math.max(0, Math.min(100, Number(anterior.valor))) / 100;
         doc.moveTo(ax, ay).lineTo(px, py).lineWidth(1.5).strokeColor(CORES.petroleo).stroke();
       }
       doc.circle(px, py, 3).fillColor(CORES.papel).fillAndStroke(CORES.papel, CORES.petroleo);
       doc.fillColor(CORES.suave).font("Helvetica").fontSize(6).text(ponto.rotulo, px - 30, y + height + 8, { width: 60, align: "center" });
+      doc.fillColor(CORES.ouro).font("Helvetica-Bold").fontSize(5.4)
+        .text(ponto.zona, px - 42, py - 14, { width: 84, align: "center" });
     });
   } else {
     doc.fillColor(CORES.suave).font("Helvetica").fontSize(8).text("Trajetória não inferível com os pontos preservados.", x + 25, y + height / 2 - 5, {
@@ -546,10 +589,11 @@ function barrasHorizontais(doc: PDFKit.PDFDocument, itens: Registro[], x: number
   const linha = Math.min(38, height / validos.length);
   validos.forEach((item, indice) => {
     const yy = y + indice * linha;
-    const valor = Math.max(0, Math.min(100, numero(item.valor ?? item.ganho ?? item.magnitude) ?? 0));
+    const valorRegistrado = numero(item.valor ?? item.ganho ?? item.magnitude);
     doc.fillColor(CORES.texto).font("Helvetica").fontSize(7).text(texto(item.rotulo ?? item.nome, `Indicador ${indice + 1}`), x, yy, { width: 116 });
     doc.roundedRect(x + 122, yy + 1, width - 155, 7, 3.5).fill("#e7e6df");
-    if (numero(item.valor ?? item.ganho ?? item.magnitude) != null) {
+    if (valorRegistrado != null) {
+      const valor = Math.max(0, Math.min(100, valorRegistrado));
       doc.roundedRect(x + 122, yy + 1, (width - 155) * valor / 100, 7, 3.5).fill(CORES.petroleo);
       doc.fillColor(CORES.suave).font("Helvetica").fontSize(6.5).text(valor.toFixed(0), x + width - 28, yy, { width: 28, align: "right" });
     } else {
@@ -619,6 +663,70 @@ function fecharDocumento(doc: PDFKit.PDFDocument, tipo: TipoDocumentoTirh, entra
       lineBreak: false
     });
   }
+}
+
+function renderNarrativaTirh(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHumanexus) {
+  let y = novaPagina(
+    doc,
+    "TIRH · Fundamentos",
+    "Inteligência Regulatória Humana",
+    "Lacuna científica, postulados, macrocampos, Vetores, Resultante, Zonas e Trajetórias Adaptativas."
+  );
+  y = listaEditorial(
+    doc,
+    itensDeSecao(entrada, "FUNDAMENTOS_TIRH"),
+    83,
+    y + 5,
+    455,
+    8
+  );
+  y = tituloSecao(doc, "Como o funcionamento se sustentou", y + 8, "01");
+  listaEditorial(
+    doc,
+    itensDeSecao(entrada, "SUSTENTACAO_DO_FUNCIONAMENTO"),
+    83,
+    y,
+    455,
+    13
+  );
+
+  y = novaPagina(
+    doc,
+    "TIRH · Funcionamento",
+    "Gatilhos, exigências e Rotas Regulatórias",
+    "O relatório distingue evidência registrada, ausência legítima e interpretação profissional."
+  );
+  y = tituloSecao(doc, "Gatilhos, exigências e custo regulatório", y, "01");
+  y = listaEditorial(doc, itensDeSecao(entrada, "GATILHOS_E_EXIGENCIAS"), 83, y, 455, 6);
+  y = tituloSecao(doc, "Rotas Regulatórias", y + 8, "02");
+  y = listaEditorial(doc, itensDeSecao(entrada, "ROTAS_REGULATORIAS"), 83, y, 455, 7);
+  y = tituloSecao(doc, "Condições regulatórias", y + 8, "03");
+  listaEditorial(doc, itensDeSecao(entrada, "CONDICOES_REGULATORIAS"), 83, y, 455, 7);
+
+  y = novaPagina(
+    doc,
+    "TIRH · Treinamento",
+    "Aquisição e consolidação de Rotas Adaptativas",
+    "Direcionamento do treinamento cognitivo operacional apoiado somente em evidências preservadas."
+  );
+  y = tituloSecao(doc, "CTR, THX, resposta e mudança regulatória", y, "01");
+  y = listaEditorial(
+    doc,
+    itensDeSecao(entrada, "TREINAMENTO_COGNITIVO_OPERACIONAL"),
+    83,
+    y,
+    455,
+    9
+  );
+  y = tituloSecao(doc, "Evolução longitudinal", y + 8, "02");
+  listaEditorial(
+    doc,
+    itensDeSecao(entrada, "EVOLUCAO_LONGITUDINAL"),
+    83,
+    y,
+    455,
+    6
+  );
 }
 
 function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHumanexus) {
@@ -695,6 +803,7 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   paragrafo(doc, texto(origem.recomendacao, "Recomendação não registrada."), y, { x: 83, width: 455 });
   doc.moveTo(83, 724).lineTo(350, 724).lineWidth(.55).strokeColor(CORES.cinza).stroke();
   doc.fillColor(CORES.suave).font("Helvetica").fontSize(7).text("Assinatura do profissional responsável", 83, 733);
+  renderNarrativaTirh(doc, entrada);
 }
 
 function renderCientifico(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHumanexus) {
@@ -772,6 +881,7 @@ function renderCientifico(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHuma
   ], 83, y, 455, 8);
   y = tituloSecao(doc, "Conclusão científica", y + 8, "03");
   paragrafo(doc, texto(origem.conclusao_cientifica, "Conclusão científica não registrada."), y, { x: 83, width: 455 });
+  renderNarrativaTirh(doc, entrada);
 }
 
 function renderExecutivo(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHumanexus) {
@@ -800,7 +910,8 @@ function renderExecutivo(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHuman
   y = tituloSecao(doc, "Recomendações", y + 8, "02");
   y = listaEditorial(doc, recomendacoes.map((item) => `${texto(item.nome ?? item.rotulo, "Recomendação")} — ${texto(item.descricao ?? item.justificativa, "sem descrição")}`), 83, y, 455, 7);
   y = tituloSecao(doc, "Limites de leitura", y + 8, "03");
-  paragrafo(doc, "Este documento apresenta tendências autorizadas e agregadas. Não contém diagnóstico, inferência permanente nem decisão profissional automática.", y, { x: 83, width: 455, cor: CORES.suave });
+  paragrafo(doc, "Este documento apresenta tendências autorizadas e agregadas segundo a TIRH, sem inferência permanente ou decisão profissional automática.", y, { x: 83, width: 455, cor: CORES.suave });
+  renderNarrativaTirh(doc, entrada);
 }
 
 function renderTecnico(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHumanexus) {
@@ -837,7 +948,7 @@ function renderFormulacao(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHuma
   const hipoteses = extrairItens(entrada, "hipoteses_regulatorias");
   const gatilhos = extrairItens(entrada, "gatilhos");
   const intervencoes = extrairItens(entrada, "propostas_intervencao");
-  let y = novaPagina(doc, "01 · Formulação", "Síntese regulatória contextual", "Documento próprio da TIRH, distinto de documentos psicológicos.");
+  let y = novaPagina(doc, "01 · Formulação", "Síntese regulatória contextual", "Documento próprio da TIRH para orientar o treinamento cognitivo operacional.");
   y = tituloSecao(doc, "Questão regulatória", y, "01");
   y = paragrafo(doc, texto(origem.questao_regulatoria, "Questão regulatória não registrada."), y, { x: 83, width: 455 });
   y = tituloSecao(doc, "Configuração inicial", y + 7, "02");
@@ -858,6 +969,7 @@ function renderFormulacao(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHuma
   paragrafo(doc, texto(origem.justificativa_profissional, "Justificativa profissional pendente."), y, { x: 83, width: 455 });
   doc.moveTo(83, 724).lineTo(350, 724).lineWidth(.55).strokeColor(CORES.cinza).stroke();
   doc.fillColor(CORES.suave).font("Helvetica").fontSize(7).text("Assinatura do profissional responsável", 83, 733);
+  renderNarrativaTirh(doc, entrada);
 }
 
 export async function gerarPdfVisualHumanexus(entrada: EntradaRelatorioHumanexus) {

@@ -17,6 +17,10 @@ const DESTINATARIOS: Record<string, string> = {
 const EXECUTIVAS = new Set([
   "IDENTIFICACAO", "OBJETIVO", "CONTEXTO", "RESULTADOS_AUTORIZADOS",
   "RESULTADOS_COLETIVOS", "INTERPRETACAO", "PROXIMOS_PASSOS",
+  "FUNDAMENTOS_TIRH", "SUSTENTACAO_DO_FUNCIONAMENTO",
+  "GATILHOS_E_EXIGENCIAS", "ROTAS_REGULATORIAS",
+  "CONDICOES_REGULATORIAS", "TREINAMENTO_COGNITIVO_OPERACIONAL",
+  "EVOLUCAO_LONGITUDINAL",
 ]);
 
 function dataHumana(valor?: string | null) {
@@ -133,14 +137,14 @@ export function DetalheDoRelatorioLiberado({
 
       <section className="hx-released-report__layer">
         <small>LEITURA 01</small>
-        <h2>Leitura executiva</h2>
-        <p>O que foi observado, seu significado operacional e os próximos passos registrados.</p>
+        <h2>Leitura operacional</h2>
+        <p>Como o funcionamento se sustentou, quais Rotas Regulatórias foram observadas e como o treinamento cognitivo operacional foi direcionado.</p>
         <Secoes itens={executivas} />
       </section>
       <section className="hx-released-report__layer">
         <small>LEITURA 02</small>
-        <h2>Leitura técnica · Fatores Humanos</h2>
-        <p>Detalhamento TIRH, qualidade das evidências, limitações e sustentação da interpretação.</p>
+        <h2>Sustentação TIRH</h2>
+        <p>Vetores, Resultante, IIRH, Zona, condições regulatórias, evidências, limites e proveniência que sustentam a leitura.</p>
         <Secoes itens={tecnicas} />
       </section>
 

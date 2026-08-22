@@ -56,9 +56,10 @@ test("governança interna abre, baixa e imprime o relatório autenticado", async
 
 test("relatório externo oferece duas camadas em linguagem humana", async () => {
   const componente = await source("components/relatorios-liberados.tsx");
-  assert.match(componente, /Leitura executiva/);
-  assert.match(componente, /Leitura técnica · Fatores Humanos/);
-  assert.match(componente, /O que foi observado, seu significado operacional/);
+  assert.match(componente, /Leitura operacional/);
+  assert.match(componente, /Sustentação TIRH/);
+  assert.match(componente, /TREINAMENTO_COGNITIVO_OPERACIONAL/);
+  assert.match(componente, /Como o funcionamento se sustentou/);
   assert.match(componente, /Ainda não há relatórios disponíveis nesta área/);
   for (const termo of [
     "payload", "endpoint", "snapshot", "schema", "JSON", "cache", "query",
