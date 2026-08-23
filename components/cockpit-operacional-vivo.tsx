@@ -2739,20 +2739,21 @@ export function CockpitOperacionalVivo({
             <details className="hx-live-vector-trace" open={claimsPendentesTirhV1.length > 0}>
               <summary>Validação Profissional · quadro único pós-sessão</summary>
               <p>Este quadro valida interpretações ou ajustes autorais sem reabrir a sessão, a máquina de estados, o lease da estação ou qualquer sensor.</p>
-              {claimsTirhV1.length ? (
-                <div className="hx-tirh-v1-claims">
-                  {claimsTirhV1.map((claim) => (
+              {claimsPendentesTirhV1.length ? (
+                <div
+                  className="hx-tirh-v1-claims"
+                  data-eligible-claims-count={claimsPendentesTirhV1.length}
+                >
+                  {claimsPendentesTirhV1.map((claim) => (
                     <article key={texto(claim.claim_id)}>
                       <small>{texto(claim.tipo)} · {texto(claim.estado_epistemico)}</small>
                       <strong>{texto(claim.claim_id)}</strong>
                       <span>{texto(claim.explicacao_humana, texto(claim.valor_bruto))}</span>
-                      <em>{claim.requer_validacao_profissional === true
-                        ? texto(claim.estado_da_validacao_profissional, "PENDENTE")
-                        : "FATO OBJETIVO / ARITMÉTICA CANÔNICA"}</em>
+                      <em>{texto(claim.estado_da_validacao_profissional, "PENDENTE")}</em>
                     </article>
                   ))}
                 </div>
-              ) : <p>Nenhum claim foi materializado neste recorte.</p>}
+              ) : <p>Nenhum claim elegível aguarda validação profissional neste recorte.</p>}
               {claimsPendentesTirhV1.length ? (
                 <div className="hx-tirh-v1-validation-form">
                   <label>

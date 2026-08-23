@@ -914,10 +914,11 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
     design,
     /\[data-hx-experience-mode="executivo"\] \.hx-live-cockpit > #hx-inspection-level/
   );
-  assert.match(
-    design,
-    /\.hx-live-cockpit > #hx-inspection-level,[\s\S]*display: none !important/
-  );
+  const bloqueioIncondicional = design.match(
+    /\/\* A superfície operacional não replica documentação científica\.[\s\S]*?\n\}/
+  )?.[0] ?? "";
+  assert.ok(bloqueioIncondicional);
+  assert.doesNotMatch(bloqueioIncondicional, /#hx-inspection-level/);
   assert.match(
     cockpit,
     /sessão, participante, fase, horário e profissional seguem do contexto atual/

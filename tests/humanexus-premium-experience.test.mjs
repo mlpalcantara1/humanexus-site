@@ -45,9 +45,14 @@ test("radar permanece protagonista e ausência continua visualmente distinta", (
   assert.doesNotMatch(css, /\.hx-live-vector-stage[^}]*content:\s*["']0/);
 });
 
-test("Cockpit usa uma taxonomia de navegação e mantém ciência fora da superfície operacional", () => {
+test("Cockpit mantém a inspeção científica acessível somente na profundidade científica", () => {
   assert.match(css, /\.hx-app:has\(\.hx-cockpit-workspace\) \.hx-experience-mode\s*\{[\s\S]*?display:\s*none;/);
-  assert.match(css, /\.hx-live-cockpit > #hx-inspection-level,[\s\S]*?display:\s*none !important;/);
+  assert.match(css, /\[data-hx-experience-mode="executivo"\] \.hx-live-cockpit > #hx-inspection-level/);
+  const bloqueioIncondicional = css.match(
+    /\/\* A superfície operacional não replica documentação científica\.[\s\S]*?\n\}/
+  )?.[0] ?? "";
+  assert.ok(bloqueioIncondicional);
+  assert.doesNotMatch(bloqueioIncondicional, /#hx-inspection-level/);
 });
 
 test("responsividade cobre notebook, tablet e celular sem nova dependência", () => {

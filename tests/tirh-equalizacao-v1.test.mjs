@@ -6,6 +6,7 @@ const cockpit = fs.readFileSync("components/cockpit-operacional-vivo.tsx", "utf8
 const operacao = fs.readFileSync("components/operacao-homologacao.tsx", "utf8");
 const proxy = fs.readFileSync("app/api/operacao-homologacao/route.ts", "utf8");
 const estilos = fs.readFileSync("app/globals.css", "utf8");
+const design = fs.readFileSync("app/humanexus-design-system.css", "utf8");
 
 test("Cockpit consome a síntese TIRH V1 do núcleo sem calcular ciência local", () => {
   assert.match(cockpit, /leituraCientifica\.tirh_operacional_v1/);
@@ -25,6 +26,19 @@ test("validação profissional usa um quadro pós-sessão versionado e auditáve
   assert.match(cockpit, /crypto\.randomUUID\(\)/);
   assert.match(operacao, /validar-claim-tirh-v1/);
   assert.match(proxy, /\/tirh-v1\/validacoes/);
+});
+
+test("Síntese e validação V1 ficam visíveis no modo científico sem duplicar elegibilidade", () => {
+  assert.match(cockpit, /Object\.keys\(tirhV1\)\.length \? \(/);
+  assert.match(cockpit, /className="hx-tirh-v1-claims"[\s\S]{0,180}\{claimsPendentesTirhV1\.map/);
+  assert.doesNotMatch(cockpit, /className="hx-tirh-v1-claims"[\s\S]{0,180}\{claimsTirhV1\.map/);
+  assert.match(cockpit, /data-eligible-claims-count=\{claimsPendentesTirhV1\.length\}/);
+  const bloqueioIncondicional = design.match(
+    /\/\* A superfície operacional não replica documentação científica\.[\s\S]*?\n\}/
+  )?.[0] ?? "";
+  assert.ok(bloqueioIncondicional);
+  assert.doesNotMatch(bloqueioIncondicional, /#hx-inspection-level/);
+  assert.match(design, /\[data-hx-experience-mode="executivo"\] \.hx-live-cockpit > #hx-inspection-level/);
 });
 
 test("V1 separa RRD do registro histórico legado e não o promove automaticamente", () => {
