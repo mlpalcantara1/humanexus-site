@@ -110,8 +110,9 @@ test("decisão existente fica visível sem reexpor o claim nem oferecer segunda 
 });
 
 test("PDF, Print, Replay e Longitudinal permanecem no mesmo fluxo", () => {
-  assert.match(operacao, /Baixar PDF A4 claro/);
-  assert.match(operacao, /Abrir para impressão/);
+  assert.match(operacao, /Baixar PDF final/);
+  assert.match(operacao, /Abrir impressão final/);
+  assert.match(operacao, /cicloDoRelatorioAtual\.finalDisponivel/);
   assert.match(operacao, /visao === "replay"/);
   assert.match(operacao, /visao === "longitudinal"/);
   assert.match(operacao, /const visaoReplay = \(/);

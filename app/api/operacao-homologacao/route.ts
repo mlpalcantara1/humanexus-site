@@ -9,6 +9,11 @@ import { ErroDaRota, responderErroDaApi } from "@/lib/api-route-error";
 import { COOKIE_CSRF, COOKIE_SESSAO } from "@/lib/portal-session";
 import { exigirCsrf } from "@/lib/request-security";
 import { normalizarComandoOperacional } from "@/lib/cockpit-operational-command";
+import {
+  CAMPOS_PROFISSIONAIS_DO_RELATORIO,
+  resolverIdentidadeDocumental,
+  tituloHumanoDoRelatorio
+} from "@/lib/humanexus-report-authority";
 
 type Registro = Record<string, unknown>;
 type SelecaoDeContexto = {
@@ -132,6 +137,53 @@ function registro(valor: unknown): Registro {
   }
 }
 
+function sanitizarDtoDaPopulacaoColetiva(valor: unknown): Registro {
+  const populacao = registro(valor);
+  const pertencimento = registro(populacao.pertencimento);
+  const elegibilidade = registro(populacao.elegibilidade_cientifica);
+  const exposicao = registro(populacao.exposicao);
+  const membrosAutorizados = lista(populacao.membros_autorizados)
+    .map(registro)
+    .map((item) => String(item.referencia_operacional ?? "").trim())
+    .filter(Boolean)
+    .map((referenciaOperacional) => ({
+      referencia_operacional: referenciaOperacional
+    }));
+  return {
+    estado: populacao.estado,
+    pertencimento: {
+      participantes_ativos_na_organizacao:
+        pertencimento.participantes_ativos_na_organizacao,
+      membros_organizacionais_automaticos:
+        pertencimento.membros_organizacionais_automaticos,
+      participantes_particulares_fora_do_coletivo:
+        pertencimento.participantes_particulares_fora_do_coletivo,
+      regra: pertencimento.regra
+    },
+    elegibilidade_cientifica: {
+      participantes_com_sessao_elegivel:
+        elegibilidade.participantes_com_sessao_elegivel,
+      sessoes_individuais_elegiveis:
+        elegibilidade.sessoes_individuais_elegiveis,
+      limiar_minimo_autorizado:
+        elegibilidade.limiar_minimo_autorizado,
+      agregacao_permitida: Boolean(elegibilidade.agregacao_permitida)
+    },
+    exposicao: {
+      participantes_com_permissao_explicita:
+        exposicao.participantes_com_permissao_explicita,
+      dados_pessoais_expostos: false,
+      cpf_exposto: false,
+      identificador_individual_permitido:
+        "REFERENCIA_OPERACIONAL_ONLY"
+    },
+    membros_autorizados: membrosAutorizados,
+    cobertura: populacao.cobertura,
+    requisitos_nao_atendidos: lista(populacao.requisitos_nao_atendidos),
+    limites: lista(populacao.limites)
+  };
+}
+
 async function atualizacaoLeve(
   token: string,
   selecao: SelecaoDeContexto,
@@ -222,6 +274,7 @@ async function estado(
     sessoes: Registro[];
     profissionais: Registro[];
     vinculos_ctr_thx_validados: Registro[];
+    populacao_coletiva: Registro;
   }>(
     `/api/v1/gestao/contexto?${parametrosDoContexto}`,
     token,
@@ -498,6 +551,10 @@ async function estado(
   const nomeDoParticipante = anamneses
     .map((item) => item.nome_do_participante)
     .find((item) => typeof item === "string" && item.trim());
+  const identidadeDocumental = resolverIdentidadeDocumental(
+    participante,
+    organizacao
+  );
   const detalhesOperacionaisConsultados = registro(sessaoOperacional.detalhes);
   const detalhesOperacionais = Object.keys(detalhesOperacionaisConsultados).length
     ? detalhesOperacionaisConsultados
@@ -610,7 +667,11 @@ async function estado(
     organizacao,
     participante: {
       ...participante,
-      nome: nomeDoParticipante ?? participante.referencia_externa
+      nome: identidadeDocumental.nomeCompleto,
+      nome_documental: identidadeDocumental.nomeCompleto,
+      cpf_documental: identidadeDocumental.cpf,
+      fonte_da_identidade: identidadeDocumental.fonte,
+      nome_de_anamnese: nomeDoParticipante ?? null
     } as Registro,
     sessao,
     estado_operacional: estadoOperacional,
@@ -629,9 +690,7 @@ async function estado(
       participantes: participantes.map((item) => ({
         identificador: item.identificador,
         referencia_externa: item.referencia_externa,
-        rotulo: item.identificador === participanteId
-          ? nomeDoParticipante ?? item.referencia_externa
-          : item.referencia_externa,
+        rotulo: resolverIdentidadeDocumental(item, organizacao).nomeCompleto,
         ativo: Boolean(item.ativo)
       })),
       sessoes: sessoes.map((item) => ({
@@ -696,14 +755,30 @@ async function estado(
     gravacao,
     configuracao_cortex: configuracaoCortex,
     rastreabilidade,
+    populacao_coletiva: sanitizarDtoDaPopulacaoColetiva(
+      contextoBase.populacao_coletiva
+    ),
     relatorios: relatoriosDaSessao.map((item) => ({
       identificador: item.identificador,
+      identificador_da_serie: item.identificador_da_serie,
+      identificador_da_versao_anterior: item.identificador_da_versao_anterior,
+      numero_da_versao: item.numero_da_versao,
+      codigo_publico: item.codigo_publico,
       tipo: item.tipo,
+      destinatario: item.destinatario,
       titulo: item.titulo,
+      objetivo: item.objetivo,
       criado_em: item.criado_em,
       estado_documental: item.estado_documental,
+      estado_funcional: item.estado_funcional,
+      campos_profissionais_ausentes: lista(item.campos_profissionais_ausentes),
+      consolidacao_profissional: registro(item.consolidacao_profissional),
+      relatorio_final_disponivel: Boolean(item.relatorio_final_disponivel),
       contexto: registro(item.contexto_json),
       qualidade_dos_dados: registro(item.qualidade_dos_dados_json),
+      interpretacao_profissional: item.interpretacao_profissional,
+      limites: lista(item.limites_json),
+      proximos_passos: lista(item.proximos_passos_json),
       secoes: lista(item.secoes_json)
     })),
     formulacoes,
@@ -853,7 +928,10 @@ async function gerarRelatorio(token: string, contexto: Contexto) {
     body: JSON.stringify({
       tipo: tipoDaSessao === "BASELINE" ? "INDIVIDUAL_DE_SESSAO" : "PRE_TREINO_POS",
       destinatario: "PROFISSIONAL",
-      titulo: `${String(contexto.sessao.nome_operacional ?? "Sessão operacional")} — relatório HUMANEXUS`,
+      titulo: tituloHumanoDoRelatorio(
+        contexto.participante,
+        contexto.organizacao
+      ),
       objetivo: "Consolidar os registros canônicos da sessão para análise profissional.",
       identificador_da_sessao: contexto.sessao.identificador,
       contexto: {
@@ -872,14 +950,93 @@ async function gerarRelatorio(token: string, contexto: Contexto) {
         confiabilidade: "Registrada pelo motor científico para cada fase.",
         origem: "Evidências canônicas persistidas da sessão."
       },
-      interpretacao_profissional: "Interpretação profissional pendente.",
+      interpretacao_profissional: "",
       limites: [
         "Indicadores ausentes permanecem sem valor.",
         "A decisão e a interpretação finais permanecem sob responsabilidade profissional."
       ],
-      proximos_passos: ["Revisão e validação profissional do documento."]
+      proximos_passos: []
     })
   }, String(contexto.organizacao.identificador));
+}
+
+function possuiConteudoProfissional(valor: unknown): boolean {
+  if (typeof valor === "string") return Boolean(valor.trim());
+  if (Array.isArray(valor)) return valor.some(possuiConteudoProfissional);
+  if (valor && typeof valor === "object") {
+    return Object.values(valor as Registro).some(possuiConteudoProfissional);
+  }
+  return valor != null;
+}
+
+async function consolidarRelatorio(
+  token: string,
+  contexto: Contexto,
+  consolidacaoRecebida: unknown
+) {
+  const consolidacao = registro(consolidacaoRecebida);
+  const ausentes = CAMPOS_PROFISSIONAIS_DO_RELATORIO
+    .filter(([campo]) => !possuiConteudoProfissional(consolidacao[campo]))
+    .map(([, rotulo]) => rotulo);
+  if (ausentes.length) {
+    throw new ErroDaRota(
+      `A consolidação profissional ainda está incompleta: ${ausentes.join(", ")}.`,
+      400,
+      "CONSOLIDACAO_PROFISSIONAL_INCOMPLETA"
+    );
+  }
+  const anterior = contexto.relatorios.at(-1);
+  const contextoAnterior = registro(anterior?.contexto);
+  const qualidadeAnterior = registro(anterior?.qualidade_dos_dados);
+  const detalhes = registro(contexto.sessao_operacional?.detalhes);
+  const tipoDaSessao = String(
+    contexto.sessao.tipo_de_sessao
+    ?? detalhes.tipo_de_sessao
+    ?? "PRE_TREINO_POS"
+  ).toUpperCase();
+  await consultar(
+    `/api/v1/participantes/${encodeURIComponent(String(contexto.participante.identificador))}/relatorios`,
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        tipo: anterior?.tipo
+          ?? (tipoDaSessao === "BASELINE" ? "INDIVIDUAL_DE_SESSAO" : "PRE_TREINO_POS"),
+        destinatario: anterior?.destinatario ?? "PROFISSIONAL",
+        titulo: tituloHumanoDoRelatorio(
+          contexto.participante,
+          contexto.organizacao
+        ),
+        objetivo: String(consolidacao.contexto_e_objetivo),
+        contexto: {
+          ...contextoAnterior,
+          identificador_interno_da_sessao: contexto.sessao.identificador,
+          nome_da_sessao: contexto.sessao.nome_operacional,
+          finalidade: contexto.sessao.finalidade,
+          tipo_de_sessao: contexto.sessao.tipo_de_sessao
+        },
+        qualidade_dos_dados: Object.keys(qualidadeAnterior).length
+          ? qualidadeAnterior
+          : {
+              origem: "Evidências canônicas preservadas da sessão.",
+              limite: "Ausências permanecem ausências."
+            },
+        interpretacao_profissional: String(
+          consolidacao.interpretacao_profissional
+        ),
+        limites: [String(consolidacao.limitacoes)],
+        proximos_passos: [String(consolidacao.proximo_passo_regulatorio)],
+        consolidacao_profissional: consolidacao,
+        ...(anterior?.identificador_da_serie ? {
+          identificador_da_serie: anterior.identificador_da_serie,
+          justificativa_da_revisao: (
+            "Consolidação profissional append-only da sessão preservada."
+          )
+        } : {})
+      })
+    },
+    String(contexto.organizacao.identificador)
+  );
 }
 
 export async function POST(request: Request) {
@@ -915,7 +1072,9 @@ export async function POST(request: Request) {
       "exportar-replay",
       "consolidar-longitudinal",
       "materializar-entregas",
-      "relatorio"
+      "relatorio",
+      "consolidar-relatorio",
+      "transicionar-relatorio"
     ].includes(String(corpo.acao ?? ""));
     const contexto = await estado(token, selecao, {
       carregamentoInicial: !exigeEstadoCompleto,
@@ -1077,6 +1236,35 @@ export async function POST(request: Request) {
       });
     } else if (corpo.acao === "relatorio") {
       await gerarRelatorio(token, contexto);
+    } else if (corpo.acao === "consolidar-relatorio") {
+      await consolidarRelatorio(token, contexto, corpo.payload);
+    } else if (corpo.acao === "transicionar-relatorio") {
+      const payload = registro(corpo.payload);
+      const relatorio = contexto.relatorios.find(
+        (item) => String(item.identificador) === String(payload.identificador)
+      );
+      const destino = String(payload.estado ?? "").toUpperCase();
+      const justificativa = String(payload.justificativa ?? "").trim();
+      if (
+        !relatorio
+        || !["AGUARDANDO_VALIDACAO", "CONCLUIDO"].includes(destino)
+        || justificativa.length < 8
+      ) {
+        throw new ErroDaRota(
+          "A transição exige o relatório atual, destino permitido e justificativa profissional.",
+          400,
+          "TRANSICAO_DOCUMENTAL_INVALIDA"
+        );
+      }
+      await consultar(
+        `/api/v1/relatorios/${encodeURIComponent(String(relatorio.identificador))}/transicoes`,
+        token,
+        {
+          method: "POST",
+          body: JSON.stringify({ estado: destino, justificativa })
+        },
+        organizacaoId
+      );
     } else {
       throw new ErroDaRota(
         "A ação solicitada não está disponível neste estado da sessão.",

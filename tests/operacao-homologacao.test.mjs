@@ -119,10 +119,12 @@ test("relatório usa a sessão canônica e não duplica versões por chave de co
   assert.match(route, /contextoDoRelatorio\.identificador_interno_da_sessao/);
   assert.match(route, /secoes: lista\(item\.secoes_json\)/);
   assert.match(route, /identificador_da_sessao: contexto\.sessao\.identificador/);
-  assert.match(route, /Interpretação profissional pendente/);
+  assert.match(route, /interpretacao_profissional: ""/);
+  assert.doesNotMatch(route, /Interpretação profissional pendente/);
+  assert.match(route, /consolidarRelatorio/);
   assert.match(client, /function RelatorioCanonicoV1/);
-  assert.match(client, /Projeção canônica TIRH V1 do relatório/);
-  assert.match(client, /<RelatorioCanonicoV1 estado=\{estado\} relatorio=\{estado\.relatorios\.at\(-1\)\}/);
+  assert.match(client, /Relatório Operacional TIRH completo/);
+  assert.match(client, /<RelatorioCanonicoV1 estado=\{estado\} relatorio=\{relatorioAtual\}/);
   assert.doesNotMatch(route, /Registro técnico de homologação|Simulação técnica não equivale/);
 });
 
@@ -300,7 +302,7 @@ test("comando principal inicia e mantém o Baseline pela rota canônica", async 
 test("visualizações premium diferenciam dado, simulação, lacuna e bloqueio", async () => {
   const chart = await source("components/hx-command-visualizations.tsx");
   const client = await source("components/operacao-homologacao.tsx");
-  for (const estado of ["Dado humano", "Simulação técnica", "Lacuna real", "BLOQUEADO POR COMPARABILIDADE", "AMOSTRA NÃO ELEGÍVEL"]) {
+  for (const estado of ["Dado humano", "Simulação técnica", "Lacuna real", "BLOQUEADO POR COMPARABILIDADE", "COLETIVO EM FORMAÇÃO"]) {
     assert.match(`${chart}\n${client}`, new RegExp(estado, "i"));
   }
   assert.doesNotMatch(client, /BLOQUEADO POR SIMULAÇÃO TÉCNICA/);
@@ -422,8 +424,10 @@ test("Modo Coletivo identifica a visão ativa sem fabricar amostra ou índice", 
   const client = await source("components/operacao-homologacao.tsx");
   assert.match(client, /selecionarVisao\("visao-geral"\).*Cockpit Individual/s);
   assert.match(client, /className="is-active" aria-current="page">Cockpit Coletivo/);
-  assert.match(client, /AMOSTRA NÃO ELEGÍVEL/);
-  assert.match(client, /Não há equipe autorizada, finalidade coletiva, anonimização ou amostra elegível/);
+  assert.match(client, /COLETIVO EM FORMAÇÃO/);
+  assert.match(client, /membros_organizacionais_automaticos/);
+  assert.match(client, /Nenhuma média individual é calculada/);
+  assert.doesNotMatch(client, /Não há equipe autorizada, finalidade coletiva, anonimização ou amostra elegível/);
   assert.doesNotMatch(client, /disabled>Cockpit Coletivo/);
 });
 

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requisitarNucleoAutenticado } from "@/lib/humanexus-core";
 import { gerarPdfVisualHumanexus } from "@/lib/humanexus-report-pdf";
 import { COOKIE_SESSAO } from "@/lib/portal-session";
+import { projetarEstadoFuncionalDoRelatorio } from "@/lib/humanexus-report-authority";
 
 type Registro = Record<string, unknown>;
 
@@ -73,6 +74,25 @@ export async function GET(request: Request) {
       `/api/v1/relatorios/${encodeURIComponent(String(relatorioResumido.identificador))}`,
       token
     );
+    const cicloDocumental = projetarEstadoFuncionalDoRelatorio(relatorio);
+    if (!cicloDocumental.finalDisponivel) {
+      return NextResponse.json(
+        {
+          erro: {
+            codigo: "RELATORIO_FINAL_INDISPONIVEL",
+            mensagem: (
+              "PDF e Print finais exigem consolidação profissional completa "
+              + "e relatório final validado."
+            ),
+            campos_ausentes: cicloDocumental.rotulosAusentes
+          }
+        },
+        {
+          status: 409,
+          headers: { "cache-control": "private, no-store" }
+        }
+      );
+    }
     const execucao = execucoes.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
     const sessaoId = String(sessao.identificador);
     const [

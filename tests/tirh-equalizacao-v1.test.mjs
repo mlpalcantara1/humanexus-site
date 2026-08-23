@@ -81,13 +81,12 @@ test("Resultante V1 estruturada não exige magnitude escalar", () => {
   assert.match(operacao, /possuiProjecaoV1/);
 });
 
-test("relatório V1 separa integralmente o documento histórico legacy", () => {
-  assert.match(operacao, /RELATÓRIO TIRH V1 · PROJEÇÃO CANÔNICA/);
-  assert.match(operacao, /IIRH OPERACIONAL V1/);
-  assert.match(operacao, /VERSÃO HISTÓRICA PRESERVADA · CONTRATO CIENTÍFICO LEGACY/);
-  assert.match(operacao, /IIRH LEGACY:/);
-  assert.match(operacao, /não apresentado como IIRH Operacional V1/);
-  assert.doesNotMatch(operacao, /lista\(secao\.itens\)\.map/);
+test("relatório V1 usa somente a projeção canônica e não reativa IIRH legacy", () => {
+  assert.match(operacao, /PROJEÇÃO CANÔNICA TIRH V1/);
+  assert.match(operacao, /IIRH:/);
+  assert.match(operacao, /NÃO CALCULÁVEL/);
+  assert.match(operacao, /Magnitude escalar: <strong>NÃO APLICÁVEL NA TIRH V1/);
+  assert.doesNotMatch(operacao, /IIRH LEGACY:|valorIirhDoRelatorioLegacy/);
 });
 
 test("quadro científico permanece responsivo nas larguras autorais", () => {

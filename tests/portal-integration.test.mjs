@@ -625,8 +625,9 @@ test("relatório oferece PDF para download e impressão autenticada", async () =
   const operation = await source("components/operacao-homologacao.tsx");
   const pdf = await source("app/api/operacao-homologacao/pdf/route.ts");
 
-  assert.match(operation, /Baixar PDF A4 claro/);
-  assert.match(operation, /Abrir para impressão/);
+  assert.match(operation, /Baixar PDF final/);
+  assert.match(operation, /Abrir impressão final/);
+  assert.match(operation, /cicloDoRelatorioAtual\.finalDisponivel/);
   assert.match(operation, /modo=impressao/);
   assert.match(pdf, /modoImpressao/);
   assert.match(pdf, /inline/);

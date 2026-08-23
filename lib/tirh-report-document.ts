@@ -1,6 +1,10 @@
 import PDFDocument from "pdfkit";
 
 import { decisoesProfissionaisPreservadasTirhV1 } from "./validacao-profissional-tirh-v1.ts";
+import {
+  projetarEstadoFuncionalDoRelatorio,
+  resolverIdentidadeDocumental
+} from "./humanexus-report-authority.ts";
 
 export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.0";
 
@@ -201,7 +205,12 @@ function capa(
     width: 470,
     characterSpacing: 1.55
   });
-  const tituloDaCapa = texto(relatorio.titulo, ROTULOS[tipo]);
+  const tituloDaCapa = texto(
+    relatorio.titulo_humano,
+    relatorioColetivo
+      ? texto(relatorio.titulo, ROTULOS[tipo])
+      : `${ROTULOS.OPERACIONAL_TIRH} — ${identificacao.nomeCompleto}`
+  );
   doc.fillColor(CORES.branco).font("Helvetica-Bold").fontSize(34).text(tituloDaCapa, 47, 278, {
     width: 470,
     lineGap: 3
@@ -451,15 +460,32 @@ function textoDeSecao(entrada: EntradaRelatorioHumanexus, codigo: string, ausenc
 }
 
 function identificacaoDocumental(entrada: EntradaRelatorioHumanexus) {
+  const identidadeDoCore = objeto(entrada.relatorio.identidade_documental);
+  const identidadeAtual = resolverIdentidadeDocumental(
+    entrada.participante,
+    { nome: identidadeDoCore.organizacao }
+  );
+  if (identidadeAtual.completa) {
+    return identidadeAtual;
+  }
   const itens = itensDeSecao(entrada, "IDENTIFICACAO");
   const valor = (prefixo: string) => {
     const item = itens.find((registro) => registro.toLocaleLowerCase("pt-BR").startsWith(prefixo));
     return item?.split(":").slice(1).join(":").trim() || null;
   };
   return {
-    nomeCompleto: valor("nome completo:") ?? "Nome completo não informado no cadastro",
-    cpf: valor("cpf:") ?? "Não informado no cadastro",
-    organizacao: valor("organização:") ?? "Organização vinculada"
+    nomeCompleto: texto(
+      identidadeDoCore.nome_completo,
+      valor("nome completo:") ?? identidadeAtual.nomeCompleto
+    ),
+    cpf: texto(
+      identidadeDoCore.cpf,
+      valor("cpf:") ?? identidadeAtual.cpf
+    ),
+    organizacao: texto(
+      identidadeDoCore.organizacao,
+      valor("organização:") ?? identidadeAtual.organizacao
+    )
   };
 }
 
@@ -1092,6 +1118,161 @@ function renderFormulacao(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHuma
   renderNarrativaTirh(doc, entrada);
 }
 
+function renderOperacionalFinalConsolidado(
+  doc: PDFKit.PDFDocument,
+  entrada: EntradaRelatorioHumanexus
+) {
+  const identidade = identificacaoDocumental(entrada);
+  const projecao = projecaoTirhV1(entrada);
+  const resultante = objeto(projecao.resultante);
+  const iirh = objeto(projecao.iirh);
+  const zona = objeto(projecao.zona);
+  const vev = vetoresDaProjecaoTirhV1(entrada).find(
+    (item) => texto(item.codigo, "").toUpperCase() === "VEV"
+  );
+  const vetores = extrairVetores(entrada);
+  const cicloDocumental = projetarEstadoFuncionalDoRelatorio(
+    entrada.relatorio
+  );
+  const consolidacao = cicloDocumental.consolidacao;
+  const cadeia = objeto(objeto(entrada.cockpitOperacional).cadeia_cientifica);
+  const arr = objeto(cadeia.arr);
+  const claims = lista(projecao.claims).map(objeto);
+  const decisoes = decisoesProfissionaisPreservadasTirhV1(claims);
+  const momentos = lista(entrada.ciclo?.momentos).map(objeto);
+  const trajetoria = extrairTrajetoria(entrada);
+  let pagina = 1;
+  let y = novaPagina(
+    doc,
+    "RELATÓRIO OPERACIONAL TIRH",
+    "Síntese, evidências e autoria profissional",
+    "Conteúdo governado pela mesma versão exibida na tela; ausências permanecem explícitas."
+  );
+
+  const novaContinuacao = () => {
+    pagina += 1;
+    y = novaPagina(
+      doc,
+      `RELATÓRIO OPERACIONAL TIRH · ${String(pagina).padStart(2, "0")}`,
+      "Continuação do documento final validado"
+    );
+  };
+
+  const bloco = (codigo: string, titulo: string, itens: string[]) => {
+    const limpos = itens.map((item) => item.trim()).filter(Boolean);
+    if (!limpos.length) return;
+    const altura = 38 + limpos.reduce(
+      (total, item) => total + doc.heightOfString(item, {
+        width: 455,
+        lineGap: 2
+      }) + 9,
+      0
+    );
+    if (y + Math.min(altura, 560) > 735) novaContinuacao();
+    y = tituloSecao(doc, titulo, y, codigo);
+    for (const item of limpos) {
+      const alturaDoItem = doc.heightOfString(item, {
+        width: 440,
+        lineGap: 2
+      }) + 13;
+      if (y + alturaDoItem > 735) novaContinuacao();
+      doc.circle(87, y + 5, 1.7).fill(CORES.ouro);
+      doc.fillColor(CORES.texto).font("Helvetica").fontSize(8.2)
+        .text(item, 97, y, { width: 440, lineGap: 2 });
+      y += alturaDoItem;
+    }
+    y += 7;
+  };
+
+  bloco("01", "Identidade, governança e rastreabilidade", [
+    `Nome completo: ${identidade.nomeCompleto}.`,
+    `CPF: ${identidade.cpf}. Organização: ${identidade.organizacao}.`,
+    `Sessão: ${texto(entrada.sessao.nome_operacional, "sessão registrada")} · ${data(entrada.sessao.finalizado_em ?? entrada.sessao.criado_em)}.`,
+    `Responsável: ${texto(entrada.usuario.nome, "profissional registrado")} · ciência ${texto(projecao.versao_cientifica, "TIRH V1")} · documento ${texto(entrada.relatorio.codigo_publico, texto(entrada.relatorio.identificador))} · versão ${texto(entrada.relatorio.numero_da_versao, "não registrada")}.`,
+    `Estado funcional: ${cicloDocumental.estado.replaceAll("_", " ")}.`
+  ]);
+
+  bloco("02", "Síntese executiva da sessão", [
+    `Contexto e objetivo: ${texto(consolidacao.contexto_e_objetivo)}.`,
+    `Resultante: ${texto(resultante.estado, "não materializada")} — ${texto(resultante.motivo, "limitada às evidências admissíveis do recorte")}.`,
+    `IIRH: ${typeof iirh.valor === "number" ? `${iirh.valor} / 100` : "não calculável"}. Zona: ${texto(zona.codigo ?? zona.estado, "não classificável")}.`,
+    typeof iirh.valor === "number"
+      ? "A medida utiliza somente Macrocampos funcionalmente admissíveis."
+      : "A indisponibilidade de IIRH e Zona informa cobertura insuficiente; não representa falha pessoal."
+  ]);
+
+  bloco("03", "Evidências utilizadas e limites", [
+    ...lista(consolidacao.evidencias_utilizadas).map((item) => `Evidência selecionada: ${texto(item)}.`),
+    `Limitações: ${texto(consolidacao.limitacoes)}.`
+  ]);
+
+  bloco("04", "PRÉ / TREINO / PÓS", momentos.length
+    ? momentos.map((momento) => {
+        const dados = objeto(momento.dados_preservados_json);
+        return `${texto(momento.momento, "Momento")}: cobertura ${texto(momento.cobertura ?? dados.cobertura, "não registrada")}; confiança ${texto(momento.confiabilidade ?? dados.confiabilidade, "não registrada")}; lacunas ${lista(momento.ausencias_json ?? dados.ausencias).map((item) => texto(item)).join(" · ") || "não registradas"}.`;
+      })
+    : ["Comparação PRÉ / TREINO / PÓS indisponível: os momentos equivalentes não estão preservados neste recorte."]
+  );
+
+  bloco("05", "Nove Vetores momentâneos", vetores.map((vetor) => (
+    `${vetor.codigo} · ${vetor.nome} · ${vetor.macrocampo}: `
+    + `${vetor.magnitude == null ? "ausente" : `valor ${vetor.magnitude.toFixed(1)}`}; `
+    + `confiança ${vetor.confianca == null ? "não registrada" : `${Math.round(vetor.confianca * 100)}%`}; `
+    + `${vetor.motivo || "fonte indicada na projeção canônica"}.`
+  )));
+
+  bloco("06", "VEV longitudinal", [
+    `Estado: ${texto(vev?.estado_epistemico ?? vev?.estado, "não elegível")}.`,
+    "O VEV permanece separado dos nove Vetores momentâneos e exige Baseline mais quatro sessões válidas e comparáveis."
+  ]);
+
+  bloco("07", "Resultante, IIRH, Zona e trajetória", [
+    `Resultante estrutural: ${texto(resultante.estado, "não materializada")}. Magnitude escalar: não aplicável na TIRH V1.`,
+    `IIRH: ${typeof iirh.valor === "number" ? iirh.valor : "não calculável"}. Zona: ${texto(zona.codigo ?? zona.estado, "não classificável")}.`,
+    trajetoria.length
+      ? `Trajetória: ${trajetoria.map((item) => `${item.rotulo} — ${item.valor == null ? "ausente" : item.valor} — ${item.zona}`).join(" · ")}.`
+      : "Trajetória não inferível: ainda não há pontos válidos e comparáveis suficientes.",
+    "Um próximo registro válido e comparável pode ampliar a leitura sem reclassificar retroativamente esta sessão."
+  ]);
+
+  const rotas: Array<[string, Registro]> = [
+    ["ARR", arr],
+    ["RRD", objeto(cadeia.rota_dominante)],
+    ["GRI", objeto(arr.gri)],
+    ["CRL", objeto(arr.crl)],
+    ["NRA", objeto(cadeia.nra)]
+  ];
+  bloco("08", "ARR, RRD, GRI, CRL e NRA", rotas.map(([codigo, item]) => (
+    `${codigo}: ${Object.keys(item).length ? texto(item.estado, "registro localizado") : "não materializado"} — ${Object.keys(item).length ? texto(item.motivo ?? item.descricao, "consulte a rastreabilidade") : "nenhuma decisão profissional admissível foi localizada"}.`
+  )));
+
+  bloco("09", "Intervenção, resposta, HX-OBS, TCR e ICR", [
+    `Intervenção: ${texto(consolidacao.intervencao)}.`,
+    `Resposta observada: ${texto(consolidacao.resposta_observada)}.`,
+    `TCR: ${texto(cadeia.tcr, "não materializada")}. ICR: ${texto(cadeia.icr, "não calculável")}.`
+  ]);
+
+  bloco("10", "Interpretação, recursos e pontos de atenção", [
+    `Interpretação profissional: ${texto(consolidacao.interpretacao_profissional)}.`,
+    `Recursos regulatórios observados: ${texto(consolidacao.recursos_regulatorios_observados)}.`,
+    `Pontos de atenção: ${texto(consolidacao.pontos_de_atencao)}.`
+  ]);
+
+  bloco("11", "Conclusão, recomendação e próximo passo", [
+    `Conclusão profissional: ${texto(consolidacao.conclusao)}.`,
+    `Justificativa: ${texto(consolidacao.justificativa)}.`,
+    `Recomendação: ${texto(consolidacao.recomendacao)}.`,
+    `Próximo passo regulatório: ${texto(consolidacao.proximo_passo_regulatorio)}.`
+  ]);
+
+  bloco("12", "Validação profissional e devolutiva", [
+    ...(decisoes.length
+      ? decisoes.map((decisao) => `Claim ${texto(decisao.claim_id, "preservado")}: ${texto(decisao.decisao)} · estado efetivo ${texto(decisao.estado)} · versão ${texto(decisao.versao_da_validacao)}.`)
+      : ["Nenhuma decisão de claim foi usada como substituto da consolidação do relatório."]),
+    `Devolutiva ao participante: ${texto(consolidacao.conteudo_da_devolutiva_ao_participante)}.`
+  ]);
+}
+
 export async function gerarPdfVisualHumanexus(entrada: EntradaRelatorioHumanexus) {
   const tipo = entrada.tipoDocumento ?? tipoPeloRegistro(entrada.relatorio);
   if (
@@ -1120,7 +1301,12 @@ export async function gerarPdfVisualHumanexus(entrada: EntradaRelatorioHumanexus
     doc.on("error", reject);
   });
   capa(doc, tipo, entrada);
-  if (tipo === "OPERACIONAL_TIRH") renderOperacional(doc, entrada);
+  if (
+    tipo === "OPERACIONAL_TIRH"
+    && projetarEstadoFuncionalDoRelatorio(entrada.relatorio).finalDisponivel
+  ) {
+    renderOperacionalFinalConsolidado(doc, entrada);
+  } else if (tipo === "OPERACIONAL_TIRH") renderOperacional(doc, entrada);
   else if (tipo === "CIENTIFICO_TIRH") renderCientifico(doc, entrada);
   else if (tipo === "EXECUTIVO") renderExecutivo(doc, entrada);
   else if (tipo === "TECNICO") renderTecnico(doc, entrada);

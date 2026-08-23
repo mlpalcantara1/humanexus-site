@@ -18,7 +18,14 @@ import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multimodal";
 import { CockpitOperacionalVivo } from "@/components/cockpit-operacional-vivo";
 import { SinteseValidacaoTirhV1 } from "@/components/sintese-validacao-tirh-v1";
+import { ConsolidacaoProfissionalDoRelatorio } from "@/components/consolidacao-profissional-relatorio";
 import { HxSectionHeader } from "@/components/hx-design-system";
+import {
+  MAPA_DE_FONTES_DO_RELATORIO,
+  projetarEstadoFuncionalDoRelatorio,
+  resolverIdentidadeDocumental,
+  tituloHumanoDoRelatorio
+} from "@/lib/humanexus-report-authority";
 import {
   atrasoDoPollingCanonico,
   chaveDoContextoVivo,
@@ -73,6 +80,7 @@ type Estado = {
     diagnostico: Registro;
   };
   rastreabilidade: Registro | null;
+  populacao_coletiva: Registro;
   relatorios: Registro[];
   formulacoes: Registro[];
   longitudinal: Registro;
@@ -84,6 +92,7 @@ type Estado = {
     vetores: Registro[];
     versao: Registro;
   };
+  evidencias_profissionais: Registro;
   leitura_regulatoria: {
     evidencias: Registro[];
     estados_vetoriais: Registro[];
@@ -238,17 +247,6 @@ function dataLegivel(valor: unknown) {
       }).format(data);
 }
 
-function valorIirhDoRelatorioLegacy(relatorio?: Registro) {
-  const itens = lista(relatorio?.secoes)
-    .map(objeto)
-    .flatMap((secao) => lista(secao.itens))
-    .map((item) => String(item));
-  const correspondencia = itens
-    .map((item) => item.match(/\bIIRH\s*:\s*(-?\d+(?:[.,]\d+)?)/i))
-    .find((item) => item?.[1]);
-  return correspondencia?.[1]?.replace(",", ".") ?? null;
-}
-
 function RelatorioCanonicoV1({
   estado,
   relatorio
@@ -257,14 +255,48 @@ function RelatorioCanonicoV1({
   relatorio?: Registro;
 }) {
   const projecao = projecaoCanonicaTirhV1(estado);
-  const vetores = vetoresMomentaneosDaProjecaoV1(estado);
+  const vetoresProjetados = vetoresMomentaneosDaProjecaoV1(estado);
   const vev = vetorLongitudinalDaProjecaoV1(estado);
   const resultante = objeto(projecao.resultante);
   const iirh = objeto(projecao.iirh);
   const zona = objeto(projecao.zona);
+  const identidade = resolverIdentidadeDocumental(
+    estado.participante,
+    estado.organizacao
+  );
+  const cicloDocumental = projetarEstadoFuncionalDoRelatorio(relatorio);
+  const consolidacao = cicloDocumental.consolidacao;
+  const cadeia = objeto(objeto(estado.cockpit_operacional).cadeia_cientifica);
+  const fases = fasesComparaveis(estado);
+  const nomesVetoriais: Record<string, [string, string]> = {
+    VH: ["Vetor Humano", "Recursos humanos mobilizados diante da exigência registrada."],
+    VT: ["Vetor Tarefa", "Relação funcional entre recursos disponíveis e demandas da tarefa."],
+    VS: ["Vetor Social", "Influência do campo relacional e da coordenação social observável."],
+    VSI: ["Vetor Simbólico", "Peso funcional atribuído ao significado da situação."],
+    VAR: ["Vetor Autonômico", "Organização autonômica observável, limitada às fontes admissíveis."],
+    VAM: ["Vetor Ação/Motor", "Disponibilidade funcional para organizar e sustentar a ação."],
+    VJ: ["Vetor Julgamento", "Condições funcionais para discriminar e decidir no contexto."],
+    VE: ["Vetor Estabilidade", "Capacidade momentânea de sustentar organização regulatória."],
+    VR: ["Vetor Recuperação", "Recursos observáveis para reorganização após a exigência."]
+  };
+  const vetores = Object.entries(nomesVetoriais).map(([codigo, [nome, significado]]) => {
+    const registro = vetoresProjetados.find((item) => codigoDoVetor(item) === codigo);
+    return { codigo, nome, significado, registro };
+  });
+  const vetoresCalculaveis = vetores.filter(({ registro }) => {
+    if (!registro) return false;
+    return [registro.magnitude, registro.valor, registro.value]
+      .some((valor) => typeof valor === "number");
+  });
   const iirhCalculavel = ["PARCIAL", "PLENO"].includes(String(iirh.estado ?? ""))
     && typeof iirh.valor === "number";
-  const iirhLegacy = valorIirhDoRelatorioLegacy(relatorio);
+  const rotas: Array<[string, unknown, string]> = [
+    ["ARR · Análise das Rotas Regulatórias", estado.leitura_regulatoria.arr.at(-1) ?? cadeia.arr, "Análise profissional das rotas admissíveis."],
+    ["RRD · Rota Regulatória Dominante", cadeia.rota_dominante, "Rota dominante somente quando sustentada e decidida."],
+    ["GRI · Ganho Regulatório Imediato", objeto(cadeia.arr).gri, "Ganho imediato observado no recorte."],
+    ["CRL · Custo Regulatório Longitudinal", objeto(cadeia.arr).crl, "Custo que exige acompanhamento temporal comparável."],
+    ["NRA · Nova Rota Adaptativa", cadeia.nra, "Nova rota apenas após materialização profissional admissível."]
+  ];
   if (!Object.keys(projecao).length) {
     return (
       <EmptySignalState
@@ -274,39 +306,141 @@ function RelatorioCanonicoV1({
     );
   }
   return (
-    <section className="hx-report-canonical" aria-label="Projeção canônica TIRH V1 do relatório">
-      <article>
-        <small>RELATÓRIO TIRH V1 · PROJEÇÃO CANÔNICA</small>
-        <h3>{texto(projecao.versao_cientifica, "TIRH V1")}</h3>
-        <ul>
-          <li>Vetores momentâneos: {vetores.length}/9 projetados; ausências permanecem ausências.</li>
-          <li>VEV longitudinal: {texto(vev.estado_epistemico, "NÃO ELEGÍVEL")} · separado da Resultante momentânea.</li>
-          <li>Estado estrutural da Resultante: {texto(resultante.estado, "NÃO MATERIALIZADA")}.</li>
-          <li>Magnitude escalar da Resultante: NÃO APLICÁVEL NA TIRH V1.</li>
-        </ul>
-      </article>
-      <article>
-        <small>IIRH OPERACIONAL V1</small>
-        <h3>{iirhCalculavel ? `${iirh.valor} · ${texto(iirh.unidade, "0-100")}` : "NÃO CALCULÁVEL"}</h3>
-        <ul>
-          <li>{iirhCalculavel
-            ? `Estado ${texto(iirh.estado)}; somente os Macrocampos funcionalmente admissíveis participam da síntese.`
-            : "Não houve cobertura funcional suficiente dos Macrocampos para materialização do IIRH Operacional V1 nesta sessão."}</li>
-          <li>Zona Operacional: {texto(zona.codigo ?? zona.estado, "NÃO CLASSIFICÁVEL")}.</li>
-        </ul>
-      </article>
-      {relatorio ? (
-        <article>
-          <small>VERSÃO HISTÓRICA PRESERVADA · CONTRATO CIENTÍFICO LEGACY</small>
-          <h3>Registro imutável, fora das conclusões TIRH V1</h3>
-          <ul>
-            <li>{iirhLegacy
-              ? `IIRH LEGACY: ${iirhLegacy} · não apresentado como IIRH Operacional V1.`
-              : "IIRH LEGACY: sem valor nominal identificado no documento histórico."}</li>
-            <li>O conteúdo integral permanece preservado no arquivo técnico original, sem reescrita e sem promoção de constructos descontinuados.</li>
-          </ul>
-        </article>
-      ) : null}
+    <section className="hx-report-canonical hx-report-canonical--complete" aria-label="Relatório Operacional TIRH completo">
+      <header className="hx-report-canonical__identity">
+        <small>RELATÓRIO INDIVIDUAL AUTORIZADO · {texto(projecao.versao_cientifica, "TIRH V1")}</small>
+        <h2>{tituloHumanoDoRelatorio(estado.participante, estado.organizacao)}</h2>
+        <dl>
+          <div><dt>Nome completo</dt><dd>{identidade.nomeCompleto}</dd></div>
+          <div><dt>CPF</dt><dd>{identidade.cpf}</dd></div>
+          <div><dt>Organização</dt><dd>{identidade.organizacao}</dd></div>
+          <div><dt>Sessão</dt><dd>{texto(estado.sessao.nome_operacional, "Sessão registrada")}</dd></div>
+          <div><dt>Data e hora</dt><dd>{dataLegivel(estado.sessao.finalizado_em ?? estado.sessao.criado_em)}</dd></div>
+          <div><dt>Profissional responsável</dt><dd>{texto(estado.contextos.profissionais[0]?.nome, "Profissional registrado")}</dd></div>
+          <div><dt>Versão documental</dt><dd>{texto(relatorio?.numero_da_versao, "Rascunho técnico")}</dd></div>
+          <div><dt>Estado</dt><dd>{cicloDocumental.estado.replaceAll("_", " ")}</dd></div>
+        </dl>
+        <p>Fonte de identidade: {identidade.fonte}. Referência operacional: {texto(estado.participante.referencia_externa)}. Trace de sessão: {texto(estado.sessao.identificador)}.</p>
+      </header>
+
+      <section className="hx-report-canonical__section">
+        <small>01 · SÍNTESE EXECUTIVA DA SESSÃO</small>
+        <h3>O que a sessão permite compreender</h3>
+        <p>Resultante estrutural: <strong>{texto(resultante.estado, "NÃO MATERIALIZADA")}</strong>. {texto(resultante.motivo, "A leitura permanece limitada às evidências admissíveis do recorte.")}</p>
+        <p>IIRH: <strong>{iirhCalculavel ? `${iirh.valor} / 100` : "NÃO CALCULÁVEL"}</strong>. Zona: <strong>{texto(zona.codigo ?? zona.estado, "NÃO CLASSIFICÁVEL")}</strong>.</p>
+        <p>{iirhCalculavel
+          ? "A medida foi materializada apenas com Macrocampos funcionalmente admissíveis."
+          : "A ausência do IIRH e da Zona não representa falha pessoal: informa que a cobertura funcional do recorte não sustenta essas sínteses com segurança."}</p>
+      </section>
+
+      <section className="hx-report-canonical__section">
+        <small>02 · CONTEXTO, EVIDÊNCIAS E LIMITES</small>
+        <h3>{texto(consolidacao.contexto_e_objetivo, "Contexto profissional ainda não consolidado")}</h3>
+        <p>Fontes do relatório: {Object.values(MAPA_DE_FONTES_DO_RELATORIO).join(" · ")}.</p>
+        <p>Evidências selecionadas pelo profissional: {Array.isArray(consolidacao.evidencias_utilizadas)
+          ? consolidacao.evidencias_utilizadas.map(String).join(" · ")
+          : texto(consolidacao.evidencias_utilizadas, "AGUARDANDO SELEÇÃO PROFISSIONAL")}</p>
+        <p>Limitações: {texto(consolidacao.limitacoes, "A consolidação profissional ainda deve explicitar os limites específicos desta sessão.")}</p>
+      </section>
+
+      <section className="hx-report-canonical__section">
+        <small>03 · PRÉ / TREINO / PÓS</small>
+        <h3>Comparação sem interpolação de lacunas</h3>
+        <div className="hx-report-phase-table">
+          {fases.map((fase) => (
+            <article key={fase.name}>
+              <strong>{fase.name}</strong>
+              <span>Cobertura: {fase.coverage == null ? "AUSENTE" : `${fase.coverage.toFixed(1)}%`}</span>
+              <span>Confiança: {fase.quality == null ? "AUSENTE" : `${fase.quality.toFixed(1)}%`}</span>
+              <span>Fontes: {fase.sources.length ? fase.sources.join(" · ") : "NÃO REGISTRADAS"}</span>
+              {fase.gaps.length ? <em>Lacunas: {fase.gaps.join(" · ")}</em> : null}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="hx-report-canonical__section">
+        <small>04 · NOVE VETORES MOMENTÂNEOS</small>
+        <h3>{vetoresCalculaveis.length}/9 calculáveis · {vetoresProjetados.length}/9 projetados</h3>
+        <p>Cada ausência permanece nula; o radar não fecha lacunas nem as converte em zero.</p>
+        <div className="hx-report-vector-grid">
+          {vetores.map(({ codigo, nome, significado, registro }) => {
+            const valor = registro?.magnitude ?? registro?.valor ?? registro?.value;
+            const confianca = registro?.confianca ?? registro?.confiabilidade;
+            const fontes = lista(registro?.fontes).map(String);
+            return <article key={codigo} className={registro ? "" : "is-missing"}>
+              <small>{codigo}</small><strong>{nome}</strong>
+              <p>{significado}</p>
+              <span>Valor: {typeof valor === "number" ? valor : "AUSENTE"}</span>
+              <span>Confiança: {typeof confianca === "number" ? formatarPercentualCanonico(confianca) : "NÃO INFORMADA"}</span>
+              <span>Fonte: {fontes.length ? fontes.join(" · ") : "NÃO REGISTRADA"}</span>
+              <em>{texto(registro?.leitura_profissional ?? registro?.motivo, registro ? "Sem leitura vetorial profissional específica." : "Vetor não projetado: evidência funcional ausente no recorte.")}</em>
+            </article>;
+          })}
+        </div>
+      </section>
+
+      <section className="hx-report-canonical__section">
+        <small>05 · VEV LONGITUDINAL</small>
+        <h3>{texto(vev.estado_epistemico ?? vev.estado, "NÃO ELEGÍVEL")}</h3>
+        <p>O VEV é longitudinal e permanece separado dos nove Vetores momentâneos e da Resultante. O gate exige Baseline e quatro sessões válidas e comparáveis.</p>
+      </section>
+
+      <section className="hx-report-canonical__section">
+        <small>06 · RESULTANTE, IIRH, ZONA E TRAJETÓRIA</small>
+        <h3>Estado estrutural da Resultante: {texto(resultante.estado, "NÃO MATERIALIZADA")}</h3>
+        <p>Magnitude escalar: <strong>NÃO APLICÁVEL NA TIRH V1</strong>. {texto(resultante.motivo, "A Resultante descreve a organização vetorial sustentada neste recorte.")}</p>
+        <p>IIRH: {iirhCalculavel ? `${iirh.valor} / 100` : "não calculável"}. Zona: {texto(zona.codigo ?? zona.estado, "não classificável")}. Trajetória: {estado.leitura_regulatoria.trajetorias.length ? "registro longitudinal localizado" : "não inferível a partir de um único ponto"}.</p>
+        <p>O próximo registro válido e comparável pode ampliar a leitura temporal sem reclassificar retroativamente esta sessão.</p>
+      </section>
+
+      <section className="hx-report-canonical__section">
+        <small>07 · ARR / RRD / GRI / CRL / NRA</small>
+        <h3>Rotas regulatórias e estados profissionais</h3>
+        <div className="hx-report-route-grid">
+          {rotas.map(([nome, valor, significado]) => {
+            const item = objeto(valor);
+            return <article key={nome}>
+              <strong>{nome}</strong><p>{significado}</p>
+              <span>{Object.keys(item).length ? texto(item.estado, "REGISTRO LOCALIZADO") : "NÃO MATERIALIZADO"}</span>
+              <em>{Object.keys(item).length ? texto(item.motivo, "Consulte a rastreabilidade da sessão.") : "Nenhuma decisão profissional admissível foi localizada para este produto."}</em>
+            </article>;
+          })}
+        </div>
+      </section>
+
+      <section className="hx-report-canonical__section">
+        <small>08 · INTERVENÇÃO, RESPOSTA E CADEIA PROFISSIONAL</small>
+        <h3>HX-OBS → TCR → ICR, quando calculável</h3>
+        <p>Intervenção: {texto(consolidacao.intervencao, "AGUARDANDO CONSOLIDAÇÃO PROFISSIONAL")}</p>
+        <p>Resposta observada: {texto(consolidacao.resposta_observada, "AGUARDANDO CONSOLIDAÇÃO PROFISSIONAL")}</p>
+        <p>HX-OBS qualificados: {lista(objeto(estado.evidencias_profissionais).qualificadas).length}. TCR: {texto(cadeia.tcr, "NÃO MATERIALIZADA")}. ICR: {texto(cadeia.icr, "NÃO CALCULÁVEL")}</p>
+      </section>
+
+      <section className="hx-report-canonical__section">
+        <small>09 · LEITURA E DECISÃO PROFISSIONAL</small>
+        <h3>{texto(consolidacao.interpretacao_profissional, "INTERPRETAÇÃO AINDA NÃO CONSOLIDADA")}</h3>
+        <p>Recursos observados: {texto(consolidacao.recursos_regulatorios_observados, "AGUARDANDO REGISTRO PROFISSIONAL")}</p>
+        <p>Pontos de atenção: {texto(consolidacao.pontos_de_atencao, "AGUARDANDO REGISTRO PROFISSIONAL")}</p>
+        <p>Conclusão: {texto(consolidacao.conclusao, "AGUARDANDO CONCLUSÃO PROFISSIONAL")}</p>
+        <p>Justificativa: {texto(consolidacao.justificativa, "AGUARDANDO JUSTIFICATIVA PROFISSIONAL")}</p>
+        <p>Recomendação: {texto(consolidacao.recomendacao, "AGUARDANDO RECOMENDAÇÃO PROFISSIONAL")}</p>
+        <p>Próximo passo regulatório: {texto(consolidacao.proximo_passo_regulatorio, "AGUARDANDO DEFINIÇÃO PROFISSIONAL")}</p>
+      </section>
+
+      <section className="hx-report-canonical__section">
+        <small>10 · DEVOLUTIVA AO PARTICIPANTE</small>
+        <h3>Conteúdo autorizado para feedback</h3>
+        <p>{texto(consolidacao.conteudo_da_devolutiva_ao_participante, "A devolutiva ainda não foi consolidada pelo profissional; este documento não está liberado como relatório final.")}</p>
+      </section>
+
+      <section className="hx-report-canonical__section">
+        <small>11 · VALIDAÇÃO, VERSÃO E RASTREABILIDADE</small>
+        <h3>{cicloDocumental.estado.replaceAll("_", " ")}</h3>
+        <p>Decisões de claims permanecem separadas da consolidação e não autorizam, por si, a finalização do documento.</p>
+        <p>Documento: {texto(relatorio?.codigo_publico, "ainda sem código público")} · versão {texto(relatorio?.numero_da_versao, "rascunho")} · sessão {texto(estado.sessao.identificador)}.</p>
+        {!cicloDocumental.completa ? <p><strong>Campos que impedem o relatório final:</strong> {cicloDocumental.rotulosAusentes.join(" · ")}.</p> : null}
+      </section>
     </section>
   );
 }
@@ -1032,10 +1166,12 @@ function ContextoPersistente({ estado, visao }: { estado: Estado; visao: VisaoCo
 function SeletorDeContexto({
   estado,
   ocupado,
-  selecionar
+  selecionar,
+  somenteReferenciaOperacional = false
 }: {
   estado: Estado;
   ocupado: boolean;
+  somenteReferenciaOperacional?: boolean;
   selecionar: (
     campo: "organizacao" | "participante" | "sessao",
     identificador: string
@@ -1075,7 +1211,9 @@ function SeletorDeContexto({
           >
             {estado.contextos.participantes.map((item) => (
               <option key={String(item.identificador)} value={String(item.identificador)}>
-                {texto(item.rotulo ?? item.referencia_externa)}
+                {somenteReferenciaOperacional
+                  ? texto(item.referencia_externa)
+                  : texto(item.rotulo ?? item.referencia_externa)}
               </option>
             ))}
           </select>
@@ -1544,7 +1682,8 @@ function SelecaoInicialDoCockpit({
   ocupado,
   selecionarOrganizacao,
   selecionar,
-  abrir
+  abrir,
+  somenteReferenciaOperacional = false
 }: {
   contexto: ContextoParaSelecao;
   selecao: Record<string, string>;
@@ -1552,6 +1691,7 @@ function SelecaoInicialDoCockpit({
   selecionarOrganizacao: (identificador: string) => void;
   selecionar: (campo: "participante" | "sessao", identificador: string) => void;
   abrir: () => void;
+  somenteReferenciaOperacional?: boolean;
 }) {
   const sessoes = contexto.sessoes.filter(
     (item) => String(item.identificador_do_participante ?? "")
@@ -1575,18 +1715,44 @@ function SelecaoInicialDoCockpit({
           <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.nome)}</option>
         ))}</select></label>
         <label>Participante<select
-          value={selecao.participante}
+          value={somenteReferenciaOperacional
+            ? String(contexto.participantes.find(
+                (item) => String(item.identificador) === selecao.participante
+              )?.referencia_externa ?? "")
+            : selecao.participante}
           disabled={ocupado || !selecao.organizacao}
-          onChange={(evento) => selecionar("participante", evento.target.value)}
+          onChange={(evento) => selecionar(
+            "participante",
+            somenteReferenciaOperacional
+              ? String(contexto.participantes.find(
+                  (item) => String(item.referencia_externa) === evento.target.value
+                )?.identificador ?? "")
+              : evento.target.value
+          )}
         ><option value="">Selecione</option>{contexto.participantes.map((item) => (
-          <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.rotulo ?? item.referencia_externa)}</option>
+          <option key={String(item.identificador)} value={somenteReferenciaOperacional ? String(item.referencia_externa) : String(item.identificador)}>{somenteReferenciaOperacional ? texto(item.referencia_externa) : texto(item.rotulo ?? item.referencia_externa)}</option>
         ))}</select></label>
         <label>Sessão existente<select
-          value={selecao.sessao}
+          value={somenteReferenciaOperacional
+            ? (
+                sessoes.findIndex(
+                  (item) => String(item.identificador) === selecao.sessao
+                ) >= 0
+                  ? String(sessoes.findIndex(
+                      (item) => String(item.identificador) === selecao.sessao
+                    ))
+                  : ""
+              )
+            : selecao.sessao}
           disabled={ocupado || !selecao.participante}
-          onChange={(evento) => selecionar("sessao", evento.target.value)}
-        ><option value="">Selecione</option>{sessoes.map((item) => (
-          <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.nome_operacional, "Sessão sem nome legado")} · {texto(item.estado)} · {dataLegivel(item.criado_em)}</option>
+          onChange={(evento) => selecionar(
+            "sessao",
+            somenteReferenciaOperacional
+              ? String(sessoes[Number(evento.target.value)]?.identificador ?? "")
+              : evento.target.value
+          )}
+        ><option value="">Selecione</option>{sessoes.map((item, indice) => (
+          <option key={String(item.identificador)} value={somenteReferenciaOperacional ? String(indice) : String(item.identificador)}>{somenteReferenciaOperacional ? `Sessão preservada · ${texto(item.estado)} · ${dataLegivel(item.criado_em)}` : `${texto(item.nome_operacional, "Sessão sem nome legado")} · ${texto(item.estado)} · ${dataLegivel(item.criado_em)}`}</option>
         ))}</select></label>
       </div>
       <button
@@ -1637,6 +1803,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const [autenticacaoExpirada, setAutenticacaoExpirada] = useState(false);
   const [cortexClientId, setCortexClientId] = useState("");
   const [cortexClientSecret, setCortexClientSecret] = useState("");
+  const [filtroReferenciaColetiva, setFiltroReferenciaColetiva] = useState("");
 
   useEffect(() => {
     componenteMontado.current = true;
@@ -2345,7 +2512,11 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     exportarReplay: () => enviar("exportar-replay", { inicio_percentual: intervalo[0], fim_percentual: intervalo[1] }),
     longitudinal: () => enviar("consolidar-longitudinal"),
     entregas: () => enviar("materializar-entregas"),
-    relatorio: () => enviar("relatorio")
+    relatorio: () => enviar("relatorio"),
+    consolidarRelatorio: (payload: Registro) =>
+      enviar("consolidar-relatorio", { payload }),
+    transicionarRelatorio: (payload: Registro) =>
+      enviar("transicionar-relatorio", { payload })
   }), [intervalo]);
 
   const configurarCortex = async () => {
@@ -2379,6 +2550,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         ...(campo === "participante" ? { sessao: "" } : {})
       }))}
       abrir={() => void abrirContextoSelecionado()}
+      somenteReferenciaOperacional={
+        modulo === "indicador-coletivo" || visao === "coletivo"
+      }
     />
   </>;
   if (erro && !estado) return <p className="hx-module__error">{erro}</p>;
@@ -2408,6 +2582,80 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     sessao: estado.contextos.selecao.identificador_da_sessao
   });
   const pdfHref = `/api/operacao-homologacao/pdf?${parametrosDoContexto}`;
+  const relatorioAtual = estado.relatorios.at(-1);
+  const cicloDoRelatorioAtual = projetarEstadoFuncionalDoRelatorio(
+    relatorioAtual
+  );
+  const carregandoFontesAutorizadas = Boolean(
+    estado.carregamento_progressivo
+  );
+  const tituloDoRelatorioAtual = tituloHumanoDoRelatorio(
+    estado.participante,
+    estado.organizacao
+  );
+  const populacaoColetiva = objeto(estado.populacao_coletiva);
+  const pertencimentoColetivo = objeto(populacaoColetiva.pertencimento);
+  const elegibilidadeColetiva = objeto(
+    populacaoColetiva.elegibilidade_cientifica
+  );
+  const exposicaoColetiva = objeto(populacaoColetiva.exposicao);
+  const requisitosColetivos = lista(
+    populacaoColetiva.requisitos_nao_atendidos
+  ).map(String);
+  const referenciasOperacionaisColetivas = lista(
+    populacaoColetiva.membros_autorizados
+  )
+    .map(objeto)
+    .map((item) => String(item.referencia_operacional ?? "").trim())
+    .filter(Boolean);
+  const referenciasColetivasFiltradas = referenciasOperacionaisColetivas
+    .filter((item) => item.toLocaleLowerCase("pt-BR").includes(
+      filtroReferenciaColetiva.trim().toLocaleLowerCase("pt-BR")
+    ));
+  const seletorContextoColetivo = (
+    <section
+      className="hx-context-selector hx-collective-context-selector"
+      aria-label="Filtros do contexto coletivo protegido"
+      data-collective-visible-identifier="REFERENCIA_OPERACIONAL_ONLY"
+    >
+      <header>
+        <div>
+          <small>CONTEXTO COLETIVO PROTEGIDO</small>
+          <strong>{texto(estado.organizacao.nome)}</strong>
+        </div>
+        <span>IDENTIFICADOR INDIVIDUAL: REFERÊNCIA OPERACIONAL SOMENTE</span>
+      </header>
+      <label>
+        Filtrar por referência operacional autorizada
+        <input
+          type="search"
+          value={filtroReferenciaColetiva}
+          onChange={(evento) => setFiltroReferenciaColetiva(evento.target.value)}
+          placeholder="Referência operacional"
+        />
+      </label>
+      <div className="hx-collective-reference-list" role="list">
+        {referenciasColetivasFiltradas.map((referencia) => (
+          <span key={referencia} role="listitem">{referencia}</span>
+        ))}
+      </div>
+      <p>Nome civil, nome preferencial, CPF, documentos, nascimento e contatos não integram esta superfície, seus detalhes, filtros ou exportações.</p>
+    </section>
+  );
+  const transicionarRelatorioAtual = (destino: "AGUARDANDO_VALIDACAO" | "CONCLUIDO") => {
+    if (!relatorioAtual?.identificador) return;
+    const justificativa = window.prompt(
+      destino === "AGUARDANDO_VALIDACAO"
+        ? "Justifique o envio desta versão completa para validação profissional."
+        : "Justifique a validação final desta versão. O PDF e o Print serão liberados após esta decisão."
+    );
+    if (!justificativa?.trim()) return;
+    void comandos.transicionarRelatorio({
+      identificador: relatorioAtual.identificador,
+      estado: destino,
+      justificativa: justificativa.trim()
+    });
+  };
   const pode = (comando: string) => comandoPermitido(estado, comando);
   const fluxoOperacional = objeto(estado.estado_operacional);
   const contratoCientifico = objeto(estado.contrato_cientifico);
@@ -2889,32 +3137,82 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const visaoRelatorio = (
     <section className="hx-cockpit-panel hx-report-view">
       <TituloDaVisao kicker="RELATÓRIO" titulo="Documento gerado a partir do contexto já carregado." descricao="Sessão, evidências, vetores, Resultante, Trajetória, fases, decisões e limitações permanecem vinculados." />
-      <ReferenciaBaselineResumo estado={estado} />
-      <section className="hx-report-operation">
-        <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
-        <div><Botao onClick={comandos.entregas} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Materializar entregas finais</Botao><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
-      </section>
-      <SinteseValidacaoTirhV1
-        estado={estado as unknown as Registro}
-        validarClaimTirhV1={(payload) =>
-          enviar("validar-claim-tirh-v1", { payload })}
-      />
-      <RelatorioCanonicoV1 estado={estado} relatorio={estado.relatorios.at(-1)} />
-      <div className="hx-report-charts" data-humanexus-report>
-        <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
-      </div>
-      <Rastreabilidade estado={estado} />
+      {carregandoFontesAutorizadas ? (
+        <section
+          className="hx-authoritative-loading"
+          role="status"
+          aria-live="polite"
+          data-authoritative-loading-state="PENDING"
+        >
+          <strong>CARREGANDO FONTES AUTORIZADAS</strong>
+          <span>Identidade civil, evidências, projeção TIRH, decisões e versões documentais estão sendo conciliadas. Nenhuma ausência é conclusiva durante este estado.</span>
+        </section>
+      ) : (
+        <>
+          <ReferenciaBaselineResumo estado={estado} />
+          <section className="hx-report-operation">
+            <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{tituloDoRelatorioAtual}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(relatorioAtual?.criado_em)} · ${cicloDoRelatorioAtual.estado.replaceAll("_", " ")}` : "A geração materializa apenas o rascunho técnico; a autoria profissional vem depois."}</span></div>
+            <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado) || Boolean(relatorioAtual)}>Gerar rascunho técnico</Botao>{cicloDoRelatorioAtual.completa && ["RASCUNHO", "EM_ELABORACAO"].includes(String(relatorioAtual?.estado_documental ?? "")) ? <Botao onClick={() => transicionarRelatorioAtual("AGUARDANDO_VALIDACAO")} disabled={ocupado !== ""}>Enviar para validação</Botao> : null}{cicloDoRelatorioAtual.completa && String(relatorioAtual?.estado_documental ?? "") === "AGUARDANDO_VALIDACAO" ? <Botao forte onClick={() => transicionarRelatorioAtual("CONCLUIDO")} disabled={ocupado !== ""}>Validar relatório final</Botao> : null}{cicloDoRelatorioAtual.finalDisponivel ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF final</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir impressão final</a></> : <span className="hx-report-finalization-guard">PDF e Print finais indisponíveis: complete e valide a consolidação profissional.</span>}</div>
+          </section>
+          <SinteseValidacaoTirhV1
+            estado={estado as unknown as Registro}
+            validarClaimTirhV1={(payload) =>
+              enviar("validar-claim-tirh-v1", { payload })}
+          />
+          <ConsolidacaoProfissionalDoRelatorio
+            estado={estado as unknown as Registro}
+            relatorio={relatorioAtual}
+            ocupado={ocupado === "consolidar-relatorio"}
+            consolidar={comandos.consolidarRelatorio}
+          />
+          <RelatorioCanonicoV1 estado={estado} relatorio={relatorioAtual} />
+          <div className="hx-report-charts" data-humanexus-report>
+            <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
+          </div>
+          <Rastreabilidade estado={estado} />
+        </>
+      )}
     </section>
   );
 
   const visaoColetiva = (
     <section className="hx-cockpit-panel">
-      <TituloDaVisao kicker="MODO COLETIVO DO COCKPIT" titulo="Alternância Individual / Coletivo preservando privacidade." descricao="Organização, equipe, período, finalidade, cobertura e amostra elegível são obrigatórios." />
+      <TituloDaVisao kicker="MODO COLETIVO DO COCKPIT" titulo="População organizacional automática, agregação protegida." descricao="Vínculo organizacional define pertencimento. Equipe, período, função e finalidade são filtros; elegibilidade científica e permissão de exposição permanecem gates separados." />
       <div className="hx-mode-switch">
         <button type="button" onClick={() => selecionarVisao("visao-geral")}>Cockpit Individual</button>
         <button type="button" className="is-active" aria-current="page">Cockpit Coletivo</button>
       </div>
-      <EmptySignalState title="COBERTURA E AMOSTRA COLETIVA" status="AMOSTRA NÃO ELEGÍVEL" reason="A sessão atual é técnica e individual. Não há equipe autorizada, finalidade coletiva, anonimização ou amostra elegível." />
+      {carregandoFontesAutorizadas ? (
+        <section
+          className="hx-authoritative-loading"
+          role="status"
+          aria-live="polite"
+          data-authoritative-loading-state="PENDING"
+        >
+          <strong>CARREGANDO POPULAÇÃO ORGANIZACIONAL AUTORIZADA</strong>
+          <span>Pertencimento, elegibilidade científica e permissão de exposição estão sendo conciliados. Nenhum vazio é conclusivo durante este estado.</span>
+        </section>
+      ) : <section className="hx-collective-forming" aria-label="Estado da população coletiva organizacional">
+        <header>
+          <small>PERTENCIMENTO ≠ ELEGIBILIDADE ≠ EXPOSIÇÃO</small>
+          <h3>{texto(populacaoColetiva.estado, "COLETIVO EM FORMAÇÃO")}</h3>
+        </header>
+        <div>
+          <article><small>Membros organizacionais automáticos</small><strong>{texto(pertencimentoColetivo.membros_organizacionais_automaticos, "0")}</strong><span>Participantes ativos com vínculo ORGANIZACIONAL ou MISTO.</span></article>
+          <article><small>Participantes com sessão elegível</small><strong>{texto(elegibilidadeColetiva.participantes_com_sessao_elegivel, "0")}</strong><span>{texto(elegibilidadeColetiva.sessoes_individuais_elegiveis, "0")} sessão(ões) individual(is) terminal(is) no recorte.</span></article>
+          <article><small>Permissões explícitas de exposição</small><strong>{texto(exposicaoColetiva.participantes_com_permissao_explicita, "0")}</strong><span>CPF e identidades individuais: NÃO EXPOSTOS.</span></article>
+          <article><small>Agregação científica</small><strong>{elegibilidadeColetiva.agregacao_permitida ? "INDICADOR HOMOLOGADO DISPONÍVEL" : "COLETIVO EM FORMAÇÃO"}</strong><span>Nenhuma média individual é calculada sem indicador coletivo canônico.</span></article>
+        </div>
+        <section className="hx-collective-members" aria-label="Membros por referência operacional autorizada">
+          <strong>Referências operacionais no recorte</strong>
+          <div role="list">
+            {referenciasColetivasFiltradas.map((referencia) => (
+              <span key={referencia} role="listitem">{referencia}</span>
+            ))}
+          </div>
+        </section>
+        {requisitosColetivos.length ? <section><strong>Requisitos ainda não atendidos</strong><ul>{requisitosColetivos.map((item) => <li key={item}>{texto(item)}</li>)}</ul></section> : null}
+      </section>}
     </section>
   );
 
@@ -3046,8 +3344,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           </details>
         ) : (
           <>
-            {seletorContexto}
-            <ContextoPersistente estado={estado} visao={visao} />
+            {visao === "coletivo" ? seletorContextoColetivo : seletorContexto}
+            {visao === "coletivo" ? null : <ContextoPersistente estado={estado} visao={visao} />}
             <AvisoTecnico estado={estado} />
             <NavegacaoInterna visao={visao} selecionar={selecionarVisao} />
           </>
@@ -3206,16 +3504,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         {seletorContexto}
         <AvisoTecnico />
         <Contexto estado={estado} />
-        <section className="hx-report-operation">
-          <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
-          <div><Botao onClick={comandos.entregas} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Materializar entregas finais</Botao><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
-        </section>
-        <RelatorioCanonicoV1 estado={estado} relatorio={estado.relatorios.at(-1)} />
-        <div className="hx-report-charts" data-humanexus-report>
-          <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
-          <TelemetryCommandChart frequency={frequencia} latency={latencia} buffer={buffer} markers={marcadores.filter((item) => ["disconnect", "reconnect"].includes(item.kind))} />
-        </div>
-        <Rastreabilidade estado={estado} />
+        {visaoRelatorio}
       </div>
     );
   }
@@ -3262,18 +3551,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   if (modulo === "indicador-coletivo") {
     return (
       <div className="hx-operacao">
-        {seletorContexto}
+        {seletorContextoColetivo}
         <AvisoTecnico />
-        <HxSectionHeader
-          className="hx-op-title"
-          eyebrow="INDICADOR COLETIVO"
-          title="Governança coletiva sem extrapolação individual."
-        />
-        <EmptySignalState
-          title="COORDENAÇÃO · COMUNICAÇÃO · CONSCIÊNCIA COMPARTILHADA · RECUPERAÇÃO COLETIVA"
-          status="AMOSTRA NÃO ELEGÍVEL"
-          reason="A sessão atual é técnica e individual. Não há grupo autorizado, anonimização, cobertura coletiva ou comparabilidade temporal suficientes."
-        />
+        {visaoColetiva}
       </div>
     );
   }
