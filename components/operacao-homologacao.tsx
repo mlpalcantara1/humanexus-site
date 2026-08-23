@@ -678,7 +678,8 @@ function Rastreabilidade({ estado }: { estado: Estado }) {
   };
   const itens: [string, unknown][] = [
     ["ARR", valorRastreavel(cadeia.arr)],
-    ["RRO", valorRastreavel(cadeia.rro)],
+    ["RRD", valorRastreavel(cadeia.rota_dominante)],
+    ["Registro legado de rota", valorRastreavel(cadeia.rro_legacy)],
     ["NRA", valorRastreavel(cadeia.nra)],
     ["CTR individual", estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador],
     ["THX individual", estado.thx_individual?.identificador],
@@ -843,7 +844,9 @@ function nomeDoVetor(registro: Registro) {
 }
 
 function leituraCientificaDaInspecao(estado: Estado) {
-  return objeto(objeto(estado.cockpit_operacional).leitura_cientifica);
+  const leitura = objeto(objeto(estado.cockpit_operacional).leitura_cientifica);
+  const tirhV1 = objeto(leitura.tirh_operacional_v1);
+  return Object.keys(tirhV1).length ? { ...leitura, ...tirhV1 } : leitura;
 }
 
 function configuracaoBasalDaInspecao(estado: Estado) {
@@ -1178,7 +1181,9 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
 function ConstituicaoOperacional({ estado }: { estado: Estado }) {
   const regras = Array.isArray(estado.ciencia.postulados.regras) ? estado.ciencia.postulados.regras as Registro[] : [];
   const eventos = estado.eventos.length;
-  const vetores = estado.ciencia.vetores.length;
+  const vetores = estado.ciencia.vetores.filter(
+    (item) => codigoDoVetor(item) !== "VEV"
+  ).length;
   const leituraCientifica = leituraCientificaDaInspecao(estado);
   const configuracaoBasal = configuracaoBasalDaInspecao(estado);
   const vetoresCanonicos = vetoresCanonicosDaInspecao(estado);
@@ -1251,7 +1256,9 @@ function MatrizVetorial({
   resumida?: boolean;
 }) {
   const macrocampos = estado.ciencia.macrocampos;
-  const vetores = estado.ciencia.vetores;
+  const vetores = estado.ciencia.vetores.filter(
+    (item) => codigoDoVetor(item) !== "VEV"
+  );
   const limite = resumida ? 5 : vetores.length;
   const definicaoSelecionada = vetores.find((item) => codigoDoVetor(item) === selecionado);
   const estadoSelecionado = definicaoSelecionada ? estadoDoVetor(estado, definicaoSelecionada) : undefined;
@@ -1340,7 +1347,7 @@ function ResultanteRegulatoria({ estado, resumida = false }: { estado: Estado; r
         <div><small>Sentido contextual</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "sentido_contextual", "sentido_predominante", "sentido"), "NÃO DETERMINÁVEL")}</strong></div>
         <div><small>Cobertura global</small><strong>{formatarPercentualCanonico(resultado?.cobertura)}</strong></div>
         <div><small>Confiabilidade global</small><strong>{formatarPercentualCanonico(resultado?.confianca ?? resultado?.confiabilidade)}</strong></div>
-        <div><small>IIRH</small><strong>{iirh.estado === "CALCULADO" && typeof iirh.valor === "number" ? `${iirh.valor} · ${texto(iirh.unidade, "0-100")}` : "NÃO CALCULÁVEL"}</strong></div>
+        <div><small>IIRH</small><strong>{["PARCIAL", "PLENO"].includes(String(iirh.estado ?? "")) && typeof iirh.valor === "number" ? `${iirh.valor} · ${texto(iirh.unidade, "0-100")}` : "NÃO CALCULÁVEL"}</strong></div>
         <div><small>Zona Operacional</small><strong>{texto(zona.codigo ?? zona.nome, "NÃO CLASSIFICÁVEL")}</strong></div>
         <div><small>Versão científica</small><strong>{texto(valorDoRegistro(resultado ?? {}, "versao_cientifica", "versao_da_biblioteca", "versao_do_motor", "versao_algoritmo"), "PRESERVADA NO NÚCLEO")}</strong></div>
       </div>
@@ -1380,12 +1387,13 @@ function RotasRegulatorias({ estado }: { estado: Estado }) {
     : objeto(estado.rastreabilidade?.cadeia);
   const itens = [
     ["ARR", estado.leitura_regulatoria.arr.at(-1) ?? cadeia.arr],
-    ["Reorganização da Rota Operacional — RRO", estado.leitura_regulatoria.rro.at(-1) ?? cadeia.rro],
+    ["RRD · Rota Regulatória Dominante", cadeia.rota_dominante],
+    ["GRI / CRL", cadeia.arr],
     ["Nova Rota Adaptativa — NRA", cadeia.nra]
   ] as [string, unknown][];
   return (
     <section className="hx-cockpit-panel">
-      <TituloDaVisao kicker="ROTAS REGULATÓRIAS" titulo="ARR → RRO → NRA sob validação profissional." descricao="Hipótese, reorganização operacional e nova rota adaptativa permanecem separadas e auditáveis." />
+      <TituloDaVisao kicker="ROTAS REGULATÓRIAS" titulo="ARR → RRD → GRI / CRL → NRA" descricao="Análise, rota dominante, ganhos, custos e nova rota permanecem separados, rastreáveis e sujeitos à validação profissional quando elegíveis." />
       <div className="hx-route-grid">
         {itens.map(([nome, valor]) => {
           const registro = objeto(valor);

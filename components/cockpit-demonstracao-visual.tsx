@@ -293,14 +293,14 @@ export function CockpitDemonstracaoVisual() {
         <section className="hx-live-vector-stage">
           <header>
             <small>VETORES VIVOS · DEMONSTRAÇÃO VISUAL</small>
-            <h2>Dez vetores oficiais</h2>
+            <h2>Nove vetores momentâneos oficiais</h2>
           </header>
           <VectorRadarChart
             vectors={vetores}
-            ariaLabel="Radar demonstrativo dos dez vetores oficiais"
+            ariaLabel="Radar demonstrativo dos nove vetores momentâneos oficiais"
             reducedMotion={movimentoEfetivamenteReduzido}
           />
-          <div className="hx-live-vector-list" aria-label="Dez vetores em demonstração visual">
+          <div className="hx-live-vector-list" aria-label="Nove vetores momentâneos em demonstração visual">
             {vetores.map((vetor) => (
               <div className={vetor.value == null ? "is-missing" : "has-value"} key={vetor.code}>
                 <div>
@@ -360,7 +360,7 @@ export function CockpitDemonstracaoVisual() {
         <article><small>IIRH</small><strong>NÃO CALCULADO</strong><span>Ausência preservada</span></article>
         <article><small>Zona</small><strong>NÃO CLASSIFICADA</strong><span>Ausência preservada</span></article>
         <article><small>Resultante</small><strong>NÃO CALCULADA</strong><span>Ausência preservada</span></article>
-        <article><small>ARR · RRO · NRA</small><strong>SEM PROJEÇÃO</strong><span>Nenhuma decisão automática</span></article>
+        <article><small>Rotas Regulatórias</small><strong>SEM PROJEÇÃO</strong><span>Nenhuma decisão automática</span></article>
       </section>
 
       <section className="hx-live-scientific-chain" id="hx-demo-inspection" aria-label="Inspeção científica demonstrativa">

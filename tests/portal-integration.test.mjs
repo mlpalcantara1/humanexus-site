@@ -74,6 +74,7 @@ test("token de sessão não é armazenado no navegador", async () => {
 
 test("entrada diferencia bloqueio, inatividade e indisponibilidade sem revelar credenciais", async () => {
   const login = await source("app/api/sessao/entrar/route.ts");
+  const core = await source("lib/humanexus-core.ts");
   assert.match(login, /AUTENTICACAO_TEMPORARIAMENTE_BLOQUEADA/);
   assert.match(login, /status: 423/);
   assert.match(login, /CONTA_INATIVA/);
@@ -82,6 +83,18 @@ test("entrada diferencia bloqueio, inatividade e indisponibilidade sem revelar c
   assert.match(login, /status: 503/);
   assert.match(login, /CREDENCIAIS_INVALIDAS/);
   assert.match(login, /E-mail ou senha inválidos\./);
+  assert.match(login, /301, 302, 303, 307, 308/);
+  assert.match(core, /redirect: "manual"/);
+});
+
+test("bypass do Core Preview permanece exclusivamente servidor-a-servidor", async () => {
+  const core = await source("lib/humanexus-core.ts");
+  const client = await source("lib/humanexus-api.ts");
+  assert.match(core, /HUMANEXUS_CORE_PROTECTION_BYPASS_SECRET/);
+  assert.match(core, /"x-vercel-protection-bypass"/);
+  assert.match(core, /import "server-only"/);
+  assert.doesNotMatch(client, /PROTECTION_BYPASS|x-vercel-protection-bypass/);
+  assert.doesNotMatch(core, /NEXT_PUBLIC_.*BYPASS/);
 });
 
 test("site e plataforma possuem layouts estruturalmente isolados", async () => {

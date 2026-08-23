@@ -1454,7 +1454,9 @@ export function CockpitOperacionalVivo({
     && !modoHistorico
     && texto(configuracaoBasal.identificador_da_sessao, "") === identificadorDaSessao;
   const coberturaVetorial = objeto(leituraCientifica.cobertura_vetorial);
-  const definicoesVetoriais = lista(ciencia.vetores);
+  const definicoesVetoriais = lista(ciencia.vetores).filter(
+    (definicao) => codigoVetorial(definicao) !== "VEV"
+  );
   const estadosVetoriais = lista(leituraCientifica.vetores);
   const estadosVetoriaisPorDefinicao = new Map(
     estadosVetoriais.map((item) => [String(item.definicao ?? ""), item])
@@ -1469,10 +1471,12 @@ export function CockpitOperacionalVivo({
       ? Object.keys(tirhV1AoVivo).length
         ? objeto(objeto(tirhV1AoVivo.vetores)[codigo])
         : estadoVetorial
-      : configuracaoBasalCanonica
-        ? Object.keys(sinteseTirhV1Persistida).length
-          ? objeto(objeto(sinteseTirhV1Persistida.vetores)[codigo])
-          : vetorBasal
+      : configuracaoBasalCanonica || modoHistorico
+        ? Object.keys(tirhV1).length
+          ? objeto(objeto(tirhV1.vetores)[codigo])
+          : Object.keys(sinteseTirhV1Persistida).length
+            ? objeto(objeto(sinteseTirhV1Persistida.vetores)[codigo])
+            : vetorBasal
         : undefined;
     return {
       code: codigo,
@@ -1482,7 +1486,9 @@ export function CockpitOperacionalVivo({
       value: valorNormalizado(vetorCanonicoDoContexto?.magnitude)
     };
   });
-  const cienciaAtualAdmissivel = leituraAoVivo || configuracaoBasalCanonica;
+  const cienciaAtualAdmissivel = leituraAoVivo
+    || configuracaoBasalCanonica
+    || (modoHistorico && Object.keys(tirhV1).length > 0);
   const iirhCanonicoCalculado = cienciaAtualAdmissivel && (
     Object.keys(tirhV1).length
       ? ["PARCIAL", "PLENO"].includes(String(iirhTirhV1.estado ?? ""))
@@ -1592,7 +1598,7 @@ export function CockpitOperacionalVivo({
   const radarVetorial = apresentacaoRegulatoria.vetores as HxVectorAxis[];
   const [visaoVetorial, setVisaoVetorial] = useState<VisaoVetorial>("SINTESE");
   const vetoresDaVisaoAtual = vetoresDaVisao(radarVetorial, visaoVetorial);
-  const radarCompleto = radarVetorial.length === 10
+  const radarCompleto = radarVetorial.length === 9
     && radarVetorial.every((item) => item.value != null);
   const iirhCalculado = apresentacaoRegulatoria.iirh != null;
   const iirhApresentado = apresentacaoRegulatoria.iirh;
@@ -1675,10 +1681,10 @@ export function CockpitOperacionalVivo({
     },
     {
       codigo: "05",
-      nome: "Vetores oficiais · dez vetores e radar · nove momentâneos + VEV longitudinal",
+      nome: "Vetores momentâneos V1 · nove vetores · VEV longitudinal separado",
       estado: contratoTirhV1Ativo
-        ? `${Object.values(vetoresTirhV1).filter((item) => objeto(item).magnitude != null).length}/10 com magnitude admissível`
-        : `${Number(vetoresCadeia.calculaveis ?? radarVetorial.filter((item) => item.value != null).length)}/10 calculáveis`,
+        ? `${Object.entries(vetoresTirhV1).filter(([codigo, item]) => codigo !== "VEV" && objeto(item).magnitude != null).length}/9 com magnitude admissível`
+        : `${Number(vetoresCadeia.calculaveis ?? radarVetorial.filter((item) => item.value != null).length)}/9 calculáveis`,
       motivo: contratoTirhV1Ativo
         ? "VEV permanece fora da Resultante momentânea; ausência nunca é zero."
         : texto(vetoresCadeia.motivo, "Ausência permanece ausência; VEV não é inferido.")
@@ -1733,9 +1739,7 @@ export function CockpitOperacionalVivo({
     },
     {
       codigo: "13",
-      nome: contratoTirhV1Ativo
-        ? "RRO · registro histórico separado do contrato V1"
-        : "Reorganização da Rota Operacional — RRO",
+      nome: "Registro histórico legado de rota · fora do contrato V1",
       estado: contratoTirhV1Ativo
         ? "LEGACY REPRODUZÍVEL"
         : texto(rroCadeia.estado, "NAO CALCULAVEL"),
@@ -2254,8 +2258,8 @@ export function CockpitOperacionalVivo({
             <article className={Number(configuracaoBasal.vetores_calculaveis) > 0 ? "is-ready" : "is-blocked"}>
               <i>02</i>
               <div>
-                <small>Dez vetores basais</small>
-                <strong>{numero(configuracaoBasal.vetores_calculaveis)}/10 calculáveis</strong>
+                <small>Nove vetores momentâneos basais</small>
+                <strong>{Math.min(Number(configuracaoBasal.vetores_calculaveis ?? 0), 9)}/9 calculáveis</strong>
                 <span>Magnitude somente quando sustentada por regra autoral e evidência admissível.</span>
               </div>
             </article>
@@ -2329,10 +2333,7 @@ export function CockpitOperacionalVivo({
                       ? "não calculável"
                       : numero(vetor.magnitude, 2)} · Cobertura {percentual(vetor.cobertura)} · Confiança {percentual(vetor.confianca)} · {texto(
                       vetor.motivo,
-                      texto(
-                        vetor.decisao_autoral_pendente,
-                        "Sem composição basal admissível."
-                      )
+                      "Sem composição basal admissível."
                     )}
                     {vetor.magnitude == null && vetor.classificacao_da_ausencia
                       ? ` · Classificação ${texto(vetor.classificacao_da_ausencia)} — ${texto(
@@ -2491,7 +2492,7 @@ export function CockpitOperacionalVivo({
               eyebrow={configuracaoBasalCanonica
                 ? "VETORES BASAIS CANÔNICOS · MATRIZ VETORIAL"
                 : "VETORES VIVOS · MATRIZ VETORIAL"}
-              title="Dez vetores oficiais"
+              title="Nove vetores momentâneos oficiais"
               aside={<span>Estado atual · atualização canônica</span>}
             />
             <div className="hx-live-vector-tabs" role="tablist" aria-label="Visões do gráfico vetorial">
@@ -2515,7 +2516,7 @@ export function CockpitOperacionalVivo({
                 vectors={vetoresDaVisaoAtual}
               />
             </div>
-            <div className="hx-live-vector-list" aria-label="Estado individual dos dez vetores oficiais">
+            <div className="hx-live-vector-list" aria-label="Estado individual dos nove vetores momentâneos oficiais">
               {radarVetorial.map((vetor) => {
                 return (
                   <div className={vetor.value == null ? "is-missing" : "has-value"} key={vetor.code}>
@@ -2868,7 +2869,7 @@ export function CockpitOperacionalVivo({
             </dl>
           </details>
           <details className="hx-live-vector-trace">
-            <summary>Dez vetores · rastreabilidade científica</summary>
+            <summary>Nove vetores momentâneos · rastreabilidade científica</summary>
             {radarVetorial.map((vetor) => {
               const definicao = definicoesVetoriais.find(
                 (item) => codigoVetorial(item) === vetor.code

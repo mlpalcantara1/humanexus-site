@@ -79,7 +79,7 @@ export async function POST(request: Request) {
           { status: 403 }
         );
       }
-      if ([502, 503, 504].includes(erro.status)) {
+      if ([301, 302, 303, 307, 308, 502, 503, 504].includes(erro.status)) {
         return NextResponse.json(
           {
             erro: {

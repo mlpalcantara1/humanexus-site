@@ -3219,7 +3219,7 @@ export function GestaoOperacional({
                         <strong>{texto(item.nome_do_ctr)}</strong>
                         <p><b>ARR:</b> {texto(item.arr_sugerida)}</p>
                         <p><b>Rota candidata:</b> {texto(rota.nome)}</p>
-                        <p><b>RRO:</b> {texto(item.rro_sugerido)}</p>
+                        <p><b>Registro legado de rota:</b> {texto(item.rro_sugerido)}</p>
                         <p><b>NRA:</b> {texto(item.nra_sugerida)}</p>
                         <p><b>Ganho sugerido:</b> {
                           texto(item.ganho_regulatorio_sugerido)
@@ -3261,7 +3261,7 @@ export function GestaoOperacional({
               )}</strong>
             </article>
             <article>
-              <small>RRO</small>
+              <small>Registro legado de rota</small>
               <strong>{texto(
                 rroDoCatalogo?.categoria
                   ?? sugestaoPrincipal?.rro_sugerido,

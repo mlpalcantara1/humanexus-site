@@ -3,6 +3,14 @@ import "server-only";
 const CORE_API =
   process.env.HUMANEXUS_CORE_API_URL?.replace(/\/$/, "") ??
   "http://127.0.0.1:8080";
+const CORE_PROTECTION_BYPASS =
+  process.env.HUMANEXUS_CORE_PROTECTION_BYPASS_SECRET?.trim() ?? "";
+
+function cabecalhoDeProtecaoDoCore(): Record<string, string> {
+  return CORE_PROTECTION_BYPASS
+    ? { "x-vercel-protection-bypass": CORE_PROTECTION_BYPASS }
+    : {};
+}
 
 export type PerfilHumanexus =
   | "ADMINISTRADOR_PROPRIETARIO"
@@ -72,8 +80,10 @@ async function requisitar<T>(
     try {
       resposta = await fetch(`${CORE_API}${caminho}`, {
         ...init,
+        redirect: "manual",
         headers: {
           "content-type": "application/json",
+          ...cabecalhoDeProtecaoDoCore(),
           ...(token ? { authorization: `Bearer ${token}` } : {}),
           ...init.headers
         },
@@ -129,7 +139,11 @@ export async function requisitarNucleoBinario(
   token: string
 ) {
   const resposta = await fetch(`${CORE_API}${caminho}`, {
-    headers: { authorization: `Bearer ${token}` },
+    redirect: "manual",
+    headers: {
+      ...cabecalhoDeProtecaoDoCore(),
+      authorization: `Bearer ${token}`
+    },
     cache: "no-store"
   });
   if (!resposta.ok) {

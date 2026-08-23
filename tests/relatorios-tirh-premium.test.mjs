@@ -28,7 +28,7 @@ test("arquitetura documental contém cinco produtos TIRH independentes", async (
   for (const vetor of ["VH", "VT", "VS", "VSI", "VAR", "VAM", "VJ", "VE", "VR", "VEV"])
     assert.match(pdf, new RegExp(`\\["${vetor}"`));
   assert.match(pdf, /HIPÓTESE OPERACIONAL v0\.1 — EM VALIDAÇÃO EMPÍRICA/);
-  assert.match(pdf, /Reorganização da Rota Operacional/);
+  assert.match(pdf, /Rota Regulatória Dominante/);
   assert.match(pdf, /Nova Rota Adaptativa/);
   for (const zona of ["Zona Ótima", "Zona Adaptativa", "Zona de Instabilidade", "Zona de Comprometimento Funcional"])
     assert.match(pdf, new RegExp(zona));

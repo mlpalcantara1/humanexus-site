@@ -399,7 +399,7 @@ test("Resultante, IIRH, Zona e Trajetória permanecem ontologicamente separados"
   assert.doesNotMatch(client, /iirh\s*=\s*resultante|zona\s*=\s*resultante/i);
 });
 
-test("ARR, RRO e NRA usam a cadeia científica canônica da sessão humana", async () => {
+test("ARR, RRD, GRI/CRL e NRA usam a cadeia científica canônica da sessão humana", async () => {
   const client = await source("components/operacao-homologacao.tsx");
   assert.match(client, /cockpit_operacional\)\.cadeia_cientifica/);
   assert.match(client, /texto\(registro\.estado, "REGISTRO LOCALIZADO"\)/);
@@ -410,7 +410,7 @@ test("ARR, RRO e NRA usam a cadeia científica canônica da sessão humana", asy
 test("produtos científicos e infraestrutura estão integrados sem virar módulos concorrentes", async () => {
   const client = await source("components/operacao-homologacao.tsx");
   for (const item of [
-    "ARR", "Reorganização da Rota Operacional", "Nova Rota Adaptativa",
+    "ARR", "Rota Regulatória Dominante", "Nova Rota Adaptativa",
     "Formulação Regulatória", "LONGITUDINAL", "REPLAY MULTIMODAL SINCRONIZADO",
     "RELATÓRIO E PDF GOVERNADOS", "MODO COLETIVO DO COCKPIT"
   ]) assert.match(client, new RegExp(item));
@@ -531,7 +531,7 @@ test("Cockpit cinematográfico prioriza HUD, leitura viva e condução sem alter
   assert.match(design, /grid-template-columns: repeat\(8, minmax\(0, 1fr\)\)/);
 });
 
-test("Cockpit abre progressivamente e preserva os dez vetores visíveis", async () => {
+test("Cockpit abre progressivamente e preserva os nove vetores momentâneos visíveis", async () => {
   const client = await source("components/operacao-homologacao.tsx");
   const operacional = await source("components/cockpit-operacional-vivo.tsx");
   const rota = await source("app/api/operacao-homologacao/route.ts");
@@ -557,7 +557,7 @@ test("Cockpit apresenta a configuração basal sem fabricar magnitude", async ()
   assert.match(operacional, /Magnitude somente quando sustentada por regra autoral e evidência admissível/);
   assert.match(operacional, /Nenhum snapshot científico foi fabricado/);
   assert.match(operacional, /vetor\.magnitude/);
-  assert.match(operacional, /vetor\.decisao_autoral_pendente|vetor\.motivo/);
+  assert.match(operacional, /vetor\.motivo/);
 });
 
 test("telemetria real é contínua, histórica quando encerrada e não cria simulação", async () => {
@@ -708,7 +708,7 @@ test("Cockpit de Inteligência Regulatória concentra decisão e preserva uma fo
   assert.doesNotMatch(hud, /RESULTANTE/);
 
   for (const instrumento of [
-    "Dez vetores oficiais",
+    "Nove vetores momentâneos oficiais",
     "Neurodinâmica em tempo real",
     "Regulação cardiovascular em tempo real",
     "Dinâmica da Inteligência Regulatória Humana",
@@ -836,7 +836,7 @@ test("HUMANEXUS Design System unifica módulos e separa profundidade sem alterar
   for (const modulo of [
     "Painel de Comando", "Organizações", "Participantes", "Anamnese Regulatória",
     "Sessões", "Treinamentos", "Cockpit Vivo", "Arquitetura Vetorial", "Resultante",
-    "ARR · RRO · NRA", "CTR · THX · THX-AER", "Longitudinal", "Replay",
+    "Rotas Regulatórias", "CTR · THX · THX-AER", "Longitudinal", "Replay",
     "Relatórios e exportação", "Administração", "Configurações"
   ]) assert.match(navegacao, new RegExp(modulo.replaceAll("·", "\\·")));
 
@@ -884,7 +884,7 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   assert.match(cockpit, /texto\(thx\.nome/);
   assert.doesNotMatch(hud, /Sequência|maturidade_da_evidencia/);
   assert.doesNotMatch(cockpit, /hx-live-regulatory-readout--primary/);
-  assert.match(vetores, /Dez vetores oficiais/);
+  assert.match(vetores, /Nove vetores momentâneos oficiais/);
   assert.match(vetores, /Estado atual/);
   assert.doesNotMatch(vetores, /Por que este resultado/);
   for (const metadado of [
@@ -954,7 +954,7 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /Última leitura registrada/);
   assert.match(cockpit, /const vetorCanonicoDoContexto = leituraAoVivo/);
   assert.match(cockpit, /valorNormalizado\(vetorCanonicoDoContexto\?\.magnitude\)/);
-  assert.match(cockpit, /const cienciaAtualAdmissivel = leituraAoVivo \|\| configuracaoBasalCanonica/);
+  assert.match(cockpit, /const cienciaAtualAdmissivel = leituraAoVivo[\s\S]*configuracaoBasalCanonica[\s\S]*modoHistorico/);
   assert.match(cockpit, /const iirhCanonicoCalculado = cienciaAtualAdmissivel/);
   assert.match(cockpit, /ativo: cienciaAtualAdmissivel/);
   assert.match(cockpit, /const resultanteCalculada = cienciaAtualAdmissivel/);
@@ -1186,7 +1186,7 @@ test("interrupção transitória do polling não apaga a projeção basal canôn
   assert.match(contratoBasal, /!modoHistorico/);
   assert.match(contratoBasal, /configuracaoBasal\.identificador_da_sessao/);
   assert.doesNotMatch(contratoBasal, /projecaoOperacionalAtual/);
-  assert.match(cockpit, /const cienciaAtualAdmissivel = leituraAoVivo \|\| configuracaoBasalCanonica/);
+  assert.match(cockpit, /const cienciaAtualAdmissivel = leituraAoVivo[\s\S]*configuracaoBasalCanonica[\s\S]*modoHistorico/);
 });
 
 test("polling vivo não para em segundo plano e retoma imediatamente no foco", async () => {
@@ -1368,10 +1368,10 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
   for (const item of [
     "Fontes atuais",
     "Evidências",
-    "Vetores oficiais",
+    "Vetores momentâneos V1",
     "Resultante Regulatória",
     "ARR",
-    "Reorganização da Rota Operacional — RRO",
+    "Registro histórico legado de rota · fora do contrato V1",
     "Nova Rota Adaptativa — NRA",
     "THX-AER",
     "CTR",
@@ -1402,7 +1402,7 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
   assert.match(cockpit, /Rastreabilidade, dependências e candidatos documentais/);
   for (const item of [
     "Anamnese e contexto",
-    "Vetores oficiais · dez vetores e radar",
+    "Vetores momentâneos V1 · nove vetores",
     "IIRH",
     "Zona Operacional",
     "Gatilhos regulatórios",
@@ -1427,7 +1427,7 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
   assert.doesNotMatch(cockpit, /resultante\.valor\s*\?\?/);
 });
 
-test("Cockpit prioriza os dez vetores sem expor parâmetros de estabilização", async () => {
+test("Cockpit prioriza os nove vetores momentâneos sem expor parâmetros de estabilização", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
   const css = await source("app/globals.css");
   const estabilizacao = await source("lib/cockpit-regulatory-visual-stability.ts");

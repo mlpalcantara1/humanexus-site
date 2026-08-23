@@ -3,6 +3,9 @@ const ambiente = process.env.HUMANEXUS_ENVIRONMENT;
 const core = process.env.HUMANEXUS_CORE_API_URL;
 const app = process.env.NEXT_PUBLIC_HUMANEXUS_APP_URL;
 const producao = ambiente === "producao" || ambiente === "production";
+const bypassDoCore = process.env.HUMANEXUS_CORE_PROTECTION_BYPASS_SECRET;
+const coreCandidato =
+  "humanexus-core-a1s3wd2nv-mlpalcantara1-5540s-projects.vercel.app";
 
 if (!producao && ambiente !== "homologacao") {
   erros.push(
@@ -43,6 +46,28 @@ for (const [nome, valor] of [
       `${nome} não pode apontar para a plataforma operacional de produção na homologação.`
     );
   }
+}
+
+if (!producao) {
+  let hostnameDoCore = "";
+  try {
+    hostnameDoCore = new URL(core).hostname;
+  } catch {}
+  if (hostnameDoCore !== coreCandidato) {
+    erros.push(`Preview deve consumir o Core candidato protegido ${coreCandidato}.`);
+  }
+  if (!bypassDoCore || bypassDoCore.length < 32) {
+    erros.push("HUMANEXUS_CORE_PROTECTION_BYPASS_SECRET ausente ou fraco no Preview.");
+  }
+} else if (bypassDoCore) {
+  erros.push("HUMANEXUS_CORE_PROTECTION_BYPASS_SECRET deve permanecer exclusivo do Preview.");
+}
+
+if (
+  process.env.NEXT_PUBLIC_HUMANEXUS_CORE_PROTECTION_BYPASS_SECRET
+  || process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET
+) {
+  erros.push("Segredo de bypass do Core não pode ser exposto ao browser.");
 }
 
 if (process.env.HUMANEXUS_LOCAL_RECOVERY_SECRET) {

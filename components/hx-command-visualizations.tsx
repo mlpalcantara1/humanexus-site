@@ -206,7 +206,7 @@ function pontosDoAnel(total: number, raio: number) {
 
 export function VectorRadarChart({
   vectors,
-  ariaLabel = "Radar dos dez vetores oficiais da TIRH",
+  ariaLabel = "Radar dos nove vetores momentâneos oficiais da TIRH",
   reducedMotion = false
 }: {
   vectors: HxVectorAxis[];

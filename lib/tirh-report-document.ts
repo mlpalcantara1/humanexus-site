@@ -543,7 +543,7 @@ function desenharRotas(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHumanex
   const origem = documentoTirh(entrada);
   const rotas = [
     ["ARR", objeto(origem.arr), "Análise da Rota Regulatória"],
-    ["RRO", objeto(origem.rro), "Reorganização da Rota Operacional"],
+    ["RRD", objeto(origem.rota_dominante), "Rota Regulatória Dominante"],
     ["NRA", objeto(origem.nra), "Nova Rota Adaptativa"]
   ] as const;
   const cardWidth = (width - 36) / 3;
@@ -783,7 +783,7 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   y = tituloSecao(doc, "Trajetória Regulatória", y, "02");
   desenharTrajetoria(doc, trajetoria, 83, y + 6, 430, 185);
 
-  y = novaPagina(doc, "04 · Rotas", "ARR, RRO e NRA", "Hipóteses, reorganização observada e mudança adaptativa com validação profissional.");
+  y = novaPagina(doc, "04 · Rotas", "ARR, RRD, GRI / CRL e NRA", "Análise, rota dominante, ganhos, custos e mudança adaptativa com validação profissional.");
   desenharRotas(doc, entrada, 42, y + 6, 511);
   y += 180;
   y = tituloSecao(doc, "Gatilhos regulatórios", y, "01");

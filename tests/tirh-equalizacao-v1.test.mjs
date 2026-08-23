@@ -27,10 +27,21 @@ test("validação profissional usa um quadro pós-sessão versionado e auditáve
   assert.match(proxy, /\/tirh-v1\/validacoes/);
 });
 
-test("V1 separa RRD de RRO histórico e não promove legado automaticamente", () => {
+test("V1 separa RRD do registro histórico legado e não o promove automaticamente", () => {
   assert.match(cockpit, /RRD · Rota Regulatória Dominante candidata/);
-  assert.match(cockpit, /RRO · registro histórico separado do contrato V1/);
+  assert.match(cockpit, /Registro histórico legado de rota · fora do contrato V1/);
   assert.match(cockpit, /Não é promovido automaticamente a RRD/);
+});
+
+test("regressão canônica elimina RRO ativo, decisões autorais pendentes e denominador momentâneo dez", () => {
+  const navegacao = fs.readFileSync("components/platform-navigation.tsx", "utf8");
+  assert.doesNotMatch(navegacao, /ARR · RRO · NRA/);
+  assert.doesNotMatch(operacao, /ARR → RRO → NRA|Reorganização da Rota Operacional — RRO/);
+  assert.doesNotMatch(cockpit, /vetor\.decisao_autoral_pendente/);
+  assert.match(cockpit, /codigoVetorial\(definicao\) !== "VEV"/);
+  assert.match(cockpit, /radarVetorial\.length === 9/);
+  assert.match(cockpit, /modoHistorico && Object\.keys\(tirhV1\)\.length > 0/);
+  assert.match(operacao, /ARR → RRD → GRI \/ CRL → NRA/);
 });
 
 test("quadro científico permanece responsivo nas larguras autorais", () => {
