@@ -6,7 +6,7 @@ import test from "node:test";
 const raiz = new URL("../", import.meta.url);
 const script = new URL("../deploy/vercel/verificar-ambiente.mjs", import.meta.url);
 const coreCandidato =
-  "https://humanexus-core-a1s3wd2nv-mlpalcantara1-5540s-projects.vercel.app";
+  "https://humanexus-core-de84c7g2j-mlpalcantara1-5540s-projects.vercel.app";
 const bypassFicticio = "bypass-ficticio-com-mais-de-trinta-e-dois";
 
 function verificar(ambiente) {
