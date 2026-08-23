@@ -204,7 +204,7 @@ export function SinteseValidacaoTirhV1({
           );
         })}
       </div>
-      <details className="hx-live-vector-trace" open={claimsPendentesTirhV1.length > 0}>
+      <details className="hx-tirh-v1-validation" open={claimsPendentesTirhV1.length > 0}>
         <summary>Validação Profissional · quadro único pós-sessão</summary>
         <p>Este quadro valida interpretações ou ajustes autorais sem reabrir a sessão, a máquina de estados, o lease da estação ou qualquer sensor.</p>
         {claimsPendentesTirhV1.length ? (

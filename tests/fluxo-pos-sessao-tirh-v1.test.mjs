@@ -67,6 +67,8 @@ test("fixture Thor mantém exatamente o claim elegível canônico", () => {
 });
 
 test("ações dependem de elegibilidade e nenhuma decisão é persistida automaticamente", () => {
+  assert.match(compartilhado, /className="hx-tirh-v1-validation"/);
+  assert.doesNotMatch(compartilhado, /className="hx-live-vector-trace"/);
   for (const acao of ["VALIDAR", "AJUSTAR", "MANTER_PENDENTE"]) {
     assert.match(compartilhado, new RegExp(`value="${acao}"`));
   }
