@@ -25,8 +25,12 @@ test("arquitetura documental contém cinco produtos TIRH independentes", async (
     "TECNICO",
     "FORMULACAO_REGULATORIA",
   ]) assert.match(pdf, new RegExp(tipo));
-  for (const vetor of ["VH", "VT", "VS", "VSI", "VAR", "VAM", "VJ", "VE", "VR", "VEV"])
+  for (const vetor of ["VH", "VT", "VS", "VSI", "VAR", "VAM", "VJ", "VE", "VR"])
     assert.match(pdf, new RegExp(`\\["${vetor}"`));
+  assert.match(pdf, /VETOR_LONGITUDINAL = \["VEV"/);
+  assert.match(pdf, /Nove Vetores Momentâneos/);
+  assert.match(pdf, /MAGNITUDE ESCALAR/);
+  assert.match(pdf, /Não aplicável na TIRH V1/);
   assert.match(pdf, /HIPÓTESE OPERACIONAL v0\.1 — EM VALIDAÇÃO EMPÍRICA/);
   assert.match(pdf, /Rota Regulatória Dominante/);
   assert.match(pdf, /Nova Rota Adaptativa/);
@@ -104,6 +108,7 @@ test("rota preserva impressão, exportação e nome documental profissional", as
   assert.match(route, /identificador_da_sessao/);
   assert.match(route, /Relatório desta sessão não localizado/);
   assert.match(route, /\/api\/v1\/relatorios\/\$\{encodeURIComponent/);
+  assert.match(route, /\/api\/v1\/sessoes\/\$\{encodeURIComponent\(sessaoId\)\}\/tirh-v1/);
   assert.match(route, /SEM EVIDÊNCIA CIENTÍFICA DISPONÍVEL PARA ESTA SESSÃO/);
   assert.doesNotMatch(route, /relatorios\.at\(-1\)/);
   assert.match(documento, /entrada\.relatorio\.secoes \?\? entrada\.relatorio\.secoes_json/);

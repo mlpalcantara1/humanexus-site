@@ -36,6 +36,7 @@ export type EntradaRelatorioHumanexus = {
   relatorio: Registro;
   gravacao: Registro;
   contratoCientifico: Registro;
+  tirhV1?: Registro;
   tipoDocumento?: TipoDocumentoTirh;
 };
 
@@ -82,9 +83,10 @@ const VETORES_OFICIAIS = [
   ["VAM", "Vetor Ação/Motor", "Campo Neuroregulatório"],
   ["VJ", "Vetor Julgamento", "Campo Neuroregulatório"],
   ["VE", "Vetor Estabilidade", "Campo Humano"],
-  ["VR", "Vetor Recuperação", "Campo Humano"],
-  ["VEV", "Vetor Evolução", "Campo Humano"]
+  ["VR", "Vetor Recuperação", "Campo Humano"]
 ] as const;
+
+const VETOR_LONGITUDINAL = ["VEV", "Vetor Evolução", "Longitudinal"] as const;
 
 function lista(valor: unknown): unknown[] {
   if (Array.isArray(valor)) return valor;
@@ -316,10 +318,27 @@ function documentoTirh(entrada: EntradaRelatorioHumanexus) {
   );
 }
 
+function projecaoTirhV1(entrada: EntradaRelatorioHumanexus) {
+  const resposta = objeto(entrada.tirhV1);
+  const sintese = objeto(resposta.sintese);
+  return Object.keys(sintese).length ? sintese : resposta;
+}
+
+function vetoresDaProjecaoTirhV1(entrada: EntradaRelatorioHumanexus): Registro[] {
+  const vetores = projecaoTirhV1(entrada).vetores;
+  if (Array.isArray(vetores)) return vetores.map(objeto);
+  return Object.entries(objeto(vetores)).map(([codigo, valor]) => ({
+    ...objeto(valor),
+    codigo: objeto(valor).codigo ?? codigo
+  }));
+}
+
 function extrairVetores(entrada: EntradaRelatorioHumanexus): Vetor[] {
   const origem = documentoTirh(entrada);
-  const registros = lista(origem.vetores ?? entrada.relatorio.vetores_json)
-    .map((item) => objeto(item));
+  const canonicos = vetoresDaProjecaoTirhV1(entrada);
+  const registros = canonicos.length
+    ? canonicos
+    : lista(origem.vetores ?? entrada.relatorio.vetores_json).map((item) => objeto(item));
   return VETORES_OFICIAIS.map(([codigo, nome, macrocampo]) => {
     const registro = registros.find((item) => texto(item.codigo, "").toUpperCase() === codigo) ?? {};
     return {
@@ -361,11 +380,15 @@ function extrairItens(entrada: EntradaRelatorioHumanexus, chave: string): Regist
 }
 
 function valorResultante(entrada: EntradaRelatorioHumanexus) {
+  const canonica = objeto(projecaoTirhV1(entrada).resultante);
+  if (Object.keys(canonica).length) return canonica;
   const origem = documentoTirh(entrada);
   return objeto(origem.resultante ?? entrada.relatorio.resultante_json);
 }
 
 function estadoZona(entrada: EntradaRelatorioHumanexus) {
+  const canonica = objeto(projecaoTirhV1(entrada).zona);
+  if (Object.keys(canonica).length) return canonica;
   const origem = documentoTirh(entrada);
   return objeto(origem.zona ?? entrada.relatorio.zona_json);
 }
@@ -731,8 +754,13 @@ function renderNarrativaTirh(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioH
 
 function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHumanexus) {
   const origem = documentoTirh(entrada);
+  const projecaoV1 = projecaoTirhV1(entrada);
   const vetores = extrairVetores(entrada);
+  const vev = vetoresDaProjecaoTirhV1(entrada).find(
+    (item) => texto(item.codigo, "").toUpperCase() === VETOR_LONGITUDINAL[0]
+  );
   const resultante = valorResultante(entrada);
+  const iirhV1 = objeto(projecaoV1.iirh);
   const zona = estadoZona(entrada);
   const trajetoria = extrairTrajetoria(entrada);
   const gatilhos = extrairItens(entrada, "gatilhos");
@@ -756,10 +784,10 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   y = tituloSecao(doc, "Princípio de leitura", y + 6, "04");
   paragrafo(doc, "As evidências sustentam hipóteses regulatórias contextualizadas. Nenhum indicador isolado equivale a vetor, Resultante, Zona ou decisão profissional.", y, { x: 83, width: 455, cor: CORES.suave });
 
-  y = novaPagina(doc, "02 · Arquitetura Vetorial", "Dez Vetores Oficiais", "Magnitude, confiança e ausência preservadas sem preenchimento artificial.");
+  y = novaPagina(doc, "02 · Arquitetura Vetorial", "Nove Vetores Momentâneos", "Magnitude, confiança e ausência preservadas sem preenchimento artificial; VEV permanece longitudinal e separado.");
   desenharRadarVetorial(doc, vetores, 47, y + 8, 135);
   tabelaVetores(doc, vetores, 334, y + 4, 214);
-  paragrafo(doc, "A configuração vetorial representa interação contextual entre campos. Pontos ausentes não são conectados nem convertidos em zero.", 518, { cor: CORES.suave, tamanho: 7.8 });
+  paragrafo(doc, `A configuração momentânea representa interação contextual entre campos. Pontos ausentes não são conectados nem convertidos em zero. VEV — ${texto(vev?.estado_epistemico, "LONGITUDINAL NÃO ELEGÍVEL")} — não integra a Resultante momentânea.`, 518, { cor: CORES.suave, tamanho: 7.8 });
 
   y = novaPagina(doc, "03 · Configuração", "Resultante, Zona e Trajetória", "Produtos distintos, liberados somente sob seus próprios critérios de admissibilidade.");
   y = tituloSecao(doc, "Resultante Regulatória", y, "01");
@@ -770,14 +798,23 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
     { width: 455, characterSpacing: .75 }
   );
   y += 18;
-  if (numero(resultante.magnitude) == null) {
+  if (Object.keys(projecaoV1).length) {
+    etiqueta(doc, "ESTADO ESTRUTURAL", texto(resultante.estado, "Não materializada"), 83, y, 205);
+    etiqueta(doc, "MAGNITUDE ESCALAR", "Não aplicável na TIRH V1", 308, y, 230);
+    y = paragrafo(doc, "A Resultante V1 é uma configuração emergente multivetorial estruturada. Sua admissibilidade não depende da fabricação de um escalar global.", y + 68, { x: 83, width: 455, cor: CORES.suave });
+  } else if (numero(resultante.magnitude) == null) {
     ausencia(doc, "Resultante ausente", texto(resultante.motivo, "Configuração multivetorial integral não disponível."), 83, y, 455, 95);
   } else {
     desenharResultante(doc, resultante, 83, y - 5, 455, 240);
   }
   y += 255;
   etiqueta(doc, "ZONA OPERACIONAL", normalizarZona(zona.codigo ?? zona.nome), 83, y, 200);
-  etiqueta(doc, "IIRH", numero(origem.iirh) == null ? "Ausente" : numero(origem.iirh)!.toFixed(1), 323, y, 100);
+  const valorIirhV1 = numero(iirhV1.valor);
+  const iirhV1Admissivel = ["PARCIAL", "PLENO"].includes(texto(iirhV1.estado, ""))
+    && valorIirhV1 != null;
+  etiqueta(doc, "IIRH OPERACIONAL V1", Object.keys(projecaoV1).length
+    ? (iirhV1Admissivel ? valorIirhV1!.toFixed(1) : "Não calculável")
+    : (numero(origem.iirh) == null ? "Ausente" : numero(origem.iirh)!.toFixed(1)), 303, y, 120);
   etiqueta(doc, "CONFIANÇA", proporcao(zona.confianca) == null ? "Não registrada" : `${Math.round((proporcao(zona.confianca) ?? 0) * 100)}%`, 443, y, 95);
   y += 62;
   y = tituloSecao(doc, "Trajetória Regulatória", y, "02");

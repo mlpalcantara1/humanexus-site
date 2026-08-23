@@ -75,7 +75,7 @@ export async function GET(request: Request) {
     );
     const execucao = execucoes.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
     const sessaoId = String(sessao.identificador);
-    const [telemetria, ciclo, eventos, gravacao, contratoCientifico] = await Promise.all([
+    const [telemetria, ciclo, eventos, gravacao, contratoCientifico, tirhV1] = await Promise.all([
       requisitarNucleoAutenticado<Registro[]>(`/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}`, token)
         .catch(() => []),
       execucao
@@ -102,7 +102,11 @@ export async function GET(request: Request) {
       ).catch(() => ({
         estado: "SEM EVIDÊNCIA CIENTÍFICA DISPONÍVEL PARA ESTA SESSÃO",
         ausencia_convertida_em_zero: false
-      }))
+      })),
+      requisitarNucleoAutenticado<Registro>(
+        `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/tirh-v1`,
+        token
+      ).catch(() => ({}))
     ]);
     const pdf = await gerarPdfVisualHumanexus({
       usuario,
@@ -114,7 +118,8 @@ export async function GET(request: Request) {
       eventos,
       relatorio,
       gravacao,
-      contratoCientifico
+      contratoCientifico,
+      tirhV1
     });
     return new NextResponse(new Uint8Array(pdf), {
       headers: {

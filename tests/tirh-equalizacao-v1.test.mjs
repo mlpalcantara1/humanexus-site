@@ -42,6 +42,37 @@ test("regressão canônica elimina RRO ativo, decisões autorais pendentes e den
   assert.match(cockpit, /radarVetorial\.length === 9/);
   assert.match(cockpit, /modoHistorico && Object\.keys\(tirhV1\)\.length > 0/);
   assert.match(operacao, /ARR → RRD → GRI \/ CRL → NRA/);
+  assert.doesNotMatch(operacao, /vetores \|\| 10/);
+  assert.match(proxy, /rro_legacy: registrosRro/);
+});
+
+test("Inspeção, Replay, Resultante e Relatório usam uma única projeção TIRH V1", () => {
+  assert.match(operacao, /function projecaoCanonicaTirhV1/);
+  assert.match(operacao, /const respostaPersistida = objeto\(estado\.tirh_v1\)/);
+  assert.match(operacao, /const sintesePersistida = objeto\(respostaPersistida\.sintese\)/);
+  assert.match(operacao, /vetoresMomentaneosDaProjecaoV1\(estado\)/);
+  assert.match(operacao, /Estado da materialização vetorial/);
+  assert.match(operacao, /Vetores momentâneos V1 · \{vetoresReplay\.length\}\/9 projetados/);
+  assert.match(operacao, /Resultante estruturada/);
+  assert.match(operacao, /Contrato ·/);
+  assert.doesNotMatch(operacao, /Vetores · não registrados nesta sessão/);
+  assert.doesNotMatch(operacao, /Resultante · não registrada nesta sessão/);
+});
+
+test("Resultante V1 estruturada não exige magnitude escalar", () => {
+  assert.match(operacao, /Estado estrutural/);
+  assert.match(operacao, /Magnitude escalar/);
+  assert.match(operacao, /NÃO APLICÁVEL NA TIRH V1/);
+  assert.match(operacao, /possuiProjecaoV1/);
+});
+
+test("relatório V1 separa integralmente o documento histórico legacy", () => {
+  assert.match(operacao, /RELATÓRIO TIRH V1 · PROJEÇÃO CANÔNICA/);
+  assert.match(operacao, /IIRH OPERACIONAL V1/);
+  assert.match(operacao, /VERSÃO HISTÓRICA PRESERVADA · CONTRATO CIENTÍFICO LEGACY/);
+  assert.match(operacao, /IIRH LEGACY:/);
+  assert.match(operacao, /não apresentado como IIRH Operacional V1/);
+  assert.doesNotMatch(operacao, /lista\(secao\.itens\)\.map/);
 });
 
 test("quadro científico permanece responsivo nas larguras autorais", () => {

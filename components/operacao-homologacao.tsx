@@ -75,6 +75,7 @@ type Estado = {
   relatorios: Registro[];
   formulacoes: Registro[];
   longitudinal: Registro;
+  tirh_v1: Registro;
   movel: { perfil: Registro; comandos: Registro[] };
   ciencia: {
     postulados: Registro;
@@ -90,7 +91,7 @@ type Estado = {
     decisoes: Registro[];
     trajetorias: Registro[];
     arr: Registro[];
-    rro: Registro[];
+    rro_legacy: Registro[];
     anamneses: Registro[];
     evidencias_anamnese: Registro[];
     evidencias_anamnese_no_escopo: Registro[];
@@ -236,29 +237,75 @@ function dataLegivel(valor: unknown) {
       }).format(data);
 }
 
-function RelatorioCanonico({ relatorio }: { relatorio?: Registro }) {
-  const secoes = lista(relatorio?.secoes).map(objeto);
-  if (!secoes.length) {
+function valorIirhDoRelatorioLegacy(relatorio?: Registro) {
+  const itens = lista(relatorio?.secoes)
+    .map(objeto)
+    .flatMap((secao) => lista(secao.itens))
+    .map((item) => String(item));
+  const correspondencia = itens
+    .map((item) => item.match(/\bIIRH\s*:\s*(-?\d+(?:[.,]\d+)?)/i))
+    .find((item) => item?.[1]);
+  return correspondencia?.[1]?.replace(",", ".") ?? null;
+}
+
+function RelatorioCanonicoV1({
+  estado,
+  relatorio
+}: {
+  estado: Estado;
+  relatorio?: Registro;
+}) {
+  const projecao = projecaoCanonicaTirhV1(estado);
+  const vetores = vetoresMomentaneosDaProjecaoV1(estado);
+  const vev = vetorLongitudinalDaProjecaoV1(estado);
+  const resultante = objeto(projecao.resultante);
+  const iirh = objeto(projecao.iirh);
+  const zona = objeto(projecao.zona);
+  const iirhCalculavel = ["PARCIAL", "PLENO"].includes(String(iirh.estado ?? ""))
+    && typeof iirh.valor === "number";
+  const iirhLegacy = valorIirhDoRelatorioLegacy(relatorio);
+  if (!Object.keys(projecao).length) {
     return (
       <EmptySignalState
-        title="CONTEÚDO DO RELATÓRIO"
-        reason="O relatório nominal desta sessão ainda não está disponível."
+        title="PROJEÇÃO CANÔNICA TIRH V1"
+        reason="A projeção científica canônica desta sessão ainda não está disponível."
       />
     );
   }
   return (
-    <section className="hx-report-canonical" aria-label="Conteúdo nominal do relatório">
-      {secoes.map((secao, indice) => (
-        <article key={texto(secao.codigo, `secao-${indice}`)}>
-          <small>{texto(secao.codigo, "SEÇÃO DO RELATÓRIO")}</small>
-          <h3>{texto(secao.titulo, "Registro da sessão")}</h3>
+    <section className="hx-report-canonical" aria-label="Projeção canônica TIRH V1 do relatório">
+      <article>
+        <small>RELATÓRIO TIRH V1 · PROJEÇÃO CANÔNICA</small>
+        <h3>{texto(projecao.versao_cientifica, "TIRH V1")}</h3>
+        <ul>
+          <li>Vetores momentâneos: {vetores.length}/9 projetados; ausências permanecem ausências.</li>
+          <li>VEV longitudinal: {texto(vev.estado_epistemico, "NÃO ELEGÍVEL")} · separado da Resultante momentânea.</li>
+          <li>Estado estrutural da Resultante: {texto(resultante.estado, "NÃO MATERIALIZADA")}.</li>
+          <li>Magnitude escalar da Resultante: NÃO APLICÁVEL NA TIRH V1.</li>
+        </ul>
+      </article>
+      <article>
+        <small>IIRH OPERACIONAL V1</small>
+        <h3>{iirhCalculavel ? `${iirh.valor} · ${texto(iirh.unidade, "0-100")}` : "NÃO CALCULÁVEL"}</h3>
+        <ul>
+          <li>{iirhCalculavel
+            ? `Estado ${texto(iirh.estado)}; somente os Macrocampos funcionalmente admissíveis participam da síntese.`
+            : "Não houve cobertura funcional suficiente dos Macrocampos para materialização do IIRH Operacional V1 nesta sessão."}</li>
+          <li>Zona Operacional: {texto(zona.codigo ?? zona.estado, "NÃO CLASSIFICÁVEL")}.</li>
+        </ul>
+      </article>
+      {relatorio ? (
+        <article>
+          <small>VERSÃO HISTÓRICA PRESERVADA · CONTRATO CIENTÍFICO LEGACY</small>
+          <h3>Registro imutável, fora das conclusões TIRH V1</h3>
           <ul>
-            {lista(secao.itens).map((item, itemIndice) => (
-              <li key={`${indice}-${itemIndice}`}>{texto(item, "Sem informação registrada.")}</li>
-            ))}
+            <li>{iirhLegacy
+              ? `IIRH LEGACY: ${iirhLegacy} · não apresentado como IIRH Operacional V1.`
+              : "IIRH LEGACY: sem valor nominal identificado no documento histórico."}</li>
+            <li>O conteúdo integral permanece preservado no arquivo técnico original, sem reescrita e sem promoção de constructos descontinuados.</li>
           </ul>
         </article>
-      ))}
+      ) : null}
     </section>
   );
 }
@@ -843,10 +890,46 @@ function nomeDoVetor(registro: Registro) {
   return texto(valorDoRegistro(registro, "name", "nome"));
 }
 
-function leituraCientificaDaInspecao(estado: Estado) {
+function projecaoCanonicaTirhV1(estado: Estado) {
+  const respostaPersistida = objeto(estado.tirh_v1);
+  const sintesePersistida = objeto(respostaPersistida.sintese);
+  if (Object.keys(sintesePersistida).length) {
+    return {
+      ...sintesePersistida,
+      versao_cientifica: respostaPersistida.versao_cientifica
+        ?? sintesePersistida.versao_cientifica
+    };
+  }
   const leitura = objeto(objeto(estado.cockpit_operacional).leitura_cientifica);
   const tirhV1 = objeto(leitura.tirh_operacional_v1);
+  return tirhV1;
+}
+
+function leituraCientificaDaInspecao(estado: Estado) {
+  const leitura = objeto(objeto(estado.cockpit_operacional).leitura_cientifica);
+  const tirhV1 = projecaoCanonicaTirhV1(estado);
   return Object.keys(tirhV1).length ? { ...leitura, ...tirhV1 } : leitura;
+}
+
+function vetoresDaProjecaoV1(estado: Estado): Registro[] {
+  const vetores = projecaoCanonicaTirhV1(estado).vetores;
+  if (Array.isArray(vetores)) return vetores.map(objeto);
+  return Object.entries(objeto(vetores)).map(([codigo, valor]) => ({
+    ...objeto(valor),
+    codigo: objeto(valor).codigo ?? codigo
+  }));
+}
+
+function vetoresMomentaneosDaProjecaoV1(estado: Estado) {
+  return vetoresDaProjecaoV1(estado).filter(
+    (item) => codigoDoVetor(item) !== "VEV"
+  );
+}
+
+function vetorLongitudinalDaProjecaoV1(estado: Estado): Registro {
+  return vetoresDaProjecaoV1(estado).find(
+    (item) => codigoDoVetor(item) === "VEV"
+  ) ?? ({} as Registro);
 }
 
 function configuracaoBasalDaInspecao(estado: Estado) {
@@ -866,7 +949,7 @@ function vetoresCanonicosDaInspecao(estado: Estado) {
     objeto(estado.estado_operacional).fase_cientifica_atual ?? ""
   );
   const vetoresBasais = lista(configuracaoBasal.vetores) as Registro[];
-  const vetoresAtuais = lista(leitura.vetores) as Registro[];
+  const vetoresAtuais = vetoresDaProjecaoV1(estado);
   return !fase && vetoresBasais.length ? vetoresBasais : vetoresAtuais;
 }
 
@@ -1212,7 +1295,7 @@ function ConstituicaoOperacional({ estado }: { estado: Estado }) {
     Object.keys(configuracaoBasal).length
       ? "ATIVO · configuração basal canônica"
       : "ATIVO · sem configuração basal admissível",
-    `ATIVO · ${vetoresCalculaveis}/${vetores || 10} vetores calculáveis`,
+    `ATIVO · ${vetoresCalculaveis}/${vetores || 9} vetores calculáveis`,
     evidencias ? "ATIVO · evidências admissíveis reconhecidas" : "ATIVO · evidência admissível ausente",
     `ATIVO · ${texto(resultante.estado, "não calculável")}`,
     "ATIVO · trajetória ainda não inferível",
@@ -1333,6 +1416,7 @@ function ResultanteRegulatoria({ estado, resumida = false }: { estado: Estado; r
   const motivo = objeto(resultado?.por_que_este_resultado).resumo
     ?? resultado?.justificativa
     ?? resultado?.motivo;
+  const possuiProjecaoV1 = Object.keys(projecaoCanonicaTirhV1(estado)).length > 0;
   return (
     <section className="hx-cockpit-panel hx-resultant">
       <TituloDaVisao
@@ -1341,8 +1425,8 @@ function ResultanteRegulatoria({ estado, resumida = false }: { estado: Estado; r
         descricao="A Resultante é a síntese funcional da configuração vetorial; não é IIRH nem Zona."
       />
       <div className="hx-resultant__core">
-        <div><small>Estado</small><strong>{resultado ? texto(valorDoRegistro(resultado, "estado", "estado_processamento")) : "EVIDÊNCIA INSUFICIENTE"}</strong></div>
-        <div><small>Magnitude global</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "magnitude_global", "valor"), "NÃO CALCULÁVEL")}</strong></div>
+        <div><small>Estado estrutural</small><strong>{resultado ? texto(valorDoRegistro(resultado, "estado", "estado_processamento")) : "EVIDÊNCIA INSUFICIENTE"}</strong></div>
+        <div><small>Magnitude escalar</small><strong>{possuiProjecaoV1 ? "NÃO APLICÁVEL NA TIRH V1" : valorVetorial(valorDoRegistro(resultado ?? {}, "magnitude_global", "valor"), "NÃO CALCULÁVEL")}</strong></div>
         <div><small>Direção funcional</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "direcao_funcional", "direcao_predominante", "direcao"), "NÃO DETERMINÁVEL")}</strong></div>
         <div><small>Sentido contextual</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "sentido_contextual", "sentido_predominante", "sentido"), "NÃO DETERMINÁVEL")}</strong></div>
         <div><small>Cobertura global</small><strong>{formatarPercentualCanonico(resultado?.cobertura)}</strong></div>
@@ -2732,6 +2816,14 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const modalidadesReplay = [...new Set(itensDaLinha.map((item) => item.track))];
   const trilhasVisiveis = modalidadesReplay.filter((item) => trilhas[item] !== false);
   const replayDisponivel = itensDaLinha.length > 0;
+  const projecaoReplay = projecaoCanonicaTirhV1(estado);
+  const vetoresReplay = vetoresMomentaneosDaProjecaoV1(estado);
+  const resultanteReplay = objeto(projecaoReplay.resultante);
+  const estadoDaMaterializacaoVetorial = texto(
+    projecaoReplay.vector_materialization_state
+      ?? projecaoReplay.estado_da_materializacao_vetorial,
+    vetoresReplay.length ? "PROJEÇÃO CANÔNICA DISPONÍVEL" : "NÃO MATERIALIZADA"
+  );
   const visaoReplay = (
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="REPLAY" titulo="Linha multimodal da sessão ativa." descricao="Participante, CTR, THX, fases, eventos, fontes e contexto permanecem sincronizados." />
@@ -2762,8 +2854,12 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         </div>
         <div className="hx-replay-filters">
           {modalidadesReplay.map((item) => <label key={item}><input disabled={!replayDisponivel} type="checkbox" checked={trilhas[item] !== false} onChange={(evento) => setTrilhas((atual) => ({ ...atual, [item]: evento.target.checked }))} />{item}</label>)}
-          {!modalidadesReplay.includes("VETOR") ? <span>Vetores · não registrados nesta sessão</span> : null}
-          {!modalidadesReplay.includes("RESULTANTE") ? <span>Resultante · não registrada nesta sessão</span> : null}
+          <span>Estado da materialização vetorial · {estadoDaMaterializacaoVetorial}</span>
+          <span>Vetores momentâneos V1 · {vetoresReplay.length}/9 projetados</span>
+          <span>Cobertura da Resultante · {formatarPercentualCanonico(resultanteReplay.cobertura)}</span>
+          <span>Resultante estruturada · {texto(resultanteReplay.estado, "NÃO MATERIALIZADA")}</span>
+          <span>Contrato · {texto(projecaoReplay.versao_cientifica, "TIRH V1 NÃO DISPONÍVEL")}</span>
+          <span>VEV · longitudinal separado</span>
         </div>
         {!replayDisponivel ? (
           <p className="hx-module__notice">
@@ -2797,7 +2893,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
         <div><Botao onClick={comandos.entregas} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Materializar entregas finais</Botao><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
       </section>
-      <RelatorioCanonico relatorio={estado.relatorios.at(-1)} />
+      <RelatorioCanonicoV1 estado={estado} relatorio={estado.relatorios.at(-1)} />
       <div className="hx-report-charts" data-humanexus-report>
         <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
       </div>
@@ -3108,7 +3204,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
           <div><Botao onClick={comandos.entregas} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Materializar entregas finais</Botao><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
         </section>
-        <RelatorioCanonico relatorio={estado.relatorios.at(-1)} />
+        <RelatorioCanonicoV1 estado={estado} relatorio={estado.relatorios.at(-1)} />
         <div className="hx-report-charts" data-humanexus-report>
           <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
           <TelemetryCommandChart frequency={frequencia} latency={latencia} buffer={buffer} markers={marcadores.filter((item) => ["disconnect", "reconnect"].includes(item.kind))} />

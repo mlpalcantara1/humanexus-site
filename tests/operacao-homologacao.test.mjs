@@ -120,9 +120,9 @@ test("relatório usa a sessão canônica e não duplica versões por chave de co
   assert.match(route, /secoes: lista\(item\.secoes_json\)/);
   assert.match(route, /identificador_da_sessao: contexto\.sessao\.identificador/);
   assert.match(route, /Interpretação profissional pendente/);
-  assert.match(client, /function RelatorioCanonico/);
-  assert.match(client, /Conteúdo nominal do relatório/);
-  assert.match(client, /<RelatorioCanonico relatorio=\{estado\.relatorios\.at\(-1\)\}/);
+  assert.match(client, /function RelatorioCanonicoV1/);
+  assert.match(client, /Projeção canônica TIRH V1 do relatório/);
+  assert.match(client, /<RelatorioCanonicoV1 estado=\{estado\} relatorio=\{estado\.relatorios\.at\(-1\)\}/);
   assert.doesNotMatch(route, /Registro técnico de homologação|Simulação técnica não equivale/);
 });
 

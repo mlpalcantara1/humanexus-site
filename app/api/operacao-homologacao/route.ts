@@ -724,7 +724,7 @@ async function estado(
       decisoes: decisoesProfissionais,
       trajetorias,
       arr: analisesArr,
-      rro: registrosRro,
+      rro_legacy: registrosRro,
       anamneses,
       evidencias_anamnese: evidenciasAnamnese,
       evidencias_anamnese_no_escopo: evidenciasAnamneseNoEscopo,
