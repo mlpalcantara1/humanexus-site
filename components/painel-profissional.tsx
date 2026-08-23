@@ -3,6 +3,7 @@
 import QRCode from "qrcode";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { humanexusApi } from "@/lib/humanexus-api";
+import { resolverIdentidadeDocumental } from "@/lib/humanexus-report-authority";
 
 const NICHOS = ["AVIACAO", "SAUDE", "EMPRESARIAL", "POLITICA", "TRANSPORTE", "MARITIMO", "SEGURANCA_PUBLICA", "OUTROS"];
 const PUBLIC_BASE = process.env.NEXT_PUBLIC_HUMANEXUS_APP_URL;
@@ -33,8 +34,10 @@ type Entrega = {
 };
 type RegistroParticipante = {
   identificador: string;
+  identificador_da_organizacao: string;
   referencia_externa: string;
   ativo: boolean;
+  identidade_individual_autoritativa?: Record<string, unknown>;
   perfil_operacional?: {
     tipo_de_vinculo?: "PARTICULAR" | "ORGANIZACIONAL" | "MISTO";
     dados_cadastrais?: {
@@ -427,7 +430,7 @@ export function PainelProfissional() {
           <header><small>GERAR CONVITE DE ANAMNESE</small><h3>Participante persistido</h3></header>
           <label><span>Organização</span><select required value={form.organizacao} onChange={(event) => { const organizacao = event.target.value; setForm({ ...form, organizacao, participante: "", nome: "", email: "", telefone: "", funcao: "" }); void Promise.all([carregarParticipantes(organizacao), carregar(organizacao)]).catch((erro) => setStatus(erro instanceof Error ? erro.message : "Organização indisponível.")); }}><option value="">Selecione</option>{(contexto?.organizacoes ?? []).filter((item) => item.ativa !== false).map((item) => <option key={item.identificador} value={item.identificador}>{item.nome}</option>)}</select></label>
           <label><span>Origem do cadastro</span><select value={form.modo} onChange={(event) => setForm({ ...form, modo: event.target.value, participante: "", nome: "", email: "", telefone: "", funcao: "" })}><option value="NOVO">Novo participante</option><option value="EXISTENTE">Participante existente</option></select></label>
-          {form.modo === "EXISTENTE" ? <label><span>Participante</span><select required value={form.participante} onChange={(event) => selecionarParticipanteExistente(event.target.value)}><option value="">Selecione</option>{(contexto?.participantes ?? []).filter((item) => item.ativo !== false).map((item) => { const cadastrais = item.perfil_operacional?.dados_cadastrais; const nome = cadastrais?.nome_social || cadastrais?.nome_completo || item.referencia_externa; const rotulo = item.referencia_externa && item.referencia_externa !== nome ? `${nome} — ${item.referencia_externa}` : nome; return <option key={item.identificador} value={item.identificador}>{rotulo}</option>; })}</select></label> : <>
+          {form.modo === "EXISTENTE" ? <label><span>Participante</span><select required value={form.participante} onChange={(event) => selecionarParticipanteExistente(event.target.value)}><option value="">Selecione</option>{(contexto?.participantes ?? []).filter((item) => item.ativo !== false).map((item) => { const identidade = resolverIdentidadeDocumental(item as unknown as Record<string, unknown>, { identificador: form.organizacao }); const rotulo = identidade.referenciaOperacional !== identidade.nomeCompleto ? `${identidade.nomeCompleto} — ${identidade.referenciaOperacional}` : identidade.nomeCompleto; return <option key={item.identificador} value={item.identificador}>{rotulo}</option>; })}</select></label> : <>
             <label><span>Nome</span><input required value={form.nome} onChange={(event) => setForm({ ...form, nome: event.target.value })} /></label>
             <label><span>E-mail</span><input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
           </>}

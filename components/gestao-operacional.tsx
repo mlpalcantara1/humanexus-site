@@ -5,6 +5,7 @@ import type { ModuloDaPlataforma } from "@/components/modulo-integrado";
 import { consultarJson } from "@/lib/client-request";
 import { PlatformErrorState } from "@/components/platform-error-state";
 import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multimodal";
+import { resolverIdentidadeDocumental } from "@/lib/humanexus-report-authority";
 
 type Registro = Record<string, unknown>;
 type BaseOperacional = {
@@ -122,28 +123,20 @@ function listaDeTextos(valor: unknown): string[] {
 }
 
 function nomeDoParticipante(registro: Registro | null | undefined) {
-  const perfil = objeto(registro?.perfil_operacional);
-  const cadastrais = objeto(perfil.dados_cadastrais);
-  return String(
-    cadastrais.nome_completo
-    ?? cadastrais.nome_social
-    ?? registro?.referencia_externa
-    ?? "Participante"
-  ).trim();
+  if (!registro) return "Participante";
+  return resolverIdentidadeDocumental(registro, {
+    identificador: registro.identificador_da_organizacao
+  }).nomeCompleto;
 }
 
 function rotuloDoParticipante(registro: Registro | null | undefined) {
-  const perfil = objeto(registro?.perfil_operacional);
-  const cadastrais = objeto(perfil.dados_cadastrais);
-  const nome = nomeDoParticipante(registro);
-  const nomePreferencial = String(cadastrais.nome_social ?? "").trim();
-  const nomeVisivel = nomePreferencial && nomePreferencial !== nome
-    ? `${nome} (${nomePreferencial})`
-    : nome;
-  const referencia = String(registro?.referencia_externa ?? "").trim();
-  return referencia && referencia !== nomeVisivel
-    ? `${nomeVisivel} — ${referencia}`
-    : nomeVisivel;
+  if (!registro) return "Participante";
+  const identidade = resolverIdentidadeDocumental(registro, {
+    identificador: registro.identificador_da_organizacao
+  });
+  return identidade.referenciaOperacional !== identidade.nomeCompleto
+    ? `${identidade.nomeCompleto} — ${identidade.referenciaOperacional}`
+    : identidade.nomeCompleto;
 }
 
 function normalizar(valor: unknown) {

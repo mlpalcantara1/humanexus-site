@@ -21,7 +21,16 @@ export async function GET(request: Request) {
       ?? ""
     );
     if (!organizacaoId) throw new Error("Organização não selecionada.");
-    const participantes = await requisitarNucleoAutenticado<Registro[]>(`/api/v1/organizacoes/${encodeURIComponent(organizacaoId)}/participantes`, token);
+    const [organizacao, participantes] = await Promise.all([
+      requisitarNucleoAutenticado<Registro>(
+        `/api/v1/organizacoes/${encodeURIComponent(organizacaoId)}`,
+        token
+      ),
+      requisitarNucleoAutenticado<Registro[]>(
+        `/api/v1/organizacoes/${encodeURIComponent(organizacaoId)}/participantes`,
+        token
+      )
+    ]);
     const participanteSolicitado = url.searchParams.get("participante");
     const participante = participanteSolicitado
       ? participantes.find(
@@ -142,6 +151,7 @@ export async function GET(request: Request) {
     ]);
     const pdf = await gerarPdfVisualHumanexus({
       usuario,
+      organizacao,
       participante,
       sessao,
       execucao,

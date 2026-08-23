@@ -320,7 +320,7 @@ function RelatorioCanonicoV1({
           <div><dt>Versão documental</dt><dd>{texto(relatorio?.numero_da_versao, "Rascunho técnico")}</dd></div>
           <div><dt>Estado</dt><dd>{cicloDocumental.estado.replaceAll("_", " ")}</dd></div>
         </dl>
-        <p>Fonte de identidade: {identidade.fonte}. Referência operacional: {texto(estado.participante.referencia_externa)}. Trace de sessão: {texto(estado.sessao.identificador)}.</p>
+        <p>Fonte de identidade: {identidade.fonte}. Referência operacional: {identidade.referenciaOperacional}. Trace de sessão: {texto(estado.sessao.identificador)}.</p>
       </header>
 
       <section className="hx-report-canonical__section">
@@ -1212,8 +1212,8 @@ function SeletorDeContexto({
             {estado.contextos.participantes.map((item) => (
               <option key={String(item.identificador)} value={String(item.identificador)}>
                 {somenteReferenciaOperacional
-                  ? texto(item.referencia_externa)
-                  : texto(item.rotulo ?? item.referencia_externa)}
+                  ? texto(item.referencia_operacional)
+                  : texto(item.rotulo ?? item.referencia_operacional)}
               </option>
             ))}
           </select>
@@ -1716,21 +1716,21 @@ function SelecaoInicialDoCockpit({
         ))}</select></label>
         <label>Participante<select
           value={somenteReferenciaOperacional
-            ? String(contexto.participantes.find(
+              ? String(contexto.participantes.find(
                 (item) => String(item.identificador) === selecao.participante
-              )?.referencia_externa ?? "")
+              )?.referencia_operacional ?? "")
             : selecao.participante}
           disabled={ocupado || !selecao.organizacao}
           onChange={(evento) => selecionar(
             "participante",
             somenteReferenciaOperacional
               ? String(contexto.participantes.find(
-                  (item) => String(item.referencia_externa) === evento.target.value
+                  (item) => String(item.referencia_operacional) === evento.target.value
                 )?.identificador ?? "")
               : evento.target.value
           )}
         ><option value="">Selecione</option>{contexto.participantes.map((item) => (
-          <option key={String(item.identificador)} value={somenteReferenciaOperacional ? String(item.referencia_externa) : String(item.identificador)}>{somenteReferenciaOperacional ? texto(item.referencia_externa) : texto(item.rotulo ?? item.referencia_externa)}</option>
+          <option key={String(item.identificador)} value={somenteReferenciaOperacional ? String(item.referencia_operacional) : String(item.identificador)}>{somenteReferenciaOperacional ? texto(item.referencia_operacional) : texto(item.rotulo ?? item.referencia_operacional)}</option>
         ))}</select></label>
         <label>Sessão existente<select
           value={somenteReferenciaOperacional
@@ -2138,7 +2138,25 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           corpo?.erro?.mensagem ?? "Contexto operacional indisponível."
         );
       }
-      const contexto = corpo as ContextoParaSelecao;
+      const contextoRecebido = corpo as ContextoParaSelecao;
+      const organizacaoDoContexto = contextoRecebido.organizacao ?? {};
+      const contexto = {
+        ...contextoRecebido,
+        participantes: contextoRecebido.participantes.map((item) => {
+          const identidade = resolverIdentidadeDocumental(
+            item,
+            organizacaoDoContexto
+          );
+          return {
+            identificador: item.identificador,
+            referencia_operacional: identidade.referenciaOperacional,
+            rotulo: identidade.referenciaOperacional === identidade.nomeCompleto
+              ? identidade.nomeCompleto
+              : `${identidade.nomeCompleto} — ${identidade.referenciaOperacional}`,
+            ativo: Boolean(item.ativo)
+          };
+        })
+      } as ContextoParaSelecao;
       const organizacaoAtual = String(
         contexto.organizacao?.identificador ?? organizacao ?? ""
       );

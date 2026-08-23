@@ -670,6 +670,7 @@ async function estado(
       nome: identidadeDocumental.nomeCompleto,
       nome_documental: identidadeDocumental.nomeCompleto,
       cpf_documental: identidadeDocumental.cpf,
+      referencia_operacional: identidadeDocumental.referenciaOperacional,
       fonte_da_identidade: identidadeDocumental.fonte,
       nome_de_anamnese: nomeDoParticipante ?? null
     } as Registro,
@@ -687,12 +688,17 @@ async function estado(
         nome: item.nome,
         ativa: Boolean(item.ativa)
       })),
-      participantes: participantes.map((item) => ({
-        identificador: item.identificador,
-        referencia_externa: item.referencia_externa,
-        rotulo: resolverIdentidadeDocumental(item, organizacao).nomeCompleto,
-        ativo: Boolean(item.ativo)
-      })),
+      participantes: participantes.map((item) => {
+        const identidade = resolverIdentidadeDocumental(item, organizacao);
+        return {
+          identificador: item.identificador,
+          referencia_operacional: identidade.referenciaOperacional,
+          rotulo: identidade.referenciaOperacional === identidade.nomeCompleto
+            ? identidade.nomeCompleto
+            : `${identidade.nomeCompleto} — ${identidade.referenciaOperacional}`,
+          ativo: Boolean(item.ativo)
+        };
+      }),
       sessoes: sessoes.map((item) => ({
         identificador: item.identificador,
         estado: item.estado,

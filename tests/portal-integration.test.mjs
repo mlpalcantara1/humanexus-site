@@ -245,16 +245,21 @@ test("participantes possuem grupos e busca operacional completa", async () => {
   assert.match(management, /Organizacionais/);
 });
 
-test("rótulo operacional preserva nome completo antes do nome preferencial", async () => {
+test("rótulo individual usa a autoridade do participante e separa referência", async () => {
   const management = await source("components/gestao-operacional.tsx");
   assert.match(
     management,
-    /cadastrais\.nome_completo[\s\S]*\?\? cadastrais\.nome_social/
+    /resolverIdentidadeDocumental\(registro[\s\S]*\.nomeCompleto/
   );
   assert.match(
     management,
-    /nomePreferencial && nomePreferencial !== nome[\s\S]*\$\{nome\} \(\$\{nomePreferencial\}\)/
+    /identidade\.referenciaOperacional !== identidade\.nomeCompleto[\s\S]*\$\{identidade\.nomeCompleto\} — \$\{identidade\.referenciaOperacional\}/
   );
+  const rotulo = management.slice(
+    management.indexOf("function rotuloDoParticipante"),
+    management.indexOf("function normalizar")
+  );
+  assert.doesNotMatch(rotulo, /nome_social|nome_preferencial|referencia_externa/);
 });
 
 test("status jurídico removido do instrumento integrado e de suas cópias", async () => {

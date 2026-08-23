@@ -33,6 +33,7 @@ type PontoTrajetoria = {
 
 export type EntradaRelatorioHumanexus = {
   usuario: Registro;
+  organizacao?: Registro;
   participante: Registro;
   sessao: Registro;
   execucao: Registro | null;
@@ -461,32 +462,15 @@ function textoDeSecao(entrada: EntradaRelatorioHumanexus, codigo: string, ausenc
 
 function identificacaoDocumental(entrada: EntradaRelatorioHumanexus) {
   const identidadeDoCore = objeto(entrada.relatorio.identidade_documental);
-  const identidadeAtual = resolverIdentidadeDocumental(
+  return resolverIdentidadeDocumental(
     entrada.participante,
-    { nome: identidadeDoCore.organizacao }
+    Object.keys(objeto(entrada.organizacao)).length
+      ? objeto(entrada.organizacao)
+      : {
+          identificador: entrada.participante.identificador_da_organizacao,
+          nome: identidadeDoCore.organizacao
+        }
   );
-  if (identidadeAtual.completa) {
-    return identidadeAtual;
-  }
-  const itens = itensDeSecao(entrada, "IDENTIFICACAO");
-  const valor = (prefixo: string) => {
-    const item = itens.find((registro) => registro.toLocaleLowerCase("pt-BR").startsWith(prefixo));
-    return item?.split(":").slice(1).join(":").trim() || null;
-  };
-  return {
-    nomeCompleto: texto(
-      identidadeDoCore.nome_completo,
-      valor("nome completo:") ?? identidadeAtual.nomeCompleto
-    ),
-    cpf: texto(
-      identidadeDoCore.cpf,
-      valor("cpf:") ?? identidadeAtual.cpf
-    ),
-    organizacao: texto(
-      identidadeDoCore.organizacao,
-      valor("organização:") ?? identidadeAtual.organizacao
-    )
-  };
 }
 
 function desenharRadarVetorial(doc: PDFKit.PDFDocument, vetores: Vetor[], x: number, y: number, raio: number) {

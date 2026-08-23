@@ -5,14 +5,80 @@ import test from "node:test";
 const source = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("autoridade documental usa cadastro civil, CPF e organização reais", async () => {
+  const { resolverIdentidadeDocumental } = await import(
+    "../lib/humanexus-report-authority.ts"
+  );
   const autoridade = await source("lib/humanexus-report-authority.ts");
   const rota = await source("app/api/operacao-homologacao/route.ts");
-  assert.match(autoridade, /perfil_operacional/);
-  assert.match(autoridade, /dados_cadastrais/);
-  assert.match(autoridade, /documentos/);
-  assert.match(autoridade, /formatarCpfDocumental/);
+  const participante = {
+    identificador: "PARTICIPANTE-AUTORITATIVO-001",
+    identificador_da_organizacao: "ORGANIZACAO-AUTORIZADA-001",
+    nome: "USUARIO-AUTENTICADO-NAO-E-PARTICIPANTE",
+    referencia_externa: "TITULO-DA-SESSAO-NAO-E-REFERENCIA",
+    profissional_responsavel: "PROFISSIONAL-NAO-E-PARTICIPANTE",
+    perfil_operacional: {
+      dados_cadastrais: {
+        nome_completo: "NOME-DE-PERFIL-SECUNDARIO",
+        nome_social: "NOME-SOCIAL-DISTINTO",
+        cpf: "11111111111"
+      },
+      dados_minimizados: {
+        referencia_operacional: "REF-PERFIL-SECUNDARIA"
+      }
+    },
+    identidade_individual_autoritativa: {
+      identificador_do_participante: "PARTICIPANTE-AUTORITATIVO-001",
+      identificador_da_organizacao: "ORGANIZACAO-AUTORIZADA-001",
+      nome_completo: "PARTICIPANTE CIVIL AUTORITATIVO",
+      cpf: "12345678901",
+      referencia_operacional: "REF-AUTORITATIVA-001",
+      fonte: "IDENTIDADE_LONGITUDINAL_DA_ANAMNESE_NO_ESCOPO",
+      escopo_validado: true
+    }
+  };
+  const organizacao = {
+    identificador: "ORGANIZACAO-AUTORIZADA-001",
+    nome: "ORGANIZAÇÃO AUTORITATIVA"
+  };
+  const projetada = resolverIdentidadeDocumental(participante, organizacao);
+  assert.equal(projetada.nomeCompleto, "PARTICIPANTE CIVIL AUTORITATIVO");
+  assert.equal(projetada.cpf, "123.456.789-01");
+  assert.equal(projetada.referenciaOperacional, "REF-AUTORITATIVA-001");
+  assert.equal(projetada.organizacao, "ORGANIZAÇÃO AUTORITATIVA");
+  assert.equal(projetada.origemDoNome, "PARTICIPANT_ONLY");
+  assert.equal(projetada.origemDoCpf, "PARTICIPANT_ONLY");
+  assert.equal(projetada.origemDaReferencia, "REFERENCE_ONLY");
+  const serializada = JSON.stringify(projetada);
+  for (const proibido of [
+    "USUARIO-AUTENTICADO-NAO-E-PARTICIPANTE",
+    "PROFISSIONAL-NAO-E-PARTICIPANTE",
+    "TITULO-DA-SESSAO-NAO-E-REFERENCIA",
+    "NOME-DE-PERFIL-SECUNDARIO",
+    "NOME-SOCIAL-DISTINTO",
+    "REF-PERFIL-SECUNDARIA"
+  ]) assert.doesNotMatch(serializada, new RegExp(proibido));
+  assert.throws(
+    () => resolverIdentidadeDocumental(
+      participante,
+      { identificador: "ORGANIZACAO-CRUZADA", nome: "OUTRA" }
+    ),
+    /FORA_DO_ESCOPO_ORGANIZACIONAL/
+  );
+
+  const semReferencia = structuredClone(participante);
+  delete semReferencia.identidade_individual_autoritativa.referencia_operacional;
+  delete semReferencia.perfil_operacional.dados_minimizados.referencia_operacional;
+  assert.equal(
+    resolverIdentidadeDocumental(semReferencia, organizacao).referenciaOperacional,
+    "REFERÊNCIA OPERACIONAL NÃO INFORMADA NO CADASTRO"
+  );
+
+  assert.match(autoridade, /identidade_individual_autoritativa/);
+  assert.doesNotMatch(autoridade, /participante\.nome\s*\?\?/);
+  assert.doesNotMatch(autoridade, /participante\.referencia_externa\s*\?\?/);
   assert.match(rota, /nome: identidadeDocumental\.nomeCompleto/);
   assert.match(rota, /cpf_documental: identidadeDocumental\.cpf/);
+  assert.match(rota, /referencia_operacional: identidadeDocumental\.referenciaOperacional/);
   assert.doesNotMatch(rota, /nome:\s*nomeDoParticipante\s*\?\?/);
 });
 
@@ -108,7 +174,13 @@ test("coletivo expõe individualmente somente referência operacional autorizada
 
 test("PDF final usa identidade atual e paginação dirigida por conteúdo", async () => {
   const pdf = await source("lib/tirh-report-document.ts");
+  const identidadePdf = pdf.slice(
+    pdf.indexOf("function identificacaoDocumental"),
+    pdf.indexOf("function desenharRadarVetorial")
+  );
   assert.match(pdf, /resolverIdentidadeDocumental/);
+  assert.match(identidadePdf, /entrada\.organizacao/);
+  assert.doesNotMatch(identidadePdf, /identidadeDoCore\.nome_completo|valor\("nome completo:"\)|valor\("cpf:"\)/);
   assert.match(pdf, /renderOperacionalFinalConsolidado/);
   assert.match(pdf, /if \(y \+ alturaDoItem > 735\) novaContinuacao\(\)/);
   assert.doesNotMatch(

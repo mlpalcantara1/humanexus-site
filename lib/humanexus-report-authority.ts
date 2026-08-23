@@ -64,11 +64,54 @@ export function resolverIdentidadeDocumental(
   participante: RegistroDeRelatorio,
   organizacao: RegistroDeRelatorio
 ) {
+  const participanteId = String(participante.identificador ?? "").trim();
+  const organizacaoDoParticipante = String(
+    participante.identificador_da_organizacao ?? ""
+  ).trim();
+  const organizacaoSelecionada = String(
+    organizacao.identificador ?? organizacao.id ?? ""
+  ).trim();
+  if (
+    organizacaoDoParticipante
+    && organizacaoSelecionada
+    && organizacaoDoParticipante !== organizacaoSelecionada
+  ) {
+    throw new Error("IDENTIDADE_INDIVIDUAL_FORA_DO_ESCOPO_ORGANIZACIONAL");
+  }
+
+  const autoridade = objeto(
+    participante.identidade_individual_autoritativa
+  );
+  const participanteDaAutoridade = String(
+    autoridade.identificador_do_participante ?? ""
+  ).trim();
+  const organizacaoDaAutoridade = String(
+    autoridade.identificador_da_organizacao ?? ""
+  ).trim();
+  if (
+    autoridade.escopo_validado === false
+    || (participanteDaAutoridade && participanteDaAutoridade !== participanteId)
+    || (
+      organizacaoDaAutoridade
+      && organizacaoDoParticipante
+      && organizacaoDaAutoridade !== organizacaoDoParticipante
+    )
+    || (
+      organizacaoDaAutoridade
+      && organizacaoSelecionada
+      && organizacaoDaAutoridade !== organizacaoSelecionada
+    )
+  ) {
+    throw new Error("IDENTIDADE_INDIVIDUAL_AUTORITATIVA_DIVERGENTE");
+  }
+
   const perfil = objeto(participante.perfil_operacional);
   const cadastrais = objeto(perfil.dados_cadastrais);
+  const minimizados = objeto(perfil.dados_minimizados);
   const documentos = lista(perfil.documentos).map(objeto);
   const nomeCompleto = String(
-    cadastrais.nome_completo
+    autoridade.nome_completo
+    ?? cadastrais.nome_completo
     ?? cadastrais.nome_civil_completo
     ?? ""
   ).trim();
@@ -76,17 +119,32 @@ export function resolverIdentidadeDocumental(
     (item) => String(item.tipo ?? "").toUpperCase() === "CPF"
   );
   const cpf = formatarCpfDocumental(
-    cadastrais.cpf
+    autoridade.cpf
+    ?? cadastrais.cpf
     ?? cadastrais.documento_cpf
     ?? cadastrais.numero_do_cpf
     ?? documentoCpf?.numero
   );
+  const referenciaOperacional = String(
+    autoridade.referencia_operacional
+    ?? minimizados.referencia_operacional
+    ?? ""
+  ).trim();
   return {
     nomeCompleto: nomeCompleto || "NOME CIVIL NÃO INFORMADO NO CADASTRO",
     cpf: cpf || "CPF NÃO INFORMADO NO CADASTRO",
+    referenciaOperacional:
+      referenciaOperacional || "REFERÊNCIA OPERACIONAL NÃO INFORMADA NO CADASTRO",
     organizacao: String(organizacao.nome ?? "ORGANIZAÇÃO NÃO INFORMADA"),
-    fonte: "perfil_operacional.dados_cadastrais + perfil_operacional.documentos",
-    completa: Boolean(nomeCompleto && cpf)
+    fonte: String(
+      autoridade.fonte
+      ?? "PERFIL_CADASTRAL_DO_PARTICIPANTE_NO_ESCOPO"
+    ),
+    completa: Boolean(nomeCompleto && cpf),
+    escopoValidado: true,
+    origemDoNome: "PARTICIPANT_ONLY",
+    origemDoCpf: "PARTICIPANT_ONLY",
+    origemDaReferencia: "REFERENCE_ONLY"
   };
 }
 
