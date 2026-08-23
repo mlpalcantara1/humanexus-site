@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PlatformShell } from "@/components/platform-shell";
+import "./platform-command.css";
 
 export const metadata: Metadata = {
   title: "Área HUMANEXUS",

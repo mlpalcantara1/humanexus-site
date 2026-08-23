@@ -581,7 +581,7 @@ test("telemetria real é contínua, histórica quando encerrada e não cria simu
   for (const item of [
     "Qualidade EEG", "Qualidade de contato",
     "Qualidade da taxa de amostragem",
-    "ATIVIDADE DAS BANDAS EEG — EMOTIV CORTEX",
+    "ATIVIDADE DAS BANDAS EEG",
     "Theta", "Alpha", "Beta baixa", "Beta alta", "Gamma",
     "PERFORMANCE METRICS — EMOTIV CORTEX MET",
     "GRÁFICO TEMPORAL · CINCO BANDAS",

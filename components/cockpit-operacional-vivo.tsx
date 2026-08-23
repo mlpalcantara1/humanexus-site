@@ -817,7 +817,7 @@ function AtividadeDasBandasEeg({
   return (
     <HxSurface as="section" className="hx-live-intelligence-instrument hx-live-eeg-bands">
       <HxSectionHeader
-        eyebrow="ATIVIDADE DAS BANDAS EEG — EMOTIV CORTEX"
+        eyebrow="ATIVIDADE DAS BANDAS EEG"
         title="Neurodinâmica em tempo real"
         aside={(
           <div className="hx-live-eeg-scope" aria-label="Granularidade das bandas EEG">
