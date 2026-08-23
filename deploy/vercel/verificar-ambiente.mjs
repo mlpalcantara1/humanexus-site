@@ -2,10 +2,13 @@ const erros = [];
 const ambiente = process.env.HUMANEXUS_ENVIRONMENT;
 const core = process.env.HUMANEXUS_CORE_API_URL;
 const app = process.env.NEXT_PUBLIC_HUMANEXUS_APP_URL;
+const banco = process.env.DATABASE_URL;
 const producao = ambiente === "producao" || ambiente === "production";
 const bypassDoCore = process.env.HUMANEXUS_CORE_PROTECTION_BYPASS_SECRET;
 const coreCandidato =
-  "humanexus-core-nteknuq90-mlpalcantara1-5540s-projects.vercel.app";
+  process.env.HUMANEXUS_EXPECTED_PREVIEW_CORE_HOSTNAME?.trim() ?? "";
+const endpointBancoProduction = "ep-dark-firefly-ac54nu73-pooler";
+const endpointBancoPreview = "ep-dry-bar-acj2wv8r-pooler";
 
 if (!producao && ambiente !== "homologacao") {
   erros.push(
@@ -53,7 +56,10 @@ if (!producao) {
   try {
     hostnameDoCore = new URL(core).hostname;
   } catch {}
-  if (hostnameDoCore !== coreCandidato) {
+  if (
+    !/^humanexus-core-[a-z0-9-]+\.vercel\.app$/.test(coreCandidato)
+    || hostnameDoCore !== coreCandidato
+  ) {
     erros.push(`Preview deve consumir o Core candidato protegido ${coreCandidato}.`);
   }
   if (!bypassDoCore || bypassDoCore.length < 32) {
@@ -61,6 +67,33 @@ if (!producao) {
   }
 } else if (bypassDoCore) {
   erros.push("HUMANEXUS_CORE_PROTECTION_BYPASS_SECRET deve permanecer exclusivo do Preview.");
+}
+
+let hostnameDoBanco = "";
+try {
+  hostnameDoBanco = new URL(banco).hostname.toLowerCase();
+} catch {
+  erros.push("DATABASE_URL ausente ou inválida.");
+}
+if (
+  !producao
+  && hostnameDoBanco
+  && (
+    !hostnameDoBanco.includes(endpointBancoPreview)
+    || hostnameDoBanco.includes(endpointBancoProduction)
+  )
+) {
+  erros.push("Preview deve usar exclusivamente o endpoint Neon isolado autorizado.");
+}
+if (
+  producao
+  && hostnameDoBanco
+  && (
+    !hostnameDoBanco.includes(endpointBancoProduction)
+    || hostnameDoBanco.includes(endpointBancoPreview)
+  )
+) {
+  erros.push("Production deve usar exclusivamente o endpoint Neon canônico de produção.");
 }
 
 if (

@@ -7,11 +7,21 @@ const raiz = new URL("../", import.meta.url);
 const script = new URL("../deploy/vercel/verificar-ambiente.mjs", import.meta.url);
 const coreCandidato =
   "https://humanexus-core-nteknuq90-mlpalcantara1-5540s-projects.vercel.app";
+const hostnameCoreCandidato = new URL(coreCandidato).hostname;
+const databasePreview =
+  "postgresql://usuario:segredo@ep-dry-bar-acj2wv8r-pooler.sa-east-1.aws.neon.tech/banco";
+const databaseProduction =
+  "postgresql://usuario:segredo@ep-dark-firefly-ac54nu73-pooler.sa-east-1.aws.neon.tech/banco";
 const bypassFicticio = "bypass-ficticio-com-mais-de-trinta-e-dois";
 
 function verificar(ambiente) {
   return spawnSync(process.execPath, [script.pathname], {
-    env: { PATH: process.env.PATH, ...ambiente },
+    env: {
+      PATH: process.env.PATH,
+      DATABASE_URL: databasePreview,
+      HUMANEXUS_EXPECTED_PREVIEW_CORE_HOSTNAME: hostnameCoreCandidato,
+      ...ambiente
+    },
     encoding: "utf8"
   });
 }
@@ -73,6 +83,44 @@ test("homologação bloqueia o domínio operacional", () => {
   });
   assert.notEqual(resultado.status, 0);
   assert.match(resultado.stderr, /plataforma operacional/);
+});
+
+test("Preview recusa o endpoint Neon de Production", () => {
+  const resultado = verificar({
+    HUMANEXUS_ENVIRONMENT: "homologacao",
+    HUMANEXUS_CORE_API_URL: coreCandidato,
+    HUMANEXUS_CORE_PROTECTION_BYPASS_SECRET: bypassFicticio,
+    NEXT_PUBLIC_HUMANEXUS_APP_URL: "https://homologacao.exemplo.invalid",
+    HUMANEXUS_INVITE_SECRET: "segredo-ficticio-com-mais-de-trinta-e-dois",
+    DATABASE_URL: databaseProduction
+  });
+  assert.notEqual(resultado.status, 0);
+  assert.match(resultado.stderr, /endpoint Neon isolado/);
+});
+
+test("Production recusa o endpoint Neon de Preview", () => {
+  const resultado = verificar({
+    HUMANEXUS_ENVIRONMENT: "production",
+    HUMANEXUS_CORE_API_URL: "https://api.institutohumanexus.com",
+    NEXT_PUBLIC_HUMANEXUS_APP_URL: "https://app.institutohumanexus.com",
+    HUMANEXUS_INVITE_SECRET: "segredo-ficticio-com-mais-de-trinta-e-dois",
+    HUMANEXUS_EXPECTED_PREVIEW_CORE_HOSTNAME: "",
+    DATABASE_URL: databasePreview
+  });
+  assert.notEqual(resultado.status, 0);
+  assert.match(resultado.stderr, /endpoint Neon canônico de produção/);
+});
+
+test("Production aceita somente o endpoint Neon canônico", () => {
+  const resultado = verificar({
+    HUMANEXUS_ENVIRONMENT: "production",
+    HUMANEXUS_CORE_API_URL: "https://api.institutohumanexus.com",
+    NEXT_PUBLIC_HUMANEXUS_APP_URL: "https://app.institutohumanexus.com",
+    HUMANEXUS_INVITE_SECRET: "segredo-ficticio-com-mais-de-trinta-e-dois",
+    HUMANEXUS_EXPECTED_PREVIEW_CORE_HOSTNAME: "",
+    DATABASE_URL: databaseProduction
+  });
+  assert.equal(resultado.status, 0, resultado.stderr);
 });
 
 test("deploy automático permanece desabilitado", async () => {
