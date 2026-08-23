@@ -5,7 +5,7 @@ const app = process.env.NEXT_PUBLIC_HUMANEXUS_APP_URL;
 const producao = ambiente === "producao" || ambiente === "production";
 const bypassDoCore = process.env.HUMANEXUS_CORE_PROTECTION_BYPASS_SECRET;
 const coreCandidato =
-  "humanexus-core-de84c7g2j-mlpalcantara1-5540s-projects.vercel.app";
+  "humanexus-core-12dmrtx51-mlpalcantara1-5540s-projects.vercel.app";
 
 if (!producao && ambiente !== "homologacao") {
   erros.push(
