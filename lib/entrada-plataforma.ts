@@ -4,7 +4,10 @@
  * interna sem expor um endereço local no site institucional.
  */
 export function entradaDaPlataforma() {
-  if (process.env.VERCEL_ENV === "preview") {
+  if (
+    process.env.VERCEL_ENV === "preview" ||
+    process.env.VERCEL_ENV === "production"
+  ) {
     return "/area-humanexus";
   }
 

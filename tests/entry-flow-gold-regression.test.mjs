@@ -39,7 +39,7 @@ test("Preview preserva no próprio build o fluxo funcional GOLD", async () => {
   );
 });
 
-test("produção mantém o domínio configurado e fallback mantém a entrada GOLD", async () => {
+test("produção não cria auto-loop na HOME e mantém a entrada GOLD", async () => {
   await comAmbiente(
     {
       VERCEL_ENV: "production",
@@ -47,10 +47,7 @@ test("produção mantém o domínio configurado e fallback mantém a entrada GOL
         "https://app.institutohumanexus.com/"
     },
     () => {
-      assert.equal(
-        entradaDaPlataforma(),
-        "https://app.institutohumanexus.com"
-      );
+      assert.equal(entradaDaPlataforma(), "/area-humanexus");
     }
   );
   await comAmbiente(
