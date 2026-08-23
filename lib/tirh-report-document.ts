@@ -1,5 +1,7 @@
 import PDFDocument from "pdfkit";
 
+import { decisoesProfissionaisPreservadasTirhV1 } from "./validacao-profissional-tirh-v1.ts";
+
 export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.0";
 
 export type TipoDocumentoTirh =
@@ -815,6 +817,9 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   const respostas = extrairItens(entrada, "respostas");
   const validacaoProfissional = objeto(projecaoV1.validacao_profissional);
   const claimsElegiveis = lista(validacaoProfissional.itens).map(objeto);
+  const decisoesProfissionaisPreservadas = decisoesProfissionaisPreservadasTirhV1(
+    lista(projecaoV1.claims).map(objeto)
+  );
 
   let y = novaPagina(doc, "01 · Síntese", "A história regulatória da sessão", "Estado inicial, evidências admissíveis e objetivo profissional.");
   y = tituloSecao(doc, "Contexto e objetivo", y, "01");
@@ -897,9 +902,20 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   y = tituloSecao(doc, "Validação Profissional V1", y + 5, "05");
   etiqueta(doc, "ESTADO", texto(validacaoProfissional.estado, claimsElegiveis.length ? "PENDENTE" : "COMPLETA"), 83, y, 205);
   etiqueta(doc, "CLAIMS ELEGÍVEIS", String(validacaoProfissional.quantidade ?? claimsElegiveis.length), 308, y, 230);
+  const itensDaValidacao = decisoesProfissionaisPreservadas.length
+    ? decisoesProfissionaisPreservadas.map((validacao) => (
+        `Decisão preservada: ${texto(validacao.decisao)} · `
+        + `Estado efetivo: ${texto(validacao.estado)} · `
+        + `Versão ${texto(validacao.versao_da_validacao)} · `
+        + `Registrada em ${texto(validacao.criado_em, "data não exposta")}`
+      ))
+    : claimsElegiveis.map((claim) => (
+        `${texto(claim.claim_id)} · ${texto(claim.tipo)} · `
+        + `${texto(claim.estado_da_validacao_profissional, "PENDENTE")}`
+      ));
   listaEditorial(
     doc,
-    claimsElegiveis.map((claim) => `${texto(claim.claim_id)} · ${texto(claim.tipo)} · ${texto(claim.estado_da_validacao_profissional, "PENDENTE")}`),
+    itensDaValidacao,
     83,
     y + 45,
     455,

@@ -81,6 +81,34 @@ test("ações dependem de elegibilidade e nenhuma decisão é persistida automat
   assert.equal(ocorrencias(compartilhado, /await validarClaimTirhV1\(/g), 1);
 });
 
+test("decisão existente fica visível sem reexpor o claim nem oferecer segunda adjudicação", () => {
+  const claimAdjudicado = {
+    claim_id: "CLM-19241FE26F69A8DD37866288",
+    requer_validacao_profissional: true,
+    reportavel: true,
+    estado_da_validacao_profissional: "VALIDADO_PROFISSIONALMENTE",
+    validacao_profissional: {
+      decisao: "VALIDAR",
+      estado: "VALIDADO_PROFISSIONALMENTE",
+      versao_da_validacao: 1,
+      criado_em: "2026-08-23T13:46:08.636477+00:00"
+    }
+  };
+  const elegiveis = [claimAdjudicado].filter((claim) =>
+    claim.requer_validacao_profissional === true
+      && claim.reportavel === true
+      && ["PENDENTE", "AJUSTE_PENDENTE"].includes(
+        claim.estado_da_validacao_profissional
+      )
+  );
+  assert.equal(elegiveis.length, 0);
+  assert.match(compartilhado, /decisoesProfissionaisPreservadasTirhV1\(claimsTirhV1\)/);
+  assert.match(compartilhado, /Decisão profissional preservada/);
+  assert.match(compartilhado, /Estado efetivo:/);
+  assert.match(compartilhado, /Segunda adjudicação indisponível/);
+  assert.match(compartilhado, /Nenhuma nova adjudicação está disponível/);
+});
+
 test("PDF, Print, Replay e Longitudinal permanecem no mesmo fluxo", () => {
   assert.match(operacao, /Baixar PDF A4 claro/);
   assert.match(operacao, /Abrir para impressão/);

@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 
+import {
+  claimElegivelParaValidacaoTirhV1,
+  decisoesProfissionaisPreservadasTirhV1
+} from "@/lib/validacao-profissional-tirh-v1";
+
+export { claimElegivelParaValidacaoTirhV1 } from "@/lib/validacao-profissional-tirh-v1";
+
 type Registro = Record<string, unknown>;
 
 type Props = {
@@ -68,14 +75,6 @@ export function resolverAutoridadeSinteseTirhV1(estado: Registro) {
   };
 }
 
-export function claimElegivelParaValidacaoTirhV1(claim: Registro) {
-  return claim.requer_validacao_profissional === true
-    && claim.reportavel === true
-    && ["PENDENTE", "AJUSTE_PENDENTE"].includes(
-      String(claim.estado_da_validacao_profissional ?? "PENDENTE")
-    );
-}
-
 export function SinteseValidacaoTirhV1({
   estado,
   validarClaimTirhV1
@@ -104,6 +103,8 @@ export function SinteseValidacaoTirhV1({
   const claimsPendentesTirhV1 = claimsTirhV1.filter(
     claimElegivelParaValidacaoTirhV1
   );
+  const decisoesProfissionaisPreservadas =
+    decisoesProfissionaisPreservadasTirhV1(claimsTirhV1);
 
   const enviarValidacaoTirhV1 = async () => {
     if (!claimSelecionado || justificativaDoClaim.trim().length < 5 || validacaoEmEnvio) return;
@@ -186,7 +187,7 @@ export function SinteseValidacaoTirhV1({
         </article>
         <article>
           <small>Claims profissionais</small>
-          <strong>{claimsPendentesTirhV1.length} PENDENTE(S)</strong>
+          <strong>{claimsPendentesTirhV1.length} ELEGÍVEL(IS)</strong>
           <span>Fatos objetivos e aritmética não são submetidos a revalidação profissional.</span>
         </article>
       </div>
@@ -204,9 +205,31 @@ export function SinteseValidacaoTirhV1({
           );
         })}
       </div>
-      <details className="hx-tirh-v1-validation" open={claimsPendentesTirhV1.length > 0}>
+      <details
+        className="hx-tirh-v1-validation"
+        open={claimsPendentesTirhV1.length > 0 || decisoesProfissionaisPreservadas.length > 0}
+      >
         <summary>Validação Profissional · quadro único pós-sessão</summary>
         <p>Este quadro valida interpretações ou ajustes autorais sem reabrir a sessão, a máquina de estados, o lease da estação ou qualquer sensor.</p>
+        {decisoesProfissionaisPreservadas.length ? (
+          <section aria-label="Decisão profissional preservada">
+            <h3>Decisão profissional preservada</h3>
+            <div
+              className="hx-tirh-v1-claims"
+              data-preserved-professional-decisions-count={decisoesProfissionaisPreservadas.length}
+            >
+              {decisoesProfissionaisPreservadas.map((validacao, indice) => (
+                <article key={texto(validacao.identificador, `decisao-${indice + 1}`)}>
+                  <small>DECISÃO APPEND-ONLY · VERSÃO {numero(validacao.versao_da_validacao)}</small>
+                  <strong>{texto(validacao.decisao)}</strong>
+                  <span>Estado efetivo: {texto(validacao.estado)}</span>
+                  <span>Registrada em: {texto(validacao.criado_em, "Data não exposta")}</span>
+                  <em>Segunda adjudicação indisponível para o estado efetivo atual.</em>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
         {claimsPendentesTirhV1.length ? (
           <div
             className="hx-tirh-v1-claims"
@@ -221,7 +244,7 @@ export function SinteseValidacaoTirhV1({
               </article>
             ))}
           </div>
-        ) : <p>Nenhum claim elegível aguarda validação profissional neste recorte.</p>}
+        ) : <p>Nenhuma nova adjudicação está disponível neste recorte.</p>}
         {claimsPendentesTirhV1.length ? (
           <div className="hx-tirh-v1-validation-form">
             <label>

@@ -161,13 +161,25 @@ const vetoresMomentaneosV1 = Object.fromEntries(
     ])
 );
 
-const claimElegivel = {
+const claimBruto = {
   claim_id: "CLM-FIXTURE-RESULTANTE-V1",
   tipo: "RESULTANTE_REGULATORIA",
   estado_epistemico: "SUGERIDO",
   estado_da_validacao_profissional: "PENDENTE",
   requer_validacao_profissional: true,
   reportavel: true
+};
+
+const claimAdjudicado = {
+  ...claimBruto,
+  estado_da_validacao_profissional: "VALIDADO_PROFISSIONALMENTE",
+  validacao_profissional: {
+    identificador: "fixture-validacao-001",
+    decisao: "VALIDAR",
+    estado: "VALIDADO_PROFISSIONALMENTE",
+    versao_da_validacao: 1,
+    criado_em: "2026-08-05T18:45:00Z"
+  }
 };
 
 const tirhV1 = {
@@ -196,11 +208,11 @@ const tirhV1 = {
       motivo: "IIRH Operacional V1 não materializado."
     }
   },
-  claims: [claimElegivel],
+  claims: [claimAdjudicado],
   validacao_profissional: {
-    estado: "PENDENTE",
-    quantidade: 1,
-    itens: [claimElegivel]
+    estado: "COMPLETA",
+    quantidade: 0,
+    itens: []
   }
 };
 
