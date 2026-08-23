@@ -38,6 +38,45 @@ test("arquitetura documental contém cinco produtos TIRH independentes", async (
     assert.match(pdf, new RegExp(zona));
   for (const zonaAntiga of ["Zona Funcional", "Zona de Sobrecarga", "Zona de Desregulação", "Zona de Colapso"])
     assert.doesNotMatch(pdf, new RegExp(zonaAntiga));
+  assert.match(pdf, /contratoDocumental === "TIRH_V1"/);
+  assert.match(pdf, /projecaoCanonicaTirhV1Disponivel/);
+  assert.match(pdf, /PDF TIRH V1 não gerado: projeção canônica V1 ausente ou incompleta/);
+});
+
+test("emissão explicitamente V1 falha fechada sem projeção canônica", async () => {
+  const execucao = spawnSync(
+    process.execPath,
+    [
+      "--experimental-strip-types",
+      "--input-type=module",
+      "--eval",
+      `import { gerarPdfVisualHumanexus } from "./lib/tirh-report-document.ts";
+       try {
+         await gerarPdfVisualHumanexus({
+           contratoDocumental: "TIRH_V1",
+           tipoDocumento: "OPERACIONAL_TIRH",
+           usuario: {}, participante: {}, sessao: {}, execucao: null,
+           ciclo: null, telemetria: [], eventos: [], relatorio: {},
+           gravacao: {}, contratoCientifico: {}, tirhV1: {}
+         });
+         process.exitCode = 2;
+       } catch (erro) {
+         console.log(String(erro.message));
+       }`
+    ],
+    { cwd: new URL("../", import.meta.url), encoding: "utf8" }
+  );
+  assert.equal(execucao.status, 0, execucao.stderr);
+  assert.match(execucao.stdout, /projeção canônica V1 ausente ou incompleta/);
+});
+
+test("cabeçalhos A4 e arquitetura vetorial reservam espaço sem colisão", async () => {
+  const pdf = await source("lib/tirh-report-document.ts");
+  assert.match(pdf, /const alturaDoTitulo = doc\.heightOfString\(titulo/);
+  assert.match(pdf, /const linhaY = Math\.max\(128, baseY \+ 17\)/);
+  assert.match(pdf, /desenharRadarVetorial\(doc, vetores, 42, y \+ 34, 120\)/);
+  assert.match(pdf, /tabelaVetores\(doc, vetores, 320, y \+ 22, 233\)/);
+  assert.doesNotMatch(pdf, /fontSize\(9\)\.text\(subtitulo, 42, 97/);
 });
 
 test("telemetria técnica não vaza para produtos profissional, científico, executivo ou formulação", async () => {
@@ -95,6 +134,19 @@ test("fixtures geram os cinco PDFs premium com paginação esperada", async () =
     assert.equal(info.status, 0, info.stderr);
     assert.match(info.stdout, new RegExp(`Pages:\\s+${paginas}\\b`));
   }
+
+  const operacional = join(output, "relatorio-operacional-tirh-fixture.pdf");
+  const texto = spawnSync("pdftotext", ["-layout", operacional, "-"], {
+    encoding: "utf8",
+  });
+  assert.equal(texto.status, 0, texto.stderr);
+  assert.match(texto.stdout, /VETORES MOMENTÂNEOS V1 · 9\/9 PROJETADOS/);
+  assert.match(texto.stdout, /VEV.*LONGITUDINAL NÃO ELEGÍVEL/s);
+  assert.match(texto.stdout, /PLENA\s+Não aplicável na TIRH V1/s);
+  assert.match(texto.stdout, /Não classificada\s+Não calculável/s);
+  assert.match(texto.stdout, /Validação Profissional V1/i);
+  assert.match(texto.stdout, /PENDENTE\s+1[\s\S]*CLM-FIXTURE-RESULTANTE-V1/);
+  assert.doesNotMatch(texto.stdout, /\bRRO\b/);
 });
 
 test("rota preserva impressão, exportação e nome documental profissional", async () => {
@@ -109,6 +161,9 @@ test("rota preserva impressão, exportação e nome documental profissional", as
   assert.match(route, /Relatório desta sessão não localizado/);
   assert.match(route, /\/api\/v1\/relatorios\/\$\{encodeURIComponent/);
   assert.match(route, /\/api\/v1\/sessoes\/\$\{encodeURIComponent\(sessaoId\)\}\/tirh-v1/);
+  assert.match(route, /\/api\/v1\/sessoes\/\$\{encodeURIComponent\(sessaoId\)\}\/cockpit-operacional/);
+  assert.match(route, /contratoDocumental: "TIRH_V1"/);
+  assert.doesNotMatch(route, /tirh-v1[\s\S]{0,180}\.catch\(\(\) => \(\{\}\)\)/);
   assert.match(route, /SEM EVIDÊNCIA CIENTÍFICA DISPONÍVEL PARA ESTA SESSÃO/);
   assert.doesNotMatch(route, /relatorios\.at\(-1\)/);
   assert.match(documento, /entrada\.relatorio\.secoes \?\? entrada\.relatorio\.secoes_json/);

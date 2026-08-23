@@ -37,6 +37,8 @@ export type EntradaRelatorioHumanexus = {
   gravacao: Registro;
   contratoCientifico: Registro;
   tirhV1?: Registro;
+  cockpitOperacional?: Registro;
+  contratoDocumental?: "TIRH_V1" | "LEGACY_HISTORICO";
   tipoDocumento?: TipoDocumentoTirh;
 };
 
@@ -253,22 +255,30 @@ function novaPagina(
 ) {
   doc.addPage({ size: "A4", margin: 42 });
   doc.rect(0, 0, 595.28, 841.89).fill(CORES.papel);
+  const margemX = 42;
+  const larguraUtil = 511;
+  const tituloY = 61;
   doc.fillColor(CORES.ouro).font("Helvetica-Bold").fontSize(7).text(secao.toUpperCase(), 42, 38, {
     width: 420,
     characterSpacing: 1.35
   });
-  doc.fillColor(CORES.tinta).font("Helvetica-Bold").fontSize(23).text(titulo, 42, 61, {
-    width: 500,
+  doc.fillColor(CORES.tinta).font("Helvetica-Bold").fontSize(23).text(titulo, margemX, tituloY, {
+    width: larguraUtil,
     lineGap: 2
   });
+  const alturaDoTitulo = doc.heightOfString(titulo, { width: larguraUtil, lineGap: 2 });
+  let baseY = tituloY + alturaDoTitulo;
   if (subtitulo) {
-    doc.fillColor(CORES.suave).font("Helvetica").fontSize(9).text(subtitulo, 42, 97, {
-      width: 470,
+    const subtituloY = baseY + 10;
+    doc.fillColor(CORES.suave).font("Helvetica").fontSize(9).text(subtitulo, margemX, subtituloY, {
+      width: larguraUtil,
       lineGap: 3
     });
+    baseY = subtituloY + doc.heightOfString(subtitulo, { width: larguraUtil, lineGap: 3 });
   }
-  doc.moveTo(42, 128).lineTo(553, 128).lineWidth(.6).strokeColor(CORES.linha).stroke();
-  return 150;
+  const linhaY = Math.max(128, baseY + 17);
+  doc.moveTo(margemX, linhaY).lineTo(553, linhaY).lineWidth(.6).strokeColor(CORES.linha).stroke();
+  return linhaY + 22;
 }
 
 function tituloSecao(doc: PDFKit.PDFDocument, titulo: string, y: number, numeroSecao?: string) {
@@ -321,7 +331,28 @@ function documentoTirh(entrada: EntradaRelatorioHumanexus) {
 function projecaoTirhV1(entrada: EntradaRelatorioHumanexus) {
   const resposta = objeto(entrada.tirhV1);
   const sintese = objeto(resposta.sintese);
-  return Object.keys(sintese).length ? sintese : resposta;
+  return Object.keys(sintese).length
+    ? {
+        ...sintese,
+        versao_cientifica: sintese.versao_cientifica ?? resposta.versao_cientifica,
+        claims: sintese.claims ?? resposta.claims,
+        validacao_profissional:
+          sintese.validacao_profissional ?? resposta.validacao_profissional
+      }
+    : resposta;
+}
+
+function projecaoCanonicaTirhV1Disponivel(entrada: EntradaRelatorioHumanexus) {
+  const projecao = projecaoTirhV1(entrada);
+  const codigos = new Set(
+    vetoresDaProjecaoTirhV1(entrada)
+      .map((item) => texto(item.codigo, "").toUpperCase())
+      .filter((codigo) => codigo !== VETOR_LONGITUDINAL[0])
+  );
+  return VETORES_OFICIAIS.every(([codigo]) => codigos.has(codigo))
+    && Object.keys(objeto(projecao.resultante)).length > 0
+    && Object.keys(objeto(projecao.iirh)).length > 0
+    && Object.keys(objeto(projecao.zona)).length > 0;
 }
 
 function vetoresDaProjecaoTirhV1(entrada: EntradaRelatorioHumanexus): Registro[] {
@@ -354,6 +385,17 @@ function extrairVetores(entrada: EntradaRelatorioHumanexus): Vetor[] {
 }
 
 function extrairTrajetoria(entrada: EntradaRelatorioHumanexus): PontoTrajetoria[] {
+  const projecaoV1 = projecaoTirhV1(entrada);
+  if (Object.keys(projecaoV1).length) {
+    return lista(projecaoV1.trajetoria).map((item, indice) => {
+      const registro = objeto(item);
+      return {
+        rotulo: texto(registro.rotulo ?? registro.fase, `Ponto ${indice + 1}`),
+        valor: numero(registro.valor ?? registro.iirh ?? registro.magnitude),
+        zona: normalizarZona(registro.zona)
+      };
+    });
+  }
   const origem = documentoTirh(entrada);
   const explicita = lista(origem.trajetoria).map((item) => objeto(item));
   if (explicita.length) {
@@ -564,26 +606,30 @@ function desenharTrajetoria(doc: PDFKit.PDFDocument, pontos: PontoTrajetoria[], 
 
 function desenharRotas(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHumanexus, x: number, y: number, width: number) {
   const origem = documentoTirh(entrada);
+  const cadeia = objeto(objeto(entrada.cockpitOperacional).cadeia_cientifica);
+  const usarCadeiaV1 = entrada.contratoDocumental === "TIRH_V1";
   const rotas = [
-    ["ARR", objeto(origem.arr), "Análise da Rota Regulatória"],
-    ["RRD", objeto(origem.rota_dominante), "Rota Regulatória Dominante"],
-    ["NRA", objeto(origem.nra), "Nova Rota Adaptativa"]
+    ["ARR", objeto(usarCadeiaV1 ? cadeia.arr : origem.arr), "Análise das Rotas Regulatórias"],
+    ["RRD", objeto(usarCadeiaV1 ? cadeia.rota_dominante : origem.rota_dominante), "Rota Regulatória Dominante"],
+    ["GRI / CRL", objeto(usarCadeiaV1 ? cadeia.arr : origem.arr), "Ganho imediato / custo longitudinal"],
+    ["NRA", objeto(usarCadeiaV1 ? cadeia.nra : origem.nra), "Nova Rota Adaptativa"]
   ] as const;
-  const cardWidth = (width - 36) / 3;
+  const cardWidth = (width - 18) / 2;
+  const cardHeight = 91;
   rotas.forEach(([codigo, registro, nome], indice) => {
-    const xx = x + indice * (cardWidth + 18);
-    if (indice) {
-      doc.moveTo(xx - 15, y + 42).lineTo(xx - 4, y + 42).lineWidth(1).strokeColor(CORES.ouro).stroke();
-      doc.polygon([xx - 4, y + 42], [xx - 9, y + 39], [xx - 9, y + 45]).fill(CORES.ouro);
-    }
-    doc.fillColor(CORES.ouro).font("Helvetica-Bold").fontSize(8).text(codigo, xx, y, { characterSpacing: 1 });
-    doc.fillColor(CORES.tinta).font("Helvetica-Bold").fontSize(9).text(nome, xx, y + 17, { width: cardWidth, height: 28 });
-    doc.fillColor(CORES.petroleo).font("Helvetica-Bold").fontSize(7).text(texto(registro.estado, "NÃO CALCULÁVEL"), xx, y + 52, { width: cardWidth });
+    const coluna = indice % 2;
+    const linha = Math.floor(indice / 2);
+    const xx = x + coluna * (cardWidth + 18);
+    const yy = y + linha * (cardHeight + 13);
+    doc.roundedRect(xx, yy, cardWidth, cardHeight, 3).lineWidth(.45).strokeColor(CORES.linha).stroke();
+    doc.fillColor(CORES.ouro).font("Helvetica-Bold").fontSize(7.4).text(codigo, xx + 12, yy + 11, { width: cardWidth - 24, characterSpacing: .8 });
+    doc.fillColor(CORES.tinta).font("Helvetica-Bold").fontSize(8.4).text(nome, xx + 12, yy + 27, { width: cardWidth - 24, height: 22 });
+    doc.fillColor(CORES.petroleo).font("Helvetica-Bold").fontSize(6.5).text(texto(registro.estado, "NÃO CALCULÁVEL"), xx + 12, yy + 50, { width: cardWidth - 24 });
     doc.fillColor(CORES.suave).font("Helvetica").fontSize(7).text(
       aparar(texto(registro.descricao ?? registro.motivo, "Sem registro autorizado para esta sessão."), 120),
-      xx,
-      y + 69,
-      { width: cardWidth, lineGap: 2 }
+      xx + 12,
+      yy + 66,
+      { width: cardWidth - 24, height: 18, lineGap: 1 }
     );
   });
 }
@@ -767,6 +813,8 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   const ganhos = extrairItens(entrada, "ganhos_regulatorios");
   const intervencoes = extrairItens(entrada, "intervencoes");
   const respostas = extrairItens(entrada, "respostas");
+  const validacaoProfissional = objeto(projecaoV1.validacao_profissional);
+  const claimsElegiveis = lista(validacaoProfissional.itens).map(objeto);
 
   let y = novaPagina(doc, "01 · Síntese", "A história regulatória da sessão", "Estado inicial, evidências admissíveis e objetivo profissional.");
   y = tituloSecao(doc, "Contexto e objetivo", y, "01");
@@ -785,14 +833,20 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   paragrafo(doc, "As evidências sustentam hipóteses regulatórias contextualizadas. Nenhum indicador isolado equivale a vetor, Resultante, Zona ou decisão profissional.", y, { x: 83, width: 455, cor: CORES.suave });
 
   y = novaPagina(doc, "02 · Arquitetura Vetorial", "Nove Vetores Momentâneos", "Magnitude, confiança e ausência preservadas sem preenchimento artificial; VEV permanece longitudinal e separado.");
-  desenharRadarVetorial(doc, vetores, 47, y + 8, 135);
-  tabelaVetores(doc, vetores, 334, y + 4, 214);
-  paragrafo(doc, `A configuração momentânea representa interação contextual entre campos. Pontos ausentes não são conectados nem convertidos em zero. VEV — ${texto(vev?.estado_epistemico, "LONGITUDINAL NÃO ELEGÍVEL")} — não integra a Resultante momentânea.`, 518, { cor: CORES.suave, tamanho: 7.8 });
+  doc.fillColor(CORES.petroleo).font("Helvetica-Bold").fontSize(7).text(
+    `VETORES MOMENTÂNEOS V1 · ${vetores.length}/9 PROJETADOS`,
+    42,
+    y,
+    { width: 511, characterSpacing: .65 }
+  );
+  desenharRadarVetorial(doc, vetores, 42, y + 34, 120);
+  tabelaVetores(doc, vetores, 320, y + 22, 233);
+  paragrafo(doc, `A configuração momentânea representa interação contextual entre campos. Pontos ausentes não são conectados nem convertidos em zero. VEV — ${texto(vev?.estado_epistemico, "LONGITUDINAL NÃO ELEGÍVEL")} — não integra a Resultante momentânea.`, y + 338, { x: 42, width: 511, cor: CORES.suave, tamanho: 7.8 });
 
   y = novaPagina(doc, "03 · Configuração", "Resultante, Zona e Trajetória", "Produtos distintos, liberados somente sob seus próprios critérios de admissibilidade.");
   y = tituloSecao(doc, "Resultante Regulatória", y, "01");
   doc.fillColor(CORES.ouro).font("Helvetica-Bold").fontSize(6.4).text(
-    texto(resultante.versao, "HIPÓTESE OPERACIONAL v0.1 — EM VALIDAÇÃO EMPÍRICA"),
+    texto(projecaoV1.versao_cientifica ?? resultante.versao, "HIPÓTESE OPERACIONAL v0.1 — EM VALIDAÇÃO EMPÍRICA"),
     83,
     y,
     { width: 455, characterSpacing: .75 }
@@ -804,10 +858,12 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
     y = paragrafo(doc, "A Resultante V1 é uma configuração emergente multivetorial estruturada. Sua admissibilidade não depende da fabricação de um escalar global.", y + 68, { x: 83, width: 455, cor: CORES.suave });
   } else if (numero(resultante.magnitude) == null) {
     ausencia(doc, "Resultante ausente", texto(resultante.motivo, "Configuração multivetorial integral não disponível."), 83, y, 455, 95);
+    y += 115;
   } else {
     desenharResultante(doc, resultante, 83, y - 5, 455, 240);
+    y += 255;
   }
-  y += 255;
+  y += 12;
   etiqueta(doc, "ZONA OPERACIONAL", normalizarZona(zona.codigo ?? zona.nome), 83, y, 200);
   const valorIirhV1 = numero(iirhV1.valor);
   const iirhV1Admissivel = ["PARCIAL", "PLENO"].includes(texto(iirhV1.estado, ""))
@@ -822,7 +878,7 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
 
   y = novaPagina(doc, "04 · Rotas", "ARR, RRD, GRI / CRL e NRA", "Análise, rota dominante, ganhos, custos e mudança adaptativa com validação profissional.");
   desenharRotas(doc, entrada, 42, y + 6, 511);
-  y += 180;
+  y += 220;
   y = tituloSecao(doc, "Gatilhos regulatórios", y, "01");
   y = listaEditorial(doc, gatilhos.map((item) => `${texto(item.nome ?? item.rotulo, "Gatilho")} — ${texto(item.contexto ?? item.descricao, "contexto não registrado")}`), 83, y, 455, 6);
   y = tituloSecao(doc, "Ganhos regulatórios", y + 4, "02");
@@ -837,7 +893,18 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   y = paragrafo(doc, texto(origem.conclusao_operacional ?? entrada.relatorio.interpretacao_profissional, "Conclusão profissional pendente."), y, { x: 83, width: 455 });
   y = tituloSecao(doc, "Justificativa e recomendação", y + 6, "04");
   y = paragrafo(doc, texto(origem.justificativa_profissional, "Justificativa profissional não registrada."), y, { x: 83, width: 455 });
-  paragrafo(doc, texto(origem.recomendacao, "Recomendação não registrada."), y, { x: 83, width: 455 });
+  y = paragrafo(doc, texto(origem.recomendacao, "Recomendação não registrada."), y, { x: 83, width: 455 });
+  y = tituloSecao(doc, "Validação Profissional V1", y + 5, "05");
+  etiqueta(doc, "ESTADO", texto(validacaoProfissional.estado, claimsElegiveis.length ? "PENDENTE" : "COMPLETA"), 83, y, 205);
+  etiqueta(doc, "CLAIMS ELEGÍVEIS", String(validacaoProfissional.quantidade ?? claimsElegiveis.length), 308, y, 230);
+  listaEditorial(
+    doc,
+    claimsElegiveis.map((claim) => `${texto(claim.claim_id)} · ${texto(claim.tipo)} · ${texto(claim.estado_da_validacao_profissional, "PENDENTE")}`),
+    83,
+    y + 45,
+    455,
+    4
+  );
   doc.moveTo(83, 724).lineTo(350, 724).lineWidth(.55).strokeColor(CORES.cinza).stroke();
   doc.fillColor(CORES.suave).font("Helvetica").fontSize(7).text("Assinatura do profissional responsável", 83, 733);
   renderNarrativaTirh(doc, entrada);
@@ -1011,6 +1078,14 @@ function renderFormulacao(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHuma
 
 export async function gerarPdfVisualHumanexus(entrada: EntradaRelatorioHumanexus) {
   const tipo = entrada.tipoDocumento ?? tipoPeloRegistro(entrada.relatorio);
+  if (
+    entrada.contratoDocumental === "TIRH_V1"
+    && !projecaoCanonicaTirhV1Disponivel(entrada)
+  ) {
+    throw new Error(
+      "PDF TIRH V1 não gerado: projeção canônica V1 ausente ou incompleta."
+    );
+  }
   const doc = new PDFDocument({
     size: "A4",
     margin: 42,

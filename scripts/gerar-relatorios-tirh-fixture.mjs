@@ -146,6 +146,81 @@ const documento_tirh = {
   ]
 };
 
+const vetoresMomentaneosV1 = Object.fromEntries(
+  vetores
+    .filter((vetor) => vetor.codigo !== "VEV")
+    .map((vetor) => [
+      vetor.codigo,
+      {
+        codigo: vetor.codigo,
+        valor: vetor.magnitude,
+        estado: vetor.magnitude == null ? "NAO_CALCULAVEL" : "CALCULADO",
+        confianca: vetor.confianca,
+        macrocampo: vetor.macrocampo
+      }
+    ])
+);
+
+const claimElegivel = {
+  claim_id: "CLM-FIXTURE-RESULTANTE-V1",
+  tipo: "RESULTANTE_REGULATORIA",
+  estado_epistemico: "SUGERIDO",
+  estado_da_validacao_profissional: "PENDENTE",
+  requer_validacao_profissional: true,
+  reportavel: true
+};
+
+const tirhV1 = {
+  versao_cientifica: "TIRH-OPERACIONAL-AUTORAL-1.0.0",
+  sintese: {
+    macrocampos: {
+      CAMPO_HUMANO: { estado: "NAO_CALCULAVEL" },
+      CAMPO_DA_TAREFA: { estado: "NAO_CALCULAVEL" },
+      CAMPO_ESTRUTURANTE: { estado: "NAO_CALCULAVEL" },
+      CAMPO_NEUROREGULATORIO: { estado: "NAO_CALCULAVEL" }
+    },
+    vetores: vetoresMomentaneosV1,
+    resultante: {
+      estado: "PLENA",
+      motivo: "Configuração emergente multivetorial estruturada.",
+      versao: "RESULTANTE-REGULATORIA-ESTRUTURADA-V1.0.0"
+    },
+    iirh: {
+      estado: "NAO_CALCULAVEL",
+      valor: null,
+      motivo: "Cobertura funcional insuficiente dos Macrocampos."
+    },
+    zona: {
+      estado: "NAO_CLASSIFICAVEL",
+      codigo: null,
+      motivo: "IIRH Operacional V1 não materializado."
+    }
+  },
+  claims: [claimElegivel],
+  validacao_profissional: {
+    estado: "PENDENTE",
+    quantidade: 1,
+    itens: [claimElegivel]
+  }
+};
+
+const cockpitOperacional = {
+  cadeia_cientifica: {
+    arr: {
+      estado: "PARCIAL",
+      motivo: "Somente respostas ARR-01..ARR-10 declaradas são apresentadas."
+    },
+    rota_dominante: {
+      estado: "AGUARDANDO_VALIDACAO_PROFISSIONAL",
+      motivo: "Somente o profissional pode validar a rota dominante."
+    },
+    nra: {
+      estado: "NAO_CALCULAVEL",
+      motivo: "A NRA exige ARR, RRD, GRI/CRL, evidências e validação admissíveis."
+    }
+  }
+};
+
 const telemetria = Array.from({ length: 18 }, (_, indice) => ({
   sequencia: indice + 1,
   timestamp_de_origem: new Date(Date.UTC(2026, 7, 5, 18, 0, indice * 2)).toISOString(),
@@ -183,7 +258,10 @@ const base = {
     { timestamp: "2026-08-05T18:45:00Z", tipo: "ENCERRAMENTO", estado: "CONFIRMADO" }
   ],
   gravacao: { baseline: { referencia: { estado: "REFERÊNCIA PRESERVADA" } } },
-  contratoCientifico: { versao: "CONTRATO-CIENTIFICO-TIRH-1.0" }
+  contratoCientifico: { versao: "CONTRATO-CIENTIFICO-TIRH-1.0" },
+  tirhV1,
+  cockpitOperacional,
+  contratoDocumental: "TIRH_V1"
 };
 
 const documentos = [
