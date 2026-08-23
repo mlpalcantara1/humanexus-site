@@ -4,35 +4,36 @@ import test from "node:test";
 
 const cockpit = fs.readFileSync("components/cockpit-operacional-vivo.tsx", "utf8");
 const operacao = fs.readFileSync("components/operacao-homologacao.tsx", "utf8");
+const sinteseValidacao = fs.readFileSync("components/sintese-validacao-tirh-v1.tsx", "utf8");
 const proxy = fs.readFileSync("app/api/operacao-homologacao/route.ts", "utf8");
 const estilos = fs.readFileSync("app/globals.css", "utf8");
 const design = fs.readFileSync("app/humanexus-design-system.css", "utf8");
 
 test("Cockpit consome a síntese TIRH V1 do núcleo sem calcular ciência local", () => {
-  assert.match(cockpit, /leituraCientifica\.tirh_operacional_v1/);
-  assert.match(cockpit, /tirhV1Persistida\.sintese/);
-  assert.match(cockpit, /registroDoCampo\.valor/);
-  assert.match(cockpit, /registroDoCampo\.fontes/);
+  assert.match(sinteseValidacao, /leituraCientifica\.tirh_operacional_v1/);
+  assert.match(sinteseValidacao, /tirhV1Persistida\.sintese/);
+  assert.match(sinteseValidacao, /registroDoCampo\.valor/);
+  assert.match(sinteseValidacao, /registroDoCampo\.fontes/);
   assert.match(cockpit, /Configuração emergente multivetorial estruturada/);
   assert.doesNotMatch(cockpit, /IIRH_OP_V1\s*=/);
   assert.match(cockpit, /o IIRH isoladamente não determina Zona/);
 });
 
 test("validação profissional usa um quadro pós-sessão versionado e auditável", () => {
-  assert.match(cockpit, /Validação Profissional · quadro único pós-sessão/);
-  assert.match(cockpit, /VALIDAR/);
-  assert.match(cockpit, /AJUSTAR/);
-  assert.match(cockpit, /MANTER_PENDENTE/);
-  assert.match(cockpit, /crypto\.randomUUID\(\)/);
+  assert.match(sinteseValidacao, /Validação Profissional · quadro único pós-sessão/);
+  assert.match(sinteseValidacao, /VALIDAR/);
+  assert.match(sinteseValidacao, /AJUSTAR/);
+  assert.match(sinteseValidacao, /MANTER_PENDENTE/);
+  assert.match(sinteseValidacao, /crypto\.randomUUID\(\)/);
   assert.match(operacao, /validar-claim-tirh-v1/);
   assert.match(proxy, /\/tirh-v1\/validacoes/);
 });
 
 test("Síntese e validação V1 ficam visíveis no modo científico sem duplicar elegibilidade", () => {
-  assert.match(cockpit, /Object\.keys\(tirhV1\)\.length \? \(/);
-  assert.match(cockpit, /className="hx-tirh-v1-claims"[\s\S]{0,180}\{claimsPendentesTirhV1\.map/);
-  assert.doesNotMatch(cockpit, /className="hx-tirh-v1-claims"[\s\S]{0,180}\{claimsTirhV1\.map/);
-  assert.match(cockpit, /data-eligible-claims-count=\{claimsPendentesTirhV1\.length\}/);
+  assert.match(sinteseValidacao, /if \(!Object\.keys\(tirhV1\)\.length\) return null/);
+  assert.match(sinteseValidacao, /className="hx-tirh-v1-claims"[\s\S]{0,180}\{claimsPendentesTirhV1\.map/);
+  assert.doesNotMatch(sinteseValidacao, /className="hx-tirh-v1-claims"[\s\S]{0,180}\{claimsTirhV1\.map/);
+  assert.match(sinteseValidacao, /data-eligible-claims-count=\{claimsPendentesTirhV1\.length\}/);
   const bloqueioIncondicional = design.match(
     /\/\* A superfície operacional não replica documentação científica\.[\s\S]*?\n\}/
   )?.[0] ?? "";

@@ -17,6 +17,7 @@ import {
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multimodal";
 import { CockpitOperacionalVivo } from "@/components/cockpit-operacional-vivo";
+import { SinteseValidacaoTirhV1 } from "@/components/sintese-validacao-tirh-v1";
 import { HxSectionHeader } from "@/components/hx-design-system";
 import {
   atrasoDoPollingCanonico,
@@ -2893,6 +2894,11 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{estado.relatorios.length ? texto(estado.relatorios.at(-1)?.titulo) : "Nenhum relatório gerado"}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(estado.relatorios.at(-1)?.criado_em)}` : "A geração exige a sessão concluída."}</span></div>
         <div><Botao onClick={comandos.entregas} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Materializar entregas finais</Botao><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado)}>Gerar relatório</Botao>{estado.relatorios.length ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF A4 claro</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir para impressão</a></> : null}</div>
       </section>
+      <SinteseValidacaoTirhV1
+        estado={estado as unknown as Registro}
+        validarClaimTirhV1={(payload) =>
+          enviar("validar-claim-tirh-v1", { payload })}
+      />
       <RelatorioCanonicoV1 estado={estado} relatorio={estado.relatorios.at(-1)} />
       <div className="hx-report-charts" data-humanexus-report>
         <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
