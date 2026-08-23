@@ -193,7 +193,16 @@ function Lab({ dados, php, anamnese, avisos }: { dados: unknown; php: DadosPHP |
         const moduloDoIndice = valor && typeof valor === "object" && !Array.isArray(valor)
           ? valor as Record<string, unknown>
           : null;
-        return <article className="hx-lab-card" key={chave}><span>{String(indice + 1).padStart(2, "0")}</span><p>{humanizar(chave)}</p><strong>{moduloDoIndice?.nome ? texto(moduloDoIndice.nome, humanizar(chave)) : descricaoDosDados(valor)}</strong><small>{moduloDoIndice?.estado ? `${texto(moduloDoIndice.estado, "ESTADO PRESERVADO")} · ` : ""}FONTE OFICIAL · INSPEÇÃO AUTORIZADA</small></article>;
+        const registroRroLegado = String(moduloDoIndice?.codigo ?? chave) === "ARR_RRO_NRA";
+        const nomeVisivel = registroRroLegado
+          ? "ARR / RRO / NRA · registro histórico legado"
+          : moduloDoIndice?.nome
+            ? texto(moduloDoIndice.nome, humanizar(chave))
+            : descricaoDosDados(valor);
+        const estadoVisivel = registroRroLegado
+          ? "RRO NÃO ATIVO NA TIRH V1 · FONTE HISTÓRICA PRESERVADA"
+          : `${moduloDoIndice?.estado ? `${texto(moduloDoIndice.estado, "ESTADO PRESERVADO")} · ` : ""}FONTE OFICIAL · INSPEÇÃO AUTORIZADA`;
+        return <article className="hx-lab-card" key={chave}><span>{String(indice + 1).padStart(2, "0")}</span><p>{humanizar(chave)}</p><strong>{nomeVisivel}</strong><small>{estadoVisivel}</small></article>;
       }) : <article className="hx-lab-card hx-lab-card--empty"><p>Validação em consulta</p><strong>O núcleo não retornou módulos homologáveis para este contexto.</strong><small>NENHUM DADO FOI SUBSTITUÍDO</small></article>}
     </section>
     {php

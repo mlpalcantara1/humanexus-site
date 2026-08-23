@@ -1450,13 +1450,44 @@ export function GestaoOperacional({
     </section>
   );
 
-  const contadores = useMemo(() => ({
-    participantes: dados?.participantes.length ?? 0,
-    sessoes: dados?.sessoes.length ?? 0,
-    treinamentos: dados?.catalogo_treinamentos.length ?? 0,
-    programacoes: dados?.programacoes.length ?? 0,
-    contratos: dados?.contratos.length ?? 0
-  }), [dados]);
+  const contadores = useMemo(() => {
+    if (!dados) return {};
+    if (modulo === "organizacoes") {
+      const totais = objeto(objeto(dados.painel_organizacional).totais);
+      const valorReal = (valor: unknown) =>
+        typeof valor === "number" ? valor : "—";
+      return {
+        participantes: valorReal(totais.participantes),
+        sessoes: valorReal(totais.sessoes),
+        treinamentos: valorReal(totais.treinamentos),
+        relatorios: valorReal(totais.relatorios)
+      };
+    }
+    if (modulo === "clientes") {
+      return {
+        participantes: dados.participantes.length,
+        sessoes: dados.sessoes.length
+      };
+    }
+    if (modulo === "sessoes") {
+      return {
+        participantes: dados.participantes.length,
+        sessoes: dados.sessoes.length
+      };
+    }
+    if (modulo === "treinamentos") {
+      return {
+        participantes: dados.participantes.length,
+        sessoes: dados.sessoes.length,
+        treinamentos: dados.catalogo_treinamentos.length,
+        programacoes: dados.programacoes.length
+      };
+    }
+    if (modulo === "configuracoes") {
+      return { contratos: dados.contratos.length };
+    }
+    return {};
+  }, [dados, modulo]);
   const painelOrganizacional = objeto(dados?.painel_organizacional);
   const totaisOrganizacionais = objeto(painelOrganizacional.totais);
   const distribuicoesOrganizacionais = objeto(

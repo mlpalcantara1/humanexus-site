@@ -683,6 +683,19 @@
   display: none !important;
 }
 
+/* An explicit Technical view is a user request, not background depth. */
+
+[data-hx-experience-mode="executivo"] .hx-cockpit-panel--technical .hx-technical-stack,
+[data-hx-experience-mode="executivo"] .hx-cockpit-panel--technical .hx-source-health {
+  display: grid !important;
+}
+
+[data-hx-experience-mode="executivo"] .hx-cockpit-panel--technical .hx-telemetry,
+[data-hx-experience-mode="executivo"] .hx-cockpit-panel--technical .hx-technical-details,
+[data-hx-experience-mode="executivo"] .hx-cockpit-panel--technical .hx-cortex-config {
+  display: block !important;
+}
+
 [data-hx-experience-mode="cientifico"] .hx-live-scientific-chain,
 [data-hx-experience-mode="cientifico"] .hx-live-scientific-coverage {
   animation: hx-ds-reveal 260ms cubic-bezier(0.22, 1, 0.36, 1) both;

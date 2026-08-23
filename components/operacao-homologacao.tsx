@@ -2919,7 +2919,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   );
 
   const visaoTecnica = (
-    <section className="hx-cockpit-panel">
+    <section className="hx-cockpit-panel hx-cockpit-panel--technical">
       <TituloDaVisao kicker="TÉCNICO" titulo="Infraestrutura recolhível e subordinada à leitura científica." descricao="Somente falhas que comprometam qualidade, cobertura ou conexão recebem destaque na sessão." />
       <ReferenciaBaselineResumo estado={estado} />
       <div className="hx-technical-tabs">

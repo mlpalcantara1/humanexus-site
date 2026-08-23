@@ -2615,6 +2615,11 @@ export function CockpitOperacionalVivo({
         </details>
       </div>
 
+      <SinteseValidacaoTirhV1
+        estado={estado}
+        validarClaimTirhV1={validarClaimTirhV1}
+      />
+
       <section
         id="hx-inspection-level"
         className="hx-live-scientific-chain"
@@ -2627,10 +2632,6 @@ export function CockpitOperacionalVivo({
           </div>
           <span>Somente relações autorais rastreáveis · nenhuma decisão automática</span>
         </header>
-        <SinteseValidacaoTirhV1
-          estado={estado}
-          validarClaimTirhV1={validarClaimTirhV1}
-        />
         <div className="hx-live-scientific-chain__rail">
           {etapasDaCadeia.map((etapa) => {
             const estadoNormalizado = etapa.estado.toUpperCase();
