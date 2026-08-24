@@ -179,6 +179,14 @@ test("interface documental bloqueia repetição e confirma persistência autorit
   assert.match(componente, /disabled=\{ocupado \|\| conteudoJaPreservado\}/);
   assert.match(cockpit, /acaoDocumentalEmAndamento/);
   assert.match(cockpit, /ENVIANDO PARA VALIDAÇÃO/);
+  assert.match(cockpit, /role="dialog"/);
+  assert.match(cockpit, /Justificativa profissional obrigatória/);
+  assert.match(cockpit, /CONFIRMAR ENVIO PARA VALIDAÇÃO/);
+  const transicaoDocumental = cockpit.slice(
+    cockpit.indexOf("const transicionarRelatorioAtual"),
+    cockpit.indexOf("const pode =")
+  );
+  assert.doesNotMatch(transicaoDocumental, /window\.prompt/);
   assert.match(cockpit, /justificativa profissional foi preservada/);
   assert.match(cockpit, /Núcleo não confirmou a transição/);
   assert.match(validacao, /validacaoEmAndamento/);

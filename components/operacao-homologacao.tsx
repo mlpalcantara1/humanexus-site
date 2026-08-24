@@ -1813,6 +1813,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const [cortexClientId, setCortexClientId] = useState("");
   const [cortexClientSecret, setCortexClientSecret] = useState("");
   const [filtroReferenciaColetiva, setFiltroReferenciaColetiva] = useState("");
+  const [transicaoDocumental, setTransicaoDocumental] = useState<
+    "AGUARDANDO_VALIDACAO" | "CONCLUIDO" | null
+  >(null);
+  const [justificativaDaTransicao, setJustificativaDaTransicao] = useState("");
 
   useEffect(() => {
     componenteMontado.current = true;
@@ -2776,24 +2780,98 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   );
   const transicionarRelatorioAtual = (destino: "AGUARDANDO_VALIDACAO" | "CONCLUIDO") => {
     if (!relatorioAtual?.identificador) return;
-    const justificativa = window.prompt(
-      destino === "AGUARDANDO_VALIDACAO"
-        ? "Justifique o envio desta versão completa para validação profissional."
-        : "Justifique a validação final desta versão. O PDF e a impressão serão liberados após esta decisão."
-    );
-    if (justificativa === null) return;
-    if (justificativa.trim().length < 8) {
+    setErro("");
+    setJustificativaDaTransicao("");
+    setTransicaoDocumental(destino);
+  };
+  const confirmarTransicaoDoRelatorioAtual = async () => {
+    if (!transicaoDocumental || !relatorioAtual?.identificador) return;
+    const justificativa = justificativaDaTransicao.trim();
+    if (justificativa.length < 8) {
       setErro(
         "Informe uma justificativa profissional com pelo menos oito caracteres. Nenhuma transição foi realizada."
       );
       return;
     }
-    void comandos.transicionarRelatorio({
+    const sucesso = await comandos.transicionarRelatorio({
       identificador: relatorioAtual.identificador,
-      estado: destino,
-      justificativa: justificativa.trim()
+      estado: transicaoDocumental,
+      justificativa
     });
+    if (!sucesso) return;
+    setTransicaoDocumental(null);
+    setJustificativaDaTransicao("");
   };
+  const dialogoDaTransicaoDocumental = transicaoDocumental ? (
+    <div className="hx-evidence-layer" role="presentation">
+      <button
+        className="hx-evidence-layer__backdrop"
+        type="button"
+        onClick={() => setTransicaoDocumental(null)}
+        aria-label="Cancelar transição documental"
+        disabled={ocupado === "transicionar-relatorio"}
+      />
+      <section
+        className="hx-document-transition-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label={transicaoDocumental === "AGUARDANDO_VALIDACAO"
+          ? "Enviar relatório para validação"
+          : "Validar relatório final"}
+      >
+        <header>
+          <div>
+            <small>TRANSIÇÃO DOCUMENTAL CONTROLADA</small>
+            <strong>{transicaoDocumental === "AGUARDANDO_VALIDACAO"
+              ? "Enviar esta versão para validação"
+              : "Validar esta versão como relatório final"}</strong>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTransicaoDocumental(null)}
+            disabled={ocupado === "transicionar-relatorio"}
+          >
+            Cancelar
+          </button>
+        </header>
+        <p>{transicaoDocumental === "AGUARDANDO_VALIDACAO"
+          ? "A versão consolidada será preservada e encaminhada para a decisão profissional."
+          : "A decisão finalizará o documento e liberará o PDF e a impressão governados."}</p>
+        <label>
+          Justificativa profissional obrigatória
+          <textarea
+            value={justificativaDaTransicao}
+            onChange={(evento) => setJustificativaDaTransicao(evento.target.value)}
+            rows={4}
+            placeholder="Descreva o fundamento desta transição documental."
+            disabled={ocupado === "transicionar-relatorio"}
+          />
+        </label>
+        {erro ? <p className="hx-module__error" role="alert">{portuguesVisivel(erro)}</p> : null}
+        <footer>
+          <button
+            type="button"
+            onClick={() => setTransicaoDocumental(null)}
+            disabled={ocupado === "transicionar-relatorio"}
+          >
+            Cancelar
+          </button>
+          <button
+            className="is-primary"
+            type="button"
+            onClick={() => void confirmarTransicaoDoRelatorioAtual()}
+            disabled={ocupado === "transicionar-relatorio"}
+          >
+            {ocupado === "transicionar-relatorio"
+              ? "PRESERVANDO TRANSIÇÃO…"
+              : transicaoDocumental === "AGUARDANDO_VALIDACAO"
+                ? "CONFIRMAR ENVIO PARA VALIDAÇÃO"
+                : "CONFIRMAR VALIDAÇÃO FINAL"}
+          </button>
+        </footer>
+      </section>
+    </div>
+  ) : null;
   const pode = (comando: string) => comandoPermitido(estado, comando);
   const fluxoOperacional = objeto(estado.estado_operacional);
   const contratoCientifico = objeto(estado.contrato_cientifico);
@@ -3513,6 +3591,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             ? controleDeBaseline
             : null}
         </main>
+        {dialogoDaTransicaoDocumental}
         {!operacional && erro ? <p className="hx-module__error">{portuguesVisivel(erro)}</p> : null}
       </div>
     );
@@ -3652,6 +3731,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <AvisoTecnico />
         <Contexto estado={estado} />
         {visaoRelatorio}
+        {dialogoDaTransicaoDocumental}
       </div>
     );
   }
