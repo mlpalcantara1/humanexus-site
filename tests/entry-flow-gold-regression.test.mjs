@@ -76,7 +76,7 @@ test("HOME conduz à Área HUMANEXUS e dali ao login canônico", async () => {
   assert.match(entrar, /<FormularioEntrada \/>/);
 });
 
-test("entrada pública nunca monta navegação privada nem redireciona sessão válida", async () => {
+test("entrada pública nunca monta navegação privada e sempre exige autenticação completa", async () => {
   const [layoutEntrada, shellEntrada, entrar, layoutPrivado] = await Promise.all([
     fonte("app/(entry)/layout.tsx"),
     fonte("components/platform-entry-shell.tsx"),
@@ -88,7 +88,8 @@ test("entrada pública nunca monta navegação privada nem redireciona sessão v
   assert.doesNotMatch(layoutEntrada, /PlatformShell/);
   assert.doesNotMatch(shellEntrada, /PlatformNavigation|SessionContinuity|sessaoAtual/);
   assert.doesNotMatch(shellEntrada, /Administrador Proprietário|Sair com segurança/);
-  assert.match(entrar, /Continuar sessão segura/);
+  assert.match(entrar, /<FormularioEntrada \/>/);
+  assert.doesNotMatch(entrar, /sessaoAtual|destinoDoPerfil|Continuar sessão segura/);
   assert.doesNotMatch(entrar, /redirect\(/);
   assert.match(layoutPrivado, /PlatformShell/);
 });
@@ -105,6 +106,8 @@ test("login, segundo fator e entrada autenticada preservam o contrato GOLD", asy
   assert.match(formulario, /dados\.segundo_fator_necessario/);
   assert.match(formulario, /Confirmar segundo fator/);
   assert.match(formulario, /router\.replace\(destinoSeguro\)/);
+  assert.match(rota, /entrarNoNucleo/);
+  assert.match(await fonte("lib/humanexus-core.ts"), /"x-humanexus-require-second-factor": "1"/);
   assert.match(rota, /confirmarSegundoFatorNoNucleo/);
   assert.match(rota, /destinoDoPerfil\(usuario\.perfil\)/);
   assert.match(sessao, /ADMINISTRADOR_PROPRIETARIO: "\/admin"/);

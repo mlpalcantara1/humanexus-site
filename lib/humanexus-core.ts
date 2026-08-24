@@ -193,7 +193,8 @@ export async function entrarNoNucleo(
       "x-humanexus-device-name": dispositivo.nome ?? "Navegador",
       "x-humanexus-device-os": dispositivo.sistema_operacional ?? "",
       "x-humanexus-browser": dispositivo.navegador ?? "",
-      "x-humanexus-app-version": dispositivo.versao_da_aplicacao ?? ""
+      "x-humanexus-app-version": dispositivo.versao_da_aplicacao ?? "",
+      "x-humanexus-require-second-factor": "1"
     },
     body: JSON.stringify({ email, senha })
   });
