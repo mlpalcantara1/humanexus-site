@@ -462,7 +462,7 @@ export function CockpitSignalStack({
         <HumanexusChart
           option={option}
           height={alturaDoGrafico}
-          ariaLabel="Cockpit Vivo com múltiplas trilhas, eixo temporal compartilhado, zoom e cursor sincronizado"
+          ariaLabel="Painel operacional ao vivo com múltiplas trilhas, eixo temporal compartilhado, ampliação e cursor sincronizado"
           reducedMotion={reducedMotion}
         />
       ) : null}
@@ -852,12 +852,12 @@ export function ReplayTimelineChart({
     } as unknown as EChartsOption;
   }, [cursorPercent, interval, items, markers, phases, visibleTracks, zoom]);
 
-  if (!items.length) return <EmptySignalState title="REPLAY MULTIMODAL" reason="A linha temporal ainda não possui itens íntegros." />;
+  if (!items.length) return <EmptySignalState title="REPRODUÇÃO HISTÓRICA MULTIMODAL" reason="A linha temporal ainda não possui itens íntegros." />;
   return (
     <HumanexusChart
       option={option}
       height={Math.max(420, visibleTracks.length * 64 + 150)}
-      ariaLabel="Replay multimodal com scrubber, cursor sincronizado, fases, eventos e zoom"
+      ariaLabel="Reprodução histórica multimodal com controle deslizante, cursor sincronizado, fases, eventos e ampliação"
     />
   );
 }

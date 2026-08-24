@@ -15,7 +15,7 @@ test("fluxo PRÉ/TREINO/PÓS usa o tempo do Baseline enquanto ele está ativo", 
     fase: {}
   });
   assert.equal(resultado.registro, baseline);
-  assert.equal(resultado.rotulo, "Baseline");
+  assert.equal(resultado.rotulo, "Referência inicial");
 });
 
 test("pausa e finalização do Baseline preservam sua autoridade temporal", () => {
@@ -27,7 +27,7 @@ test("pausa e finalização do Baseline preservam sua autoridade temporal", () =
       fase: {}
     });
     assert.equal(resultado.registro, registro);
-    assert.equal(resultado.rotulo, "Baseline");
+    assert.equal(resultado.rotulo, "Referência inicial");
   }
 });
 
@@ -50,5 +50,5 @@ test("sessão independente de Baseline sempre usa seu registro canônico", () =>
     fase: { fase: "PRE", duracao_segundos: 99 }
   });
   assert.equal(resultado.registro, registro);
-  assert.equal(resultado.rotulo, "Baseline");
+  assert.equal(resultado.rotulo, "Referência inicial");
 });

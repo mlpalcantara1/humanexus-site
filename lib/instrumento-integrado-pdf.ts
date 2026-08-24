@@ -45,7 +45,7 @@ function rodape(doc: PDFKit.PDFDocument) {
   doc.moveTo(46, 757).lineTo(550, 757).lineWidth(.5).strokeColor("#d7dedb").stroke();
   doc.fillColor("#75817e").font("Helvetica").fontSize(6.4)
     .text(
-      "Instituto Humanexus de Performance Operacional LTDA",
+      "Instituto HUMANEXUS",
       46,
       766,
       { width: 504, align: "center", lineBreak: false }

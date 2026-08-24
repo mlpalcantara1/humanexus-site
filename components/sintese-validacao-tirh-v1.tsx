@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   claimElegivelParaValidacaoTirhV1,
   decisoesProfissionaisPreservadasTirhV1
 } from "@/lib/validacao-profissional-tirh-v1";
+import { chaveIdempotenteDocumental } from "@/lib/humanexus-report-authority";
+import { portuguesVisivel } from "@/lib/portugues-visivel";
 
 export { claimElegivelParaValidacaoTirhV1 } from "@/lib/validacao-profissional-tirh-v1";
 
@@ -36,9 +38,10 @@ function lista(valor: unknown): Registro[] {
 }
 
 function texto(valor: unknown, padrao = "—") {
-  return valor == null || valor === ""
-    ? padrao
-    : String(valor).replaceAll("_", " ");
+  return portuguesVisivel(
+    valor == null || valor === "" ? padrao : String(valor).replaceAll("_", " "),
+    padrao
+  );
 }
 
 function numero(valor: unknown, casas = 0) {
@@ -85,6 +88,7 @@ export function SinteseValidacaoTirhV1({
   const [ajusteDoClaim, setAjusteDoClaim] = useState("");
   const [validacaoEmEnvio, setValidacaoEmEnvio] = useState(false);
   const [estadoDaValidacaoTirh, setEstadoDaValidacaoTirh] = useState("");
+  const validacaoEmAndamento = useRef(false);
   const {
     tirhV1,
     tirhV1Persistida
@@ -107,7 +111,11 @@ export function SinteseValidacaoTirhV1({
     decisoesProfissionaisPreservadasTirhV1(claimsTirhV1);
 
   const enviarValidacaoTirhV1 = async () => {
-    if (!claimSelecionado || justificativaDoClaim.trim().length < 5 || validacaoEmEnvio) return;
+    if (
+      !claimSelecionado
+      || justificativaDoClaim.trim().length < 5
+      || validacaoEmAndamento.current
+    ) return;
     const claim = claimsTirhV1.find((item) => String(item.claim_id ?? "") === claimSelecionado);
     if (!claim) return;
     let valorFinal: unknown;
@@ -115,10 +123,11 @@ export function SinteseValidacaoTirhV1({
       try {
         valorFinal = JSON.parse(ajusteDoClaim);
       } catch {
-        setEstadoDaValidacaoTirh("O ajuste deve ser informado em estrutura JSON válida.");
+        setEstadoDaValidacaoTirh("O ajuste deve ser informado em uma estrutura de dados válida.");
         return;
       }
     }
+    validacaoEmAndamento.current = true;
     setValidacaoEmEnvio(true);
     setEstadoDaValidacaoTirh("");
     try {
@@ -126,7 +135,20 @@ export function SinteseValidacaoTirhV1({
         claim_id: claimSelecionado,
         decisao: decisaoDoClaim,
         justificativa: justificativaDoClaim.trim(),
-        chave_de_idempotencia: crypto.randomUUID(),
+        chave_de_idempotencia: chaveIdempotenteDocumental(
+          "validacao-profissional-tirh-v1",
+          {
+            claim_id: claimSelecionado,
+            decisao: decisaoDoClaim,
+            versao_esperada: Number(
+              objeto(claim.validacao_profissional).versao_da_validacao ?? 0
+            )
+          },
+          {
+            justificativa: justificativaDoClaim.trim(),
+            valor_final: decisaoDoClaim === "AJUSTAR" ? valorFinal : null
+          }
+        ),
         versao_esperada: Number(
           objeto(claim.validacao_profissional).versao_da_validacao ?? 0
         ),
@@ -136,6 +158,7 @@ export function SinteseValidacaoTirhV1({
       setJustificativaDoClaim("");
       setAjusteDoClaim("");
     } finally {
+      validacaoEmAndamento.current = false;
       setValidacaoEmEnvio(false);
     }
   };
@@ -186,7 +209,7 @@ export function SinteseValidacaoTirhV1({
           )}</span>
         </article>
         <article>
-          <small>Claims profissionais</small>
+          <small>Afirmações científicas profissionais</small>
           <strong>{claimsPendentesTirhV1.length} ELEGÍVEL(IS)</strong>
           <span>Fatos objetivos e aritmética não são submetidos a revalidação profissional.</span>
         </article>
@@ -210,7 +233,7 @@ export function SinteseValidacaoTirhV1({
         open={claimsPendentesTirhV1.length > 0 || decisoesProfissionaisPreservadas.length > 0}
       >
         <summary>Validação Profissional · quadro único pós-sessão</summary>
-        <p>Este quadro valida interpretações ou ajustes autorais sem reabrir a sessão, a máquina de estados, o lease da estação ou qualquer sensor.</p>
+        <p>Este quadro valida interpretações ou ajustes autorais sem reabrir a sessão, a máquina de estados, o vínculo exclusivo da estação ou qualquer sensor.</p>
         {decisoesProfissionaisPreservadas.length ? (
           <section aria-label="Decisão profissional preservada">
             <h3>Decisão profissional preservada</h3>
@@ -220,7 +243,7 @@ export function SinteseValidacaoTirhV1({
             >
               {decisoesProfissionaisPreservadas.map((validacao, indice) => (
                 <article key={texto(validacao.identificador, `decisao-${indice + 1}`)}>
-                  <small>DECISÃO APPEND-ONLY · VERSÃO {numero(validacao.versao_da_validacao)}</small>
+                  <small>DECISÃO PRESERVADA SOMENTE POR ACRÉSCIMO · VERSÃO {numero(validacao.versao_da_validacao)}</small>
                   <strong>{texto(validacao.decisao)}</strong>
                   <span>Estado efetivo: {texto(validacao.estado)}</span>
                   <span>Registrada em: {texto(validacao.criado_em, "Data não exposta")}</span>
@@ -250,7 +273,7 @@ export function SinteseValidacaoTirhV1({
             <label>
               Item para decisão
               <select value={claimSelecionado} onChange={(evento) => setClaimSelecionado(evento.target.value)}>
-                <option value="">Selecione um claim pendente</option>
+                <option value="">Selecione uma afirmação científica pendente</option>
                 {claimsPendentesTirhV1.map((claim) => (
                   <option value={texto(claim.claim_id, "")} key={texto(claim.claim_id)}>
                     {texto(claim.claim_id)} · {texto(claim.tipo)}
@@ -268,7 +291,7 @@ export function SinteseValidacaoTirhV1({
             </label>
             {decisaoDoClaim === "AJUSTAR" ? (
               <label className="is-wide">
-                Valor final estruturado (JSON)
+                Valor final estruturado
                 <textarea value={ajusteDoClaim} onChange={(evento) => setAjusteDoClaim(evento.target.value)} rows={4} />
               </label>
             ) : null}
@@ -287,13 +310,10 @@ export function SinteseValidacaoTirhV1({
           </div>
         ) : null}
         <details>
-          <summary>Proveniência e contrato de claims</summary>
-          <pre>{JSON.stringify({
-            snapshot: tirhV1Persistida.snapshot,
-            validacao: validacaoTirhV1,
-            contrato: tirhV1Persistida.versao_cientifica,
-            vetores: vetoresTirhV1
-          }, null, 2)}</pre>
+          <summary>Proveniência e contrato das afirmações científicas</summary>
+          <p>Contrato científico: {texto(tirhV1Persistida.versao_cientifica, "não informado")}.</p>
+          <p>Situação da validação: {texto(validacaoTirhV1.estado, claimsPendentesTirhV1.length ? "PENDENTE" : "SEM NOVA ADJUDICAÇÃO")}.</p>
+          <p>Vetores preservados no contrato: {Object.keys(vetoresTirhV1).length}.</p>
         </details>
       </details>
     </section>

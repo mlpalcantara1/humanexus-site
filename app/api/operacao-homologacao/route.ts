@@ -11,6 +11,7 @@ import { exigirCsrf } from "@/lib/request-security";
 import { normalizarComandoOperacional } from "@/lib/cockpit-operational-command";
 import {
   CAMPOS_PROFISSIONAIS_DO_RELATORIO,
+  ordenarRelatoriosPorVersao,
   resolverIdentidadeDocumental,
   tituloHumanoDoRelatorio
 } from "@/lib/humanexus-report-authority";
@@ -96,7 +97,7 @@ async function consultarLote(
       const resultado = porChave.get(consulta.chave);
       if (!resultado?.disponivel && !consulta.opcional) {
         throw new ErroDaRota(
-          "Uma informação obrigatória do Cockpit está temporariamente indisponível.",
+          "Uma informação obrigatória do painel operacional está temporariamente indisponível.",
           502,
           `CONSULTA_OBRIGATORIA_${consulta.chave.toUpperCase()}_INDISPONIVEL`
         );
@@ -193,7 +194,7 @@ async function atualizacaoLeve(
   const sessaoId = String(selecao.identificador_da_sessao ?? "");
   if (!sessaoId) {
     throw new ErroDaRota(
-      "Selecione uma sessão antes de atualizar o Cockpit.",
+      "Selecione uma sessão antes de atualizar o painel operacional.",
       400,
       "SESSAO_NAO_INFORMADA"
     );
@@ -295,7 +296,7 @@ async function estado(
   const participantes = contextoBase.participantes;
   if (!selecao.identificador_do_participante) {
     throw new ErroDaRota(
-      "Selecione explicitamente o participante antes de abrir o Cockpit.",
+      "Selecione explicitamente o participante antes de abrir o painel operacional.",
       400,
       "PARTICIPANTE_NAO_INFORMADO"
     );
@@ -319,7 +320,7 @@ async function estado(
   const participanteId = String(participante.identificador);
   if (!selecao.identificador_da_sessao) {
     throw new ErroDaRota(
-      "Selecione explicitamente uma sessão existente antes de abrir o Cockpit.",
+      "Selecione explicitamente uma sessão existente antes de abrir o painel operacional.",
       400,
       "SESSAO_NAO_INFORMADA"
     );
@@ -559,8 +560,8 @@ async function estado(
   const detalhesOperacionais = Object.keys(detalhesOperacionaisConsultados).length
     ? detalhesOperacionaisConsultados
     : registro(sessao.detalhes_operacionais);
-  const relatoriosDaSessao = relatorios.filter(
-    (item) => {
+  const relatoriosDaSessao = ordenarRelatoriosPorVersao(
+    relatorios.filter((item) => {
       const contextoDoRelatorio = registro(item.contexto_json);
       return String(
         contextoDoRelatorio.identificador_interno_da_sessao
@@ -568,7 +569,7 @@ async function estado(
         ?? contextoDoRelatorio.sessao
         ?? ""
       ) === sessaoId;
-    }
+    })
   );
   const profissionalResponsavel = usuariosDisponiveis.find(
     (item) => item.identificador === detalhesOperacionais.identificador_do_profissional
@@ -875,7 +876,7 @@ export async function DELETE(request: Request) {
     const organizacao = String(url.searchParams.get("organizacao") ?? "");
     if (!sessao || !organizacao) {
       throw new ErroDaRota(
-        "Selecione organização, participante e sessão antes de liberar o Cockpit.",
+        "Selecione organização, participante e sessão antes de liberar o painel operacional.",
         400,
         "CONTEXTO_NAO_INFORMADO"
       );
@@ -920,7 +921,11 @@ async function registrarEvento(token: string, contexto: Contexto, dados: Registr
   }, String(contexto.organizacao.identificador));
 }
 
-async function gerarRelatorio(token: string, contexto: Contexto) {
+async function gerarRelatorio(
+  token: string,
+  contexto: Contexto,
+  chaveDeIdempotencia?: string
+) {
   if (contexto.relatorios.length) return;
   const detalhes = registro(contexto.sessao_operacional?.detalhes);
   const tipoDaSessao = String(
@@ -947,7 +952,7 @@ async function gerarRelatorio(token: string, contexto: Contexto) {
         tipo_de_sessao: contexto.sessao.tipo_de_sessao,
         referencia_de_baseline: contexto.gravacao?.baseline ?? {
           referencia: {
-            estado: "SESSÃO SEM REFERÊNCIA DE BASELINE"
+            estado: "SESSÃO SEM REFERÊNCIA INICIAL"
           }
         }
       },
@@ -957,6 +962,7 @@ async function gerarRelatorio(token: string, contexto: Contexto) {
         origem: "Evidências canônicas persistidas da sessão."
       },
       interpretacao_profissional: "",
+      chave_de_idempotencia: chaveDeIdempotencia,
       limites: [
         "Indicadores ausentes permanecem sem valor.",
         "A decisão e a interpretação finais permanecem sob responsabilidade profissional."
@@ -978,7 +984,8 @@ function possuiConteudoProfissional(valor: unknown): boolean {
 async function consolidarRelatorio(
   token: string,
   contexto: Contexto,
-  consolidacaoRecebida: unknown
+  consolidacaoRecebida: unknown,
+  chaveDeIdempotencia?: string
 ) {
   const consolidacao = registro(consolidacaoRecebida);
   const ausentes = CAMPOS_PROFISSIONAIS_DO_RELATORIO
@@ -1033,10 +1040,11 @@ async function consolidarRelatorio(
         limites: [String(consolidacao.limitacoes)],
         proximos_passos: [String(consolidacao.proximo_passo_regulatorio)],
         consolidacao_profissional: consolidacao,
+        chave_de_idempotencia: chaveDeIdempotencia,
         ...(anterior?.identificador_da_serie ? {
           identificador_da_serie: anterior.identificador_da_serie,
           justificativa_da_revisao: (
-            "Consolidação profissional append-only da sessão preservada."
+            "Consolidação profissional somente por acréscimo da sessão preservada."
           )
         } : {})
       })
@@ -1241,9 +1249,18 @@ export async function POST(request: Request) {
         })
       });
     } else if (corpo.acao === "relatorio") {
-      await gerarRelatorio(token, contexto);
+      await gerarRelatorio(
+        token,
+        contexto,
+        corpo.chave_de_idempotencia
+      );
     } else if (corpo.acao === "consolidar-relatorio") {
-      await consolidarRelatorio(token, contexto, corpo.payload);
+      await consolidarRelatorio(
+        token,
+        contexto,
+        corpo.payload,
+        corpo.chave_de_idempotencia
+      );
     } else if (corpo.acao === "transicionar-relatorio") {
       const payload = registro(corpo.payload);
       const relatorio = contexto.relatorios.find(
@@ -1267,7 +1284,11 @@ export async function POST(request: Request) {
         token,
         {
           method: "POST",
-          body: JSON.stringify({ estado: destino, justificativa })
+          body: JSON.stringify({
+            estado: destino,
+            justificativa,
+            chave_de_idempotencia: corpo.chave_de_idempotencia
+          })
         },
         organizacaoId
       );

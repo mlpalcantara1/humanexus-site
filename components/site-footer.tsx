@@ -15,11 +15,11 @@ export function SiteFooter() {
             </span>
             <span className="brand-name">
               <strong>HUMANEXUS</strong>
-              <small>PERFORMANCE OPERACIONAL</small>
+              <small>DESEMPENHO OPERACIONAL</small>
             </span>
           </Link>
           <p>
-            Ciência, tecnologia e comportamento humano aplicados à performance
+            Ciência, tecnologia e comportamento humano aplicados ao desempenho
             em sistemas complexos.
           </p>
           <div className="footer-contact">
@@ -39,7 +39,7 @@ export function SiteFooter() {
         </div>
         <div>
           <h2 className="footer-heading">Institucional</h2>
-          <Link href="/performance-operacional">Performance Operacional</Link>
+          <Link href="/performance-operacional">Desempenho Operacional</Link>
           <Link href="/inteligencia-regulatoria-humana">
             Inteligência Regulatória
           </Link>
@@ -78,7 +78,7 @@ export function SiteFooter() {
         </p>
       </div>
       <div className="container footer-bottom">
-        <span>© 2026 Instituto Humanexus de Performance Operacional LTDA</span>
+        <span>© 2026 Instituto HUMANEXUS · Desempenho Operacional</span>
         <span>Manaus · Amazonas · Brasil</span>
         <span>Todos os direitos reservados</span>
       </div>

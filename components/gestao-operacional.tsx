@@ -6,6 +6,7 @@ import { consultarJson } from "@/lib/client-request";
 import { PlatformErrorState } from "@/components/platform-error-state";
 import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multimodal";
 import { resolverIdentidadeDocumental } from "@/lib/humanexus-report-authority";
+import { portuguesVisivel } from "@/lib/portugues-visivel";
 
 type Registro = Record<string, unknown>;
 type BaseOperacional = {
@@ -60,9 +61,10 @@ function csrf() {
 }
 
 function texto(valor: unknown, padrao = "Não informado") {
-  return valor == null || valor === ""
-    ? padrao
-    : String(valor).replaceAll("_", " ");
+  return portuguesVisivel(
+    valor == null || valor === "" ? padrao : String(valor).replaceAll("_", " "),
+    padrao
+  );
 }
 
 function dataLegivel(valor: unknown) {
@@ -1412,7 +1414,7 @@ export function GestaoOperacional({
                     String(item.identificador_do_participante ?? "")
                   )}
                 >
-                  ABRIR COCKPIT
+                  ABRIR PAINEL OPERACIONAL
                 </button>
               ) : <span>Histórico preservado</span>}
               <button
@@ -1806,7 +1808,7 @@ export function GestaoOperacional({
               <div className="hx-fields-grid">
                 <label>E-mail institucional<input type="email" value={organizacao.email} onChange={(evento) => setOrganizacao({ ...organizacao, email: evento.target.value })} /></label>
                 <label>Telefone<input type="tel" value={organizacao.telefone} onChange={(evento) => setOrganizacao({ ...organizacao, telefone: evento.target.value })} /></label>
-                <label>Site<input type="url" value={organizacao.site} onChange={(evento) => setOrganizacao({ ...organizacao, site: evento.target.value })} /></label>
+                <label>Portal digital<input type="url" value={organizacao.site} onChange={(evento) => setOrganizacao({ ...organizacao, site: evento.target.value })} /></label>
                 <label>CEP<input inputMode="numeric" autoComplete="postal-code" value={organizacao.cep} onChange={(evento) => setOrganizacao({ ...organizacao, cep: evento.target.value })} /><small aria-live="polite">{estadoDoCep}</small></label>
                 <label>Logradouro<input value={organizacao.logradouro} onChange={(evento) => setOrganizacao({ ...organizacao, logradouro: evento.target.value })} /></label>
                 <label>Número<input value={organizacao.numero} onChange={(evento) => setOrganizacao({ ...organizacao, numero: evento.target.value })} /></label>
@@ -2056,7 +2058,7 @@ export function GestaoOperacional({
               <option value="">Todas</option>
               {(Array.isArray(facetasOrganizacionais.qualificacoes) ? facetasOrganizacionais.qualificacoes : []).map((valor) => <option key={String(valor)} value={String(valor)}>{texto(valor)}</option>)}
             </select></label>
-            <label>Status<select value={filtrosOrganizacionais.status} onChange={(evento) => setFiltrosOrganizacionais({ ...filtrosOrganizacionais, status: evento.target.value })}>
+            <label>Situação<select value={filtrosOrganizacionais.status} onChange={(evento) => setFiltrosOrganizacionais({ ...filtrosOrganizacionais, status: evento.target.value })}>
               <option value="">Todos</option><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option>
             </select></label>
             <label>Período inicial<input type="date" value={filtrosOrganizacionais.periodo_inicio} onChange={(evento) => setFiltrosOrganizacionais({ ...filtrosOrganizacionais, periodo_inicio: evento.target.value })} /></label>
@@ -2610,7 +2612,7 @@ export function GestaoOperacional({
                 ["telemetria", "Telemetria de tarefa"],
                 ["audio", "Áudio"],
                 ["video", "Imagem e vídeo"],
-                ["replay", "Replay"],
+                ["replay", "Reprodução histórica"],
                 ["relatorio", "Relatório individual"],
                 ["longitudinal", "Acompanhamento longitudinal"],
                 ["coletivo", "Indicador coletivo anonimizado"],
@@ -2688,7 +2690,7 @@ export function GestaoOperacional({
             </p>
             {entregaDeConsentimento ? (
               <aside className="hx-module__notice">
-                <strong>Link exibido uma única vez</strong>
+                <strong>Ligação exibida uma única vez</strong>
                 <a
                   href={String(entregaDeConsentimento.link_de_manifestacao)}
                   target="_blank"
@@ -2702,7 +2704,7 @@ export function GestaoOperacional({
                     String(entregaDeConsentimento.link_de_manifestacao)
                   )}
                 >
-                  Copiar link
+                  Copiar ligação
                 </button>
               </aside>
             ) : null}
@@ -2897,10 +2899,10 @@ export function GestaoOperacional({
               </>
             ) : (
               <fieldset className="hx-session-type">
-                <legend>Decisão profissional para o Baseline</legend>
+                <legend>Decisão profissional para a referência inicial</legend>
                 <label>
                   <input required type="radio" name="decisao-profissional" value="DEIXAR_SEM_SELECAO" checked={sessao.decisao_profissional === "DEIXAR_SEM_SELECAO"} onChange={() => setSessao({ ...sessao, decisao_profissional: "DEIXAR_SEM_SELECAO", codigo_do_ctr: "", codigo_do_thx: "" })} />
-                  DEIXAR SEM SELEÇÃO — Baseline independente
+                  DEIXAR SEM SELEÇÃO — referência inicial independente
                 </label>
               </fieldset>
             )}
@@ -2924,7 +2926,7 @@ export function GestaoOperacional({
                     codigo_do_thx: ""
                   })}
                 />
-                Baseline
+                Referência inicial
               </label>
               <label>
                 <input
@@ -2961,7 +2963,7 @@ export function GestaoOperacional({
                   <strong>Sessão criada e contexto preservado</strong>
                   <span>
                     Organização, participante, modalidade e treinamento serão
-                    transportados automaticamente para o Cockpit.
+                    transportados automaticamente para o painel operacional.
                   </span>
                 </div>
                 <button
@@ -2985,8 +2987,8 @@ export function GestaoOperacional({
             <section className="hx-session-preparation-workspace" aria-label="Configuração e preparação da sessão">
               <header>
                 <small>CONFIGURAÇÃO OPERACIONAL</small>
-                <h2>Preparar antes de entrar no Cockpit</h2>
-                <p>Fontes, mídia, retenção e referência são definidas aqui. O Cockpit permanece dedicado à condução da sessão.</p>
+                <h2>Preparar antes de entrar no painel operacional</h2>
+                <p>Fontes, mídia, retenção e referência são definidas aqui. O painel operacional permanece dedicado à condução da sessão.</p>
               </header>
               <ControleGravacaoMultimodal sessao={sessaoParaPreparar} />
               <button
@@ -3003,7 +3005,7 @@ export function GestaoOperacional({
                   );
                 }}
               >
-                ABRIR COCKPIT
+                ABRIR PAINEL OPERACIONAL
               </button>
             </section>
           ) : null}
@@ -3146,12 +3148,12 @@ export function GestaoOperacional({
           <section className="hx-training-decision">
             <header>
               <div>
-                <small>PROJEÇÃO REGULATÓRIA PRÉ-BASELINE</small>
+                <small>PROJEÇÃO REGULATÓRIA ANTERIOR À REFERÊNCIA INICIAL</small>
                 <h2>Sugestões editáveis e auditáveis</h2>
                 <p>
                   Correspondência documental entre a anamnese persistida, a
                   MMFTR e a Biblioteca Oficial. Não constitui decisão
-                  profissional definitiva e será refinada pelo Baseline.
+                  profissional definitiva e será refinada pela referência inicial.
                 </p>
               </div>
               <span>{sugestoesPreBaseline.length} sugestão(ões)</span>
@@ -3526,7 +3528,7 @@ export function GestaoOperacional({
                             )}</dd>
                           </div>
                           <div>
-                            <dt>Versão / status</dt>
+                            <dt>Versão / situação</dt>
                             <dd>{[
                               protocolo.versao,
                               protocolo.status ?? protocolo.estado
@@ -3776,8 +3778,8 @@ export function GestaoOperacional({
         </div>
       ) : null}
 
-      {mensagem ? <p className="hx-module__notice" role="status">{mensagem}</p> : null}
-      {erro ? <p className="hx-module__error" role="alert">{erro}</p> : null}
+      {mensagem ? <p className="hx-module__notice" role="status">{portuguesVisivel(mensagem)}</p> : null}
+      {erro ? <p className="hx-module__error" role="alert">{portuguesVisivel(erro)}</p> : null}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   projetarEstadoFuncionalDoRelatorio,
   resolverIdentidadeDocumental
 } from "./humanexus-report-authority.ts";
+import { portuguesVisivel } from "./portugues-visivel.ts";
 
 export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.0";
 
@@ -123,7 +124,7 @@ function objeto(valor: unknown): Registro {
 
 function texto(valor: unknown, ausencia = "Não registrado") {
   const convertido = String(valor ?? "").trim();
-  return convertido || ausencia;
+  return portuguesVisivel(convertido || ausencia, ausencia);
 }
 
 function numero(valor: unknown): number | null {
@@ -911,7 +912,7 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   y = paragrafo(doc, texto(origem.recomendacao, "Recomendação não registrada."), y, { x: 83, width: 455 });
   y = tituloSecao(doc, "Validação Profissional V1", y + 5, "05");
   etiqueta(doc, "ESTADO", texto(validacaoProfissional.estado, claimsElegiveis.length ? "PENDENTE" : "COMPLETA"), 83, y, 205);
-  etiqueta(doc, "CLAIMS ELEGÍVEIS", String(validacaoProfissional.quantidade ?? claimsElegiveis.length), 308, y, 230);
+  etiqueta(doc, "AFIRMAÇÕES CIENTÍFICAS ELEGÍVEIS", String(validacaoProfissional.quantidade ?? claimsElegiveis.length), 308, y, 230);
   const itensDaValidacao = decisoesProfissionaisPreservadas.length
     ? decisoesProfissionaisPreservadas.map((validacao) => (
         `Decisão preservada: ${texto(validacao.decisao)} · `
@@ -1207,7 +1208,7 @@ function renderOperacionalFinalConsolidado(
 
   bloco("06", "VEV longitudinal", [
     `Estado: ${texto(vev?.estado_epistemico ?? vev?.estado, "não elegível")}.`,
-    "O VEV permanece separado dos nove Vetores momentâneos e exige Baseline mais quatro sessões válidas e comparáveis."
+    "O VEV permanece separado dos nove Vetores momentâneos e exige uma referência inicial mais quatro sessões válidas e comparáveis."
   ]);
 
   bloco("07", "Resultante, IIRH, Zona e trajetória", [
@@ -1251,8 +1252,8 @@ function renderOperacionalFinalConsolidado(
 
   bloco("12", "Validação profissional e devolutiva", [
     ...(decisoes.length
-      ? decisoes.map((decisao) => `Claim ${texto(decisao.claim_id, "preservado")}: ${texto(decisao.decisao)} · estado efetivo ${texto(decisao.estado)} · versão ${texto(decisao.versao_da_validacao)}.`)
-      : ["Nenhuma decisão de claim foi usada como substituto da consolidação do relatório."]),
+      ? decisoes.map((decisao) => `Afirmação científica ${texto(decisao.claim_id, "preservada")}: ${texto(decisao.decisao)} · estado efetivo ${texto(decisao.estado)} · versão ${texto(decisao.versao_da_validacao)}.`)
+      : ["Nenhuma decisão sobre afirmação científica foi usada como substituto da consolidação do relatório."]),
     `Devolutiva ao participante: ${texto(consolidacao.conteudo_da_devolutiva_ao_participante)}.`
   ]);
 }

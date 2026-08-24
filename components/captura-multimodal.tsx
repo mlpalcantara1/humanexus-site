@@ -250,7 +250,7 @@ export function CapturaMultimodal({ token }: { token: string }) {
         if (emGravacao && encerrouFase && !finalizacaoAutomatica.current) {
           finalizacaoAutomatica.current = true;
           setMensagem(
-            `A fase ${faseVigente} foi encerrada no Cockpit. Finalizando e preservando os segmentos automaticamente…`
+            `A fase ${faseVigente} foi encerrada no painel operacional. Finalizando e preservando os segmentos automaticamente…`
           );
           await finalizar();
           finalizacaoAutomatica.current = false;

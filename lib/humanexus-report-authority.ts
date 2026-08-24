@@ -19,6 +19,87 @@ export const CAMPOS_PROFISSIONAIS_DO_RELATORIO = [
 
 export type CampoProfissional = typeof CAMPOS_PROFISSIONAIS_DO_RELATORIO[number][0];
 
+export function ordenarRelatoriosPorVersao<
+  T extends RegistroDeRelatorio
+>(relatorios: T[]): T[] {
+  return [...relatorios].sort((a, b) => {
+    const versao = Number(a.numero_da_versao ?? 0)
+      - Number(b.numero_da_versao ?? 0);
+    if (versao) return versao;
+    const data = String(a.criado_em ?? "").localeCompare(
+      String(b.criado_em ?? "")
+    );
+    if (data) return data;
+    return String(a.identificador ?? "").localeCompare(
+      String(b.identificador ?? "")
+    );
+  });
+}
+
+function observacoesEstruturadas(valor: string) {
+  const linhas = valor.split("\n").map((item) => item.trim()).filter(Boolean);
+  const estruturadas = Object.fromEntries(linhas.flatMap((linha) => {
+    const separador = linha.indexOf(":");
+    if (separador <= 0) return [];
+    const fase = linha.slice(0, separador).trim().toUpperCase()
+      .replace("PRÉ", "PRE")
+      .replace("PÓS", "POS");
+    const observacao = linha.slice(separador + 1).trim();
+    return observacao ? [[fase, observacao]] : [];
+  }));
+  return Object.keys(estruturadas).length
+    ? estruturadas
+    : { GERAL: valor.trim() };
+}
+
+export function consolidacaoProfissionalDosCampos(
+  campos: Record<CampoProfissional, string>
+): RegistroDeRelatorio {
+  return {
+    ...campos,
+    evidencias_utilizadas: campos.evidencias_utilizadas
+      .split("\n").map((item) => item.trim()).filter(Boolean),
+    observacoes_por_fase: observacoesEstruturadas(
+      campos.observacoes_por_fase
+    )
+  };
+}
+
+function normalizarParaAssinatura(valor: unknown): unknown {
+  if (typeof valor === "string") return valor.trim();
+  if (Array.isArray(valor)) return valor.map(normalizarParaAssinatura);
+  if (valor && typeof valor === "object") {
+    return Object.fromEntries(
+      Object.entries(valor as RegistroDeRelatorio)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([chave, item]) => [chave, normalizarParaAssinatura(item)])
+    );
+  }
+  return valor ?? null;
+}
+
+export function assinaturaDaConsolidacao(valor: unknown): string {
+  return JSON.stringify(normalizarParaAssinatura(valor));
+}
+
+export function chaveIdempotenteDocumental(
+  acao: string,
+  contexto: RegistroDeRelatorio,
+  payload: unknown
+): string {
+  const entrada = JSON.stringify(normalizarParaAssinatura({
+    acao,
+    contexto,
+    payload
+  }));
+  let acumulador = 2166136261;
+  for (let indice = 0; indice < entrada.length; indice += 1) {
+    acumulador ^= entrada.charCodeAt(indice);
+    acumulador = Math.imul(acumulador, 16777619);
+  }
+  return `documento-${acao}-${(acumulador >>> 0).toString(16).padStart(8, "0")}`;
+}
+
 function objeto(valor: unknown): RegistroDeRelatorio {
   if (valor && typeof valor === "object" && !Array.isArray(valor)) {
     return valor as RegistroDeRelatorio;
@@ -215,7 +296,7 @@ export const MAPA_DE_FONTES_DO_RELATORIO = {
   vetores: "projeção canônica TIRH V1",
   resultante_iirh_zona: "síntese operacional TIRH V1",
   rotas: "cadeia científica ARR / RRD / GRI / CRL / NRA",
-  consolidacao: "versão autoral append-only do relatório",
-  validacao: "claims e decisões profissionais preservadas",
+  consolidacao: "versão autoral do relatório preservada somente por acréscimo",
+  validacao: "afirmações científicas e decisões profissionais preservadas",
   longitudinal: "histórico comparável autorizado"
 } as const;

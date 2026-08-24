@@ -11,6 +11,7 @@ import { GestaoOperacional } from "@/components/gestao-operacional";
 import { GovernancaOperacional } from "@/components/governanca-operacional";
 import { HxPageHeader, HxSurface } from "@/components/hx-design-system";
 import { consultarJson, ErroDeConsulta } from "@/lib/client-request";
+import { estruturaVisivelEmPortugues, portuguesVisivel } from "@/lib/portugues-visivel";
 
 export type ModuloDaPlataforma =
   | "painel" | "organizacoes" | "clientes" | "sessoes" | "treinamentos" | "pre-treino-pos"
@@ -26,26 +27,31 @@ const DEFINICOES: Record<ModuloDaPlataforma, Definicao> = {
   clientes: { titulo: "Clientes", codigo: "HX / CLIENTES", descricao: "Participantes, vínculos, contextos, histórico e permissões no escopo autorizado.", fontes: ["clientes"] },
   sessoes: { titulo: "Sessões", codigo: "HX / SESSÕES", descricao: "Criação, programação e ciclo operacional auditável vinculado ao participante correto.", fontes: ["painel"] },
   treinamentos: { titulo: "Treinamentos", codigo: "HX / TREINAMENTOS", descricao: "Catálogo e programação operacional com CTR e THX sob decisão profissional.", fontes: ["ctr", "thx"] },
-  "pre-treino-pos": { titulo: "PRÉ / TREINO / PÓS", codigo: "HX / CICLO", descricao: "Ciclo governado por snapshots independentes e dados efetivamente capturados.", fontes: ["thx", "painel"], observacao: "A comparação exige uma execução THX e fases compatíveis; nenhum estado é preenchido artificialmente." },
+  "pre-treino-pos": { titulo: "PRÉ / TREINO / PÓS", codigo: "HX / CICLO", descricao: "Ciclo governado por registros congelados independentes e dados efetivamente capturados.", fontes: ["thx", "painel"], observacao: "A comparação exige uma execução THX e fases compatíveis; nenhum estado é preenchido artificialmente." },
   formulacao: { titulo: "Formulação Regulatória", codigo: "HX / FORMULAÇÃO", descricao: "Formulações profissionais rastreáveis no contexto longitudinal do participante.", fontes: ["postulados", "versao_cientifica"], observacao: "Selecione um participante no fluxo profissional para criar ou consultar formulações." },
   longitudinal: { titulo: "Longitudinal", codigo: "HX / LONGITUDINAL", descricao: "Consolidação temporal preservando ausência de dados e limites inferenciais.", fontes: ["postulados", "versao_cientifica"], observacao: "A leitura longitudinal requer identidade e histórico autorizados." },
   "indicador-coletivo": { titulo: "Indicador Coletivo", codigo: "HX / COLETIVO", descricao: "Indicadores de equipe sob governança, sem extrapolação individual.", fontes: ["postulados", "painel"], observacao: "Disponível quando houver equipe e permissão para a finalidade coletiva." },
   relatorios: { titulo: "Relatórios", codigo: "HX / RELATÓRIOS", descricao: "Geração rastreável e exportação sob autorização profissional.", fontes: ["versao_cientifica", "painel"], observacao: "A emissão requer participante ou coletivo previamente selecionado." },
-  "cockpit-vivo": { titulo: "Cockpit Vivo", codigo: "HX / TIRH OPERACIONAL", descricao: "Ambiente integrado da TIRH para a pessoa, sessão, ciclo ou coletivo selecionado.", fontes: ["painel", "telemetria", "conectores"], modo: "cockpit" },
-  "humanexus-lab": { titulo: "HUMANEXUS LAB", codigo: "HX / LAB", descricao: "Ambiente oficial de homologação científica, alimentado exclusivamente pelo núcleo real.", fontes: [], modo: "lab" },
+  "cockpit-vivo": { titulo: "Painel Operacional ao Vivo", codigo: "HX / TIRH OPERACIONAL", descricao: "Ambiente integrado da TIRH para a pessoa, sessão, ciclo ou coletivo selecionado.", fontes: ["painel", "telemetria", "conectores"], modo: "cockpit" },
+  "humanexus-lab": { titulo: "LABORATÓRIO HUMANEXUS", codigo: "HX / LABORATÓRIO", descricao: "Ambiente oficial de homologação científica, alimentado exclusivamente pelo núcleo real.", fontes: [], modo: "lab" },
   "anamnese-regulatoria": { titulo: "Anamnese Regulatória", codigo: "HX / ANAMNESE", descricao: "Convites seguros, acompanhamento, revisão profissional e evidências narrativas contextualizadas.", fontes: [] },
   conectores: { titulo: "Conectores", codigo: "HX / CONECTORES", descricao: "Catálogo e estado dos conectores permitidos no contexto autenticado.", fontes: ["conectores"] },
-  telemetria: { titulo: "Telemetria Bridge", codigo: "HX / TELEMETRIA", descricao: "Fontes de telemetria e qualidade de integração, sem ocultar indisponibilidades.", fontes: ["telemetria", "conectores"] },
-  movel: { titulo: "Acesso Móvel", codigo: "HX / MÓVEL", descricao: "O mesmo perfil, permissões e sincronização em iPhone, Android e tablet.", fontes: ["movel"], observacao: "A sincronização só registra dados recebidos pelo núcleo; não há armazenamento paralelo de produção." },
-  replay: { titulo: "Replay Inteligente", codigo: "HX / REPLAY", descricao: "Linha temporal auditável da sessão, condicionada ao contexto autorizado.", fontes: ["painel"], observacao: "Selecione uma sessão para criar, comparar ou exportar o replay correspondente.", modo: "replay" },
+  telemetria: { titulo: "Ponte de Telemetria", codigo: "HX / TELEMETRIA", descricao: "Fontes de telemetria e qualidade de integração, sem ocultar indisponibilidades.", fontes: ["telemetria", "conectores"] },
+  movel: { titulo: "Acesso Móvel", codigo: "HX / MÓVEL", descricao: "O mesmo perfil, permissões e sincronização em iPhone, Android e dispositivos portáteis.", fontes: ["movel"], observacao: "A sincronização só registra dados recebidos pelo núcleo; não há armazenamento paralelo de produção." },
+  replay: { titulo: "Reprodução Histórica Inteligente", codigo: "HX / REPRODUÇÃO HISTÓRICA", descricao: "Linha temporal auditável da sessão, condicionada ao contexto autorizado.", fontes: ["painel"], observacao: "Selecione uma sessão para criar, comparar ou exportar a reprodução histórica correspondente.", modo: "replay" },
   configuracoes: { titulo: "Configurações", codigo: "HX / CONFIGURAÇÕES", descricao: "Contratos e vínculos do contexto autorizado, com histórico de cada alteração.", fontes: [] }
 };
 
 type Recurso = { nome: string; disponivel: boolean; dados: unknown };
 type Resposta = { recursos: Recurso[]; usuario: { perfil: string; permissoes: string[] } };
 
-function humanizar(valor: string) { return valor.replaceAll("_", " "); }
-function texto(valor: unknown, padrao: string) { return valor == null || valor === "" ? padrao : String(valor).replaceAll("_", " "); }
+function humanizar(valor: string) { return portuguesVisivel(valor.replaceAll("_", " ")); }
+function texto(valor: unknown, padrao: string) {
+  return portuguesVisivel(
+    valor == null || valor === "" ? padrao : String(valor).replaceAll("_", " "),
+    padrao
+  );
+}
 
 function descricaoDosDados(dados: unknown) {
   if (Array.isArray(dados)) return dados.length === 0 ? "Nenhum registro no contexto atual." : `${dados.length} registro(s) disponíveis no contexto atual.`;
@@ -129,7 +135,7 @@ function Painel({ recursos }: { recursos: Recurso[] }) {
         <Link href={hrefComContexto("/plataforma/clientes")}>Consultar participantes</Link>
         <Link href={hrefComContexto("/plataforma/anamnese-regulatoria")}>Gerar convite de Anamnese</Link>
         <Link href={hrefComContexto("/plataforma/cockpit-vivo")}>Abrir sessão técnica</Link>
-        <Link className="is-primary" href={hrefComContexto("/plataforma/cockpit-vivo")}>Abrir Cockpit Vivo</Link>
+        <Link className="is-primary" href={hrefComContexto("/plataforma/cockpit-vivo")}>Abrir painel operacional ao vivo</Link>
       </nav>
     </section>
     <section className="hx-command-dashboard__metrics" aria-label="Indicadores operacionais">
@@ -137,8 +143,8 @@ function Painel({ recursos }: { recursos: Recurso[] }) {
     </section>
     <section className="hx-command-dashboard__lower">
       <article><p>PENDÊNCIAS PROFISSIONAIS</p><strong>Nenhuma lista consolidada retornada</strong><span>Ausência preservada; o painel não fabrica pendências.</span></article>
-      <article><p>QUALIDADE RECENTE DAS COLETAS</p><strong>Não disponibilizada no resumo operacional</strong><span>A leitura científica permanece no Cockpit Vivo.</span></article>
-      <article><p>ALERTAS OPERACIONAIS</p><strong>{fontesDisponiveis === 2 ? "Fontes técnicas disponíveis" : "Verificar fontes disponíveis"}</strong><span>Falhas que afetem uma sessão serão destacadas no Cockpit.</span></article>
+      <article><p>QUALIDADE RECENTE DAS COLETAS</p><strong>Não disponibilizada no resumo operacional</strong><span>A leitura científica permanece no painel operacional ao vivo.</span></article>
+      <article><p>ALERTAS OPERACIONAIS</p><strong>{fontesDisponiveis === 2 ? "Fontes técnicas disponíveis" : "Verificar fontes disponíveis"}</strong><span>Falhas que afetem uma sessão serão destacadas no painel operacional.</span></article>
       <article><p>ATIVIDADES E RELATÓRIOS RECENTES</p><strong>{numero("eventos_de_auditoria")} eventos auditados</strong><span>Relatórios recentes exigem contexto de participante.</span></article>
     </section>
   </div>;
@@ -148,11 +154,11 @@ function Cockpit({ recursos }: { recursos: Recurso[] }) {
   const telemetria = recursos.find((item) => item.nome === "telemetria");
   const conectores = recursos.find((item) => item.nome === "conectores");
   return <div className="hx-cockpit">
-    <div className="hx-cockpit__bar"><span>COCKPIT VIVO / LEITURA OPERACIONAL</span><Estado ativo={Boolean(telemetria?.disponivel || conectores?.disponivel)}>fonte em observação</Estado></div>
+    <div className="hx-cockpit__bar"><span>PAINEL OPERACIONAL AO VIVO / LEITURA OPERACIONAL</span><Estado ativo={Boolean(telemetria?.disponivel || conectores?.disponivel)}>fonte em observação</Estado></div>
     <div className="hx-cockpit__grid">
       <section className="hx-hud hx-hud--session"><p>SESSÃO ATIVA</p><strong>Contexto necessário</strong><span>Uma sessão autorizada é necessária para exibir fase, participante e marcadores reais.</span><div className="hx-phase"><b>PRÉ</b><b>TREINO</b><b>PÓS</b></div></section>
       <section className="hx-hud hx-hud--signal"><p>QUALIDADE DE CAPTURA</p><div className="hx-signal-orbit"><i /><i /><b>HX</b></div><span>{telemetria?.disponivel ? descricaoDosDados(telemetria.dados) : "Nenhuma telemetria disponível no contexto atual."}</span></section>
-      <section className="hx-hud hx-hud--alerts"><p>ALERTAS E DECISÃO</p><strong>Sem alerta automático</strong><span>O cockpit não substitui o julgamento profissional nem produz estado sem evidência suficiente.</span><button disabled type="button">SELECIONAR SESSÃO</button></section>
+      <section className="hx-hud hx-hud--alerts"><p>ALERTAS E DECISÃO</p><strong>Sem alerta automático</strong><span>O painel operacional não substitui o julgamento profissional nem produz estado sem evidência suficiente.</span><button disabled type="button">SELECIONAR SESSÃO</button></section>
       <section className="hx-hud hx-hud--sources"><p>FONTES E CONECTORES</p><div className="hx-hud__list"><span><i className={conectores?.disponivel ? "on" : ""} />Conectores</span><span><i className={telemetria?.disponivel ? "on" : ""} />Telemetria</span><span><i />Marcadores da sessão</span></div></section>
     </div>
   </div>;
@@ -160,11 +166,11 @@ function Cockpit({ recursos }: { recursos: Recurso[] }) {
 
 function Replay({ recurso }: { recurso?: Recurso }) {
   return <div className="hx-replay">
-    <div className="hx-replay__toolbar"><div><p>REPLAY / SESSÃO</p><strong>Nenhuma sessão selecionada</strong></div><button type="button" disabled>EXPORTAR REPLAY</button></div>
+    <div className="hx-replay__toolbar"><div><p>REPRODUÇÃO HISTÓRICA / SESSÃO</p><strong>Nenhuma sessão selecionada</strong></div><button type="button" disabled>EXPORTAR REPRODUÇÃO HISTÓRICA</button></div>
     <section className="hx-replay__canvas">
       <div className="hx-replay__phases"><span>PRÉ</span><span>TREINO</span><span>PÓS</span></div>
       {["Evidências", "Vetores", "Sensores", "Intervenções", "Decisões profissionais"].map((trilha) => <div className="hx-replay__track" key={trilha}><p>{trilha}</p><div><i /><i /><i /></div></div>)}
-      <p className="hx-replay__empty">{recurso?.disponivel ? "Selecione uma sessão para revelar sua linha temporal auditável." : "Não há dados de replay no contexto autorizado."}</p>
+      <p className="hx-replay__empty">{recurso?.disponivel ? "Selecione uma sessão para revelar sua linha temporal auditável." : "Não há dados de reprodução histórica no contexto autorizado."}</p>
     </section>
     <section className="hx-replay__legend"><span><i />Evento registrado</span><span><i />Evidência preservada</span><span><i />Decisão profissional</span><b>SEM DADOS SIMULADOS</b></section>
   </div>;
@@ -184,8 +190,8 @@ function Lab({ dados, php, anamnese, avisos }: { dados: unknown; php: DadosPHP |
   return <div className="hx-lab">
     <section className="hx-lab__intro"><div><p>AMBIENTE OFICIAL DE HOMOLOGAÇÃO</p><h2>Constituição científica e rastreabilidade em consulta viva.</h2></div><Estado ativo>acesso de proprietário validado pelo núcleo</Estado></section>
     <section className="hx-lab__cockpit">
-      <div><p>INSPEÇÃO DA OPERACIONALIZAÇÃO</p><strong>Cockpit Vivo · TIRH operacional</strong><span>Postulados, campos, Matriz Vetorial, Resultante, Trajetória, fases, rotas e produtos integrados em um único contexto.</span></div>
-      <Link href={hrefComContexto("/plataforma/cockpit-vivo?visao=constituicao")}>Abrir inspeção no Cockpit Vivo</Link>
+      <div><p>INSPEÇÃO DA OPERACIONALIZAÇÃO</p><strong>Painel operacional ao vivo · TIRH operacional</strong><span>Postulados, campos, Matriz Vetorial, Resultante, Trajetória, fases, rotas e produtos integrados em um único contexto.</span></div>
+      <Link href={hrefComContexto("/plataforma/cockpit-vivo?visao=constituicao")}>Abrir inspeção no painel operacional ao vivo</Link>
     </section>
     {avisos.length ? <aside className="hx-lab__partial" role="status"><strong>Dados parciais preservados</strong>{avisos.map((aviso) => <span key={aviso}>{aviso}</span>)}</aside> : null}
     <section className="hx-lab__grid">
@@ -207,12 +213,12 @@ function Lab({ dados, php, anamnese, avisos }: { dados: unknown; php: DadosPHP |
     </section>
     {php
       ? <ParametrizacaoProspectiva dados={php} />
-      : <section className="hx-lab__restricted"><small>CAMADA PROSPECTIVA AUTORAL</small><strong>Conteúdo restrito ao Administrador Proprietário.</strong><span>O LAB principal permanece disponível sem simular ou preencher esta camada.</span></section>}
+      : <section className="hx-lab__restricted"><small>CAMADA PROSPECTIVA AUTORAL</small><strong>Conteúdo restrito ao Administrador Proprietário.</strong><span>O laboratório principal permanece disponível sem simular ou preencher esta camada.</span></section>}
     {anamnese
       ? <GovernancaAnamnese dados={anamnese} />
-      : <section className="hx-lab__restricted"><small>GOVERNANÇA AUTORAL / ANAMNESE</small><strong>Conteúdo restrito ao Administrador Proprietário.</strong><span>A ausência de permissão é preservada e não impede a navegação pelo LAB.</span></section>}
+      : <section className="hx-lab__restricted"><small>GOVERNANÇA AUTORAL / ANAMNESE</small><strong>Conteúdo restrito ao Administrador Proprietário.</strong><span>A ausência de permissão é preservada e não impede a navegação pelo laboratório.</span></section>}
     <GovernancaOperacional />
-    <details className="hx-lab__trace"><summary>Inspecionar rastreabilidade técnica autorizada</summary><pre>{JSON.stringify(dados, null, 2)}</pre></details>
+    <details className="hx-lab__trace"><summary>Inspecionar rastreabilidade técnica autorizada</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues(dados), null, 2)}</pre></details>
   </div>;
 }
 
@@ -314,8 +320,8 @@ export function ModuloIntegrado({ modulo }: { modulo: ModuloDaPlataforma }) {
         : null}
       {definicao.observacao ? <p className="hx-module__notice">{definicao.observacao}</p> : null}
       {moduloOperacional && modulo !== "cockpit-vivo" ? <p className="hx-module__notice"><strong>CONTEXTO OPERACIONAL PROTEGIDO.</strong> Organização, participante e sessão são selecionados entre registros autorizados do núcleo e permanecem sincronizados entre as visões. Dados técnicos simulados continuam separados de evidência humana.</p> : null}
-      {erro ? <aside className="hx-module__error" role="status"><strong>{erro}</strong><button type="button" onClick={() => void carregar()}>Tentar novamente</button></aside> : null}
-      {mensagem ? <p className="hx-module__success" role="status">{mensagem}</p> : null}
+      {erro ? <aside className="hx-module__error" role="status"><strong>{portuguesVisivel(erro)}</strong><button type="button" onClick={() => void carregar()}>Tentar novamente</button></aside> : null}
+      {mensagem ? <p className="hx-module__success" role="status">{portuguesVisivel(mensagem)}</p> : null}
       {exigeConsultaGlobal && !resposta && carregando && !erro ? <p className="hx-module__loading">Consultando o núcleo oficial…</p> : null}
       {moduloOperacional ? <OperacaoHomologacao modulo={modulo} /> : null}
       {moduloDeGestao ? <GestaoOperacional modulo={modulo} /> : null}

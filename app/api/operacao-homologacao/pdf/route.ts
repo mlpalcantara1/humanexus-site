@@ -90,7 +90,7 @@ export async function GET(request: Request) {
           erro: {
             codigo: "RELATORIO_FINAL_INDISPONIVEL",
             mensagem: (
-              "PDF e Print finais exigem consolidação profissional completa "
+              "PDF e impressão finais exigem consolidação profissional completa "
               + "e relatório final validado."
             ),
             campos_ausentes: cicloDocumental.rotulosAusentes
@@ -129,7 +129,7 @@ export async function GET(request: Request) {
       ).catch(() => ({
         baseline: {
           referencia: {
-            estado: "SESSÃO SEM REFERÊNCIA DE BASELINE"
+            estado: "SESSÃO SEM REFERÊNCIA INICIAL"
           }
         }
       })),

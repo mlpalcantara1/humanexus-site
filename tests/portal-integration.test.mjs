@@ -147,7 +147,7 @@ test("sessão e convites preservam o escopo organizacional selecionado", async (
   assert.match(management, /Baseline/);
   assert.match(management, /PRÉ → TREINO → PÓS/);
   assert.match(management, /PREPARAR SESSÃO/);
-  assert.match(management, /ABRIR COCKPIT/);
+  assert.match(management, /ABRIR PAINEL OPERACIONAL/);
   assert.match(management, /\/plataforma\/cockpit-vivo\?/);
   assert.match(management, /Sessão criada e contexto preservado/);
   assert.doesNotMatch(management, /iniciarSessaoDiretamente/);
@@ -189,7 +189,7 @@ test("criação da sessão exige escolhas profissionais e Cockpit não reutiliza
   assert.doesNotMatch(route, /\?\? sessoes\[0\]/);
   assert.match(
     route,
-    /Selecione explicitamente o participante antes de abrir o Cockpit/
+    /Selecione explicitamente o participante antes de abrir o painel operacional/
   );
   assert.match(
     route,
@@ -226,7 +226,7 @@ test("treinamentos usam somente a biblioteca oficial e evidência persistida", a
   assert.match(management, /Mostrar mais 24 protocolos/);
   assert.doesNotMatch(management, /Novo treinamento/);
   assert.doesNotMatch(management, /Adicionar ao catálogo/);
-  assert.match(liveCockpit, /Baseline como modalidade independente/);
+  assert.match(liveCockpit, /Referência inicial como modalidade independente/);
 });
 
 test("participantes possuem grupos e busca operacional completa", async () => {
@@ -546,7 +546,7 @@ test("anamnese alimenta sugestões MMFTR com decisão e programação profission
   const route = await source("app/api/gestao-operacional/route.ts");
 
   assert.match(management, /sugestoes_pre_baseline/);
-  assert.match(management, /PROJEÇÃO REGULATÓRIA PRÉ-BASELINE/);
+  assert.match(management, /PROJEÇÃO REGULATÓRIA ANTERIOR À REFERÊNCIA INICIAL/);
   assert.match(management, /Preparar para validação/);
   assert.match(management, /Confirmar/);
   assert.match(management, /Recusar/);

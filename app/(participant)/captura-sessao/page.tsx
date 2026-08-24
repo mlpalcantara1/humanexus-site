@@ -16,7 +16,7 @@ export default async function CapturaDaSessao({
     return (
       <main className="hx-capture">
         <h1>Acesso de captura inválido</h1>
-        <p>Solicite ao profissional um novo link ou código limitado.</p>
+        <p>Solicite ao profissional uma nova ligação ou um código limitado.</p>
       </main>
     );
   }

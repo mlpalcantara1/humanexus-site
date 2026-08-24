@@ -14,7 +14,7 @@ export function SiteHeader() {
           </span>
           <span className="brand-name">
             <strong>HUMANEXUS</strong>
-            <small>PERFORMANCE OPERACIONAL</small>
+            <small>DESEMPENHO OPERACIONAL</small>
           </span>
         </Link>
         <nav>
@@ -43,7 +43,7 @@ export function SiteHeader() {
             <Link href="/tecnologia-humanexus">Tecnologia</Link>
             <Link href="/inteligencia-regulatoria-humana">TIRH</Link>
             <Link href="/empresas-e-organizacoes">Empresas</Link>
-            <Link href="/performance-operacional">Performance</Link>
+            <Link href="/performance-operacional">Desempenho</Link>
             <Link href={entradaDaArea}>Área HUMANEXUS</Link>
             <Link href="/contato">Agendar apresentação</Link>
           </div>

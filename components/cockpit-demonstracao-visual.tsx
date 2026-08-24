@@ -158,6 +158,9 @@ export function CockpitDemonstracaoVisual() {
   }, [exibindoSinal, fase, origemTemporal, pulso, qualidade, sensor]);
 
   const passos = fase === "BASELINE" ? ["BASELINE"] : ["PRÉ", "TREINO", "PÓS"];
+  const faseVisivel = (valor: string) => valor === "BASELINE"
+    ? "REFERÊNCIA INICIAL"
+    : valor;
 
   return (
     <section
@@ -169,7 +172,7 @@ export function CockpitDemonstracaoVisual() {
       <div className="hx-demo-safety" role="status">
         <div>
           <strong>DADOS DE TESTE — NÃO REAIS</strong>
-          <span>DADOS SINTÉTICOS · SEM API · SEM BANCO · SEM RELATÓRIOS · DEMONSTRAÇÃO VISUAL ISOLADA · NÃO É RESULTADO HUMANO</span>
+          <span>DADOS SINTÉTICOS · SEM SERVIÇO EXTERNO · SEM BANCO · SEM RELATÓRIOS · DEMONSTRAÇÃO VISUAL ISOLADA · NÃO É RESULTADO HUMANO</span>
         </div>
         <ExperienceModeControl />
       </div>
@@ -184,7 +187,7 @@ export function CockpitDemonstracaoVisual() {
               onClick={() => setFase(item)}
               key={item}
             >
-              {item}
+              {faseVisivel(item)}
             </button>
           ))}
         </div>
@@ -223,7 +226,7 @@ export function CockpitDemonstracaoVisual() {
         </button>
       </nav>
 
-      <nav className="hx-live-levels" aria-label="Níveis do Cockpit demonstrativo">
+      <nav className="hx-live-levels" aria-label="Níveis do painel operacional demonstrativo">
         <a href="#hx-demo-command"><span>01</span><strong>Comando</strong></a>
         <a href="#hx-demo-regulation"><span>02</span><strong>Regulação</strong></a>
         <a href="#hx-demo-evidence"><span>03</span><strong>Evidências</strong></a>
@@ -235,7 +238,7 @@ export function CockpitDemonstracaoVisual() {
         <div>
           <span className="hx-live-eyebrow">AMBIENTE DE HOMOLOGAÇÃO VISUAL · NÃO OPERACIONAL</span>
           <h1>Participante sintético não persistido</h1>
-          <p>DEMO-VISUAL · THX-DEMO · {fase} · nenhum identificador humano ou operacional</p>
+          <p>DEMONSTRAÇÃO VISUAL · THX-EXEMPLO · {faseVisivel(fase)} · nenhum identificador humano ou operacional</p>
         </div>
         <div className="hx-live-mode-actions">
           <span className={`hx-live-state is-${estadoTecnico(sensor).toLowerCase().replaceAll(" ", "-")}`}>
@@ -248,15 +251,15 @@ export function CockpitDemonstracaoVisual() {
       <section className="hx-live-context-strip" aria-label="Contexto sintético da demonstração">
         <div><small>AMBIENTE</small><strong>Homologação visual local</strong></div>
         <div><small>IDENTIDADE</small><strong>Nenhuma pessoa real</strong></div>
-        <div><small>TIPO DA SESSÃO</small><strong>{fase === "BASELINE" ? "BASELINE" : "PRÉ → TREINO → PÓS"}</strong></div>
+        <div><small>TIPO DA SESSÃO</small><strong>{fase === "BASELINE" ? "REFERÊNCIA INICIAL" : "PRÉ → TREINO → PÓS"}</strong></div>
         <div><small>PERSISTÊNCIA</small><strong>DESATIVADA</strong></div>
       </section>
 
-      <section className="hx-live-hud" aria-label="HUD demonstrativo com dez itens">
+      <section className="hx-live-hud" aria-label="Painel resumido demonstrativo com dez itens">
         <div><small>ZONA OPERACIONAL</small><strong>NÃO CLASSIFICADA</strong><span>Demonstração sem ciência</span></div>
         <div><small>ÍNDICE DE INTELIGÊNCIA REGULATÓRIA HUMANA</small><strong>DEMO VISUAL</strong><span>Não calculado</span></div>
-        <div><small>THX</small><strong>THX-DEMO</strong><span>Somente interface</span></div>
-        <div><small>FASE</small><strong>{fase}</strong><span>Estado visual</span></div>
+        <div><small>THX</small><strong>THX-EXEMPLO</strong><span>Somente interface</span></div>
+        <div><small>FASE</small><strong>{faseVisivel(fase)}</strong><span>Estado visual</span></div>
         <div><small>TEMPO</small><strong>{`00:${String(Math.floor(pulso / 60)).padStart(2, "0")}:${String(pulso % 60).padStart(2, "0")}`}</strong><span>Não persistido</span></div>
         <div><small>FREQUÊNCIA CARDÍACA</small><strong>{frequencia == null ? "— bpm" : `${frequencia} bpm`}</strong><span>Dado sintético identificado</span></div>
         <div><small>RMSSD</small><strong>{rmssd == null ? "— ms" : `${rmssd.toFixed(1)} ms`}</strong><span>Dado sintético identificado</span></div>
@@ -271,7 +274,7 @@ export function CockpitDemonstracaoVisual() {
           <div>
             {passos.map((passo) => (
               <span className={passo === fase ? "is-current" : ""} key={passo}>
-                <b>{passo}</b>
+                <b>{faseVisivel(passo)}</b>
                 <em>{passo === fase ? "EM DEMONSTRAÇÃO" : "AGUARDANDO"}</em>
               </span>
             ))}
@@ -297,7 +300,7 @@ export function CockpitDemonstracaoVisual() {
           </header>
           <VectorRadarChart
             vectors={vetores}
-            ariaLabel="Radar demonstrativo dos nove vetores momentâneos oficiais"
+            ariaLabel="Gráfico radial demonstrativo dos nove vetores momentâneos oficiais"
             reducedMotion={movimentoEfetivamenteReduzido}
           />
           <div className="hx-live-vector-list" aria-label="Nove vetores momentâneos em demonstração visual">
@@ -324,7 +327,7 @@ export function CockpitDemonstracaoVisual() {
             {passos.map((passo) => (
               <span className={passo === fase ? "is-current" : ""} key={passo}>
                 <i aria-hidden="true" />
-                <b>{passo}</b>
+                <b>{faseVisivel(passo)}</b>
                 <em>{passo === fase ? "ATIVO" : "AGUARDANDO"}</em>
               </span>
             ))}
@@ -366,7 +369,7 @@ export function CockpitDemonstracaoVisual() {
       <section className="hx-live-scientific-chain" id="hx-demo-inspection" aria-label="Inspeção científica demonstrativa">
         <header>
           <div><small>MODO CIENTÍFICO · RASTREABILIDADE</small><strong>Cadeia científica preservada</strong></div>
-          <span>SEM CÁLCULO · SEM FALLBACK</span>
+          <span>SEM CÁLCULO · SEM SUBSTITUIÇÃO IMPLÍCITA</span>
         </header>
         <div className="hx-live-scientific-chain__rail">
           <article className="is-blocked"><i /><div><small>FONTES</small><strong>DEMONSTRATIVAS</strong><span>Nenhuma evidência real</span></div></article>

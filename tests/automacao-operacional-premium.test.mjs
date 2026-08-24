@@ -11,7 +11,7 @@ test("preparação modular possui ação explícita e não inicia baseline", () 
   const sessoes = ler("components/gestao-operacional.tsx");
   assert.match(componente, />\s*PREPARAR SESSÃO\s*</);
   assert.match(componente, /executar\("preparar"/);
-  assert.match(componente, /Baseline nunca é iniciado automaticamente/);
+  assert.match(componente, /A referência inicial nunca é iniciada automaticamente/);
   assert.match(componente, /id="preparar-sessao"/);
   assert.match(componente, /!painel\?\.configuracoes\.length/);
   assert.match(
@@ -61,7 +61,7 @@ test("preparação sem hardware não é classificada como falha técnica", () =>
   assert.match(componente, /const aguardandoHardware = Boolean\(/);
   assert.match(componente, /AGUARDANDO_FONTE_OPCIONAL/);
   assert.match(componente, /DISPOSITIVO FÍSICO AUSENTE — HOMOLOGAÇÃO PENDENTE/);
-  assert.match(componente, />AGUARDANDO HARDWARE</);
+  assert.match(componente, />AGUARDANDO EQUIPAMENTO</);
   assert.match(
     componente,
     /Nenhuma ausência é tratada como falha ou evidência atual\./
@@ -81,7 +81,7 @@ test("baseline é referência opcional separada do fluxo científico", () => {
     assert.match(componente, new RegExp(decisao));
   }
   assert.match(componente, /FLUXO CIENTÍFICO PADRÃO/);
-  assert.match(componente, /ENCERRAR BASELINE/);
+  assert.match(componente, /ENCERRAR REFERÊNCIA INICIAL/);
   assert.match(cockpit, /DEFINIR_REFERENCIA_BASELINE/);
   assert.match(componente, /id="referencia-baseline"/);
   assert.match(rota, /estado-operacional/);
@@ -122,8 +122,9 @@ test("quatro modos de mídia preservam SEM GRAVAÇÃO como padrão", () => {
 test("configuração da estação usa somente referências protegidas", () => {
   const componente = ler("components/configuracao-estacao-humanexus.tsx");
   const rota = ler("app/api/plataforma/estacao-humanexus/route.ts");
-  assert.match(componente, /ENV:HUMANEXUS_CORTEX_CLIENT_ID/);
-  assert.match(componente, /KEYCHAIN:HUMANEXUS_CORTEX/);
+  assert.match(componente, /name="CORTEX_CLIENT_ID_REF"/);
+  assert.match(componente, /name="CORTEX_SECRET_REF"/);
+  assert.match(componente, /name="BRIDGE_SECRET_REF"/);
   assert.match(componente, /Nenhum segredo foi devolvido ao navegador/);
   assert.match(rota, /exigirCsrf/);
   assert.match(rota, /requisitarNucleoAutenticado/);

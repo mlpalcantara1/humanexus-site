@@ -328,7 +328,7 @@ export function GovernancaOperacional() {
           </p>
           {entregaDeConsentimento ? (
             <aside className="hx-module__notice">
-              <strong>Link exibido uma única vez</strong>
+              <strong>Ligação exibida uma única vez</strong>
               <a
                 href={entregaDeConsentimento.link_de_manifestacao}
                 target="_blank"
@@ -342,7 +342,7 @@ export function GovernancaOperacional() {
                   entregaDeConsentimento.link_de_manifestacao
                 )}
               >
-                Copiar link
+                Copiar ligação
               </button>
             </aside>
           ) : null}

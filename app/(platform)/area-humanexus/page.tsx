@@ -9,13 +9,13 @@ const accesses = [
   },
   {
     title: "Plataforma HUMANEXUS",
-    description: "Entre no mesmo ambiente que reúne clientes, sessões, treinamentos, Cockpit Vivo e inteligência regulatória.",
+    description: "Entre no mesmo ambiente que reúne clientes, sessões, treinamentos, painel operacional ao vivo e inteligência regulatória.",
     href: "/entrar",
     label: "Acessar plataforma"
   },
   {
     title: "Governança e validação",
-    description: "Acesso por perfil, contexto organizacional, rastreabilidade e HUMANEXUS LAB exclusivo ao Administrador Proprietário.",
+    description: "Acesso por perfil, contexto organizacional, rastreabilidade e Laboratório HUMANEXUS exclusivo ao Administrador Proprietário.",
     href: "/entrar",
     label: "Entrar com segurança"
   }

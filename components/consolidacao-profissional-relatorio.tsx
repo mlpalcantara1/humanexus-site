@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 
 import {
+  assinaturaDaConsolidacao,
   CAMPOS_PROFISSIONAIS_DO_RELATORIO,
+  consolidacaoProfissionalDosCampos,
   type CampoProfissional,
   projetarEstadoFuncionalDoRelatorio,
   type RegistroDeRelatorio
@@ -13,7 +15,7 @@ type Props = {
   estado: RegistroDeRelatorio;
   relatorio?: RegistroDeRelatorio;
   ocupado: boolean;
-  consolidar: (consolidacao: RegistroDeRelatorio) => Promise<void> | void;
+  consolidar: (consolidacao: RegistroDeRelatorio) => Promise<boolean>;
 };
 
 function objeto(valor: unknown): RegistroDeRelatorio {
@@ -37,22 +39,6 @@ function textoEditavel(valor: unknown) {
   return "";
 }
 
-function observacoesEstruturadas(valor: string) {
-  const linhas = valor.split("\n").map((item) => item.trim()).filter(Boolean);
-  const estruturadas = Object.fromEntries(linhas.flatMap((linha) => {
-    const separador = linha.indexOf(":");
-    if (separador <= 0) return [];
-    const fase = linha.slice(0, separador).trim().toUpperCase()
-      .replace("PRÉ", "PRE")
-      .replace("PÓS", "POS");
-    const observacao = linha.slice(separador + 1).trim();
-    return observacao ? [[fase, observacao]] : [];
-  }));
-  return Object.keys(estruturadas).length
-    ? estruturadas
-    : { GERAL: valor.trim() };
-}
-
 export function ConsolidacaoProfissionalDoRelatorio({
   estado,
   relatorio,
@@ -69,6 +55,10 @@ export function ConsolidacaoProfissionalDoRelatorio({
     ) as Record<CampoProfissional, string>
   );
   const [mensagem, setMensagem] = useState("");
+  const consolidacaoAtual = consolidacaoProfissionalDosCampos(campos);
+  const conteudoJaPreservado = ciclo.completa
+    && assinaturaDaConsolidacao(consolidacaoAtual)
+      === assinaturaDaConsolidacao(ciclo.consolidacao);
   const cockpit = objeto(estado.cockpit_operacional);
   const leitura = objeto(cockpit.leitura_cientifica);
   const tirh = objeto(leitura.tirh_operacional_v1);
@@ -101,13 +91,17 @@ export function ConsolidacaoProfissionalDoRelatorio({
       setMensagem(`Complete antes de criar a nova versão: ${ausentes.join(", ")}.`);
       return;
     }
+    if (conteudoJaPreservado) {
+      setMensagem(
+        "Esta consolidação já está preservada. Edite um campo somente se precisar criar uma nova versão."
+      );
+      return;
+    }
     setMensagem("");
-    await consolidar({
-      ...campos,
-      evidencias_utilizadas: campos.evidencias_utilizadas
-        .split("\n").map((item) => item.trim()).filter(Boolean),
-      observacoes_por_fase: observacoesEstruturadas(campos.observacoes_por_fase)
-    });
+    const sucesso = await consolidar(consolidacaoAtual);
+    setMensagem(sucesso
+      ? "Versão consolidada preservada com sucesso. Para avançar, use exclusivamente o botão “Enviar para validação”."
+      : "A versão não foi criada. Consulte a mensagem de erro apresentada pela plataforma e tente novamente com segurança.");
   };
 
   return (
@@ -120,7 +114,7 @@ export function ConsolidacaoProfissionalDoRelatorio({
         <div>
           <small>CONSOLIDAÇÃO PROFISSIONAL · AUTORIA HUMANA</small>
           <h3>Da evidência preservada ao relatório final</h3>
-          <p>A decisão de um claim não substitui interpretação, conclusão, recomendação nem devolutiva. Este formulário cria uma nova versão append-only; não altera a sessão nem o documento anterior.</p>
+          <p>A decisão sobre uma afirmação calculada não substitui interpretação, conclusão, recomendação nem devolutiva. Este formulário cria uma nova versão somente por acréscimo; não altera a sessão nem o documento anterior.</p>
         </div>
         <strong>{ciclo.estado.replaceAll("_", " ")}</strong>
       </header>
@@ -166,10 +160,18 @@ export function ConsolidacaoProfissionalDoRelatorio({
       </div>
       <footer>
         <p>Nada é salvo automaticamente. A ação abaixo cria uma versão documental nova, com autoria, data e rastreabilidade.</p>
-        <button type="button" disabled={ocupado} onClick={() => void enviar()}>
-          {ocupado ? "CRIANDO NOVA VERSÃO…" : "CRIAR VERSÃO CONSOLIDADA"}
+        <button
+          type="button"
+          disabled={ocupado || conteudoJaPreservado}
+          onClick={() => void enviar()}
+        >
+          {ocupado
+            ? "CRIANDO NOVA VERSÃO…"
+            : conteudoJaPreservado
+              ? "VERSÃO CONSOLIDADA JÁ PRESERVADA"
+              : "CRIAR VERSÃO CONSOLIDADA"}
         </button>
-        {mensagem ? <p role="alert">{mensagem}</p> : null}
+        {mensagem ? <p role="status" aria-live="polite">{mensagem}</p> : null}
       </footer>
     </section>
   );

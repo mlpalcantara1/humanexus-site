@@ -415,7 +415,7 @@ export function PainelProfissional() {
     <section className="hx-invites">
       <header className="hx-invites__head">
         <div><p>ANAMNESE REGULATÓRIA / OPERAÇÃO</p><h2>Convites, acompanhamento e revisão profissional.</h2><span>ANAMNESE-REGULATORIA-TIRH-1.0 · 156 perguntas autorais ativas · 195 preservadas · 14 módulos</span></div>
-        <span>SESSÃO HTTPONLY · NÚCLEO PROTEGIDO</span>
+        <span>SESSÃO PROTEGIDA NO NAVEGADOR · NÚCLEO PROTEGIDO</span>
       </header>
       <section className="hx-invites__metrics">
         <article><small>Convites ativos</small><strong>{indicadores.ativos}</strong></article>
@@ -441,20 +441,20 @@ export function PainelProfissional() {
           <button disabled={ocupado || !form.organizacao || (form.modo === "EXISTENTE" && !form.participante)}>{ocupado ? "Processando…" : "Gerar convite seguro"}</button>
         </form>
         <aside className="hx-invite-delivery">
-          <header><small>ENTREGA ÚNICA</small><h3>Link, código e QR Code</h3></header>
+          <header><small>ENTREGA ÚNICA</small><h3>Ligação, código e código QR</h3></header>
           <p aria-live="polite">{status}</p>
           {entrega ? <>
             <div className="hx-invite-code"><small>CÓDIGO ALTERNATIVO</small><strong>{entrega.codigo_de_entrega_unica}</strong></div>
             <div className="hx-invite-link">{link}</div>
-            {qr ? <img src={qr} alt="QR Code do convite seguro para a Anamnese" /> : null}
+            {qr ? <img src={qr} alt="Código QR do convite seguro para a Anamnese" /> : null}
             <div className="hx-invite-actions">
-              <button type="button" onClick={() => void copiar(link, "Link copiado.")}>Copiar link</button>
+              <button type="button" onClick={() => void copiar(link, "Ligação copiada.")}>Copiar ligação</button>
               <button type="button" onClick={() => void copiar(entrega.codigo_de_entrega_unica, "Código copiado.")}>Copiar código</button>
               <button type="button" onClick={whatsapp}>WhatsApp</button>
               <button type="button" onClick={email}>E-mail</button>
               <a href={link} target="_blank" rel="noreferrer">Visualizar como participante</a>
             </div>
-          </> : <div className="hx-invite-empty">O token bruto não será exibido novamente após sair desta entrega.</div>}
+          </> : <div className="hx-invite-empty">O código secreto original não será exibido novamente após sair desta entrega.</div>}
         </aside>
       </div>
       <section className="hx-invites__panel">

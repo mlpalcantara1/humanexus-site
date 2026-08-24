@@ -21,7 +21,10 @@ import { SinteseValidacaoTirhV1 } from "@/components/sintese-validacao-tirh-v1";
 import { ConsolidacaoProfissionalDoRelatorio } from "@/components/consolidacao-profissional-relatorio";
 import { HxSectionHeader } from "@/components/hx-design-system";
 import {
+  assinaturaDaConsolidacao,
+  chaveIdempotenteDocumental,
   MAPA_DE_FONTES_DO_RELATORIO,
+  ordenarRelatoriosPorVersao,
   projetarEstadoFuncionalDoRelatorio,
   resolverIdentidadeDocumental,
   tituloHumanoDoRelatorio
@@ -35,6 +38,7 @@ import { publicarEstadoDoNucleo } from "@/lib/client-request";
 import { criarPayloadDoComandoPrincipal } from "@/lib/cockpit-operational-command";
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
 import { estadoOperacionalTerminal } from "@/lib/cockpit-terminal-eligibility";
+import { estruturaVisivelEmPortugues, portuguesVisivel } from "@/lib/portugues-visivel";
 
 type Registro = Record<string, unknown>;
 type OpcoesDeCarregamento = {
@@ -162,7 +166,7 @@ const VISOES_COCKPIT: { codigo: string; id: VisaoCockpit; nome: string }[] = [
   { codigo: "09", id: "ctr-thx", nome: "CTR e THX" },
   { codigo: "10", id: "formulacao", nome: "Formulação" },
   { codigo: "11", id: "longitudinal", nome: "Longitudinal" },
-  { codigo: "12", id: "replay", nome: "Replay" },
+  { codigo: "12", id: "replay", nome: "Reprodução histórica" },
   { codigo: "13", id: "relatorio", nome: "Relatório" },
   { codigo: "14", id: "coletivo", nome: "Modo Coletivo" },
   { codigo: "15", id: "tecnico", nome: "Técnico" }
@@ -173,7 +177,10 @@ function csrf() {
 }
 
 function texto(valor: unknown, padrao = "INDISPONÍVEL") {
-  return valor == null || valor === "" ? padrao : String(valor).replaceAll("_", " ");
+  return portuguesVisivel(
+    valor == null || valor === "" ? padrao : String(valor).replaceAll("_", " "),
+    padrao
+  );
 }
 
 function objeto(valor: unknown): Registro {
@@ -383,7 +390,7 @@ function RelatorioCanonicoV1({
       <section className="hx-report-canonical__section">
         <small>05 · VEV LONGITUDINAL</small>
         <h3>{texto(vev.estado_epistemico ?? vev.estado, "NÃO ELEGÍVEL")}</h3>
-        <p>O VEV é longitudinal e permanece separado dos nove Vetores momentâneos e da Resultante. O gate exige Baseline e quatro sessões válidas e comparáveis.</p>
+        <p>O VEV é longitudinal e permanece separado dos nove Vetores momentâneos e da Resultante. O critério exige uma referência inicial e quatro sessões válidas e comparáveis.</p>
       </section>
 
       <section className="hx-report-canonical__section">
@@ -430,14 +437,14 @@ function RelatorioCanonicoV1({
 
       <section className="hx-report-canonical__section">
         <small>10 · DEVOLUTIVA AO PARTICIPANTE</small>
-        <h3>Conteúdo autorizado para feedback</h3>
+        <h3>Conteúdo autorizado para devolutiva</h3>
         <p>{texto(consolidacao.conteudo_da_devolutiva_ao_participante, "A devolutiva ainda não foi consolidada pelo profissional; este documento não está liberado como relatório final.")}</p>
       </section>
 
       <section className="hx-report-canonical__section">
         <small>11 · VALIDAÇÃO, VERSÃO E RASTREABILIDADE</small>
         <h3>{cicloDocumental.estado.replaceAll("_", " ")}</h3>
-        <p>Decisões de claims permanecem separadas da consolidação e não autorizam, por si, a finalização do documento.</p>
+        <p>Decisões sobre afirmações científicas permanecem separadas da consolidação e não autorizam, por si, a finalização do documento.</p>
         <p>Documento: {texto(relatorio?.codigo_publico, "ainda sem código público")} · versão {texto(relatorio?.numero_da_versao, "rascunho")} · sessão {texto(estado.sessao.identificador)}.</p>
         {!cicloDocumental.completa ? <p><strong>Campos que impedem o relatório final:</strong> {cicloDocumental.rotulosAusentes.join(" · ")}.</p> : null}
       </section>
@@ -537,11 +544,11 @@ function comandoPermitido(estado: Estado, comando: string) {
 
 const ROTULOS_DOS_COMANDOS: Record<string, string> = {
   PREPARAR_SESSAO: "Preparar sessão",
-  DEFINIR_REFERENCIA_BASELINE: "Definir referência de baseline",
-  INICIAR_BASELINE: "Iniciar Baseline",
-  PAUSAR_BASELINE: "Pausar Baseline",
-  RETOMAR_BASELINE: "Retomar Baseline",
-  ENCERRAR_BASELINE: "Encerrar Baseline",
+  DEFINIR_REFERENCIA_BASELINE: "Definir referência inicial",
+  INICIAR_BASELINE: "Iniciar referência inicial",
+  PAUSAR_BASELINE: "Pausar referência inicial",
+  RETOMAR_BASELINE: "Retomar referência inicial",
+  ENCERRAR_BASELINE: "Encerrar referência inicial",
   INICIAR_PRE: "Iniciar PRÉ",
   PAUSAR_PRE: "Pausar PRÉ",
   RETOMAR_PRE: "Retomar PRÉ",
@@ -560,7 +567,7 @@ const ROTULOS_DOS_COMANDOS: Record<string, string> = {
     "Encerrar tecnicamente por incidente",
   REGISTRAR_EVENTO: "Registrar evento",
   REGISTRAR_INTERVENCAO: "Registrar intervenção",
-  ABRIR_REPLAY: "Abrir Replay",
+  ABRIR_REPLAY: "Abrir reprodução histórica",
   GERAR_RELATORIO: "Gerar relatório"
 };
 
@@ -751,7 +758,7 @@ function trilhasDoCockpit(estado: Estado): HxTrack[] {
     time: instante(item.coletado_em),
     value: Number(item.confiabilidade ?? 0) * 100,
     phase: texto(item.momento),
-    source: "Snapshot independente do núcleo",
+    source: "Registro congelado independente do núcleo",
     quality: Number(item.confiabilidade ?? 0),
     coverage: Number(item.cobertura ?? 0),
     connection: "PRESERVADO",
@@ -761,7 +768,7 @@ function trilhasDoCockpit(estado: Estado): HxTrack[] {
     time: instante(item.coletado_em),
     value: Number(item.cobertura ?? 0) * 100,
     phase: texto(item.momento),
-    source: "Snapshot independente do núcleo",
+    source: "Registro congelado independente do núcleo",
     quality: Number(item.confiabilidade ?? 0),
     coverage: Number(item.cobertura ?? 0),
     connection: "PRESERVADO",
@@ -866,9 +873,9 @@ function Rastreabilidade({ estado }: { estado: Estado }) {
     ["CTR individual", estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador],
     ["THX individual", estado.thx_individual?.identificador],
     ["Execução", estado.execucao?.identificador],
-    ["PRÉ / TREINO / PÓS", momentos(estado).length === 3 ? "3 snapshots preservados" : null],
+    ["PRÉ / TREINO / PÓS", momentos(estado).length === 3 ? "3 registros congelados preservados" : null],
     ["Eventos", `${estado.eventos.length} preservados`],
-    ["Replay", estado.replay?.linha?.identificador],
+    ["Reprodução histórica", estado.replay?.linha?.identificador],
     ["Formulação", estado.formulacoes.at(-1)?.identificador],
     ["Longitudinal", Array.isArray(estado.longitudinal?.historico) && (estado.longitudinal.historico as unknown[]).length ? "Disponível" : null],
     ["Relatório", estado.relatorios.at(-1)?.identificador]
@@ -1133,13 +1140,13 @@ function ContextoPersistente({ estado, visao }: { estado: Estado; visao: VisaoCo
   );
   return (
     <>
-      <section className="hx-cockpit-context" aria-label="Contexto preservado do Cockpit">
+      <section className="hx-cockpit-context" aria-label="Contexto preservado do painel operacional">
         <div><small>Participante</small><strong>{texto(estado.participante.nome ?? estado.participante.referencia_externa)}</strong></div>
         <div><small>Organização</small><strong>{texto(estado.organizacao.nome)}</strong></div>
         <div><small>Profissional</small><strong>{texto(profissional?.nome)}</strong></div>
         <div><small>Sessão</small><strong>{texto(estado.sessao.nome_operacional, "Sessão sem nome legado")}</strong></div>
         <div><small>Estado da sessão</small><strong>{texto(detalhes.estado_operacional ?? estado.sessao.estado)}</strong></div>
-        <div><small>Tipo da sessão</small><strong>{tipoDaSessao === "BASELINE" ? "Baseline" : "PRÉ → TREINO → PÓS"}</strong></div>
+        <div><small>Tipo da sessão</small><strong>{tipoDaSessao === "BASELINE" ? "Referência inicial" : "PRÉ → TREINO → PÓS"}</strong></div>
         <div><small>Finalidade</small><strong>{texto(detalhes.finalidade)}</strong></div>
         <div><small>CTR / THX</small><strong>{texto(estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador)} · {texto(estado.thx_individual?.codigo)}</strong></div>
         <div><small>Fase atual</small><strong>{faseAtual(estado)}</strong></div>
@@ -1155,8 +1162,8 @@ function ContextoPersistente({ estado, visao }: { estado: Estado; visao: VisaoCo
         <section className="hx-session-final">
           <strong>SESSÃO FINALIZADA</strong>
           <span>{tipoDaSessao === "BASELINE"
-            ? "Baseline preservado · dados congelados · Replay disponível"
-            : "PRÉ preservado · TREINO preservado · PÓS preservado · snapshots congelados · Replay disponível · relatório disponível"}</span>
+            ? "Referência inicial preservada · dados congelados · reprodução histórica disponível"
+            : "PRÉ preservado · TREINO preservado · PÓS preservado · registros congelados · reprodução histórica disponível · relatório disponível"}</span>
         </section>
       ) : null}
     </>
@@ -1255,7 +1262,7 @@ function NavegacaoInterna({
   selecionar: (visao: VisaoCockpit) => void;
 }) {
   return (
-    <nav className="hx-cockpit-tabs" aria-label="Visões internas do Cockpit Vivo">
+    <nav className="hx-cockpit-tabs" aria-label="Visões internas do painel operacional ao vivo">
       {VISOES_COCKPIT.map((item) => (
         <button
           className={visao === item.id ? "is-active" : ""}
@@ -1287,7 +1294,7 @@ function ReferenciaBaselineResumo({ estado }: { estado: Estado }) {
   const registro = estado.gravacao?.baseline?.registro;
   return (
     <div className="hx-limit-consolidated">
-      <strong>REFERÊNCIA DE BASELINE · REGISTRO OPERACIONAL SEPARADO</strong>
+      <strong>REFERÊNCIA INICIAL · REGISTRO OPERACIONAL SEPARADO</strong>
       <span>
         {texto(referencia?.estado, "AGUARDANDO DECISÃO PROFISSIONAL")}
         {registro?.finalizado_em
@@ -1345,7 +1352,7 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
       </div>
       <details className="hx-technical-details">
         <summary>Governança científica, suficiência e proveniência</summary>
-        <pre>{JSON.stringify({
+        <pre>{JSON.stringify(estruturaVisivelEmPortugues({
           elegibilidade_temporal: leituraCientifica.elegibilidade_temporal_da_zona,
           iirh: leituraCientifica.iirh,
           zona: leituraCientifica.zona,
@@ -1353,7 +1360,7 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
           trajetoria: leituraCientifica.trajetoria,
           configuracao_regulatoria_basal: configuracaoBasal,
           rastreabilidade_do_motor: leituraCientifica.rastreabilidade_do_motor
-        }, null, 2)}</pre>
+        }), null, 2)}</pre>
       </details>
       <div className="hx-limit-consolidated">
         <strong>LIMITAÇÃO CONSOLIDADA</strong>
@@ -1362,7 +1369,7 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
           : "Os dados disponíveis ainda não são suficientes para produzir uma leitura científica integral; nenhuma ausência foi convertida em zero."}</span>
       </div>
       {estado.leitura_regulatoria.anamneses.length ? (
-        <details className="hx-technical-details"><summary>Anamnese Regulatória autorizada como fonte de evidência</summary><pre>{JSON.stringify(estado.leitura_regulatoria.anamneses, null, 2)}</pre></details>
+        <details className="hx-technical-details"><summary>Anamnese Regulatória autorizada como fonte de evidência</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues(estado.leitura_regulatoria.anamneses), null, 2)}</pre></details>
       ) : null}
       {estado.leitura_regulatoria.evidencias_anamnese?.length ? (
         <section className="hx-anamnese-evidence">
@@ -1373,7 +1380,7 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
               <div><small>Qualidade</small><strong>{texto(evidencia.qualidade)}</strong></div>
               <div><small>Estado</small><strong>{texto(evidencia.estado)}</strong></div>
               <div><small>Limitação</small><strong>{texto(evidencia.limitacao, "Resposta isolada não produz vetor")}</strong></div>
-              <details><summary>Abrir resposta original preservada</summary><pre>{JSON.stringify(evidencia.resposta_original_json, null, 2)}</pre></details>
+              <details><summary>Abrir resposta original preservada</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues(evidencia.resposta_original_json), null, 2)}</pre></details>
             </article>
           ))}
         </section>
@@ -1391,7 +1398,7 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
               <div><small>Qualidade</small><strong>{texto(evidencia.qualidade)}</strong></div>
               <div><small>Estado</small><strong>{texto(evidencia.estado)}</strong></div>
               <div><small>Cálculo</small><strong>{evidencia.gera_calculo ? "BLOQUEIO VIOLADO" : "NÃO GERA CÁLCULO"}</strong></div>
-              <details><summary>Abrir resposta original preservada</summary><pre>{JSON.stringify(evidencia.resposta_original_json, null, 2)}</pre></details>
+              <details><summary>Abrir resposta original preservada</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues(evidencia.resposta_original_json), null, 2)}</pre></details>
             </article>
           ))}
         </section>
@@ -1535,7 +1542,7 @@ function MatrizVetorial({
             <div><dt>Trajetória</dt><dd>NÃO INFERÍVEL A PARTIR DE UM ÚNICO PONTO</dd></div>
             <div><dt>Decisão profissional</dt><dd>NENHUMA DECISÃO AUTOMÁTICA</dd></div>
           </dl>
-          <details><summary>Fontes, eventos, indicadores, CTRs, THXs, limitações e histórico</summary><pre>{JSON.stringify({ definicao: definicaoSelecionada, estado: estadoSelecionado ?? null }, null, 2)}</pre></details>
+          <details><summary>Fontes, eventos, indicadores, CTRs, THXs, limitações e histórico</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues({ definicao: definicaoSelecionada, estado: estadoSelecionado ?? null }), null, 2)}</pre></details>
         </aside>
       ) : null}
     </section>
@@ -1575,7 +1582,7 @@ function ResultanteRegulatoria({ estado, resumida = false }: { estado: Estado; r
         <div><small>Versão científica</small><strong>{texto(valorDoRegistro(resultado ?? {}, "versao_cientifica", "versao_da_biblioteca", "versao_do_motor", "versao_algoritmo"), "PRESERVADA NO NÚCLEO")}</strong></div>
       </div>
       <div className="hx-limit-consolidated"><strong>MOTIVO CONSOLIDADO</strong><span>{texto(motivo, resultado ? "Consulte vetores contribuintes, tensões e compensações na rastreabilidade." : "As evidências disponíveis não são suficientes para compor a Resultante.")}</span></div>
-      {!resumida && resultado ? <details className="hx-technical-details"><summary>Vetores contribuintes, preservados, comprometidos, tensões e compensações</summary><pre>{JSON.stringify(resultado, null, 2)}</pre></details> : null}
+      {!resumida && resultado ? <details className="hx-technical-details"><summary>Vetores contribuintes, preservados, comprometidos, tensões e compensações</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues(resultado), null, 2)}</pre></details> : null}
     </section>
   );
 }
@@ -1596,7 +1603,7 @@ function TrajetoriaRegulatoria({ estado, resumida = false }: { estado: Estado; r
         ))}
       </div>
       <div className="hx-limit-consolidated"><strong>LIMITE TEMPORAL</strong><span>{atual ? "Eventos, intervenções, lacunas e transições permanecem vinculados ao registro longitudinal." : "Não existem dois ou mais estados regulatórios humanos, válidos e comparáveis nesta sessão técnica."}</span></div>
-      {!resumida && atual ? <details className="hx-technical-details"><summary>Resultantes sucessivas, transições de Zona, eventos e intervenções</summary><pre>{JSON.stringify(atual, null, 2)}</pre></details> : null}
+      {!resumida && atual ? <details className="hx-technical-details"><summary>Resultantes sucessivas, transições de Zona, eventos e intervenções</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues(atual), null, 2)}</pre></details> : null}
     </section>
   );
 }
@@ -1621,7 +1628,7 @@ function RotasRegulatorias({ estado }: { estado: Estado }) {
         {itens.map(([nome, valor]) => {
           const registro = objeto(valor);
           const localizado = Object.keys(registro).length > 0;
-          return <article key={nome}><small>{nome}</small><strong>{localizado ? texto(registro.estado, "REGISTRO LOCALIZADO") : "NÃO CONFIRMADA"}</strong><span>{localizado ? texto(registro.motivo, "Evidências e histórico disponíveis na rastreabilidade.") : "Não há evidência admissível vinculada a esta sessão para confirmar a rota."}</span>{localizado ? <details><summary>Inspecionar</summary><pre>{JSON.stringify(registro, null, 2)}</pre></details> : null}</article>;
+          return <article key={nome}><small>{nome}</small><strong>{localizado ? texto(registro.estado, "REGISTRO LOCALIZADO") : "NÃO CONFIRMADA"}</strong><span>{localizado ? texto(registro.motivo, "Evidências e histórico disponíveis na rastreabilidade.") : "Não há evidência admissível vinculada a esta sessão para confirmar a rota."}</span>{localizado ? <details><summary>Inspecionar</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues(registro), null, 2)}</pre></details> : null}</article>;
         })}
       </div>
     </section>
@@ -1638,7 +1645,7 @@ function FormulacaoRegulatoria({ estado }: { estado: Estado }) {
         {["Dado", "Interpretação", "Hipótese", "Decisão profissional"].map((item) => <article key={item}><small>{item}</small><strong>{formulacao ? valorVetorial(valorDoRegistro(formulacao, item.toLowerCase().replaceAll(" ", "_")), "NÃO INFORMADO") : "NÃO REGISTRADA"}</strong></article>)}
       </div>
       <Rastreabilidade estado={estado} />
-      {formulacao ? <details className="hx-technical-details"><summary>Autoria, versão, justificativa, evidências, vetores, Resultante, Trajetória e histórico</summary><pre>{JSON.stringify(formulacao, null, 2)}</pre></details> : null}
+      {formulacao ? <details className="hx-technical-details"><summary>Autoria, versão, justificativa, evidências, vetores, Resultante, Trajetória e histórico</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues(formulacao), null, 2)}</pre></details> : null}
       {!formulacao && formulacoesNoEscopo.length ? <section className="hx-anamnese-evidence">
         <header><small>ESCOPO PROFISSIONAL · FORA DA SESSÃO SELECIONADA</small><strong>Citações rastreáveis disponíveis</strong><span>Não são incorporadas à sessão técnica até existir vínculo contextual explícito.</span></header>
         {formulacoesNoEscopo.map((item, indice) => <article key={String(item.identificador ?? indice)}>
@@ -1646,7 +1653,7 @@ function FormulacaoRegulatoria({ estado }: { estado: Estado }) {
           <div><small>Revisão</small><strong>{texto(item.numero_da_revisao)}</strong></div>
           <div><small>Participante</small><strong>{texto(item.identificador_do_participante)}</strong></div>
           <div><small>Origem</small><strong>ANAMNESE REGULATÓRIA</strong></div>
-          <details><summary>Referências e limites preservados</summary><pre>{JSON.stringify({ referencias: objeto(item.referencias_de_origem_json), limites: lista(item.limites_de_interpretacao_json) }, null, 2)}</pre></details>
+          <details><summary>Referências e limites preservados</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues({ referencias: objeto(item.referencias_de_origem_json), limites: lista(item.limites_de_interpretacao_json) }), null, 2)}</pre></details>
         </article>)}
       </section> : null}
     </section>
@@ -1698,10 +1705,10 @@ function SelecaoInicialDoCockpit({
       === selecao.participante
   );
   return (
-    <section className="hx-context-selector" aria-label="Selecionar contexto do Cockpit Vivo">
+    <section className="hx-context-selector" aria-label="Selecionar contexto do painel operacional ao vivo">
       <header>
         <div>
-          <small>ENTRADA DO COCKPIT VIVO</small>
+          <small>ENTRADA DO PAINEL OPERACIONAL AO VIVO</small>
           <strong>Selecione o contexto operacional</strong>
         </div>
         <span>NENHUM CONTEXTO ANTERIOR SERÁ REUTILIZADO</span>
@@ -1759,7 +1766,7 @@ function SelecaoInicialDoCockpit({
         type="button"
         disabled={ocupado || !selecao.organizacao || !selecao.participante || !selecao.sessao}
         onClick={abrir}
-      >ABRIR COCKPIT VIVO</button>
+      >ABRIR PAINEL OPERACIONAL AO VIVO</button>
     </section>
   );
 }
@@ -1767,6 +1774,7 @@ function SelecaoInicialDoCockpit({
 export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) {
   const [estado, setEstado] = useState<Estado | null>(null);
   const [erro, setErro] = useState("");
+  const [confirmacao, setConfirmacao] = useState("");
   const [ocupado, setOcupado] = useState("");
   const [cursor, setCursor] = useState(0);
   const [tocando, setTocando] = useState(false);
@@ -1797,6 +1805,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const ultimaConsultaAplicada = useRef(0);
   const componenteMontado = useRef(false);
   const ocupadoAtual = useRef("");
+  const acaoDocumentalEmAndamento = useRef("");
   const autenticacaoExpiradaAtual = useRef(false);
   const versaoDoCockpit = useRef("");
   const estadoOperacionalDoPolling = useRef("");
@@ -1870,7 +1879,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         || !contextoExplicito.sessao)
     ) {
       throw new Error(
-        "O polling exige organização, participante e sessão explícitos."
+        "A atualização periódica exige organização, participante e sessão explícitos."
       );
     }
     if (
@@ -1967,7 +1976,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           navigator.onLine ? "reconectando" : "offline"
         );
         throw new Error(
-          "Atualização do Cockpit expirou; nova tentativa automática em andamento."
+          "A atualização do painel operacional expirou; uma nova tentativa automática está em andamento."
         );
       }
       publicarEstadoDoNucleo(
@@ -2194,7 +2203,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         setErro(
           causa instanceof Error
             ? causa.message
-            : "Não foi possível atualizar o estado do baseline."
+            : "Não foi possível atualizar o estado da referência inicial."
         );
       });
     };
@@ -2263,7 +2272,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       if (encerrado || autenticacaoExpiradaAtual.current) return;
       const contexto = { ...contextoDoPolling.current };
       if (!contexto.organizacao || !contexto.participante || !contexto.sessao) {
-        setErro("O Cockpit preservou a tela, mas não iniciará polling sem sessão explícita.");
+        setErro("O painel operacional preservou a tela, mas não iniciará a atualização periódica sem uma sessão explícita.");
         return;
       }
       if (
@@ -2317,7 +2326,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           );
           if (autenticacaoExpiradaAtual.current) {
             setErro(
-              "Sessão administrativa expirada. Autentique-se novamente; o contexto explícito deste Cockpit foi preservado."
+              "Sessão administrativa expirada. Autentique-se novamente; o contexto explícito deste painel operacional foi preservado."
             );
             return;
           }
@@ -2424,9 +2433,20 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     return () => window.clearInterval(id);
   }, [tocando, velocidade, intervalo]);
 
-  const enviar = async (acao: string, dados: Record<string, unknown> = {}) => {
+  const enviar = async (
+    acao: string,
+    dados: Record<string, unknown> = {}
+  ): Promise<boolean> => {
+    if (acaoDocumentalEmAndamento.current) {
+      setErro(
+        "Já existe uma ação em processamento. Aguarde a confirmação antes de tentar novamente."
+      );
+      return false;
+    }
+    acaoDocumentalEmAndamento.current = acao;
     setOcupado(acao);
     setErro("");
+    setConfirmacao("");
     try {
       const parametros = new URLSearchParams(window.location.search);
       const selecaoDaUrl = {
@@ -2451,8 +2471,64 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           ...dados
         })
       });
-      const retorno = await resposta.json();
-      if (!resposta.ok) throw new Error(retorno?.erro?.mensagem ?? "Comando recusado.");
+      const retorno = await resposta.json().catch(() => null);
+      if (!resposta.ok) {
+        throw new Error(
+          retorno?.erro?.mensagem
+          ?? `A ação foi recusada pelo servidor com estado ${resposta.status}.`
+        );
+      }
+      if (!retorno || typeof retorno !== "object") {
+        throw new Error(
+          "O servidor não devolveu uma confirmação válida da ação."
+        );
+      }
+      const relatoriosRetornados = ordenarRelatoriosPorVersao(
+        Array.isArray(retorno.relatorios) ? retorno.relatorios : []
+      );
+      const relatorioRetornado = relatoriosRetornados.at(-1);
+      if (acao === "consolidar-relatorio") {
+        const payload = dados.payload;
+        if (
+          !relatorioRetornado
+          || assinaturaDaConsolidacao(
+            relatorioRetornado.consolidacao_profissional
+          ) !== assinaturaDaConsolidacao(payload)
+        ) {
+          throw new Error(
+            "O Núcleo não confirmou a versão consolidada na autoridade persistida."
+          );
+        }
+        setConfirmacao(
+          "Versão consolidada preservada com sucesso. O documento está pronto para envio à validação."
+        );
+      }
+      if (acao === "relatorio") {
+        if (!relatorioRetornado) {
+          throw new Error(
+            "O Núcleo não confirmou o rascunho documental na autoridade persistida."
+          );
+        }
+        setConfirmacao(
+          "Rascunho técnico preservado com sucesso. A consolidação profissional pode ser iniciada."
+        );
+      }
+      if (acao === "transicionar-relatorio") {
+        const payload = dados.payload as Registro | undefined;
+        const destino = String(payload?.estado ?? "").toUpperCase();
+        if (
+          !relatorioRetornado
+          || String(relatorioRetornado.estado_documental ?? "").toUpperCase()
+            !== destino
+        ) {
+          throw new Error(
+            "O Núcleo não confirmou a transição no estado documental persistido."
+          );
+        }
+        setConfirmacao(destino === "AGUARDANDO_VALIDACAO"
+          ? "Envio para validação confirmado. A justificativa profissional foi preservada."
+          : "Validação profissional confirmada. O relatório final foi concluído.");
+      }
       setEstado(retorno);
       if (["acao-principal", "acao-operacional"].includes(acao)) {
         window.dispatchEvent(new CustomEvent(
@@ -2485,18 +2561,32 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
               ? causa.message
               : "Não foi possível completar a atualização operacional."
           );
-        });
+          });
       }
+      return true;
     } catch (causa) {
       setErro(causa instanceof Error ? causa.message : "Comando recusado.");
+      return false;
     } finally {
+      acaoDocumentalEmAndamento.current = "";
       setOcupado("");
     }
   };
 
   const novaChaveDeTentativa = () => crypto.randomUUID();
 
-  const comandos = useMemo(() => ({
+  const relatorioAtualParaChave = ordenarRelatoriosPorVersao(
+    estado?.relatorios ?? []
+  ).at(-1);
+  const contextoDocumentalParaChave = {
+    organizacao: estado?.contextos.selecao.identificador_da_organizacao,
+    participante: estado?.contextos.selecao.identificador_do_participante,
+    sessao: estado?.contextos.selecao.identificador_da_sessao,
+    relatorio: relatorioAtualParaChave?.identificador,
+    serie: relatorioAtualParaChave?.identificador_da_serie,
+    versao: relatorioAtualParaChave?.numero_da_versao
+  };
+  const comandos = {
     principal: (comando: string) => enviar(
       "acao-principal",
       criarPayloadDoComandoPrincipal(comando, novaChaveDeTentativa())
@@ -2530,12 +2620,35 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     exportarReplay: () => enviar("exportar-replay", { inicio_percentual: intervalo[0], fim_percentual: intervalo[1] }),
     longitudinal: () => enviar("consolidar-longitudinal"),
     entregas: () => enviar("materializar-entregas"),
-    relatorio: () => enviar("relatorio"),
+    relatorio: () => enviar("relatorio", {
+      chave_de_idempotencia: chaveIdempotenteDocumental(
+        "gerar-rascunho",
+        contextoDocumentalParaChave,
+        { sessao: contextoDocumentalParaChave.sessao }
+      )
+    }),
     consolidarRelatorio: (payload: Registro) =>
-      enviar("consolidar-relatorio", { payload }),
+      enviar("consolidar-relatorio", {
+        payload,
+        chave_de_idempotencia: chaveIdempotenteDocumental(
+          "consolidar-relatorio",
+          contextoDocumentalParaChave,
+          payload
+        )
+      }),
     transicionarRelatorio: (payload: Registro) =>
-      enviar("transicionar-relatorio", { payload })
-  }), [intervalo]);
+      enviar("transicionar-relatorio", {
+        payload,
+        chave_de_idempotencia: chaveIdempotenteDocumental(
+          "transicionar-relatorio",
+          contextoDocumentalParaChave,
+          {
+            identificador: payload.identificador,
+            estado: payload.estado
+          }
+        )
+      })
+  };
 
   const configurarCortex = async () => {
     const clientId = cortexClientId.trim();
@@ -2553,7 +2666,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   };
 
   if (contextoParaSelecao && !estado) return <>
-    {erro ? <p className="hx-module__error">{erro}</p> : null}
+    {erro ? <p className="hx-module__error">{portuguesVisivel(erro)}</p> : null}
     <SelecaoInicialDoCockpit
       contexto={contextoParaSelecao}
       selecao={selecaoPendente}
@@ -2573,7 +2686,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       }
     />
   </>;
-  if (erro && !estado) return <p className="hx-module__error">{erro}</p>;
+  if (erro && !estado) return <p className="hx-module__error">{portuguesVisivel(erro)}</p>;
   if (!estado) return modulo === "cockpit-vivo"
     ? <EstruturaInicialDoCockpit />
     : <p className="hx-module__loading">Carregando a sessão técnica preservada…</p>;
@@ -2600,7 +2713,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     sessao: estado.contextos.selecao.identificador_da_sessao
   });
   const pdfHref = `/api/operacao-homologacao/pdf?${parametrosDoContexto}`;
-  const relatorioAtual = estado.relatorios.at(-1);
+  const relatoriosOrdenados = ordenarRelatoriosPorVersao(estado.relatorios);
+  const relatorioAtual = relatoriosOrdenados.at(-1);
   const cicloDoRelatorioAtual = projetarEstadoFuncionalDoRelatorio(
     relatorioAtual
   );
@@ -2665,9 +2779,15 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     const justificativa = window.prompt(
       destino === "AGUARDANDO_VALIDACAO"
         ? "Justifique o envio desta versão completa para validação profissional."
-        : "Justifique a validação final desta versão. O PDF e o Print serão liberados após esta decisão."
+        : "Justifique a validação final desta versão. O PDF e a impressão serão liberados após esta decisão."
     );
-    if (!justificativa?.trim()) return;
+    if (justificativa === null) return;
+    if (justificativa.trim().length < 8) {
+      setErro(
+        "Informe uma justificativa profissional com pelo menos oito caracteres. Nenhuma transição foi realizada."
+      );
+      return;
+    }
     void comandos.transicionarRelatorio({
       identificador: relatorioAtual.identificador,
       estado: destino,
@@ -2758,7 +2878,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
 
   const controles = (
     <section className="hx-op-controls">
-      <div className="hx-op-controls__head"><p>COMANDO CONTEXTUAL</p><span>Estado único do backend, sessão httpOnly, CSRF e rastreabilidade do núcleo.</span></div>
+      <div className="hx-op-controls__head"><p>COMANDO CONTEXTUAL</p><span>Estado único do servidor, sessão protegida do navegador, proteção contra requisições indevidas e rastreabilidade do núcleo.</span></div>
       <div className="hx-limit-consolidated">
         <strong>ENCERRAMENTO OPERACIONAL ≠ COMPLETUDE CIENTÍFICA</strong>
         <span>
@@ -2909,11 +3029,11 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
               <strong>Cortex / EMOTIV EPOC X</strong>
               <span>
                 {estado.configuracao_cortex.configurado
-                  ? "CREDENCIAL CONFIGURADA NO RUNTIME LOCAL"
+                  ? "CREDENCIAL CONFIGURADA NO AMBIENTE LOCAL DE EXECUÇÃO"
                   : "CREDENCIAL CORTEX AINDA NÃO CONFIGURADA"}
               </span>
             </div>
-            <p>Os valores são enviados ao backend local autenticado, armazenados fora do Git com permissão privada e nunca retornam ao navegador.</p>
+            <p>Os valores são enviados ao servidor local autenticado, armazenados fora do repositório de código com permissão privada e nunca retornam ao navegador.</p>
           </header>
           <div className="hx-cortex-config__fields">
             <label>
@@ -2941,7 +3061,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
               type="submit"
               disabled={ocupado !== "" || !cortexClientId.trim() || !cortexClientSecret.trim()}
             >
-              {estado.configuracao_cortex.configurado ? "Substituir configuração local" : "Salvar no runtime local"}
+              {estado.configuracao_cortex.configurado ? "Substituir configuração local" : "Salvar no ambiente local de execução"}
             </button>
           </div>
         </form>
@@ -2950,7 +3070,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <EmptySignalState
           title="EPOC X E POLAR H10"
           status="AGUARDANDO_HOMOLOGACAO_FISICA"
-          reason="O caminho de software permanece disponível, mas nenhum hardware real está fisicamente conectado. Nenhum sinal, evidência humana ou resultado científico foi produzido."
+          reason="O caminho do sistema permanece disponível, mas nenhum equipamento real está fisicamente conectado. Nenhum sinal, evidência humana ou resultado científico foi produzido."
         />
       ) : estado.conectores.map((conector) => {
         const historico = estado.historicos_conectores.find((item) => item.identificador === conector.identificador)?.eventos ?? [];
@@ -2990,7 +3110,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
 
   const visaoPreTreinoPos = (
     <section className="hx-cockpit-panel">
-      <TituloDaVisao kicker="PRÉ / TREINO / PÓS" titulo="Fases independentes, comparáveis somente sob governança." descricao="Preparação, comandos, snapshots, fontes, eventos e comparação permanecem no contexto da sessão." />
+      <TituloDaVisao kicker="PRÉ / TREINO / PÓS" titulo="Fases independentes, comparáveis somente sob governança." descricao="Preparação, comandos, registros congelados, fontes, eventos e comparação permanecem no contexto da sessão." />
       <ReferenciaBaselineResumo estado={estado} />
       {controles}
       <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
@@ -3034,7 +3154,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const visaoLongitudinal = (
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="LONGITUDINAL" titulo="Histórico do participante sem recálculo silencioso." descricao="Sessões, ciclos, versões, lacunas e comparabilidade metodológica permanecem preservados." />
-      <div className="hx-report-operation"><div><strong>{texto(estado.longitudinal?.estado_da_evidencia, "EVIDÊNCIA LONGITUDINAL")}</strong><span>A trajetória descritiva existe desde o Baseline; tendência madura continua submetida à elegibilidade temporal.</span></div><Botao onClick={comandos.longitudinal} disabled={ocupado !== ""}>Consolidar versão longitudinal</Botao></div>
+      <div className="hx-report-operation"><div><strong>{texto(estado.longitudinal?.estado_da_evidencia, "EVIDÊNCIA LONGITUDINAL")}</strong><span>A trajetória descritiva existe desde a referência inicial; uma tendência madura continua submetida à elegibilidade temporal.</span></div><Botao onClick={comandos.longitudinal} disabled={ocupado !== ""}>Consolidar versão longitudinal</Botao></div>
       <LongitudinalEvolutionChart points={pontosLongitudinais} />
       <EvolucaoDaAssinaturaNeuroregulatoria longitudinal={estado.longitudinal} />
       <ReferenciaBaselineResumo estado={estado} />
@@ -3063,16 +3183,16 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     ? [
         {
           time: instante(registroBaseline.iniciado_em),
-          track: "REFERÊNCIA DE BASELINE",
-          label: "BASELINE INICIADO",
+          track: "REFERÊNCIA INICIAL",
+          label: "REFERÊNCIA INICIAL INICIADA",
           event: "BASELINE_INICIADO",
           source: "REGISTRO OPERACIONAL SEPARADO"
         },
         ...(registroBaseline.finalizado_em
           ? [{
               time: instante(registroBaseline.finalizado_em),
-              track: "REFERÊNCIA DE BASELINE",
-              label: "BASELINE ENCERRADO",
+              track: "REFERÊNCIA INICIAL",
+              label: "REFERÊNCIA INICIAL ENCERRADA",
               event: "BASELINE_ENCERRADO",
               source: "REGISTRO OPERACIONAL SEPARADO"
             }]
@@ -3093,17 +3213,17 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   );
   const visaoReplay = (
     <section className="hx-cockpit-panel">
-      <TituloDaVisao kicker="REPLAY" titulo="Linha multimodal da sessão ativa." descricao="Participante, CTR, THX, fases, eventos, fontes e contexto permanecem sincronizados." />
+      <TituloDaVisao kicker="REPRODUÇÃO HISTÓRICA" titulo="Linha multimodal da sessão ativa." descricao="Participante, CTR, THX, fases, eventos, fontes e contexto permanecem sincronizados." />
       <div className="hx-limit-consolidated">
         <strong>FLUXO CIENTÍFICO · PRÉ → TREINO → PÓS</strong>
         <span>
-          {texto(referenciaBaseline?.estado, "SESSÃO SEM REFERÊNCIA DE BASELINE")}
-          {" · "}baseline exibido em trilha operacional própria, fora das fases científicas.
+          {texto(referenciaBaseline?.estado, "SESSÃO SEM REFERÊNCIA INICIAL")}
+          {" · "}referência inicial exibida em trilha operacional própria, fora das fases científicas.
         </span>
       </div>
       <section className="hx-replay hx-replay--operational">
         <div className="hx-replay__toolbar">
-          <div><p>REPLAY MULTIMODAL SINCRONIZADO</p><strong>{texto(estado.replay?.linha?.identificador, "LINHA NÃO GERADA")}</strong></div>
+          <div><p>REPRODUÇÃO HISTÓRICA MULTIMODAL SINCRONIZADA</p><strong>{texto(estado.replay?.linha?.identificador, "LINHA NÃO GERADA")}</strong></div>
           <div><Botao onClick={comandos.replay} disabled={ocupado !== ""}>Atualizar linha</Botao><Botao forte onClick={comandos.exportarReplay} disabled={ocupado !== "" || !itensReplay.length}>Exportar intervalo</Botao></div>
         </div>
         <div className="hx-replay-controls">
@@ -3170,12 +3290,18 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           <ReferenciaBaselineResumo estado={estado} />
           <section className="hx-report-operation">
             <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{tituloDoRelatorioAtual}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(relatorioAtual?.criado_em)} · ${cicloDoRelatorioAtual.estado.replaceAll("_", " ")}` : "A geração materializa apenas o rascunho técnico; a autoria profissional vem depois."}</span></div>
-            <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado) || Boolean(relatorioAtual)}>Gerar rascunho técnico</Botao>{cicloDoRelatorioAtual.completa && ["RASCUNHO", "EM_ELABORACAO"].includes(String(relatorioAtual?.estado_documental ?? "")) ? <Botao onClick={() => transicionarRelatorioAtual("AGUARDANDO_VALIDACAO")} disabled={ocupado !== ""}>Enviar para validação</Botao> : null}{cicloDoRelatorioAtual.completa && String(relatorioAtual?.estado_documental ?? "") === "AGUARDANDO_VALIDACAO" ? <Botao forte onClick={() => transicionarRelatorioAtual("CONCLUIDO")} disabled={ocupado !== ""}>Validar relatório final</Botao> : null}{cicloDoRelatorioAtual.finalDisponivel ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF final</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir impressão final</a></> : <span className="hx-report-finalization-guard">PDF e Print finais indisponíveis: complete e valide a consolidação profissional.</span>}</div>
+            <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado) || Boolean(relatorioAtual)}>{ocupado === "relatorio" ? "GERANDO RASCUNHO TÉCNICO…" : "GERAR RASCUNHO TÉCNICO"}</Botao>{cicloDoRelatorioAtual.completa && ["RASCUNHO", "EM_ELABORACAO"].includes(String(relatorioAtual?.estado_documental ?? "")) ? <Botao onClick={() => transicionarRelatorioAtual("AGUARDANDO_VALIDACAO")} disabled={ocupado !== ""}>{ocupado === "transicionar-relatorio" ? "ENVIANDO PARA VALIDAÇÃO…" : "ENVIAR PARA VALIDAÇÃO"}</Botao> : null}{cicloDoRelatorioAtual.completa && String(relatorioAtual?.estado_documental ?? "") === "AGUARDANDO_VALIDACAO" ? <Botao forte onClick={() => transicionarRelatorioAtual("CONCLUIDO")} disabled={ocupado !== ""}>{ocupado === "transicionar-relatorio" ? "VALIDANDO RELATÓRIO FINAL…" : "VALIDAR RELATÓRIO FINAL"}</Botao> : null}{cicloDoRelatorioAtual.finalDisponivel ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF final</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir impressão final</a></> : <span className="hx-report-finalization-guard">PDF e impressão finais indisponíveis: complete e valide a consolidação profissional.</span>}</div>
           </section>
+          {confirmacao ? (
+            <p className="hx-module__success" role="status" aria-live="polite">
+              {portuguesVisivel(confirmacao)}
+            </p>
+          ) : null}
           <SinteseValidacaoTirhV1
             estado={estado as unknown as Registro}
-            validarClaimTirhV1={(payload) =>
-              enviar("validar-claim-tirh-v1", { payload })}
+            validarClaimTirhV1={(payload) => {
+              void enviar("validar-claim-tirh-v1", { payload });
+            }}
           />
           <ConsolidacaoProfissionalDoRelatorio
             estado={estado as unknown as Registro}
@@ -3195,10 +3321,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
 
   const visaoColetiva = (
     <section className="hx-cockpit-panel">
-      <TituloDaVisao kicker="MODO COLETIVO DO COCKPIT" titulo="População organizacional automática, agregação protegida." descricao="Vínculo organizacional define pertencimento. Equipe, período, função e finalidade são filtros; elegibilidade científica e permissão de exposição permanecem gates separados." />
+      <TituloDaVisao kicker="MODO COLETIVO DO PAINEL OPERACIONAL" titulo="População organizacional automática, agregação protegida." descricao="O vínculo organizacional define o pertencimento. Equipe, período, função e finalidade são filtros; elegibilidade científica e permissão de exposição permanecem critérios separados." />
       <div className="hx-mode-switch">
-        <button type="button" onClick={() => selecionarVisao("visao-geral")}>Cockpit Individual</button>
-        <button type="button" className="is-active" aria-current="page">Cockpit Coletivo</button>
+        <button type="button" onClick={() => selecionarVisao("visao-geral")}>Painel individual</button>
+        <button type="button" className="is-active" aria-current="page">Painel coletivo</button>
       </div>
       {carregandoFontesAutorizadas ? (
         <section
@@ -3310,12 +3436,15 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       rotuloDaSecundaria={rotuloDoComandoCentral}
       executarPrincipal={executarPrincipal}
       executarSecundaria={executarSecundaria}
-      registrar={(categoria, textoDoRegistro) =>
-        comandos.registro(categoria, textoDoRegistro)}
-      registrarEvidenciaProfissional={(payload) =>
-        comandos.evidenciaProfissional(payload)}
-      validarClaimTirhV1={(payload) =>
-        enviar("validar-claim-tirh-v1", { payload })}
+      registrar={(categoria, textoDoRegistro) => {
+        void comandos.registro(categoria, textoDoRegistro);
+      }}
+      registrarEvidenciaProfissional={(payload) => {
+        void comandos.evidenciaProfissional(payload);
+      }}
+      validarClaimTirhV1={(payload) => {
+        void enviar("validar-claim-tirh-v1", { payload });
+      }}
       abrirAnalitico={() => selecionarVisao("evidencias")}
       permitirOperacao={podeConduzirOperacao}
     />
@@ -3337,7 +3466,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     const operacional = visao === "visao-geral";
     return (
       <div className="hx-operacao hx-cockpit-workspace">
-        <div className="hx-cockpit-mode-switch" aria-label="Modo do Cockpit">
+        <div className="hx-cockpit-mode-switch" aria-label="Modo do painel operacional">
           <button
             className={operacional ? "is-active" : ""}
             type="button"
@@ -3370,12 +3499,12 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         )}
         {autenticacaoExpirada ? (
           <aside className="hx-module__error" role="status" aria-live="polite">
-            Sessão administrativa expirada. O contexto explícito do Cockpit
+            Sessão administrativa expirada. O contexto explícito do painel operacional
             permanece nesta tela. {" "}
             <a href="/entrar" target="_blank" rel="noreferrer">
               Autenticar novamente
             </a>
-            {" "}e retornar a esta aba para retomar o polling.
+            {" "}e retornar a esta aba para retomar a atualização periódica.
           </aside>
         ) : null}
         <main className="hx-cockpit-view" data-cockpit-view={visao}>
@@ -3384,7 +3513,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             ? controleDeBaseline
             : null}
         </main>
-        {!operacional && erro ? <p className="hx-module__error">{erro}</p> : null}
+        {!operacional && erro ? <p className="hx-module__error">{portuguesVisivel(erro)}</p> : null}
       </div>
     );
   }
@@ -3443,7 +3572,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <section className="hx-replay hx-replay--operational">
           <AvisoTecnico />
           <div className="hx-replay__toolbar">
-            <div><p>REPLAY MULTIMODAL SINCRONIZADO</p><strong>{texto(estado.replay?.linha?.identificador, "LINHA NÃO GERADA")}</strong></div>
+            <div><p>REPRODUÇÃO HISTÓRICA MULTIMODAL SINCRONIZADA</p><strong>{texto(estado.replay?.linha?.identificador, "LINHA NÃO GERADA")}</strong></div>
             <div><Botao onClick={comandos.replay} disabled={ocupado !== ""}>Atualizar linha</Botao><Botao forte onClick={comandos.exportarReplay} disabled={ocupado !== "" || !itens.length}>Exportar intervalo</Botao></div>
           </div>
           <div className="hx-replay-controls">
@@ -3599,7 +3728,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       {telemetria}
       {eventos}
       <Rastreabilidade estado={estado} />
-      {erro ? <p className="hx-module__error">{erro}</p> : null}
+      {erro ? <p className="hx-module__error">{portuguesVisivel(erro)}</p> : null}
     </div>
   );
 }

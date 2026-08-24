@@ -24,13 +24,13 @@ const GROUPS: Group[] = [
   {
     label: "Inteligência",
     items: [
-      { label: "Cockpit Vivo", href: "/plataforma/cockpit-vivo", mark: "07", icon: "cockpit" },
+      { label: "Painel Operacional ao Vivo", href: "/plataforma/cockpit-vivo", mark: "07", icon: "cockpit" },
       { label: "Arquitetura Vetorial", href: "/plataforma/cockpit-vivo?visao=matriz-vetorial", mark: "08", icon: "vectors" },
       { label: "Resultante", href: "/plataforma/cockpit-vivo?visao=resultante", mark: "09", icon: "resultant" },
       { label: "Rotas Regulatórias", href: "/plataforma/cockpit-vivo?visao=rotas-regulatorias", mark: "10", icon: "routes" },
       { label: "CTR · THX · THX-AER", href: "/plataforma/cockpit-vivo?visao=ctr-thx", mark: "11", icon: "protocol" },
       { label: "Longitudinal", href: "/plataforma/cockpit-vivo?visao=longitudinal", mark: "12", icon: "longitudinal" },
-      { label: "Replay", href: "/plataforma/cockpit-vivo?visao=replay", mark: "13", icon: "replay" },
+      { label: "Reprodução histórica", href: "/plataforma/cockpit-vivo?visao=replay", mark: "13", icon: "replay" },
       { label: "Relatórios e exportação", href: "/plataforma/cockpit-vivo?visao=relatorio", mark: "14", icon: "reports" }
     ]
   },

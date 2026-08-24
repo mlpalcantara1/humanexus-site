@@ -146,7 +146,7 @@ test("fixtures geram os cinco PDFs premium com paginação esperada", async () =
   assert.match(texto.stdout, /Não classificada\s+Não calculável/s);
   assert.match(texto.stdout, /Validação Profissional V1/i);
   assert.match(texto.stdout, /COMPLETA\s+0[\s\S]*Decisão preservada: VALIDAR/);
-  assert.match(texto.stdout, /Estado efetivo: VALIDADO_PROFISSIONALMENTE/);
+  assert.match(texto.stdout, /Estado efetivo: VALIDADO PROFISSIONALMENTE/);
   assert.doesNotMatch(texto.stdout, /CLM-FIXTURE-RESULTANTE-V1/);
   assert.doesNotMatch(texto.stdout, /\bRRO\b/);
 });

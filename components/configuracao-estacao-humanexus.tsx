@@ -287,7 +287,7 @@ export function ConfiguracaoEstacaoHumanexus({
             <input
               name="simuladores"
               defaultValue={simuladores}
-              placeholder="Alias separados por vírgula"
+              placeholder="Nomes alternativos separados por vírgula"
             />
           </label>
         </fieldset>
@@ -295,24 +295,24 @@ export function ConfiguracaoEstacaoHumanexus({
         <fieldset>
           <legend>Referências protegidas — nunca valores secretos</legend>
           <label>
-            Cortex Client ID
+            Identificador do cliente Cortex
             <input
               name="CORTEX_CLIENT_ID_REF"
-              placeholder="ENV:HUMANEXUS_CORTEX_CLIENT_ID"
+              placeholder="Referência protegida do identificador Cortex"
             />
           </label>
           <label>
-            Cortex Secret
+            Segredo protegido do Cortex
             <input
               name="CORTEX_SECRET_REF"
-              placeholder="KEYCHAIN:HUMANEXUS_CORTEX"
+              placeholder="Referência protegida do segredo Cortex"
             />
           </label>
           <label>
-            Telemetria Bridge
+            Ponte de telemetria
             <input
               name="BRIDGE_SECRET_REF"
-              placeholder="ENV:HUMANEXUS_BRIDGE_SECRET"
+              placeholder="Referência protegida da ponte de telemetria"
             />
           </label>
         </fieldset>

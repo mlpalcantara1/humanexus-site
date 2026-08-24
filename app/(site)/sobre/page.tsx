@@ -23,7 +23,7 @@ const pillars = [
   },
   {
     title: "Visão",
-    description: "Ser referência em Inteligência Regulatória Humana aplicada à segurança, à performance e ao desenvolvimento institucional."
+    description: "Ser referência em Inteligência Regulatória Humana aplicada à segurança, ao desempenho e ao desenvolvimento institucional."
   },
   {
     title: "Posicionamento",

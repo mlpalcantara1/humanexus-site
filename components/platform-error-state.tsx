@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { portuguesVisivel } from "@/lib/portugues-visivel";
 
 export function PlatformErrorState({
   tentarNovamente,
@@ -32,8 +33,8 @@ export function PlatformErrorState({
     <section className="hx-recovery" role="alert" aria-live="polite">
       <div className="hx-recovery__signal" aria-hidden="true"><i /><i /><i /></div>
       <p>CONTINUIDADE OPERACIONAL</p>
-      <h1>{titulo}</h1>
-      <span>{mensagem}</span>
+      <h1>{portuguesVisivel(titulo)}</h1>
+      <span>{portuguesVisivel(mensagem)}</span>
       {automatico && tentativa < 3 ? <small>Reconexão automática {tentativa + 1} de 3.</small> : null}
       <div>
         <button type="button" onClick={tentarNovamente}>Tentar novamente</button>

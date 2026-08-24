@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { useEffect, useRef, useState } from "react";
 
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
+import { portuguesVisivel } from "@/lib/portugues-visivel";
 
 type Registro = Record<string, unknown>;
 type Fonte = {
@@ -122,11 +123,11 @@ const ROTULOS_DA_REFERENCIA_BASELINE: Record<
   Exclude<TipoReferenciaBaseline, "">,
   string
 > = {
-  REALIZAR_NOVO_BASELINE: "REALIZAR NOVO BASELINE",
-  UTILIZAR_BASELINE_ANTERIOR: "UTILIZAR BASELINE ANTERIOR",
-  DISPENSAR_BASELINE_NESTA_SESSAO: "DISPENSAR BASELINE NESTA SESSÃO",
+  REALIZAR_NOVO_BASELINE: "REALIZAR NOVA REFERÊNCIA INICIAL",
+  UTILIZAR_BASELINE_ANTERIOR: "UTILIZAR REFERÊNCIA INICIAL ANTERIOR",
+  DISPENSAR_BASELINE_NESTA_SESSAO: "DISPENSAR REFERÊNCIA INICIAL NESTA SESSÃO",
   PROSSEGUIR_SEM_REFERENCIA_DE_BASELINE:
-    "PROSSEGUIR SEM REFERÊNCIA DE BASELINE"
+    "PROSSEGUIR SEM REFERÊNCIA INICIAL"
 };
 const FONTES_PADRAO: string[] = [];
 const ROTULOS_DOS_MODOS: Record<Modo, string> = {
@@ -153,9 +154,9 @@ const ROTULOS_DAS_FONTES: Record<string, string> = {
   VIDEO: "Vídeo",
   EVENTOS_PROFISSIONAIS: "Eventos profissionais",
   REGISTROS_PROFISSIONAIS: "Somente registros profissionais",
-  SNAPSHOTS: "Snapshots",
+  SNAPSHOTS: "Registros congelados",
   TELEMETRIA_TAREFA: "Telemetria de tarefa",
-  REPLAY: "Replay"
+  REPLAY: "Reprodução histórica"
 };
 const CHAVES_VISUAIS_DAS_FONTES: Record<string, string> = {
   ANAMNESE_REGULATORIA_ESTRUTURADA: "ANAMNESE_REGULATORIA",
@@ -377,7 +378,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
       setFontes(fontesEscolhidas);
       if (modoEscolhido === "NENHUM") setRetencao("NAO_ARMAZENAR");
       setMensagem(
-        `${ROTULOS_DOS_MODOS[modoEscolhido]} aplicado ao registro de baseline e às fases PRÉ, TREINO e PÓS.`
+        `${ROTULOS_DOS_MODOS[modoEscolhido]} aplicado ao registro da referência inicial e às fases PRÉ, TREINO e PÓS.`
       );
       return true;
     } catch (erro) {
@@ -443,7 +444,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
       const resultado = await executar("preparar", {});
       setPreparacaoOperacional(resultado);
       setMensagem(
-        "Sessão preparada. O baseline permanece aguardando comando profissional."
+        "Sessão preparada. A referência inicial permanece aguardando comando profissional."
       );
     } catch (erro) {
       setMensagem(
@@ -456,14 +457,14 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
 
   async function definirReferenciaBaseline() {
     if (!tipoReferenciaBaseline) {
-      setMensagem("Escolha uma opção de referência de baseline.");
+      setMensagem("Escolha uma opção de referência inicial.");
       return;
     }
     if (
       tipoReferenciaBaseline === "UTILIZAR_BASELINE_ANTERIOR"
       && !baselineAnterior
     ) {
-      setMensagem("Selecione um baseline anterior compatível.");
+      setMensagem("Selecione uma referência inicial anterior compatível.");
       return;
     }
     if (
@@ -495,7 +496,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
       setMensagem(
         erro instanceof Error
           ? erro.message
-          : "Referência de baseline não registrada."
+          : "Referência inicial não registrada."
       );
     } finally {
       setOcupado("");
@@ -507,12 +508,12 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
     try {
       await executar("baseline", {});
       setMensagem(
-        "Baseline iniciado por decisão profissional com a cobertura real disponível."
+        "Referência inicial iniciada por decisão profissional com a cobertura real disponível."
       );
       window.dispatchEvent(new CustomEvent("humanexus:baseline-atualizado"));
     } catch (erro) {
       setMensagem(
-        erro instanceof Error ? erro.message : "Baseline não iniciado."
+        erro instanceof Error ? erro.message : "Referência inicial não iniciada."
       );
     } finally {
       setOcupado("");
@@ -523,11 +524,11 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
     setOcupado("pausar-baseline");
     try {
       await executar("pausarBaseline", {});
-      setMensagem("Baseline pausado com auditoria e dados preservados.");
+      setMensagem("Referência inicial pausada com auditoria e dados preservados.");
       window.dispatchEvent(new CustomEvent("humanexus:baseline-atualizado"));
     } catch (erro) {
       setMensagem(
-        erro instanceof Error ? erro.message : "Baseline não pausado."
+        erro instanceof Error ? erro.message : "Referência inicial não pausada."
       );
     } finally {
       setOcupado("");
@@ -538,11 +539,11 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
     setOcupado("retomar-baseline");
     try {
       await executar("retomarBaseline", {});
-      setMensagem("Baseline retomado sem reiniciar sequências.");
+      setMensagem("Referência inicial retomada sem reiniciar sequências.");
       window.dispatchEvent(new CustomEvent("humanexus:baseline-atualizado"));
     } catch (erro) {
       setMensagem(
-        erro instanceof Error ? erro.message : "Baseline não retomado."
+        erro instanceof Error ? erro.message : "Referência inicial não retomada."
       );
     } finally {
       setOcupado("");
@@ -554,12 +555,12 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
     try {
       await executar("finalizarBaseline", {});
       setMensagem(
-        "Baseline encerrado e preservado. A sessão está pronta para iniciar o PRÉ."
+        "Referência inicial encerrada e preservada. A sessão está pronta para iniciar o PRÉ."
       );
       window.dispatchEvent(new CustomEvent("humanexus:baseline-atualizado"));
     } catch (erro) {
       setMensagem(
-        erro instanceof Error ? erro.message : "Baseline não finalizado."
+        erro instanceof Error ? erro.message : "Referência inicial não finalizada."
       );
     } finally {
       setOcupado("");
@@ -596,7 +597,8 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
       const codigo = typeof item === "string"
         ? item
         : String((item as Registro).codigo ?? (item as Registro).nome ?? "");
-      return ROTULOS_DAS_FONTES[codigo] ?? codigo.replaceAll("_", " ");
+      return ROTULOS_DAS_FONTES[codigo]
+        ?? portuguesVisivel(codigo.replaceAll("_", " "));
     }).filter(Boolean)
     : [];
   const estadoDoBaseline = String(baselineAtual?.estado ?? "");
@@ -641,7 +643,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
           prontidao?.estado.includes("BLOQUEADO") ? "blocked"
           : prontidao?.nivel_de_cobertura?.toLowerCase() ?? "loading"
         }`}>
-          {prontidao?.estado ?? "DETECTANDO FONTES"}
+          {portuguesVisivel(prontidao?.estado ?? "DETECTANDO FONTES")}
         </span>
       </header>
 
@@ -829,8 +831,8 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
 
       <section className="hx-coverage-board">
         <header>
-          <div><small>COBERTURA SELECIONADA</small><strong>{prontidao?.fontes_selecionadas.join(" · ") || "REGISTRO OPERACIONAL MÍNIMO"}</strong></div>
-          <div><small>COBERTURA DISPONÍVEL</small><strong>{prontidao?.fontes_disponiveis.join(" · ") || "REGISTRO OPERACIONAL MÍNIMO"}</strong></div>
+          <div><small>COBERTURA SELECIONADA</small><strong>{prontidao?.fontes_selecionadas.map((item) => ROTULOS_DAS_FONTES[item] ?? portuguesVisivel(item)).join(" · ") || "REGISTRO OPERACIONAL MÍNIMO"}</strong></div>
+          <div><small>COBERTURA DISPONÍVEL</small><strong>{prontidao?.fontes_disponiveis.map((item) => ROTULOS_DAS_FONTES[item] ?? portuguesVisivel(item)).join(" · ") || "REGISTRO OPERACIONAL MÍNIMO"}</strong></div>
           <div><small>NÍVEL</small><strong>{prontidao ? `${Math.round(prontidao.cobertura * 100)}% · ${prontidao.nivel_de_cobertura}` : "—"}</strong></div>
         </header>
         <div className="hx-coverage-board__columns">
@@ -845,7 +847,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
           <div>
             <small>PRODUTOS QUE PODERÃO SER LIMITADOS</small>
             {prontidao?.produtos_limitados.map((item) => (
-              <span key={item}>{item.replaceAll("_", " ")}</span>
+              <span key={item}>{portuguesVisivel(item.replaceAll("_", " "))}</span>
             ))}
           </div>
           <div>
@@ -872,10 +874,10 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
           <div>
             <small>FLUXO CIENTÍFICO PADRÃO</small>
             <strong>
-              {painel?.baseline.fluxo_cientifico.join(" → ")
+              {painel?.baseline.fluxo_cientifico.map((item) => portuguesVisivel(item)).join(" → ")
                 ?? "PRE → TREINO → POS"}
             </strong>
-            <span>Baseline é referência operacional separada e opcional.</span>
+            <span>A referência inicial é operacional, separada e opcional.</span>
           </div>
         </header>
         <div className="hx-operational-readiness__body">
@@ -884,7 +886,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
             {Object.entries(painel?.sequencias ?? {}).length ? (
               Object.entries(painel?.sequencias ?? {}).map(([fonte, dados]) => (
                 <span key={fonte}>
-                  <b>{fonte.replaceAll("_", " ")}</b>
+                  <b>{portuguesVisivel(fonte.replaceAll("_", " "))}</b>
                   última {dados.ultima_sequencia.toLocaleString("pt-BR")}
                   {" · "}próxima {dados.proxima_sequencia.toLocaleString("pt-BR")}
                 </span>
@@ -898,8 +900,8 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
             {servicosPreparados.length ? (
               servicosPreparados.map((servico) => (
                 <span key={String(servico.identificador)}>
-                  <b>{String(servico.codigo).replaceAll("_", " ")}</b>
-                  {String(servico.estado)}
+                  <b>{portuguesVisivel(String(servico.codigo).replaceAll("_", " "))}</b>
+                  {portuguesVisivel(String(servico.estado))}
                 </span>
               ))
             ) : (
@@ -915,7 +917,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
                   || "PREPARAÇÃO PROFISSIONAL PENDENTE"}
             </strong>
             <span>
-              Baseline nunca é iniciado automaticamente. Nenhuma ausência é
+              A referência inicial nunca é iniciada automaticamente. Nenhuma ausência é
               preenchida com zero.
             </span>
           </div>
@@ -925,12 +927,12 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
       <section
         className="hx-baseline-reference"
         id="referencia-baseline"
-        aria-label="Referência de baseline"
+        aria-label="Referência inicial"
       >
         <header>
           <div>
-            <small>REFERÊNCIA DE BASELINE</small>
-            <h4>{painel?.baseline.referencia.estado ?? "AGUARDANDO"}</h4>
+            <small>REFERÊNCIA INICIAL</small>
+            <h4>{portuguesVisivel(painel?.baseline.referencia.estado ?? "AGUARDANDO")}</h4>
           </div>
           <span>SEPARADA DE PRÉ → TREINO → PÓS</span>
         </header>
@@ -966,7 +968,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
                   coberturaBasalCanonica ?? baselineAtual.cobertura ?? 0
                 )}
               </strong>
-              {snapshotBasalCanonico ? <span>Snapshot basal imutável</span> : null}
+              {snapshotBasalCanonico ? <span>Registro basal imutável</span> : null}
             </div>
             <div>
               <small>Duração</small>
@@ -986,7 +988,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
             </div>
             {snapshotBasalCanonico ? (
               <div>
-                <small>Snapshot canônico</small>
+                <small>Registro canônico congelado</small>
                 <strong>{String(snapshotBasalCanonico.identificador ?? "—")}</strong>
                 <span>{new Date(String(snapshotBasalCanonico.timestamp ?? "")).toLocaleString("pt-BR")} · qualidade {Math.round(Number(snapshotBasalCanonico.qualidade ?? 0) * 100)}% · confiança {Math.round(Number(snapshotBasalCanonico.confianca ?? 0) * 100)}%</span>
               </div>
@@ -1034,7 +1036,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
 
             {tipoReferenciaBaseline === "UTILIZAR_BASELINE_ANTERIOR" ? (
               <label>
-                Baseline anterior do mesmo participante
+                Referência inicial anterior do mesmo participante
                 <select
                   value={baselineAnterior}
                   onChange={(evento) =>
@@ -1081,8 +1083,8 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
               disabled={ocupado !== "" || !tipoReferenciaBaseline}
             >
               {referenciaJaDefinida
-                ? "ATUALIZAR DECISÃO DE BASELINE"
-                : "REGISTRAR DECISÃO DE BASELINE"}
+                ? "ATUALIZAR DECISÃO SOBRE A REFERÊNCIA INICIAL"
+                : "REGISTRAR DECISÃO SOBRE A REFERÊNCIA INICIAL"}
             </button>
           </>
         )}
@@ -1109,21 +1111,21 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
             || Boolean(painel?.baseline.registro)
           }
         >
-          INICIAR BASELINE
+          INICIAR REFERÊNCIA INICIAL
         </button>
         <button
           className="hx-op-button"
           onClick={() => void pausarBaseline()}
           disabled={ocupado !== "" || estadoDoBaseline !== "INICIADO"}
         >
-          PAUSAR BASELINE
+          PAUSAR REFERÊNCIA INICIAL
         </button>
         <button
           className="hx-op-button"
           onClick={() => void retomarBaseline()}
           disabled={ocupado !== "" || estadoDoBaseline !== "PAUSADO"}
         >
-          RETOMAR BASELINE
+          RETOMAR REFERÊNCIA INICIAL
         </button>
         <button
           className="hx-op-button hx-op-button--gold"
@@ -1135,7 +1137,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
             )
           }
         >
-          ENCERRAR BASELINE
+          ENCERRAR REFERÊNCIA INICIAL
         </button>
         <button
           className="hx-op-button"
@@ -1174,7 +1176,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
 
       {aguardandoHardware ? (
         <div className="hx-recovery-actions">
-          <strong>AGUARDANDO HARDWARE</strong>
+          <strong>AGUARDANDO EQUIPAMENTO</strong>
           <span>
             As fontes foram vinculadas à sessão e a estação permanece preparada.
             Nenhuma ausência é tratada como falha ou evidência atual.
@@ -1217,13 +1219,13 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
         </div>
         {link ? (
           <div className="hx-media-control__invite">
-            {qr ? <img src={qr} alt="QR Code do dispositivo de captura" /> : null}
+            {qr ? <img src={qr} alt="Código QR do dispositivo de captura" /> : null}
             <div>
               <small>ENTREGA ÚNICA</small>
               <strong>{codigo}</strong>
               <input readOnly value={link} />
               <button onClick={() => void navigator.clipboard.writeText(link)}>
-                Copiar link
+                Copiar ligação
               </button>
             </div>
           </div>
@@ -1237,7 +1239,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
           </span>
         ))}
       </div>
-      <p className="hx-media-control__message" role="status">{mensagem}</p>
+      <p className="hx-media-control__message" role="status">{portuguesVisivel(mensagem)}</p>
     </section>
   );
 }

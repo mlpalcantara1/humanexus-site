@@ -24,6 +24,6 @@ export function resolverTempoCanonicoDoCockpit({
 
   return {
     registro: usarBaseline ? baseline : fase,
-    rotulo: usarBaseline ? "Baseline" : String(fase.fase ?? "Sem fase ativa")
+    rotulo: usarBaseline ? "Referência inicial" : String(fase.fase ?? "Sem fase ativa")
   };
 }

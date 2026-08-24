@@ -24,7 +24,8 @@ test("validação profissional usa um quadro pós-sessão versionado e auditáve
   assert.match(sinteseValidacao, /VALIDAR/);
   assert.match(sinteseValidacao, /AJUSTAR/);
   assert.match(sinteseValidacao, /MANTER_PENDENTE/);
-  assert.match(sinteseValidacao, /crypto\.randomUUID\(\)/);
+  assert.match(sinteseValidacao, /chaveIdempotenteDocumental/);
+  assert.doesNotMatch(sinteseValidacao, /crypto\.randomUUID\(\)/);
   assert.match(operacao, /validar-claim-tirh-v1/);
   assert.match(proxy, /\/tirh-v1\/validacoes/);
 });

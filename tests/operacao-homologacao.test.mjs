@@ -230,7 +230,7 @@ test("recovery de estação é explícito auditável e exige motivo", async () =
     "ESTAÇÃO VINCULADA",
     "ÚLTIMA ATIVIDADE",
     "AQUISIÇÃO ATIVA",
-    "LEASE"
+    "VÍNCULO EXCLUSIVO"
   ]) assert.match(cockpit, new RegExp(rotulo));
 });
 
@@ -288,7 +288,7 @@ test("comando principal inicia e mantém o Baseline pela rota canônica", async 
   ]) {
     assert.doesNotMatch(trecho, new RegExp(`"${comando}"`));
   }
-  assert.match(client, /ENCERRAR_BASELINE: "Encerrar Baseline"/);
+  assert.match(client, /ENCERRAR_BASELINE: "Encerrar referência inicial"/);
   assert.match(
     client,
     /comando\.startsWith\("ENCERRAR_"\)[\s\S]*?toUpperCase\(\)/
@@ -331,11 +331,11 @@ test("há um único Cockpit com quinze visões internas e contexto persistente",
   for (const view of [
     "Visão Geral", "Evidências", "Constituição Operacional da TIRH", "Matriz Vetorial Viva",
     "Resultante", "Trajetória", "PRÉ / TREINO / PÓS", "Rotas Regulatórias", "CTR e THX",
-    "Formulação", "Longitudinal", "Replay", "Relatório", "Modo Coletivo", "Técnico"
+    "Formulação", "Longitudinal", "Reprodução histórica", "Relatório", "Modo Coletivo", "Técnico"
   ]) assert.match(client, new RegExp(view));
   assert.match(client, /ContextoPersistente/);
   assert.match(client, /history\.replaceState/);
-  assert.match(navigation, /Cockpit Vivo/);
+  assert.match(navigation, /Painel Operacional ao Vivo/);
   for (const removed of ["PRÉ \\/ TREINO \\/ PÓS", "Formulação Regulatória", "Replay Inteligente", "Telemetria Bridge"]) {
     assert.doesNotMatch(navigation, new RegExp(removed));
   }
@@ -413,8 +413,8 @@ test("produtos científicos e infraestrutura estão integrados sem virar módulo
   const client = await source("components/operacao-homologacao.tsx");
   for (const item of [
     "ARR", "Rota Regulatória Dominante", "Nova Rota Adaptativa",
-    "Formulação Regulatória", "LONGITUDINAL", "REPLAY MULTIMODAL SINCRONIZADO",
-    "RELATÓRIO E PDF GOVERNADOS", "MODO COLETIVO DO COCKPIT"
+    "Formulação Regulatória", "LONGITUDINAL", "REPRODUÇÃO HISTÓRICA MULTIMODAL SINCRONIZADA",
+    "RELATÓRIO E PDF GOVERNADOS", "MODO COLETIVO DO PAINEL OPERACIONAL"
   ]) assert.match(client, new RegExp(item));
   assert.match(client, /<details className="hx-technical-details">/);
   assert.match(client, /Inspeção técnica protegida/);
@@ -422,18 +422,18 @@ test("produtos científicos e infraestrutura estão integrados sem virar módulo
 
 test("Modo Coletivo identifica a visão ativa sem fabricar amostra ou índice", async () => {
   const client = await source("components/operacao-homologacao.tsx");
-  assert.match(client, /selecionarVisao\("visao-geral"\).*Cockpit Individual/s);
-  assert.match(client, /className="is-active" aria-current="page">Cockpit Coletivo/);
+  assert.match(client, /selecionarVisao\("visao-geral"\).*Painel individual/s);
+  assert.match(client, /className="is-active" aria-current="page">Painel coletivo/);
   assert.match(client, /COLETIVO EM FORMAÇÃO/);
   assert.match(client, /membros_organizacionais_automaticos/);
   assert.match(client, /Nenhuma média individual é calculada/);
   assert.doesNotMatch(client, /Não há equipe autorizada, finalidade coletiva, anonimização ou amostra elegível/);
-  assert.doesNotMatch(client, /disabled>Cockpit Coletivo/);
+  assert.doesNotMatch(client, /disabled>Painel coletivo/);
 });
 
 test("Painel de Comando é operacional e não duplica análise científica", async () => {
   const panel = await source("components/modulo-integrado.tsx");
-  for (const action of ["Consultar organizações", "Consultar participantes", "Gerar convite de Anamnese", "Abrir sessão técnica", "Abrir Cockpit Vivo"]) {
+  for (const action of ["Consultar organizações", "Consultar participantes", "Gerar convite de Anamnese", "Abrir sessão técnica", "Abrir painel operacional ao vivo"]) {
     assert.match(panel, new RegExp(action));
   }
   assert.match(panel, /Não disponibilizado no resumo/);
@@ -525,8 +525,8 @@ test("Cockpit cinematográfico prioriza HUD, leitura viva e condução sem alter
   assert.doesNotMatch(operacional, /hx-live-regulatory-readout--primary/);
   assert.match(operacional, /hx-live-conduction/);
   assert.match(operacional, /hx-live-technical-drawer/);
-  assert.match(operacional, /Baseline como modalidade independente/);
-  assert.match(operacional, /Ciclo independente de Baseline obrigatório/);
+  assert.match(operacional, /Referência inicial como modalidade independente/);
+  assert.match(operacional, /Ciclo independente de referência inicial obrigatória/);
   assert.match(client, /EstruturaInicialDoCockpit/);
   assert.match(client, /window\.confirm/);
   assert.match(modulo, /modulo !== "cockpit-vivo"/);
@@ -559,7 +559,7 @@ test("Cockpit apresenta a configuração basal sem fabricar magnitude", async ()
   assert.match(operacional, /FORMALIZAÇÃO AUTORAL IMPLEMENTADA · VALIDAÇÃO COMPUTACIONAL/);
   assert.match(operacional, /texto livre não convertido/);
   assert.match(operacional, /Magnitude somente quando sustentada por regra autoral e evidência admissível/);
-  assert.match(operacional, /Nenhum snapshot científico foi fabricado/);
+  assert.match(operacional, /Nenhum registro científico congelado foi fabricado/);
   assert.match(operacional, /vetor\.magnitude/);
   assert.match(operacional, /vetor\.motivo/);
 });
@@ -572,8 +572,8 @@ test("telemetria real é contínua, histórica quando encerrada e não cria simu
   assert.match(rota, /telemetria\/sessoes\/.*limite=1200/);
   assert.match(rota, /eventos\?limite=240/);
   assert.match(rota, /linhas-temporais\/.*limite=1200/);
-  assert.match(operacional, /REPLAY HISTÓRICO/);
-  assert.match(operacional, /MODO OPERACIONAL — REPLAY HISTÓRICO/);
+  assert.match(operacional, /REPRODUÇÃO HISTÓRICA/);
+  assert.match(operacional, /MODO OPERACIONAL — REPRODUÇÃO HISTÓRICA/);
   assert.match(operacional, /MODO OPERACIONAL — AGUARDANDO CONEXÃO/);
   assert.match(operacional, /Nenhum dado é simulado enquanto os sensores não conectam/);
   assert.match(operacional, /referenciaDeBaseline/);
@@ -585,14 +585,14 @@ test("telemetria real é contínua, histórica quando encerrada e não cria simu
   for (const item of [
     "Qualidade EEG", "Qualidade de contato",
     "Qualidade da taxa de amostragem",
-    "ATIVIDADE DAS BANDAS EEG — EMOTIV CORTEX",
-    "Theta", "Alpha", "Beta baixa", "Beta alta", "Gamma",
-    "PERFORMANCE METRICS — EMOTIV CORTEX MET",
+    "ATIVIDADE DAS BANDAS EEG · POTÊNCIA DO EMOTIV CORTEX",
+    "Teta", "Alfa", "Beta baixa", "Beta alta", "Gama",
+    "MÉTRICAS DE DESEMPENHO — EMOTIV CORTEX MET",
     "GRÁFICO TEMPORAL · CINCO BANDAS",
     "GLOBAL", "SENSOR", "SEM LEITURA ATUAL",
     "Neurodinâmica em tempo real", "ANI-TIRH v0.1",
     "EXPERIMENTAL — EM VALIDAÇÃO LONGITUDINAL",
-    "COMPARAR COM BASELINE"
+    "COMPARAR COM A REFERÊNCIA INICIAL"
   ]) assert.match(operacional, new RegExp(item));
   assert.ok(
     operacional.indexOf("<AtividadeDasBandasEeg")
@@ -603,7 +603,7 @@ test("telemetria real é contínua, histórica quando encerrada e não cria simu
   assert.match(operacional, /series_por_sensor/);
   assert.match(operacional, /Agregação HUMANEXUS de dados EMOTIV Cortex/);
   assert.match(operacional, /lacunas não interpoladas/);
-  assert.match(operacional, /sem estimativa, blend ou derivação por bandas\/qualidade/);
+  assert.match(operacional, /sem estimativa, mistura ou derivação por bandas ou qualidade/);
   assert.doesNotMatch(operacional, /fluxos_ativos|metricas_cortex_autorizadas/i);
   assert.match(operacional, /REPRODUÇÃO HISTÓRICA DE SESSÃO CIENTIFICAMENTE INCOMPLETA/);
   assert.match(client, /window\.setInterval/);
@@ -624,7 +624,7 @@ test("registro profissional permanente na barra herda o contexto e Replay segue 
   ]) assert.match(`${operacional}\n${rota}`, new RegExp(categoria));
   assert.match(rota, /REGISTRO_PROFISSIONAL_RAPIDO/);
   assert.match(operacional, /A ausência de mídia|NÃO É FALHA/);
-  assert.match(operacional, /REPLAY SINCRONIZANDO/);
+  assert.match(operacional, /REPRODUÇÃO HISTÓRICA EM SINCRONIZAÇÃO/);
   assert.match(operacional, /className="hx-live-hud__record"/);
   assert.match(operacional, /aria-haspopup="dialog"/);
   assert.match(operacional, /role="dialog"/);
@@ -748,9 +748,9 @@ test("demonstração visual é local, sintética e estruturalmente isolada", asy
   assert.match(pagina, /process\.env\.NODE_ENV !== "development"/);
   assert.match(pagina, /notFound\(\)/);
   assert.match(demonstracao, /DEMONSTRAÇÃO VISUAL ISOLADA/);
-  assert.match(demonstracao, /DADOS SINTÉTICOS · SEM API · SEM BANCO · SEM RELATÓRIOS/);
+  assert.match(demonstracao, /DADOS SINTÉTICOS · SEM SERVIÇO EXTERNO · SEM BANCO · SEM RELATÓRIOS/);
   assert.match(demonstracao, /primaryDataLabel="Dado sintético identificado"/);
-  assert.match(demonstracao, /HUD demonstrativo com dez itens/);
+  assert.match(demonstracao, /Painel resumido demonstrativo com dez itens/);
   assert.match(demonstracao, /VETORES\.map/);
   assert.match(demonstracao, /AGUARDANDO CONEXÃO/);
   assert.match(demonstracao, /CAPTURA ATIVA/);
@@ -839,15 +839,15 @@ test("HUMANEXUS Design System unifica módulos e separa profundidade sem alterar
 
   for (const modulo of [
     "Painel de Comando", "Organizações", "Participantes", "Anamnese Regulatória",
-    "Sessões", "Treinamentos", "Cockpit Vivo", "Arquitetura Vetorial", "Resultante",
-    "Rotas Regulatórias", "CTR · THX · THX-AER", "Longitudinal", "Replay",
+    "Sessões", "Treinamentos", "Painel Operacional ao Vivo", "Arquitetura Vetorial", "Resultante",
+    "Rotas Regulatórias", "CTR · THX · THX-AER", "Longitudinal", "Reprodução histórica",
     "Relatórios e exportação", "Administração", "Configurações"
   ]) assert.match(navegacao, new RegExp(modulo.replaceAll("·", "\\·")));
 
   assert.doesNotMatch(cockpit, /className="hx-live-levels"/);
   assert.match(operacao, /<small>EXECUÇÃO<\/small>/);
   assert.match(operacao, /<small>ANÁLISE<\/small>/);
-  assert.match(demonstracao, /SEM CÁLCULO · SEM FALLBACK/);
+  assert.match(demonstracao, /SEM CÁLCULO · SEM SUBSTITUIÇÃO IMPLÍCITA/);
   assert.match(demonstracao, /Ausência não convertida em zero/);
 });
 
@@ -1133,17 +1133,17 @@ test("snapshot e neurotelemetria têm projeção visual completa e separada da q
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
   const gravacao = await source("components/controle-gravacao-multimodal.tsx");
 
-  assert.match(cockpit, /Inspecionar snapshot basal imutável/);
+  assert.match(cockpit, /Inspecionar registro basal imutável/);
   for (const item of [
-    "Identificador", "Timestamp", "Organização", "Participante", "Sessão",
+    "Identificador", "Instante", "Organização", "Participante", "Sessão",
     "Versão científica", "Biblioteca", "Taxonomia de Zona", "Cobertura",
     "Qualidade", "Confiança", "Fontes", "Proveniência", "Regra longitudinal"
   ]) assert.match(cockpit, new RegExp(item));
   assert.match(cockpit, /MÉTRICAS DE DESEMPENHO · EMOTIV CORTEX MET/);
   assert.match(cockpit, /Somente valores nativos ativos/);
-  assert.match(cockpit, /Stream MET real sem valor canônico atual/);
+  assert.match(cockpit, /Fluxo real de métricas sem valor canônico atual/);
   assert.match(gravacao, /snapshot_canonico/);
-  assert.match(gravacao, /Snapshot basal imutável/);
+  assert.match(gravacao, /Registro basal imutável/);
   assert.match(gravacao, /fontesBasaisCanonicas/);
 });
 
@@ -1166,7 +1166,7 @@ test("Baseline canônico aparece sem ser rotulado como telemetria viva", async (
   assert.match(cockpit, /VETORES BASAIS CANÔNICOS · MATRIZ VETORIAL/);
   assert.match(cockpit, /FORMALIZAÇÃO AUTORAL IMPLEMENTADA · VALIDAÇÃO COMPUTACIONAL/);
   assert.match(cockpit, /texto livre não convertido/);
-  assert.match(cockpit, /zero e fallback são proibidos/);
+  assert.match(cockpit, /zero e substituição implícita são proibidos/);
 });
 
 test("configuração basal canônica aparece antes do PRÉ na sessão integral", async () => {
@@ -1330,7 +1330,7 @@ test("Cockpit expõe o contrato de dependência por indicador em português", as
     "Janela mínima",
     "Atualidade máxima",
     "Confiança atual",
-    "Ausência permanece nula, sem zero e sem fallback",
+    "A ausência permanece nula, sem zero e sem substituição implícita",
     "Ação possível",
     "Versão científica",
     "Motor/contrato"
@@ -1354,7 +1354,7 @@ test("Cockpit resolve vetores por UUID ou código e confina rastreabilidade à i
     "Confiança",
     "Sessão",
     "Fase",
-    "Timestamp",
+    "Instante",
     "Biblioteca",
     "Origem matemática",
     "Evidências utilizadas",
@@ -1463,7 +1463,7 @@ test("Polling oficial expira requisição travada e permite nova tentativa", asy
   assert.match(operacao, /const controlador = !opcoes\.signal \? new AbortController\(\) : null/);
   assert.match(operacao, /window\.setTimeout\(\(\) => controlador\.abort\(\), 12_000\)/);
   assert.match(operacao, /signal: controlador\.signal/);
-  assert.match(operacao, /nova tentativa automática em andamento/);
+  assert.match(operacao, /nova tentativa automática está em andamento/);
   assert.match(operacao, /controlador\.abort\(\)[\s\S]*agendar\(250\)/);
   assert.match(operacao, /concluir\(identificador, proximoAtraso\)/);
   assert.match(operacao, /falhasConsecutivas \+= 1/);
@@ -1582,7 +1582,7 @@ test("polling do Cockpit publica o estado real de conexão do núcleo", async ()
   );
   assert.match(
     operacao,
-    /Atualização do Cockpit expirou[\s\S]*?nova tentativa automática/
+    /A atualização do painel operacional expirou[\s\S]*?nova tentativa automática/
   );
 });
 
@@ -1601,7 +1601,7 @@ test("Polling autenticado preserva contexto, ordenação e ciclo único", async 
   const operacao = await source("components/operacao-homologacao.tsx");
 
   assert.match(operacao, /contextoDoPolling\.current = atual/);
-  assert.match(operacao, /polling exige organização, participante e sessão explícitos/i);
+  assert.match(operacao, /atualização periódica exige organização, participante e sessão explícitos/i);
   assert.doesNotMatch(operacao, /sequenciaDasSolicitacoes|ultimaRespostaAplicada/);
   assert.match(operacao, /podeAplicarRespostaCanonica/);
   assert.match(operacao, /carregamentoIntegralEmAndamento\.current\?\.abort\(\)/);
@@ -1625,7 +1625,7 @@ test("expiração administrativa para o polling não perde nem substitui a sess�
   assert.match(operacao, /resposta\.status === 403/);
   assert.match(operacao, /sessão ausente/i);
   assert.match(operacao, /autenticacaoExpiradaAtual\.current = true/);
-  assert.match(operacao, /contexto explícito deste Cockpit foi preservado/i);
+  assert.match(operacao, /contexto explícito deste painel operacional foi preservado/i);
   assert.match(operacao, /href="\/entrar" target="_blank"/);
   assert.match(operacao, /retomarAposAutenticacaoOuFoco/);
   assert.doesNotMatch(

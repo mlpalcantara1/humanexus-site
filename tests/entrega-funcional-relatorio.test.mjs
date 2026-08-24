@@ -82,7 +82,7 @@ test("autoridade documental usa cadastro civil, CPF e organização reais", asyn
   assert.doesNotMatch(rota, /nome:\s*nomeDoParticipante\s*\?\?/);
 });
 
-test("consolidação profissional possui quatorze campos, não autosalva e cria versão append-only", async () => {
+test("consolidação profissional possui quatorze campos, não autosalva e cria versão somente por acréscimo", async () => {
   const autoridade = await source("lib/humanexus-report-authority.ts");
   const componente = await source("components/consolidacao-profissional-relatorio.tsx");
   const rota = await source("app/api/operacao-homologacao/route.ts");
@@ -107,7 +107,56 @@ test("consolidação profissional possui quatorze campos, não autosalva e cria 
   assert.match(componente, /CRIAR VERSÃO CONSOLIDADA/);
   assert.doesNotMatch(componente, /useEffect\([\s\S]*consolidar/);
   assert.match(rota, /identificador_da_serie: anterior\.identificador_da_serie/);
-  assert.match(rota, /Consolidação profissional append-only/);
+  assert.match(rota, /Consolidação profissional somente por acréscimo/);
+});
+
+test("ciclo documental ordena versões e gera chave idempotente estável", async () => {
+  const {
+    chaveIdempotenteDocumental,
+    ordenarRelatoriosPorVersao
+  } = await import("../lib/humanexus-report-authority.ts");
+  const desordenados = [
+    { identificador: "A", numero_da_versao: 2, criado_em: "2026-08-23T20:00:00Z" },
+    { identificador: "Z", numero_da_versao: 1, criado_em: "2026-08-23T19:00:00Z" }
+  ];
+  assert.deepEqual(
+    ordenarRelatoriosPorVersao(desordenados).map((item) => item.numero_da_versao),
+    [1, 2]
+  );
+  const contexto = { sessao: "SESSAO-001", relatorio: "RELATORIO-V1", versao: 1 };
+  const payload = { conclusao: "Conclusão profissional preservada." };
+  const primeira = chaveIdempotenteDocumental(
+    "consolidar-relatorio", contexto, payload
+  );
+  const repetida = chaveIdempotenteDocumental(
+    "consolidar-relatorio", contexto, structuredClone(payload)
+  );
+  const alterada = chaveIdempotenteDocumental(
+    "consolidar-relatorio",
+    contexto,
+    { conclusao: "Conclusão profissional revisada." }
+  );
+  assert.equal(primeira, repetida);
+  assert.notEqual(primeira, alterada);
+});
+
+test("interface documental bloqueia repetição e confirma persistência autoritativa", async () => {
+  const componente = await source("components/consolidacao-profissional-relatorio.tsx");
+  const cockpit = await source("components/operacao-homologacao.tsx");
+  const validacao = await source("components/sintese-validacao-tirh-v1.tsx");
+  const rota = await source("app/api/operacao-homologacao/route.ts");
+  assert.match(componente, /conteudoJaPreservado/);
+  assert.match(componente, /VERSÃO CONSOLIDADA JÁ PRESERVADA/);
+  assert.match(componente, /disabled=\{ocupado \|\| conteudoJaPreservado\}/);
+  assert.match(cockpit, /acaoDocumentalEmAndamento/);
+  assert.match(cockpit, /ENVIANDO PARA VALIDAÇÃO/);
+  assert.match(cockpit, /justificativa profissional foi preservada/);
+  assert.match(cockpit, /Núcleo não confirmou a transição/);
+  assert.match(validacao, /validacaoEmAndamento/);
+  assert.match(validacao, /chaveIdempotenteDocumental/);
+  assert.doesNotMatch(validacao, /chave_de_idempotencia: crypto\.randomUUID/);
+  assert.match(rota, /chave_de_idempotencia: corpo\.chave_de_idempotencia/);
+  assert.match(rota, /ordenarRelatoriosPorVersao/);
 });
 
 test("fluxo humano é Síntese, Consolidação, Relatório e bloqueia PDF final incompleto", async () => {
@@ -122,8 +171,8 @@ test("fluxo humano é Síntese, Consolidação, Relatório e bloqueia PDF final 
   const relatorio = bloco.indexOf("<RelatorioCanonicoV1");
   assert.ok(sintese >= 0 && consolidacao > sintese && relatorio > consolidacao);
   assert.match(cockpit, /cicloDoRelatorioAtual\.finalDisponivel/);
-  assert.match(cockpit, /Enviar para validação/);
-  assert.match(cockpit, /Validar relatório final/);
+  assert.match(cockpit, /ENVIAR PARA VALIDAÇÃO/);
+  assert.match(cockpit, /VALIDAR RELATÓRIO FINAL/);
   assert.match(pdf, /RELATORIO_FINAL_INDISPONIVEL/);
   assert.match(pdf, /status: 409/);
 });
@@ -217,4 +266,66 @@ test("carregamento progressivo não apresenta ausência como conclusão", async 
   assert.match(cockpit, /data-authoritative-loading-state="PENDING"/);
   assert.match(cockpit, /Nenhuma ausência é conclusiva durante este estado/);
   assert.match(cockpit, /Nenhum vazio é conclusivo durante este estado/);
+});
+
+test("camada visível traduz termos estrangeiros sem alterar contratos internos", async () => {
+  const {
+    portuguesNoHtmlVisivel,
+    portuguesVisivel,
+    portuguesVisivelPreservandoEspacos,
+    TERMOS_ESTRANGEIROS_PROIBIDOS_NA_APRESENTACAO
+  } = await import("../lib/portugues-visivel.ts");
+  const amostra = [
+    "Baseline", "Replay", "Cockpit", "claims", "snapshots",
+    "dashboard", "performance", "status", "fallback", "Print",
+    "Preview", "Production", "runtime", "payload", "endpoint",
+    "polling", "cache", "feedback", "loading", "download", "upload",
+    "submit", "save", "mobile", "tooltip", "layout", "benchmark",
+    "e-book", "premium", "site", "web", "append-only", "read-only",
+    "backend", "frontend", "hardware", "software", "handoff", "lease",
+    "stale", "stream", "httpOnly", "CSRF", "API", "JSON", "DOM",
+    "URL", "Git", "link", "desktop", "core", "gate", "login", "logout",
+    "online", "offline", "live", "score", "insights", "QR Code",
+    "email", "e-mail", "token", "worker", "schema", "query", "boolean",
+    "hash", "command center", "design system", "intelligence", "command",
+    "experience", "system", "design", "demo", "radar", "HUD", "LAB",
+    "bridge", "alias", "client", "secret", "power", "raw", "mock",
+    "scrubber", "zoom", "tablet", "notebook"
+  ].join(" · ");
+  const traduzida = portuguesVisivel(amostra).toLowerCase();
+  for (const termo of TERMOS_ESTRANGEIROS_PROIBIDOS_NA_APRESENTACAO) {
+    assert.doesNotMatch(traduzida, new RegExp(`\\b${termo}\\b`, "i"));
+  }
+  assert.match(traduzida, /referência inicial/);
+  assert.match(traduzida, /reprodução histórica/);
+  assert.match(traduzida, /afirmações científicas/);
+  assert.match(traduzida, /substituição implícita/);
+  assert.equal(
+    portuguesVisivelPreservandoEspacos("  Preview em Production  "),
+    "  Homologação em Produção  "
+  );
+  assert.equal(portuguesVisivel("ENVIADO_CONFIRMADO"), "ENVIADO CONFIRMADO");
+
+  const { premiumPages } = await import("../lib/premium-pages.generated.ts");
+  for (const pagina of Object.values(premiumPages)) {
+    const visivel = [
+      portuguesVisivel(pagina.title),
+      portuguesVisivel(pagina.description),
+      portuguesNoHtmlVisivel(pagina.html).replace(/<[^>]+>/g, " ")
+    ].join(" ").toLowerCase();
+    for (const termo of TERMOS_ESTRANGEIROS_PROIBIDOS_NA_APRESENTACAO) {
+      assert.doesNotMatch(visivel, new RegExp(`\\b${termo}\\b`, "i"));
+    }
+  }
+
+  const contrato = await source("app/api/operacao-homologacao/route.ts");
+  assert.match(contrato, /chave_de_idempotencia/);
+  assert.match(contrato, /validar-claim-tirh-v1/);
+
+  const camadaGlobal = await source("components/camada-portugues-visivel.tsx");
+  const leiauteGlobal = await source("app/layout.tsx");
+  assert.match(camadaGlobal, /MutationObserver/);
+  assert.match(camadaGlobal, /attributeFilter: \[\.\.\.ATRIBUTOS_VISIVEIS\]/);
+  assert.match(camadaGlobal, /ELEMENTOS_PRESERVADOS/);
+  assert.match(leiauteGlobal, /<CamadaPortuguesVisivel \/>/);
 });

@@ -31,6 +31,7 @@ import {
   estadoOperacionalTerminal
 } from "@/lib/cockpit-terminal-eligibility";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
+import { estruturaVisivelEmPortugues, portuguesVisivel } from "@/lib/portugues-visivel";
 
 type Registro = Record<string, unknown>;
 type Fonte = Registro & {
@@ -78,11 +79,11 @@ const METRICAS_DE_DESEMPENHO_VISIVEIS = [
 ] as const;
 
 const BANDAS_EEG_VISIVEIS = [
-  { codigo: "theta", nome: "Theta", cor: C.gold },
-  { codigo: "alpha", nome: "Alpha", cor: C.green },
+  { codigo: "theta", nome: "Teta", cor: C.gold },
+  { codigo: "alpha", nome: "Alfa", cor: C.green },
   { codigo: "beta_baixa", nome: "Beta baixa", cor: C.cyan },
   { codigo: "beta_alta", nome: "Beta alta", cor: C.amber },
-  { codigo: "gamma", nome: "Gamma", cor: C.red }
+  { codigo: "gamma", nome: "Gama", cor: C.red }
 ] as const;
 
 const ROTULOS_COMPONENTES_EVIDENCIA: Record<string, string> = {
@@ -122,7 +123,7 @@ const METRICAS_TAREFA_RAPIDA = [
   ["decision_accuracy", "Acurácia decisional"], ["rule_adherence", "Aderência às regras"],
   ["strategy_change", "Mudança de estratégia"], ["recovery_after_error", "Recuperação após erro"],
   ["precision", "Precisão"], ["motor_error", "Erro motor"],
-  ["performance_stability", "Estabilidade de performance"]
+  ["performance_stability", "Estabilidade de desempenho"]
 ] as const;
 
 const ROTULOS_DAS_ZONAS: Record<string, string> = {
@@ -160,9 +161,10 @@ function lista(valor: unknown): Registro[] {
 }
 
 function texto(valor: unknown, padrao = "—") {
-  return valor == null || valor === ""
-    ? padrao
-    : String(valor).replaceAll("_", " ");
+  return portuguesVisivel(
+    valor == null || valor === "" ? padrao : String(valor).replaceAll("_", " "),
+    padrao
+  );
 }
 
 function estadoDoIndicador(valor: unknown) {
@@ -283,7 +285,7 @@ function PorQueEsteResultado({
         {limitacoes.length ? (
           <div><dt>Limitações científicas</dt><dd>{limitacoes.map((item) => texto(item)).join(" · ")}</dd></div>
         ) : null}
-        <div><dt>Ausência</dt><dd>Preservada como nula; zero e fallback são proibidos.</dd></div>
+        <div><dt>Ausência</dt><dd>Preservada como nula; zero e substituição implícita são proibidos.</dd></div>
       </dl>
     </details>
   );
@@ -360,7 +362,7 @@ function referenciaDeBaseline(valor: unknown) {
   return {
     estado: texto(
       referencia.estado ?? registro.estado,
-      "SEM REFERÊNCIA DE BASELINE"
+      "SEM REFERÊNCIA INICIAL"
     ),
     realizadoEm: dataLegivel(registro.iniciado_em),
     duracao: minutos == null || segundos == null
@@ -682,18 +684,18 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
       ) : null}
       <Sparkline pontos={aoVivo || emVerificacao ? lista(fonte.series?.qualidade) : []} cor={C.green} />
       <div className="hx-live-performance-heading">
-        <small>ATIVIDADE DAS BANDAS EEG · EMOTIV CORTEX POW</small>
+        <small>ATIVIDADE DAS BANDAS EEG · POTÊNCIA DO EMOTIV CORTEX</small>
         <span>Médias de apresentação derivadas dos sensores disponíveis; evidência original preservada por sensor e banda.</span>
       </div>
       <div className="hx-live-performance-grid">
-        {["Theta", "Alpha", "Beta baixa", "Beta alta", "Gamma"].map((nome) => {
-          const banda = bandas.find((item) => String(item.nome) === nome);
+        {[["Theta", "Teta"], ["Alpha", "Alfa"], ["Beta baixa", "Beta baixa"], ["Beta alta", "Beta alta"], ["Gamma", "Gama"]].map(([codigoDaFonte, nome]) => {
+          const banda = bandas.find((item) => String(item.nome) === codigoDaFonte);
           const atual = aoVivo && banda?.valor_agregado != null;
           return (
             <span key={nome}>
               <small>{nome}</small>
               <b>{atual ? numero(banda?.valor_agregado, 3) : "INDISPONÍVEL"}</b>
-              <em>{atual ? "Cortex POW atual · média dos canais disponíveis" : "Stream POW sem valor atual"}</em>
+              <em>{atual ? "Potência atual do Cortex · média dos canais disponíveis" : "Fluxo de potência sem valor atual"}</em>
             </span>
           );
         })}
@@ -701,16 +703,16 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
       {aoVivo && bandas.length ? (
         <details className="hx-live-recorded-reading">
           <summary>Detalhar bandas por sensor</summary>
-          <pre>{JSON.stringify(bandas.map((banda) => ({
+          <pre>{JSON.stringify(estruturaVisivelEmPortugues(bandas.map((banda) => ({
             banda: banda.nome,
             sensores: banda.por_sensor,
             proveniencia: banda.proveniencia
-          })), null, 2)}</pre>
+          }))), null, 2)}</pre>
         </details>
       ) : null}
       <div className="hx-live-performance-heading">
-        <small>PERFORMANCE METRICS — EMOTIV CORTEX MET</small>
-        <span>MÉTRICAS DE DESEMPENHO · EMOTIV CORTEX MET · Somente valores nativos ativos; qualidade EEG não é usada como substituta · sem estimativa, blend ou derivação por bandas/qualidade.</span>
+        <small>MÉTRICAS DE DESEMPENHO — EMOTIV CORTEX MET</small>
+        <span>MÉTRICAS DE DESEMPENHO · EMOTIV CORTEX MET · Somente valores nativos ativos; a qualidade EEG não é usada como substituta · sem estimativa, mistura ou derivação por bandas ou qualidade.</span>
       </div>
       <div className="hx-live-performance-grid">
         {METRICAS_DE_DESEMPENHO_VISIVEIS.map((nome) => {
@@ -724,7 +726,7 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
                 ? `${texto(metrica?.tendencia)} · ${texto(metrica?.estado_da_aquisicao)} · ATUAL · ${dataLegivel(metrica?.ultima_atualizacao)}`
                 : emVerificacao && metrica?.valor_atual != null
                   ? `Última projeção ${percentual(metrica.valor_atual)} · validade em verificação`
-                  : "Stream MET real sem valor canônico atual"}</em>
+                  : "Fluxo real de métricas sem valor canônico atual"}</em>
             </span>
           );
         })}
@@ -862,7 +864,7 @@ function AtividadeDasBandasEeg({
                 disabled={!comparacaoDisponivel}
                 onClick={() => setModoTemporal("BASELINE")}
                 type="button"
-              >COMPARAR COM BASELINE</button>
+              >COMPARAR COM A REFERÊNCIA INICIAL</button>
             </div>
           </div>
         )}
@@ -904,7 +906,7 @@ function AtividadeDasBandasEeg({
                   <em>{modoTemporal === "BASELINE"
                     ? typeof referencia === "number"
                       ? `${texto(bandaAni.unidade, "µV²/Hz")} · variação atual ${typeof variacaoRelativa === "number" ? percentual(variacaoRelativa) : "ainda não comparável"}`
-                      : "O Baseline individual compatível ainda não sustenta esta comparação"
+                      : "A referência inicial individual compatível ainda não sustenta esta comparação"
                     : atual
                       ? `${texto(bandaAni.unidade ?? banda.unidade, "µV²/Hz")} · ${texto(bandaAni.tendencia, "estado atual")} · ${dataLegivel(timestampAtual)}`
                       : "Nenhuma amostra pow atual para esta banda"}</em>
@@ -919,7 +921,7 @@ function AtividadeDasBandasEeg({
           </p>
           {BANDAS_EEG_VISIVEIS.some((item) => item.codigo === "gamma") ? (
             <p className="hx-live-eeg-caution">
-              Gamma exige cautela adicional: movimento e atividade muscular podem contaminar a leitura de escalpo.
+              A banda gama exige cautela adicional: movimento e atividade muscular podem contaminar a leitura de escalpo.
             </p>
           ) : null}
           <div className="hx-live-eeg-quality" aria-label="Qualidades independentes do EPOC X">
@@ -952,7 +954,7 @@ function AtividadeDasBandasEeg({
               primaryDataLabel="Potência espectral Cortex"
             />
           ) : (
-            <InstrumentoSemLeitura mensagem="O gráfico será preenchido somente por amostras atuais do stream pow do EMOTIV Cortex." />
+            <InstrumentoSemLeitura mensagem="O gráfico será preenchido somente por amostras atuais do fluxo de potência do EMOTIV Cortex." />
           )}
         </div>
       </div>
@@ -1611,7 +1613,7 @@ export function CockpitOperacionalVivo({
     },
     {
       codigo: "02",
-      nome: "Cockpit Vivo e contexto canônico",
+      nome: "Painel operacional ao vivo e contexto canônico",
       estado: modoSincronizando ? "SINCRONIZANDO" : "ATUALIZADO",
       motivo: modoSincronizando
         ? "Aguardando projeção canônica; nenhum estado local substitui o núcleo."
@@ -1750,7 +1752,7 @@ export function CockpitOperacionalVivo({
       estado: texto(objeto(longitudinalCadeia.trajetoria).estado ?? trajetoria.estado, "NAO INFERIVEL"),
       motivo: texto(
         objeto(longitudinalCadeia.por_que_este_resultado).resumo,
-        "Trajetória exige estados comparáveis; VEV permanece não elegível até Baseline e quatro sessões válidas comparáveis."
+        "A trajetória exige estados comparáveis; o VEV permanece não elegível até uma referência inicial e quatro sessões válidas comparáveis."
       )
     },
     {
@@ -1851,7 +1853,7 @@ export function CockpitOperacionalVivo({
   const rmssdAtual = numeroFinito(valoresPolarAtuais.rmssd_tecnico_ms);
   const qualidadeEegAtual = numeroFinito(valoresEegAtuais.qualidade_eeg);
   const fase = sessaoBaseline
-    ? `BASELINE · ${baseline.estado}`
+    ? `REFERÊNCIA INICIAL · ${baseline.estado}`
     : sessao.fase_atual
     ? texto(sessao.fase_atual)
     : sessaoFinalizada
@@ -1959,7 +1961,7 @@ export function CockpitOperacionalVivo({
         <div>
           <span className="hx-live-eyebrow">
             {modoHistorico
-              ? "MODO OPERACIONAL — REPLAY HISTÓRICO"
+              ? "MODO OPERACIONAL — REPRODUÇÃO HISTÓRICA"
               : modoSincronizando
                 ? "MODO OPERACIONAL — SINCRONIZANDO COM O NÚCLEO"
               : modoAguardando
@@ -1970,7 +1972,7 @@ export function CockpitOperacionalVivo({
           <p>
             {texto(participante.nome ?? participante.referencia_externa, "Participante")} · {
               sessaoBaseline
-                ? "Baseline"
+                ? "Referência inicial"
                 : texto(execucao.estado, "Sessão em preparação")
             }
           </p>
@@ -1978,7 +1980,7 @@ export function CockpitOperacionalVivo({
         <div className="hx-live-mode-actions">
           <span className={modoHistorico ? "is-history" : modoSincronizando || modoAguardando ? "is-waiting" : "is-live"}>
             {modoHistorico
-              ? "REPLAY HISTÓRICO"
+              ? "REPRODUÇÃO HISTÓRICA"
               : modoSincronizando
                 ? "SINCRONIZANDO ESTADO CANÔNICO"
               : modoAguardando
@@ -1999,7 +2001,7 @@ export function CockpitOperacionalVivo({
       <section className="hx-live-context-strip" aria-label="Contexto autorizado da sessão">
         <div><small>ORGANIZAÇÃO</small><strong>{texto(organizacao.nome)}</strong></div>
         <div><small>PROFISSIONAL</small><strong>{texto(profissional.nome)}</strong></div>
-        <div><small>TIPO DA SESSÃO</small><strong>{sessaoBaseline ? "BASELINE" : "PRÉ → TREINO → PÓS"}</strong></div>
+        <div><small>TIPO DA SESSÃO</small><strong>{sessaoBaseline ? "REFERÊNCIA INICIAL" : "PRÉ → TREINO → PÓS"}</strong></div>
         <div><small>{sessaoBaseline ? "FLUXO" : "CTR"}</small><strong>{sessaoBaseline ? "INDEPENDENTE" : texto(ctr.codigo)}</strong></div>
       </section>
 
@@ -2078,7 +2080,7 @@ export function CockpitOperacionalVivo({
           <section className="hx-evidence-qualification" role="dialog" aria-modal="true" aria-label="Qualificação profissional das evidências">
             <header>
               <div><small>QUALIFICAÇÃO PROFISSIONAL</small><strong>{pendentesEvidencia.length} ocorrência(s) aguardando decisão</strong></div>
-              <button type="button" onClick={() => setQualificacaoAberta(false)}>Voltar ao Cockpit</button>
+              <button type="button" onClick={() => setQualificacaoAberta(false)}>Voltar ao painel operacional</button>
             </header>
             <p>{semanticaDasAncorasDisponivel
               ? "Use o contrato oficial: a âncora qualifica a manifestação observada, não atribui nota ao vetor. Confiança e qualidade permanecem dimensões independentes."
@@ -2122,7 +2124,7 @@ export function CockpitOperacionalVivo({
         </div>
       ) : null}
 
-      {perfilTarefaAberto ? <div className="hx-evidence-layer" role="presentation"><button className="hx-evidence-layer__backdrop" type="button" onClick={() => setPerfilTarefaAberto(false)} aria-label="Fechar perfil da tarefa"/><section className="hx-evidence-task-profile" role="dialog" aria-modal="true" aria-label="Perfil explícito da tarefa"><header><div><small>PERFIL DA TAREFA</small><strong>Somente valores que o protocolo/tarefa realmente define</strong></div><button type="button" onClick={() => setPerfilTarefaAberto(false)}>Voltar ao Cockpit</button></header><p>Não estime para preencher vetor. Campo vazio permanece ausente. Os percentuais abaixo só devem ser usados quando a tarefa ou protocolo fornecer essa medida explicitamente.</p><div className="hx-evidence-task-profile__grid">{METRICAS_TAREFA_RAPIDA.map(([codigo,rotulo]) => <label key={codigo}><span>{rotulo}</span><select value={perfilTarefa[codigo] ?? ""} onChange={(evento) => setPerfilTarefa((atual) => ({...atual,[codigo]:evento.target.value}))}><option value="">Ausente</option><option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="75">75%</option><option value="100">100%</option></select></label>)}</div><button className="is-primary" type="button" onClick={() => void salvarPerfilDaTarefa()} disabled={evidenciaEmEnvio}>Preservar perfil explícito</button></section></div> : null}
+      {perfilTarefaAberto ? <div className="hx-evidence-layer" role="presentation"><button className="hx-evidence-layer__backdrop" type="button" onClick={() => setPerfilTarefaAberto(false)} aria-label="Fechar perfil da tarefa"/><section className="hx-evidence-task-profile" role="dialog" aria-modal="true" aria-label="Perfil explícito da tarefa"><header><div><small>PERFIL DA TAREFA</small><strong>Somente valores que o protocolo ou a tarefa realmente definem</strong></div><button type="button" onClick={() => setPerfilTarefaAberto(false)}>Voltar ao painel operacional</button></header><p>Não estime para preencher vetor. Campo vazio permanece ausente. Os percentuais abaixo só devem ser usados quando a tarefa ou protocolo fornecer essa medida explicitamente.</p><div className="hx-evidence-task-profile__grid">{METRICAS_TAREFA_RAPIDA.map(([codigo,rotulo]) => <label key={codigo}><span>{rotulo}</span><select value={perfilTarefa[codigo] ?? ""} onChange={(evento) => setPerfilTarefa((atual) => ({...atual,[codigo]:evento.target.value}))}><option value="">Ausente</option><option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="75">75%</option><option value="100">100%</option></select></label>)}</div><button className="is-primary" type="button" onClick={() => void salvarPerfilDaTarefa()} disabled={evidenciaEmEnvio}>Preservar perfil explícito</button></section></div> : null}
 
       {registroAberto ? (
         <div className="hx-live-register-layer" role="presentation">
@@ -2143,7 +2145,7 @@ export function CockpitOperacionalVivo({
                 <small>REGISTRO PROFISSIONAL</small>
                 <strong id="hx-live-register-title">Contexto preenchido automaticamente</strong>
               </div>
-              <button className="hx-live-register__close" type="button" onClick={() => setRegistroAberto(false)}>Voltar ao Cockpit</button>
+              <button className="hx-live-register__close" type="button" onClick={() => setRegistroAberto(false)}>Voltar ao painel operacional</button>
             </header>
             <dl className="hx-live-register__context">
               <div><dt>Sessão</dt><dd>{texto(contextoSessao.nome_operacional, "Sessão atual")}</dd></div>
@@ -2185,14 +2187,14 @@ export function CockpitOperacionalVivo({
 
       {Object.keys(configuracaoBasal).length ? (
         <details className="hx-live-scientific-disclosure">
-          <summary>Inspeção científica do Baseline</summary>
+          <summary>Inspeção científica da referência inicial</summary>
           <HxSurface
           as="section"
           className="hx-live-scientific-chain"
           aria-label="Configuração regulatória basal"
         >
           <HxSectionHeader
-            eyebrow={texto(configuracaoBasal.versao, "BASELINE REGULATÓRIO AUTORAL")}
+            eyebrow={texto(configuracaoBasal.versao, "REFERÊNCIA INICIAL REGULATÓRIA AUTORAL")}
             title="Configuração regulatória basal"
             aside={<span>FORMALIZAÇÃO AUTORAL IMPLEMENTADA · VALIDAÇÃO COMPUTACIONAL</span>}
           />
@@ -2216,11 +2218,11 @@ export function CockpitOperacionalVivo({
             <article className={["PERSISTIDO", "ELEGIVEL_PARA_PERSISTENCIA_AO_ENCERRAR_BASELINE"].includes(texto(snapshotBasal.estado)) ? "is-ready" : "is-blocked"}>
               <i>03</i>
               <div>
-                <small>Snapshot basal canônico</small>
+                <small>Registro basal canônico congelado</small>
                 <strong>{texto(snapshotBasal.estado, "NÃO PERSISTIDO")}</strong>
                 <span>
-                  {texto(snapshotBasal.motivo, "Nenhum snapshot científico foi fabricado.")}
-                  {snapshotBasal.identificador ? ` · ID ${texto(snapshotBasal.identificador)}` : ""}
+                  {texto(snapshotBasal.motivo, "Nenhum registro científico congelado foi fabricado.")}
+                  {snapshotBasal.identificador ? ` · Identificador ${texto(snapshotBasal.identificador)}` : ""}
                   {snapshotBasal.timestamp ? ` · ${texto(snapshotBasal.timestamp)}` : ""}
                   {snapshotBasal.versao_da_biblioteca ? ` · Biblioteca ${texto(snapshotBasal.versao_da_biblioteca)}` : ""}
                 </span>
@@ -2229,10 +2231,10 @@ export function CockpitOperacionalVivo({
           </div>
           {snapshotBasal.estado === "PERSISTIDO" ? (
             <details className="hx-live-vector-trace hx-live-snapshot-inspection">
-              <summary>Inspecionar snapshot basal imutável</summary>
+              <summary>Inspecionar registro basal imutável</summary>
               <dl>
                 <div><dt>Identificador</dt><dd>{texto(snapshotBasal.identificador)}</dd></div>
-                <div><dt>Timestamp</dt><dd>{dataLegivel(snapshotBasal.timestamp)}</dd></div>
+                <div><dt>Instante</dt><dd>{dataLegivel(snapshotBasal.timestamp)}</dd></div>
                 <div><dt>Organização</dt><dd>{texto(snapshotBasal.identificador_da_organizacao ?? organizacao.identificador)}</dd></div>
                 <div><dt>Participante</dt><dd>{texto(snapshotBasal.identificador_do_participante ?? participante.identificador)}</dd></div>
                 <div><dt>Sessão</dt><dd>{texto(snapshotBasal.identificador_da_sessao ?? snapshotBasal.identificador_da_sessao_de_origem)}</dd></div>
@@ -2249,9 +2251,9 @@ export function CockpitOperacionalVivo({
                     : "Nenhuma"}</dd></div>
                 <div><dt>Famílias</dt><dd>{Array.isArray(snapshotBasal.familias) ? snapshotBasal.familias.map((item) => texto(item)).join(" · ") || "Nenhuma" : "Nenhuma"}</dd></div>
                 <div><dt>IIRH</dt><dd>{iirhDoSnapshot.valor == null ? `NULO · ${texto(iirhDoSnapshot.motivo)}` : `${numero(iirhDoSnapshot.valor, 1)} · qualidade ${percentual(iirhDoSnapshot.qualidade)} · confiança ${percentual(iirhDoSnapshot.confiabilidade ?? snapshotBasal.confianca)}`}</dd></div>
-                <div><dt>Zona</dt><dd>{texto(zonaDoSnapshot.nome ?? zonaDoSnapshot.codigo, `NULA · ${texto(zonaDoSnapshot.motivo, "Precondições não atendidas no snapshot")}`)}</dd></div>
+                <div><dt>Zona</dt><dd>{texto(zonaDoSnapshot.nome ?? zonaDoSnapshot.codigo, `NULA · ${texto(zonaDoSnapshot.motivo, "Precondições não atendidas no registro congelado")}`)}</dd></div>
                 <div><dt>Resultante</dt><dd>{resultanteDoSnapshot.valor == null ? `NULA/PARCIAL · ${texto(resultanteDoSnapshot.motivo ?? resultanteDoSnapshot.justificativa)}` : `${numero(resultanteDoSnapshot.valor, 2)} · ${texto(resultanteDoSnapshot.estado)}`}</dd></div>
-                <div><dt>Proveniência</dt><dd>{referenciaCientificaLegivel(snapshotBasal.proveniencia) || "Proveniência preservada no snapshot"}</dd></div>
+                <div><dt>Proveniência</dt><dd>{referenciaCientificaLegivel(snapshotBasal.proveniencia) || "Proveniência preservada no registro congelado"}</dd></div>
                 <div><dt>Regra longitudinal</dt><dd>{texto(snapshotBasal.regra_de_comparacao_longitudinal)}</dd></div>
                 {vetoresDoSnapshot.map(([codigo, valor]) => {
                   const vetor = objeto(valor);
@@ -2265,7 +2267,7 @@ export function CockpitOperacionalVivo({
                   );
                 })}
                 <div><dt>Integridade</dt><dd>{texto(snapshotBasal.integridade_sha256)}</dd></div>
-                <div><dt>Regra de ausência</dt><dd>Valores nulos permanecem nulos; zero e fallback são proibidos.</dd></div>
+                <div><dt>Regra de ausência</dt><dd>Valores nulos permanecem nulos; zero e substituição implícita são proibidos.</dd></div>
               </dl>
             </details>
           ) : null}
@@ -2356,8 +2358,8 @@ export function CockpitOperacionalVivo({
                 <dd>{leaseDaEstacao.aquisicao_ativa === true ? "SIM" : "NÃO"}</dd>
               </div>
               <div>
-                <dt>LEASE</dt>
-                <dd>{leaseDaEstacao.lease_stale === true ? "STALE" : texto(leaseDaEstacao.estado, "NÃO ATIVO")}</dd>
+                <dt>VÍNCULO EXCLUSIVO</dt>
+                <dd>{leaseDaEstacao.lease_stale === true ? "DESATUALIZADO" : texto(leaseDaEstacao.estado, "NÃO ATIVO")}</dd>
               </div>
             </dl>
           ) : null}
@@ -2558,7 +2560,7 @@ export function CockpitOperacionalVivo({
             title="Leitura temporal da sessão"
             aside={<span>{modoHistorico ? "Dados físicos históricos · sem transmissão atual" : modoSincronizando ? "Aguardando a autoridade canônica · sem inferir desconexão" : modoAguardando ? "Nenhum dado é simulado enquanto os sensores não conectam" : "Atualização contínua sem recarregar a página"}</span>}
           />
-          <div className="hx-live-temporal-rail" aria-label={sessaoBaseline ? "Linha temporal do Baseline" : "Linha temporal PRÉ TREINO PÓS"}>
+          <div className="hx-live-temporal-rail" aria-label={sessaoBaseline ? "Linha temporal da referência inicial" : "Linha temporal PRÉ TREINO PÓS"}>
             {passosDoFluxo.map((passo) => (
               <span
                 className={[
@@ -2606,8 +2608,8 @@ export function CockpitOperacionalVivo({
           ) : null}
           <footer className="hx-live-temporal-footer">
             <span>{sessaoBaseline
-              ? "Baseline como modalidade independente"
-              : "Ciclo independente de Baseline obrigatório"}</span>
+              ? "Referência inicial como modalidade independente"
+              : "Ciclo independente de referência inicial obrigatória"}</span>
             <span>{eventos.length} evento(s) preservado(s)</span>
             <span>Último registro {dataLegivel(replay.ultimo_evento)}</span>
           </footer>
@@ -2650,7 +2652,7 @@ export function CockpitOperacionalVivo({
                     <summary>Por que este resultado?</summary>
                     <p>{etapa.motivo}</p>
                     <em>Ausência permanece nula; nenhuma decisão ou intervenção é automática.</em>
-                    <pre>{JSON.stringify(detalhesDaEtapa[etapa.codigo], null, 2)}</pre>
+                    <pre>{JSON.stringify(estruturaVisivelEmPortugues(detalhesDaEtapa[etapa.codigo]), null, 2)}</pre>
                   </details>
                 </div>
               </article>
@@ -2724,7 +2726,7 @@ export function CockpitOperacionalVivo({
                   <div><dt>Confiança</dt><dd>{percentual(estadoVetorialExibido?.confiabilidade ?? estadoVetorialExibido?.confianca)}</dd></div>
                   <div><dt>Sessão</dt><dd>{texto(estadoVetorialExibido?.identificador_da_sessao ?? configuracaoBasal.identificador_da_sessao)}</dd></div>
                   <div><dt>Fase</dt><dd>{texto(estadoVetorialExibido?.fase ?? configuracaoBasal.contexto_temporal)}</dd></div>
-                  <div><dt>Timestamp</dt><dd>{dataLegivel(estadoVetorialExibido?.timestamp ?? configuracaoBasal.calculado_em)}</dd></div>
+                  <div><dt>Instante</dt><dd>{dataLegivel(estadoVetorialExibido?.timestamp ?? configuracaoBasal.calculado_em)}</dd></div>
                   <div><dt>Biblioteca</dt><dd>{texto(estadoVetorialExibido?.versao_da_biblioteca ?? configuracaoBasal.versao)}</dd></div>
                   <div><dt>Origem matemática</dt><dd>{[
                     texto(origemMatematica.versao, ""),
@@ -2805,24 +2807,24 @@ export function CockpitOperacionalVivo({
                   <div><dt>Confiança</dt><dd>{percentual(indicador.confianca)}</dd></div>
                   <div><dt>Qualidade</dt><dd>{percentual(indicador.qualidade)}</dd></div>
                   <div><dt>Fontes</dt><dd>{fontesDoIndicador(indicador.fontes)}</dd></div>
-                  <div><dt>Janela observada</dt><dd>{JSON.stringify(indicador.janela)}</dd></div>
+                  <div><dt>Janela observada</dt><dd>{JSON.stringify(estruturaVisivelEmPortugues(indicador.janela))}</dd></div>
                   <div><dt>Fórmula transparente</dt><dd>{texto(indicador.formula)}</dd></div>
                   <div><dt>Normalização</dt><dd>{texto(indicador.normalizacao)}</dd></div>
                   <div><dt>Versão</dt><dd>{texto(indicador.versao)}</dd></div>
-                  <div><dt>Status</dt><dd>{texto(indicador.status_cientifico)}</dd></div>
+                  <div><dt>Situação</dt><dd>{texto(indicador.status_cientifico)}</dd></div>
                 </dl>
               ))}
             </details>
           ) : null}
-          <pre>{JSON.stringify({
+          <pre>{JSON.stringify(estruturaVisivelEmPortugues({
             elegibilidade_temporal: elegibilidadeTemporal,
             precondicoes_da_zona: zona.precondicoes_avaliadas,
             proveniencia: leituraCientifica.rastreabilidade_do_motor
-          }, null, 2)}</pre>
+          }), null, 2)}</pre>
         </details>
         <details>
           <summary>Por que este resultado? — Rastreabilidade, dependências e candidatos documentais · cadeia completa</summary>
-          <pre>{JSON.stringify(cadeiaCientifica, null, 2)}</pre>
+          <pre>{JSON.stringify(estruturaVisivelEmPortugues(cadeiaCientifica), null, 2)}</pre>
         </details>
       </section>
 
@@ -2888,7 +2890,7 @@ export function CockpitOperacionalVivo({
       <details className="hx-live-technical-drawer">
         <summary>
           <span>FONTES TÉCNICAS E INTEGRIDADE</span>
-          <strong>{texto(replay.estado, "REPLAY SINCRONIZANDO")} · {orientacaoDeConexao}</strong>
+          <strong>{texto(replay.estado, "REPRODUÇÃO HISTÓRICA EM SINCRONIZAÇÃO")} · {orientacaoDeConexao}</strong>
         </summary>
         <section className="hx-live-sources">
           <FontePolar fonte={polar} />
@@ -2897,7 +2899,7 @@ export function CockpitOperacionalVivo({
             <header><div><small>MÍDIA</small><strong>{texto(replay.midia, "SEM GRAVAÇÃO")}</strong></div><FonteEstado estado="SINCRONIZADA" /></header>
             <div className="hx-live-source-values">
               <span><small>Áudio/vídeo</small><b>{texto(replay.midia, "SEM GRAVAÇÃO")}</b></span>
-              <span><small>Replay</small><b>{texto(replay.estado)}</b></span>
+              <span><small>Reprodução histórica</small><b>{texto(replay.estado)}</b></span>
               <span><small>Armazenamento</small><b>PRIVADO</b></span>
               <span><small>Ausência de mídia</small><b>NÃO É FALHA</b></span>
             </div>
@@ -2936,7 +2938,7 @@ export function CockpitOperacionalVivo({
                     <div><dt>Janela mínima</dt><dd>{item.janela_temporal_minima_segundos == null ? "Não aplicável" : `${numero(item.janela_temporal_minima_segundos)} s`}</dd></div>
                     <div><dt>Atualidade máxima</dt><dd>{item.atualidade_maxima_tecnica_segundos == null ? "Artefato canônico da fase" : `${numero(item.atualidade_maxima_tecnica_segundos)} s`}</dd></div>
                     <div><dt>Confiança atual</dt><dd>{item.confianca_atual == null ? "Ainda não calculável" : percentual(item.confianca_atual)}</dd></div>
-                    <div><dt>Regra de ausência</dt><dd>Ausência permanece nula, sem zero e sem fallback</dd></div>
+                    <div><dt>Regra de ausência</dt><dd>A ausência permanece nula, sem zero e sem substituição implícita</dd></div>
                     <div><dt>Ação possível</dt><dd>{texto(objeto(item.motivo_de_indisponibilidade).acao_possivel, "Nenhuma ação pendente")}</dd></div>
                     <div><dt>Versão científica</dt><dd>{texto(item.versao_cientifica)}</dd></div>
                     <div><dt>Motor/contrato</dt><dd>{texto(item.versao_do_motor)}</dd></div>
@@ -2965,7 +2967,7 @@ export function CockpitOperacionalVivo({
 
       <section id="hx-intervention-level" className="hx-live-conduction" aria-label="Condução profissional da sessão">
         <div className="hx-live-intervention">
-          <header><small>{sessaoBaseline ? "CONDUÇÃO DO BASELINE" : "INTERVENÇÃO SELECIONADA · EM APLICAÇÃO"}</small><strong>{sessaoBaseline ? "Referência regulatória independente" : texto(thx.nome, "Treinamento selecionado")}</strong></header>
+          <header><small>{sessaoBaseline ? "CONDUÇÃO DA REFERÊNCIA INICIAL" : "INTERVENÇÃO SELECIONADA · EM APLICAÇÃO"}</small><strong>{sessaoBaseline ? "Referência regulatória independente" : texto(thx.nome, "Treinamento selecionado")}</strong></header>
           <div>
             <span><small>CRITÉRIO REGULATÓRIO</small><b>{sessaoBaseline ? "Modalidade independente" : texto(ctr.nome, "Critério preservado no contexto")}</b></span>
             <span><small>ESTADO DA APLICAÇÃO</small><b>{texto(execucao.estado, texto(contextoSessao.estado))}</b></span>
@@ -3004,7 +3006,7 @@ export function CockpitOperacionalVivo({
         </div>
       </section>
 
-      {erro ? <p className="hx-module__error">{erro}</p> : null}
+      {erro ? <p className="hx-module__error">{portuguesVisivel(erro)}</p> : null}
     </section>
   );
 }

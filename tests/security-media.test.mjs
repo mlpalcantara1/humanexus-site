@@ -42,7 +42,7 @@ test("Cockpit integra configuração, QR, mídia protegida e Replay", async () =
   assert.match(controle, /QRCode\.toDataURL/);
   assert.match(controle, /AUDIO_E_VIDEO/);
   assert.match(controle, /PRE.*TREINO.*POS/s);
-  assert.match(controle, /Baseline é referência operacional separada e opcional/);
+  assert.match(controle, /A referência inicial é operacional, separada e opcional/);
   assert.match(cockpit, /ControleGravacaoMultimodal/);
   assert.match(cockpit, /hx-replay-media/);
   assert.match(cockpit, /<video controls/);
@@ -67,12 +67,12 @@ test("preparação da sessão oferece mídia opcional, cobertura e baseline expl
     "COBERTURA DISPONÍVEL",
     "FONTES INDISPONÍVEIS",
     "PRODUTOS QUE PODERÃO SER LIMITADOS",
-    "INICIAR BASELINE",
-    "ENCERRAR BASELINE",
-    "REALIZAR NOVO BASELINE",
-    "UTILIZAR BASELINE ANTERIOR",
-    "DISPENSAR BASELINE NESTA SESSÃO",
-    "PROSSEGUIR SEM REFERÊNCIA DE BASELINE",
+    "INICIAR REFERÊNCIA INICIAL",
+    "ENCERRAR REFERÊNCIA INICIAL",
+    "REALIZAR NOVA REFERÊNCIA INICIAL",
+    "UTILIZAR REFERÊNCIA INICIAL ANTERIOR",
+    "DISPENSAR REFERÊNCIA INICIAL NESTA SESSÃO",
+    "PROSSEGUIR SEM REFERÊNCIA INICIAL",
     "AGUARDAR RECONEXÃO",
     "ALTERAR FONTES",
     "VOLTAR PARA SEM GRAVAÇÃO",

@@ -4,6 +4,7 @@ import "./operational.css";
 import "./humanexus-design-system.css";
 import "./anamnese-operacional.css";
 import { PwaRuntime } from "@/components/pwa-runtime";
+import { CamadaPortuguesVisivel } from "@/components/camada-portugues-visivel";
 
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "HUMANEXUS | Inteligência Humana para Operações Aéreas",
     description:
-      "Ciência e tecnologia aplicadas à segurança, decisão e performance humana em operações aéreas.",
+      "Ciência e tecnologia aplicadas à segurança, decisão e desempenho humano em operações aéreas.",
     url: "https://www.institutohumanexus.com",
     siteName: "HUMANEXUS",
     locale: "pt_BR",
@@ -62,7 +63,7 @@ export const metadata: Metadata = {
 const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "Instituto Humanexus de Performance Operacional LTDA",
+  name: "Instituto HUMANEXUS",
   alternateName: "HUMANEXUS",
   url: "https://www.institutohumanexus.com",
   logo: "https://www.institutohumanexus.com/media/humanexus-logo.png",
@@ -79,7 +80,7 @@ const organizationSchema = {
     addressCountry: "BR"
   },
   description:
-    "Inteligência Regulatória Humana e tecnologia aplicada à segurança e performance operacional.",
+    "Inteligência Regulatória Humana e tecnologia aplicada à segurança e ao desempenho operacional.",
   areaServed: "BR"
 };
 
@@ -116,6 +117,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
         {children}
+        <CamadaPortuguesVisivel />
         <PwaRuntime />
       </body>
     </html>
