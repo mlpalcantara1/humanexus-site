@@ -21,8 +21,8 @@ import { SinteseValidacaoTirhV1 } from "@/components/sintese-validacao-tirh-v1";
 import { ConsolidacaoProfissionalDoRelatorio } from "@/components/consolidacao-profissional-relatorio";
 import { HxSectionHeader } from "@/components/hx-design-system";
 import {
-  assinaturaDaConsolidacao,
   chaveIdempotenteDocumental,
+  consolidacaoConfirmadaNaAutoridade,
   MAPA_DE_FONTES_DO_RELATORIO,
   ordenarRelatoriosPorVersao,
   projetarEstadoFuncionalDoRelatorio,
@@ -2494,10 +2494,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       if (acao === "consolidar-relatorio") {
         const payload = dados.payload;
         if (
-          !relatorioRetornado
-          || assinaturaDaConsolidacao(
-            relatorioRetornado.consolidacao_profissional
-          ) !== assinaturaDaConsolidacao(payload)
+          !consolidacaoConfirmadaNaAutoridade(
+            relatorioRetornado,
+            payload
+          )
         ) {
           throw new Error(
             "O Núcleo não confirmou a versão consolidada na autoridade persistida."

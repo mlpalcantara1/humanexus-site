@@ -250,6 +250,15 @@ export function consolidacaoDoRelatorio(relatorio: RegistroDeRelatorio) {
   );
 }
 
+export function consolidacaoConfirmadaNaAutoridade(
+  relatorio: RegistroDeRelatorio | null | undefined,
+  consolidacaoEsperada: unknown
+): boolean {
+  if (!relatorio) return false;
+  return assinaturaDaConsolidacao(consolidacaoDoRelatorio(relatorio))
+    === assinaturaDaConsolidacao(consolidacaoEsperada);
+}
+
 export function projetarEstadoFuncionalDoRelatorio(
   relatorio: RegistroDeRelatorio | undefined
 ) {

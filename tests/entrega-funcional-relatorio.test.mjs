@@ -141,7 +141,10 @@ test("ciclo documental ordena versões e gera chave idempotente estável", async
 });
 
 test("resposta autoritativa da escrita vence leitura imediatamente anterior", async () => {
-  const { conciliarRelatorioPersistido } = await import(
+  const {
+    conciliarRelatorioPersistido,
+    consolidacaoConfirmadaNaAutoridade
+  } = await import(
     "../lib/humanexus-report-authority.ts"
   );
   const anterior = {
@@ -167,6 +170,27 @@ test("resposta autoritativa da escrita vence leitura imediatamente anterior", as
     }).length,
     2
   );
+
+  const consolidacao = {
+    contexto_e_objetivo: "Contexto preservado.",
+    conclusao: "Conclusão profissional preservada."
+  };
+  assert.equal(
+    consolidacaoConfirmadaNaAutoridade({
+      identificador: "relatorio-3",
+      contexto_json: { consolidacao_profissional: consolidacao }
+    }, consolidacao),
+    true,
+    "a resposta bruta do POST deve confirmar a autoridade pelo contexto persistido"
+  );
+  assert.equal(
+    consolidacaoConfirmadaNaAutoridade({
+      identificador: "relatorio-3",
+      consolidacao_profissional: consolidacao
+    }, consolidacao),
+    true,
+    "a projeção enriquecida do GET deve manter a mesma confirmação"
+  );
 });
 
 test("interface documental bloqueia repetição e confirma persistência autoritativa", async () => {
@@ -178,6 +202,7 @@ test("interface documental bloqueia repetição e confirma persistência autorit
   assert.match(componente, /VERSÃO CONSOLIDADA JÁ PRESERVADA/);
   assert.match(componente, /disabled=\{ocupado \|\| conteudoJaPreservado\}/);
   assert.match(cockpit, /acaoDocumentalEmAndamento/);
+  assert.match(cockpit, /consolidacaoConfirmadaNaAutoridade/);
   assert.match(cockpit, /ENVIANDO PARA VALIDAÇÃO/);
   assert.match(cockpit, /role="dialog"/);
   assert.match(cockpit, /Justificativa profissional obrigatória/);
