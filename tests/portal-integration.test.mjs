@@ -259,6 +259,23 @@ test("ficha do participante é reaberta pela URL sem cair em formulário vazio",
   assert.match(management, /atualizarContextoNaUrl\(\{ participante: "", sessao: "" \}\)/);
 });
 
+test("anamnese respeita o contexto explícito e falha fechada sem fallback organizacional", async () => {
+  const painel = await source("components/painel-profissional.tsx");
+  assert.match(painel, /parametros\.get\("organizacao"\)/);
+  assert.match(painel, /parametros\.get\("participante"\)/);
+  assert.match(
+    painel,
+    /carregarParticipantes\(organizacao, participante\)/
+  );
+  assert.match(painel, /organizacaoAtual !== organizacao/);
+  assert.match(
+    painel,
+    /O Núcleo não confirmou a organização solicitada/
+  );
+  assert.match(painel, /participanteSolicitado && !participanteAtual/);
+  assert.match(painel, /atualizarContextoDaAnamnese\(form\.organizacao, identificador\)/);
+});
+
 test("rótulo individual usa a autoridade do participante e separa referência", async () => {
   const management = await source("components/gestao-operacional.tsx");
   assert.match(

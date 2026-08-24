@@ -4,12 +4,26 @@ import QRCode from "qrcode";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { humanexusApi } from "@/lib/humanexus-api";
 import { resolverIdentidadeDocumental } from "@/lib/humanexus-report-authority";
+import { substituirUrlPreservandoContexto } from "@/lib/contexto-navegacao";
 
 const NICHOS = ["AVIACAO", "SAUDE", "EMPRESARIAL", "POLITICA", "TRANSPORTE", "MARITIMO", "SEGURANCA_PUBLICA", "OUTROS"];
 
 function montarLigacaoDoConvite(token: string) {
   const base = window.location.origin.replace(/\/$/, "");
   return `${base}/acesso-participante?token=${encodeURIComponent(token)}`;
+}
+
+function atualizarContextoDaAnamnese(
+  organizacao: string,
+  participante = ""
+) {
+  const url = new URL(window.location.href);
+  if (organizacao) url.searchParams.set("organizacao", organizacao);
+  else url.searchParams.delete("organizacao");
+  if (participante) url.searchParams.set("participante", participante);
+  else url.searchParams.delete("participante");
+  url.searchParams.delete("sessao");
+  substituirUrlPreservandoContexto(url);
 }
 
 type Convite = {
@@ -125,28 +139,71 @@ export function PainelProfissional() {
       setStatus("O perfil atual não possui acesso ao painel de convites.");
     }
   }
-  async function carregarParticipantes(organizacao?: string) {
+  async function carregarParticipantes(
+    organizacao?: string,
+    participanteSolicitado = ""
+  ) {
     const consulta = organizacao
       ? `?organizacao=${encodeURIComponent(organizacao)}`
       : "";
     const dados = await humanexusApi<ContextoParticipantes>(
       `/api/humanexus/participantes${consulta}`
     );
-    setContexto(dados);
     const organizacaoAtual = dados.organizacao?.identificador ?? "";
+    if (organizacao && organizacaoAtual !== organizacao) {
+      throw new Error(
+        "O Núcleo não confirmou a organização solicitada. O módulo foi bloqueado para impedir roteamento cruzado."
+      );
+    }
+    const participanteAtual = participanteSolicitado
+      ? dados.participantes.find(
+          (item) => item.identificador === participanteSolicitado
+        )
+      : null;
+    if (participanteSolicitado && !participanteAtual) {
+      throw new Error(
+        "O Núcleo não confirmou o participante no escopo organizacional solicitado."
+      );
+    }
+    setContexto(dados);
     setForm((atual) => ({
       ...atual,
       organizacao: organizacaoAtual,
-      participante: dados.participantes.some(
-        (item) => item.identificador === atual.participante
-      )
-        ? atual.participante
-        : ""
+      participante: participanteAtual?.identificador
+        ?? (dados.participantes.some(
+          (item) => item.identificador === atual.participante
+        ) ? atual.participante : ""),
+      modo: participanteAtual ? "EXISTENTE" : atual.modo,
+      nome: participanteAtual
+        ? participanteAtual.perfil_operacional?.dados_cadastrais?.nome_social
+          || participanteAtual.perfil_operacional?.dados_cadastrais?.nome_completo
+          || ""
+        : atual.nome,
+      email: participanteAtual
+        ? participanteAtual.perfil_operacional?.dados_cadastrais?.email
+          || participanteAtual.perfil_operacional?.contatos?.[0]?.email
+          || ""
+        : atual.email,
+      telefone: participanteAtual
+        ? participanteAtual.perfil_operacional?.dados_cadastrais?.telefone
+          || participanteAtual.perfil_operacional?.contatos?.[0]?.telefone
+          || ""
+        : atual.telefone,
+      funcao: participanteAtual
+        ? participanteAtual.perfil_operacional?.dados_profissionais?.funcao
+          || participanteAtual.perfil_operacional?.dados_profissionais?.cargo
+          || ""
+        : atual.funcao,
+      tipo_vinculo: participanteAtual?.perfil_operacional?.tipo_de_vinculo
+        || atual.tipo_vinculo
     }));
     return dados;
   }
   useEffect(() => {
-    void carregarParticipantes().then(
+    const parametros = new URLSearchParams(window.location.search);
+    const organizacao = parametros.get("organizacao") ?? "";
+    const participante = parametros.get("participante") ?? "";
+    void carregarParticipantes(organizacao, participante).then(
       (dados) => carregar(dados.organizacao?.identificador ?? "")
     ).catch((erro) => {
       setStatus(
@@ -239,6 +296,7 @@ export function PainelProfissional() {
       funcao: profissionais?.funcao || profissionais?.cargo || "",
       tipo_vinculo: perfil?.tipo_de_vinculo || atual.tipo_vinculo
     }));
+    atualizarContextoDaAnamnese(form.organizacao, identificador);
   }
 
   async function copiar(value: string, mensagem: string) {
@@ -430,7 +488,7 @@ export function PainelProfissional() {
       <div className="hx-invites__workspace">
         <form onSubmit={criar} className="hx-invite-form">
           <header><small>GERAR CONVITE DE ANAMNESE</small><h3>Participante persistido</h3></header>
-          <label><span>Organização</span><select required value={form.organizacao} onChange={(event) => { const organizacao = event.target.value; setForm({ ...form, organizacao, participante: "", nome: "", email: "", telefone: "", funcao: "" }); void Promise.all([carregarParticipantes(organizacao), carregar(organizacao)]).catch((erro) => setStatus(erro instanceof Error ? erro.message : "Organização indisponível.")); }}><option value="">Selecione</option>{(contexto?.organizacoes ?? []).filter((item) => item.ativa !== false).map((item) => <option key={item.identificador} value={item.identificador}>{item.nome}</option>)}</select></label>
+          <label><span>Organização</span><select required value={form.organizacao} onChange={(event) => { const organizacao = event.target.value; setForm({ ...form, organizacao, participante: "", nome: "", email: "", telefone: "", funcao: "" }); atualizarContextoDaAnamnese(organizacao); void Promise.all([carregarParticipantes(organizacao), carregar(organizacao)]).catch((erro) => setStatus(erro instanceof Error ? erro.message : "Organização indisponível.")); }}><option value="">Selecione</option>{(contexto?.organizacoes ?? []).filter((item) => item.ativa !== false).map((item) => <option key={item.identificador} value={item.identificador}>{item.nome}</option>)}</select></label>
           <label><span>Origem do cadastro</span><select value={form.modo} onChange={(event) => setForm({ ...form, modo: event.target.value, participante: "", nome: "", email: "", telefone: "", funcao: "" })}><option value="NOVO">Novo participante</option><option value="EXISTENTE">Participante existente</option></select></label>
           {form.modo === "EXISTENTE" ? <label><span>Participante</span><select required value={form.participante} onChange={(event) => selecionarParticipanteExistente(event.target.value)}><option value="">Selecione</option>{(contexto?.participantes ?? []).filter((item) => item.ativo !== false).map((item) => { const identidade = resolverIdentidadeDocumental(item as unknown as Record<string, unknown>, { identificador: form.organizacao }); const rotulo = identidade.referenciaOperacional !== identidade.nomeCompleto ? `${identidade.nomeCompleto} — ${identidade.referenciaOperacional}` : identidade.nomeCompleto; return <option key={item.identificador} value={item.identificador}>{rotulo}</option>; })}</select></label> : <>
             <label><span>Nome</span><input required value={form.nome} onChange={(event) => setForm({ ...form, nome: event.target.value })} /></label>
