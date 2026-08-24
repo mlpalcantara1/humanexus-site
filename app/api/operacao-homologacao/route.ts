@@ -11,6 +11,7 @@ import { exigirCsrf } from "@/lib/request-security";
 import { normalizarComandoOperacional } from "@/lib/cockpit-operational-command";
 import {
   CAMPOS_PROFISSIONAIS_DO_RELATORIO,
+  conciliarRelatorioPersistido,
   ordenarRelatoriosPorVersao,
   resolverIdentidadeDocumental,
   tituloHumanoDoRelatorio
@@ -926,7 +927,7 @@ async function gerarRelatorio(
   contexto: Contexto,
   chaveDeIdempotencia?: string
 ) {
-  if (contexto.relatorios.length) return;
+  if (contexto.relatorios.length) return contexto.relatorios.at(-1);
   const detalhes = registro(contexto.sessao_operacional?.detalhes);
   const tipoDaSessao = String(
     contexto.sessao.tipo_de_sessao
@@ -934,7 +935,7 @@ async function gerarRelatorio(
     ?? registro(contexto.estado_operacional).tipo_de_sessao
     ?? "PRE_TREINO_POS"
   ).toUpperCase();
-  await consultar(`/api/v1/participantes/${encodeURIComponent(String(contexto.participante.identificador))}/relatorios`, token, {
+  return consultar<Registro>(`/api/v1/participantes/${encodeURIComponent(String(contexto.participante.identificador))}/relatorios`, token, {
     method: "POST",
     body: JSON.stringify({
       tipo: tipoDaSessao === "BASELINE" ? "INDIVIDUAL_DE_SESSAO" : "PRE_TREINO_POS",
@@ -1007,7 +1008,7 @@ async function consolidarRelatorio(
     ?? detalhes.tipo_de_sessao
     ?? "PRE_TREINO_POS"
   ).toUpperCase();
-  await consultar(
+  return consultar<Registro>(
     `/api/v1/participantes/${encodeURIComponent(String(contexto.participante.identificador))}/relatorios`,
     token,
     {
@@ -1095,6 +1096,7 @@ export async function POST(request: Request) {
       prepararComando: !exigeEstadoCompleto
     });
     const organizacaoId = String(contexto.organizacao.identificador);
+    let relatorioPersistido: Registro | null = null;
     if (corpo.acao === "configurar-cortex") {
       await consultar("/api/v1/pontes-fisicas/cortex/configuracao-local", token, {
         method: "POST",
@@ -1249,18 +1251,18 @@ export async function POST(request: Request) {
         })
       });
     } else if (corpo.acao === "relatorio") {
-      await gerarRelatorio(
+      relatorioPersistido = registro(await gerarRelatorio(
         token,
         contexto,
         corpo.chave_de_idempotencia
-      );
+      ));
     } else if (corpo.acao === "consolidar-relatorio") {
-      await consolidarRelatorio(
+      relatorioPersistido = registro(await consolidarRelatorio(
         token,
         contexto,
         corpo.payload,
         corpo.chave_de_idempotencia
-      );
+      ));
     } else if (corpo.acao === "transicionar-relatorio") {
       const payload = registro(corpo.payload);
       const relatorio = contexto.relatorios.find(
@@ -1279,7 +1281,7 @@ export async function POST(request: Request) {
           "TRANSICAO_DOCUMENTAL_INVALIDA"
         );
       }
-      await consultar(
+      relatorioPersistido = await consultar<Registro>(
         `/api/v1/relatorios/${encodeURIComponent(String(relatorio.identificador))}/transicoes`,
         token,
         {
@@ -1299,8 +1301,19 @@ export async function POST(request: Request) {
         "ACAO_OPERACIONAL_INVALIDA"
       );
     }
+    const estadoAtualizado = await estado(
+      token,
+      selecao,
+      { carregamentoInicial: true }
+    );
+    estadoAtualizado.relatorios = conciliarRelatorioPersistido(
+      estadoAtualizado.relatorios,
+      relatorioPersistido as (
+        typeof estadoAtualizado.relatorios[number]
+      ) | null
+    );
     return NextResponse.json(
-      await estado(token, selecao, { carregamentoInicial: true }),
+      estadoAtualizado,
       { headers: { "cache-control": "private, no-store" } }
     );
   } catch (erro) {

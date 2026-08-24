@@ -36,6 +36,19 @@ export function ordenarRelatoriosPorVersao<
   });
 }
 
+export function conciliarRelatorioPersistido<
+  T extends RegistroDeRelatorio
+>(relatorios: T[], persistido: T | null | undefined): T[] {
+  const identificador = String(persistido?.identificador ?? "").trim();
+  if (!identificador) return ordenarRelatoriosPorVersao(relatorios);
+  return ordenarRelatoriosPorVersao([
+    ...relatorios.filter(
+      (item) => String(item.identificador ?? "") !== identificador
+    ),
+    persistido as T
+  ]);
+}
+
 function observacoesEstruturadas(valor: string) {
   const linhas = valor.split("\n").map((item) => item.trim()).filter(Boolean);
   const estruturadas = Object.fromEntries(linhas.flatMap((linha) => {

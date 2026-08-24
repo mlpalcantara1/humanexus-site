@@ -140,6 +140,35 @@ test("ciclo documental ordena versões e gera chave idempotente estável", async
   assert.notEqual(primeira, alterada);
 });
 
+test("resposta autoritativa da escrita vence leitura imediatamente anterior", async () => {
+  const { conciliarRelatorioPersistido } = await import(
+    "../lib/humanexus-report-authority.ts"
+  );
+  const anterior = {
+    identificador: "relatorio-1",
+    numero_da_versao: 1,
+    estado_documental: "RASCUNHO"
+  };
+  const persistido = {
+    identificador: "relatorio-2",
+    numero_da_versao: 2,
+    estado_documental: "PRONTO_PARA_VALIDACAO"
+  };
+  assert.deepEqual(
+    conciliarRelatorioPersistido([anterior], persistido).map(
+      (item) => item.identificador
+    ),
+    ["relatorio-1", "relatorio-2"]
+  );
+  assert.equal(
+    conciliarRelatorioPersistido([anterior, persistido], {
+      ...persistido,
+      estado_documental: "AGUARDANDO_VALIDACAO"
+    }).length,
+    2
+  );
+});
+
 test("interface documental bloqueia repetição e confirma persistência autoritativa", async () => {
   const componente = await source("components/consolidacao-profissional-relatorio.tsx");
   const cockpit = await source("components/operacao-homologacao.tsx");
@@ -157,6 +186,7 @@ test("interface documental bloqueia repetição e confirma persistência autorit
   assert.doesNotMatch(validacao, /chave_de_idempotencia: crypto\.randomUUID/);
   assert.match(rota, /chave_de_idempotencia: corpo\.chave_de_idempotencia/);
   assert.match(rota, /ordenarRelatoriosPorVersao/);
+  assert.match(rota, /conciliarRelatorioPersistido/);
 });
 
 test("fluxo humano é Síntese, Consolidação, Relatório e bloqueia PDF final incompleto", async () => {
