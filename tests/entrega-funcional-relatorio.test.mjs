@@ -315,6 +315,16 @@ test("camada visível traduz termos estrangeiros sem alterar contratos internos"
     "Rastreamento da sessão"
   );
   assert.equal(portuguesVisivel("PRONTO_PARA_VALIDACAO"), "PRONTO PARA VALIDAÇÃO");
+  assert.equal(
+    portuguesVisivel("AGUARDANDO_CONSOLIDACAO_PROFISSIONAL"),
+    "AGUARDANDO CONSOLIDAÇÃO PROFISSIONAL"
+  );
+  assert.equal(portuguesVisivel("RASCUNHO_TECNICO"), "RASCUNHO TÉCNICO");
+  assert.equal(
+    portuguesVisivel("perfil_operacional + evidencias desta sessao"),
+    "perfil operacional + evidências desta sessão"
+  );
+  assert.equal(portuguesVisivel("CAMPO_NEUROREGULATORIO"), "CAMPO NEURORREGULATÓRIO");
   assert.equal(portuguesVisivel("NAO_CALCULAVEL"), "NÃO CALCULÁVEL");
   assert.equal(portuguesVisivel("Person"), "PESSOA");
   assert.equal(
