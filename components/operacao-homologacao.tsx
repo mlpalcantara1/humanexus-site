@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ModuloDaPlataforma } from "@/components/modulo-integrado";
 import {
   CockpitSignalStack,
@@ -1777,6 +1777,7 @@ function SelecaoInicialDoCockpit({
 }
 
 export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) {
+  const roteador = useRouter();
   const parametrosDaRota = useSearchParams();
   const consultaDaRota = parametrosDaRota.toString();
   const [estado, setEstado] = useState<Estado | null>(null);
@@ -1892,7 +1893,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     url.pathname = "/plataforma/cockpit-vivo";
     url.searchParams.set("visao", destino);
     if (destino !== "tecnico") url.searchParams.delete("painel");
-    substituirUrlPreservandoContexto(url);
+    roteador.replace(`${url.pathname}${url.search}`, { scroll: false });
   };
 
   const carregar = async (

@@ -121,6 +121,7 @@ test("PDF, Print, Replay e Longitudinal permanecem no mesmo fluxo", () => {
 });
 
 test("menu lateral mantém a visão solicitada sem fallback para a visão anterior", () => {
+  assert.match(operacao, /const roteador = useRouter\(\)/);
   assert.match(operacao, /const parametrosDaRota = useSearchParams\(\)/);
   assert.match(operacao, /const consultaDaRota = parametrosDaRota\.toString\(\)/);
   assert.match(operacao, /sincronizarVisaoComARota/);
@@ -130,6 +131,7 @@ test("menu lateral mantém a visão solicitada sem fallback para a visão anteri
   assert.match(operacao, /else if \(visao === "relatorio"\) conteudoDaVisao = visaoRelatorio/);
   assert.match(operacao, /else if \(visao === "replay"\) conteudoDaVisao = visaoReplay/);
   assert.match(operacao, /else if \(visao === "longitudinal"\) conteudoDaVisao = visaoLongitudinal/);
+  assert.match(operacao, /roteador\.replace\(`\$\{url\.pathname\}\$\{url\.search\}`, \{ scroll: false \}\)/);
   assert.match(navegacao, /const concluirNavegacao = \(\) =>/);
   assert.match(navegacao, /window\.dispatchEvent\(new Event\(EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO\)\)/);
   assert.match(navegacao, /onClick=\{concluirNavegacao\}/);
