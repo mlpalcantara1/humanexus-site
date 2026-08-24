@@ -327,6 +327,12 @@ test("módulos operacionais usam gestão real sem ações de fachada", async () 
   assert.match(modules, /Gerar convite de Anamnese/);
 });
 
+test("painel não apresenta o total autorizado como organizações ativas", async () => {
+  const modules = await source("components/modulo-integrado.tsx");
+  assert.match(modules, /Organizações autorizadas/);
+  assert.doesNotMatch(modules, /Organização ativa/);
+});
+
 test("organização e participante usam ficha completa, versionada e reabrível", async () => {
   const management = await source("components/gestao-operacional.tsx");
   const route = await source("app/api/gestao-operacional/route.ts");

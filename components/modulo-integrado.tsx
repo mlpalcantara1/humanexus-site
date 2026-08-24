@@ -117,7 +117,7 @@ function Painel({ recursos }: { recursos: Recurso[] }) {
   const numero = (chave: string) => typeof resumo?.[chave] === "number" ? String(resumo[chave]) : "—";
   const fontesDisponiveis = ["conectores", "telemetria"].filter((nome) => porNome.get(nome)?.disponivel).length;
   const metricas = [
-    ["Organização ativa", numero("organizacoes"), "Escopo autorizado"],
+    ["Organizações autorizadas", numero("organizacoes"), "Escopo autorizado"],
     ["Participantes ativos", numero("participantes_ativos"), "Cadastros ativos no escopo"],
     ["Anamneses", numero("anamneses"), "Registros no núcleo"],
     ["Treinamentos ativos", "—", "Não disponibilizado no resumo"],
