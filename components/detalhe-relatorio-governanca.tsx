@@ -27,6 +27,7 @@ export function DetalheDoRelatorioEmGovernanca({
   const finalidade = relatorio.secoes?.find(
     (item) => item.codigo === "FINALIDADE_DO_TREINAMENTO"
   )?.itens[0] ?? relatorio.objetivo;
+  const entregaFinalDisponivel = relatorio.relatorio_final_disponivel === true;
   return (
     <article className="hx-released-report">
       <Link className="hx-released-report__back" href={retorno}>
@@ -44,10 +45,18 @@ export function DetalheDoRelatorioEmGovernanca({
           <div><dt>Validado em</dt><dd>{dataHumana(relatorio.validado_em)}</dd></div>
         </dl>
         <div className="hx-released-report__cover-actions">
-          <a href={`/api/governanca-relatorios/${encodeURIComponent(relatorio.identificador)}/pdf`}>
-            Baixar PDF <span aria-hidden="true">↓</span>
-          </a>
-          <BotaoImprimirRelatorio />
+          {entregaFinalDisponivel ? (
+            <>
+              <a href={`/api/governanca-relatorios/${encodeURIComponent(relatorio.identificador)}/pdf`}>
+                Baixar PDF <span aria-hidden="true">↓</span>
+              </a>
+              <BotaoImprimirRelatorio />
+            </>
+          ) : (
+            <span className="hx-report-finalization-guard" role="status">
+              PDF e impressão finais indisponíveis: complete e valide a consolidação profissional.
+            </span>
+          )}
         </div>
       </header>
       <section className="hx-released-report__layer">

@@ -150,7 +150,9 @@ export async function requisitarNucleoBinario(
     const dados = await resposta.json().catch(() => ({}));
     throw new ErroDoNucleo(
       dados?.erro?.mensagem ?? "Não foi possível obter o arquivo.",
-      resposta.status
+      resposta.status,
+      String(dados?.erro?.codigo ?? "ERRO_DO_NUCLEO"),
+      resposta.headers.get("x-humanexus-correlation-id") ?? undefined
     );
   }
   return {

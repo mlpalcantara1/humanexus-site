@@ -36,6 +36,7 @@ export async function GET(
       mensagemDeAcessoNegado: (
         "Seu perfil não possui autorização para exportar este relatório."
       ),
+      preservarMensagemSeguraDoNucleo: true,
     });
   }
 }

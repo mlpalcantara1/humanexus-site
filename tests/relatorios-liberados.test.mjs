@@ -37,7 +37,7 @@ test("consulta e download usam somente a rota de relatórios liberados", async (
   assert.doesNotMatch(download, /operacao-homologacao/);
 });
 
-test("governança interna abre, baixa e imprime o relatório autenticado", async () => {
+test("governança interna só baixa e imprime o relatório final autenticado", async () => {
   const pagina = await source("app/(platform)/profissional/relatorios/[id]/page.tsx");
   const detalhe = await source("components/detalhe-relatorio-governanca.tsx");
   const download = await source("app/api/governanca-relatorios/[id]/pdf/route.ts");
@@ -46,12 +46,21 @@ test("governança interna abre, baixa e imprime o relatório autenticado", async
   assert.match(pagina, /PERFIS/);
   assert.match(detalhe, /Baixar PDF/);
   assert.match(detalhe, /BotaoImprimirRelatorio/);
+  assert.match(detalhe, /relatorio\.relatorio_final_disponivel === true/);
+  assert.match(detalhe, /PDF e impressão finais indisponíveis: complete e valide a consolidação profissional/);
   assert.match(detalhe, /ANEXO TÉCNICO-CIENTÍFICO \/ AUDITORIA/);
   assert.match(download, /\/api\/v1\/relatorios\/\$\{encodeURIComponent\(id\)\}\/pdf/);
   assert.match(download, /COOKIE_SESSAO/);
   assert.match(download, /private, no-store/);
+  assert.match(download, /preservarMensagemSeguraDoNucleo: true/);
   assert.match(impressao, /window\.print/);
   assert.match(impressao, /Imprimir relatório/);
+});
+
+test("proxy binário preserva código e correlação do bloqueio governado", async () => {
+  const nucleo = await source("lib/humanexus-core.ts");
+  assert.match(nucleo, /dados\?\.erro\?\.codigo/);
+  assert.match(nucleo, /x-humanexus-correlation-id/);
 });
 
 test("relatório externo oferece leitura TIRH humana e auditoria documental separada", async () => {

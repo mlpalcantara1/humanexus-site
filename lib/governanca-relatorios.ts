@@ -12,6 +12,9 @@ export type RelatorioEmGovernanca = {
   titulo: string;
   objetivo: string;
   estado_documental: string;
+  estado_funcional?: string;
+  relatorio_final_disponivel?: boolean;
+  campos_profissionais_ausentes?: string[];
   criado_em: string | null;
   submetido_em: string | null;
   validado_em: string | null;
