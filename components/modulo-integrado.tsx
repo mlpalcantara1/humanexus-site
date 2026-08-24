@@ -115,11 +115,10 @@ function Painel({ recursos }: { recursos: Recurso[] }) {
   const porNome = new Map(recursos.map((recurso) => [recurso.nome, recurso]));
   const resumo = porNome.get("painel")?.dados as Record<string, unknown> | undefined;
   const numero = (chave: string) => typeof resumo?.[chave] === "number" ? String(resumo[chave]) : "—";
-  const clientes = porNome.get("clientes")?.dados;
   const fontesDisponiveis = ["conectores", "telemetria"].filter((nome) => porNome.get(nome)?.disponivel).length;
   const metricas = [
     ["Organização ativa", numero("organizacoes"), "Escopo autorizado"],
-    ["Clientes ativos", Array.isArray(clientes) ? String(clientes.length) : numero("participantes"), "Participantes no escopo"],
+    ["Participantes ativos", numero("participantes_ativos"), "Cadastros ativos no escopo"],
     ["Anamneses", numero("anamneses"), "Registros no núcleo"],
     ["Treinamentos ativos", "—", "Não disponibilizado no resumo"],
     ["Sessões programadas", "—", "Não disponibilizado no resumo"],

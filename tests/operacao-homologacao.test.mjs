@@ -438,6 +438,10 @@ test("Painel de Comando é operacional e não duplica análise científica", asy
   }
   assert.match(panel, /Não disponibilizado no resumo/);
   assert.match(panel, /o painel não fabrica pendências/i);
+  assert.match(panel, /Participantes ativos/);
+  assert.match(panel, /numero\("participantes_ativos"\)/);
+  assert.doesNotMatch(panel, /Clientes ativos/);
+  assert.doesNotMatch(panel, /clientes\.length/);
   assert.doesNotMatch(panel, /function Painel[\\s\\S]*Matriz Vetorial Viva/);
 });
 
