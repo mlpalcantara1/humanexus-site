@@ -5,6 +5,7 @@ import test from "node:test";
 const cockpit = fs.readFileSync("components/cockpit-operacional-vivo.tsx", "utf8");
 const operacao = fs.readFileSync("components/operacao-homologacao.tsx", "utf8");
 const compartilhado = fs.readFileSync("components/sintese-validacao-tirh-v1.tsx", "utf8");
+const navegacao = fs.readFileSync("components/platform-navigation.tsx", "utf8");
 
 function ocorrencias(texto, padrao) {
   return texto.match(padrao)?.length ?? 0;
@@ -129,4 +130,7 @@ test("menu lateral mantém a visão solicitada sem fallback para a visão anteri
   assert.match(operacao, /else if \(visao === "relatorio"\) conteudoDaVisao = visaoRelatorio/);
   assert.match(operacao, /else if \(visao === "replay"\) conteudoDaVisao = visaoReplay/);
   assert.match(operacao, /else if \(visao === "longitudinal"\) conteudoDaVisao = visaoLongitudinal/);
+  assert.match(navegacao, /const concluirNavegacao = \(\) =>/);
+  assert.match(navegacao, /window\.dispatchEvent\(new Event\(EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO\)\)/);
+  assert.match(navegacao, /onClick=\{concluirNavegacao\}/);
 });

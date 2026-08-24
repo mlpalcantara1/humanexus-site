@@ -84,6 +84,12 @@ function NavigationItems({ podeVerLab, podeAdministrar, close }: { podeVerLab: b
     return () => window.removeEventListener(EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO, sincronizar);
   }, [consultaDaRota]);
   const parametrosAtuais = new URLSearchParams(consultaAtual);
+  const concluirNavegacao = () => {
+    close?.();
+    window.setTimeout(() => {
+      window.dispatchEvent(new Event(EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO));
+    }, 0);
+  };
   const contexto = new URLSearchParams();
   for (const chave of CHAVES_DO_CONTEXTO_NAVEGACAO) {
     const valor = parametrosAtuais.get(chave);
@@ -114,7 +120,7 @@ function NavigationItems({ podeVerLab, podeAdministrar, close }: { podeVerLab: b
                 ? `${path}?${itemQuery}`
                 : item.href;
               return (
-                <Link className={active ? "hx-nav__link hx-nav__link--active" : "hx-nav__link"} href={href} key={item.href} onClick={close}>
+                <Link className={active ? "hx-nav__link hx-nav__link--active" : "hx-nav__link"} href={href} key={item.href} onClick={concluirNavegacao}>
                   <span className="hx-nav__mark"><NavigationIcon name={item.icon} /><small>{item.mark}</small></span>
                   <span className="hx-nav__label">{item.label}</span>
                   {active ? <i aria-hidden="true" /> : null}
