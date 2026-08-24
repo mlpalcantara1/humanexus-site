@@ -375,6 +375,30 @@ test("organização e participante usam ficha completa, versionada e reabrível"
   assert.doesNotMatch(route, /\/api\/v1\/usuarios/);
 });
 
+test("cockpit exclui participante inativo do seletor e recusa contexto direto", async () => {
+  const cockpit = await source("components/operacao-homologacao.tsx");
+  const route = await source("app/api/operacao-homologacao/route.ts");
+
+  assert.match(cockpit, /function participanteAtivo/);
+  assert.match(
+    cockpit,
+    /contexto\.participantes\.filter\([\s\S]*participanteAtivo/
+  );
+  assert.match(
+    cockpit,
+    /contextoRecebido\.participantes[\s\S]*\.filter\(participanteAtivo\)[\s\S]*\.map/
+  );
+  assert.match(route, /function participanteAtivo/);
+  assert.match(
+    route,
+    /contextoBase\.participantes\.filter\(participanteAtivo\)/
+  );
+  assert.doesNotMatch(
+    cockpit,
+    /contexto\.participantes\.map\(\(item\) => \(\s*<option/
+  );
+});
+
 test("governança de cadastros separa proprietário, profissional e volume técnico", async () => {
   const management = await source("components/gestao-operacional.tsx");
   const styles = await source("app/operational.css");

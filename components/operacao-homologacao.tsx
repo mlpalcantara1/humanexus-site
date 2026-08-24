@@ -137,6 +137,10 @@ type ContextoParaSelecao = {
   sessoes: Registro[];
 };
 
+function participanteAtivo(registro: Registro | null | undefined) {
+  return registro?.ativo !== false;
+}
+
 const ABORTAR_POR_SINCRONIZACAO_INTEGRAL =
   "HUMANEXUS_SINCRONIZACAO_INTEGRAL";
 const ABORTAR_POR_NOVO_CARREGAMENTO =
@@ -1190,6 +1194,9 @@ function SeletorDeContexto({
   ) => void;
 }) {
   const selecao = estado.contextos.selecao;
+  const participantesAtivos = estado.contextos.participantes.filter(
+    participanteAtivo
+  );
   return (
     <section className="hx-context-selector" aria-label="Seleção do contexto operacional">
       <header>
@@ -1221,7 +1228,7 @@ function SeletorDeContexto({
             disabled={ocupado}
             onChange={(evento) => selecionar("participante", evento.target.value)}
           >
-            {estado.contextos.participantes.map((item) => (
+            {participantesAtivos.map((item) => (
               <option key={String(item.identificador)} value={String(item.identificador)}>
                 {somenteReferenciaOperacional
                   ? texto(item.referencia_operacional)
@@ -1705,6 +1712,9 @@ function SelecaoInicialDoCockpit({
   abrir: () => void;
   somenteReferenciaOperacional?: boolean;
 }) {
+  const participantesAtivos = contexto.participantes.filter(
+    participanteAtivo
+  );
   const sessoes = contexto.sessoes.filter(
     (item) => String(item.identificador_do_participante ?? "")
       === selecao.participante
@@ -1728,7 +1738,7 @@ function SelecaoInicialDoCockpit({
         ))}</select></label>
         <label>Participante<select
           value={somenteReferenciaOperacional
-              ? String(contexto.participantes.find(
+              ? String(participantesAtivos.find(
                 (item) => String(item.identificador) === selecao.participante
               )?.referencia_operacional ?? "")
             : selecao.participante}
@@ -1736,12 +1746,12 @@ function SelecaoInicialDoCockpit({
           onChange={(evento) => selecionar(
             "participante",
             somenteReferenciaOperacional
-              ? String(contexto.participantes.find(
+              ? String(participantesAtivos.find(
                   (item) => String(item.referencia_operacional) === evento.target.value
                 )?.identificador ?? "")
               : evento.target.value
           )}
-        ><option value="">Selecione</option>{contexto.participantes.map((item) => (
+        ><option value="">Selecione</option>{participantesAtivos.map((item) => (
           <option key={String(item.identificador)} value={somenteReferenciaOperacional ? String(item.referencia_operacional) : String(item.identificador)}>{somenteReferenciaOperacional ? texto(item.referencia_operacional) : texto(item.rotulo ?? item.referencia_operacional)}</option>
         ))}</select></label>
         <label>Sessão existente<select
@@ -2186,7 +2196,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       const organizacaoDoContexto = contextoRecebido.organizacao ?? {};
       const contexto = {
         ...contextoRecebido,
-        participantes: contextoRecebido.participantes.map((item) => {
+        participantes: contextoRecebido.participantes
+          .filter(participanteAtivo)
+          .map((item) => {
           const identidade = resolverIdentidadeDocumental(
             item,
             organizacaoDoContexto

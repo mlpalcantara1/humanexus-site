@@ -139,6 +139,10 @@ function registro(valor: unknown): Registro {
   }
 }
 
+function participanteAtivo(registroDoParticipante: Registro | null | undefined) {
+  return registroDoParticipante?.ativo !== false;
+}
+
 function sanitizarDtoDaPopulacaoColetiva(valor: unknown): Registro {
   const populacao = registro(valor);
   const pertencimento = registro(populacao.pertencimento);
@@ -294,7 +298,7 @@ async function estado(
     );
   }
   const organizacaoId = String(organizacao.identificador);
-  const participantes = contextoBase.participantes;
+  const participantes = contextoBase.participantes.filter(participanteAtivo);
   if (!selecao.identificador_do_participante) {
     throw new ErroDaRota(
       "Selecione explicitamente o participante antes de abrir o painel operacional.",
