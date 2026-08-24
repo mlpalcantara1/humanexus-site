@@ -17,8 +17,11 @@ test("correlação e código do núcleo atravessam o proxy sem reclassificar 5xx
   assert.match(errors, /erro\.correlacao/);
   assert.match(errors, /erro\.codigo/);
   assert.match(errors, /"x-humanexus-correlation-id": correlacao/);
+  assert.match(errors, /preservarMensagemSeguraDoNucleo/);
+  assert.match(errors, /\[400, 409, 422\]\.includes\(status\)/);
   assert.match(route, /responderErroDaApi/);
   assert.match(route, /rota: "COMANDO_OPERACIONAL"/);
+  assert.match(route, /preservarMensagemSeguraDoNucleo: true/);
   assert.doesNotMatch(route, /catch \(erro\) \{\s*return NextResponse\.json/);
   assert.doesNotMatch(
     route,

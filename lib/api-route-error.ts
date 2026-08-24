@@ -5,6 +5,7 @@ type OpcoesDeErro = {
   modulo: string;
   rota: string;
   mensagemDeAcessoNegado?: string;
+  preservarMensagemSeguraDoNucleo?: boolean;
 };
 
 export class ErroDaRota extends Error {
@@ -55,6 +56,10 @@ export function responderErroDaApi(erro: unknown, opcoes: OpcoesDeErro) {
     erro: {
       mensagem: erro instanceof ErroDaRota
         ? erro.message
+        : erro instanceof ErroDoNucleo
+          && opcoes.preservarMensagemSeguraDoNucleo
+          && [400, 409, 422].includes(status)
+          ? erro.message
         : descricaoPublica(status, opcoes.mensagemDeAcessoNegado),
       codigo: erroConhecido
         ? erro.codigo

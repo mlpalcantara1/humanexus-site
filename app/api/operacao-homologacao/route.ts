@@ -1307,7 +1307,8 @@ export async function POST(request: Request) {
     return responderErroDaApi(erro, {
       modulo: "COCKPIT_VIVO",
       rota: "COMANDO_OPERACIONAL",
-      mensagemDeAcessoNegado: "A ação exige um profissional autorizado para esta sessão."
+      mensagemDeAcessoNegado: "A ação exige um profissional autorizado para esta sessão.",
+      preservarMensagemSeguraDoNucleo: true
     });
   }
 }
