@@ -58,7 +58,7 @@ test("alias organizacional converge para a área privada canônica", async () =>
 
 test("token de sessão não é armazenado no navegador", async () => {
   const files = [
-    "app/(platform)/entrar/page.tsx",
+    "app/(entry)/entrar/page.tsx",
     "components/formulario-entrada.tsx",
     "lib/humanexus-api.ts"
   ];
@@ -100,13 +100,17 @@ test("bypass do Core Preview permanece exclusivamente servidor-a-servidor", asyn
 test("site e plataforma possuem layouts estruturalmente isolados", async () => {
   const rootLayout = await source("app/layout.tsx");
   const siteLayout = await source("app/(site)/layout.tsx");
+  const entryLayout = await source("app/(entry)/layout.tsx");
   const platformLayout = await source("app/(platform)/layout.tsx");
+  const entryShell = await source("components/platform-entry-shell.tsx");
   const platformShell = await source("components/platform-shell.tsx");
 
   assert.doesNotMatch(rootLayout, /SiteHeader|SiteFooter|FloatingWhatsApp/);
   assert.match(siteLayout, /SiteHeader/);
   assert.match(siteLayout, /SiteFooter/);
   assert.match(siteLayout, /FloatingWhatsApp/);
+  assert.match(entryLayout, /PlatformEntryShell/);
+  assert.doesNotMatch(entryShell, /PlatformNavigation|SessionContinuity|sessaoAtual/);
   assert.match(platformLayout, /PlatformShell/);
   assert.doesNotMatch(platformShell, /SiteHeader|SiteFooter|FloatingWhatsApp/);
 });

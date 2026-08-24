@@ -36,7 +36,7 @@ export default function AreaHumanexusPage() {
         </p>
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {accesses.map((access) => (
-            <article key={access.href} className="flex min-h-72 flex-col rounded-[2rem] border border-white/10 bg-white/[0.035] p-7 shadow-2xl shadow-black/20">
+            <article key={`${access.title}-${access.href}`} className="flex min-h-72 flex-col rounded-[2rem] border border-white/10 bg-white/[0.035] p-7 shadow-2xl shadow-black/20">
               <div className="h-px w-16 bg-[#C9A34E]" />
               <h2 className="mt-8 text-2xl font-semibold text-white">{access.title}</h2>
               <p className="mt-4 flex-1 leading-7 text-[#AEB2B9]">{access.description}</p>

@@ -65,8 +65,8 @@ test("HOME conduz à Área HUMANEXUS e dali ao login canônico", async () => {
   const [cabecalho, rodape, area, entrar] = await Promise.all([
     fonte("components/site-header.tsx"),
     fonte("components/site-footer.tsx"),
-    fonte("app/(platform)/area-humanexus/page.tsx"),
-    fonte("app/(platform)/entrar/page.tsx")
+    fonte("app/(entry)/area-humanexus/page.tsx"),
+    fonte("app/(entry)/entrar/page.tsx")
   ]);
 
   assert.match(cabecalho, /href=\{entradaDaArea\}/);
@@ -74,6 +74,23 @@ test("HOME conduz à Área HUMANEXUS e dali ao login canônico", async () => {
   assert.match(area, /title: "Plataforma HUMANEXUS"/);
   assert.match(area, /href: "\/entrar"/);
   assert.match(entrar, /<FormularioEntrada \/>/);
+});
+
+test("entrada pública nunca monta navegação privada nem redireciona sessão válida", async () => {
+  const [layoutEntrada, shellEntrada, entrar, layoutPrivado] = await Promise.all([
+    fonte("app/(entry)/layout.tsx"),
+    fonte("components/platform-entry-shell.tsx"),
+    fonte("app/(entry)/entrar/page.tsx"),
+    fonte("app/(platform)/layout.tsx")
+  ]);
+
+  assert.match(layoutEntrada, /PlatformEntryShell/);
+  assert.doesNotMatch(layoutEntrada, /PlatformShell/);
+  assert.doesNotMatch(shellEntrada, /PlatformNavigation|SessionContinuity|sessaoAtual/);
+  assert.doesNotMatch(shellEntrada, /Administrador Proprietário|Sair com segurança/);
+  assert.match(entrar, /Continuar sessão segura/);
+  assert.doesNotMatch(entrar, /redirect\(/);
+  assert.match(layoutPrivado, /PlatformShell/);
 });
 
 test("login, segundo fator e entrada autenticada preservam o contrato GOLD", async () => {

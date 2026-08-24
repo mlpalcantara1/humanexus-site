@@ -414,7 +414,7 @@ test("camada visível traduz termos estrangeiros sem alterar contratos internos"
 
   const camadaGlobal = await source("components/camada-portugues-visivel.tsx");
   const leiauteGlobal = await source("app/layout.tsx");
-  const areaHumanexus = await source("app/(platform)/area-humanexus/page.tsx");
+  const areaHumanexus = await source("app/(entry)/area-humanexus/page.tsx");
   const navegacao = await source("components/platform-navigation.tsx");
   assert.match(camadaGlobal, /MutationObserver/);
   assert.match(camadaGlobal, /attributeFilter: \[\.\.\.ATRIBUTOS_VISIVEIS\]/);
