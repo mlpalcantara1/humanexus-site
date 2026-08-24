@@ -541,14 +541,18 @@ export function GestaoOperacional({
     });
     setNovaOrganizacao(false);
     preencherOrganizacao(corpo.organizacao ?? null);
+    const identificadorDoParticipanteAberto =
+      participanteDaNavegacao || participanteSelecionado;
     const participanteAberto = corpo.participantes?.find(
-      (item: Registro) => item.identificador === participanteSelecionado
+      (item: Registro) => String(item.identificador) === identificadorDoParticipanteAberto
     );
     if (participanteAberto) {
+      setParticipanteSelecionado(identificadorDoParticipanteAberto);
       preencherParticipante(participanteAberto);
-    } else if (participanteSelecionado) {
+    } else if (identificadorDoParticipanteAberto) {
       setParticipanteSelecionado("");
       preencherParticipante(null, corpo.organizacao ?? null);
+      atualizarContextoNaUrl({ participante: "", sessao: "" });
     } else if (modulo === "clientes") {
       preencherParticipante(null, corpo.organizacao ?? null);
     }

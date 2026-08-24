@@ -250,6 +250,15 @@ test("participantes possuem grupos e busca operacional completa", async () => {
   assert.match(management, /Organizacionais/);
 });
 
+test("ficha do participante é reaberta pela URL sem cair em formulário vazio", async () => {
+  const management = await source("components/gestao-operacional.tsx");
+  assert.match(management, /participanteDaNavegacao \|\| participanteSelecionado/);
+  assert.match(management, /String\(item\.identificador\) === identificadorDoParticipanteAberto/);
+  assert.match(management, /setParticipanteSelecionado\(identificadorDoParticipanteAberto\)/);
+  assert.match(management, /preencherParticipante\(participanteAberto\)/);
+  assert.match(management, /atualizarContextoNaUrl\(\{ participante: "", sessao: "" \}\)/);
+});
+
 test("rótulo individual usa a autoridade do participante e separa referência", async () => {
   const management = await source("components/gestao-operacional.tsx");
   assert.match(
