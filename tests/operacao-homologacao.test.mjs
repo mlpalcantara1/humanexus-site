@@ -328,17 +328,36 @@ test("Cockpit exibe somente indicadores contratados e prontidão acionável", as
 test("há um único Cockpit com quinze visões internas e contexto persistente", async () => {
   const client = await source("components/operacao-homologacao.tsx");
   const navigation = await source("components/platform-navigation.tsx");
+  const contexto = await source("lib/contexto-navegacao.ts");
   for (const view of [
     "Visão Geral", "Evidências", "Constituição Operacional da TIRH", "Matriz Vetorial Viva",
     "Resultante", "Trajetória", "PRÉ / TREINO / PÓS", "Rotas Regulatórias", "CTR e THX",
     "Formulação", "Longitudinal", "Reprodução histórica", "Relatório", "Modo Coletivo", "Técnico"
   ]) assert.match(client, new RegExp(view));
   assert.match(client, /ContextoPersistente/);
-  assert.match(client, /history\.replaceState/);
+  assert.match(client, /substituirUrlPreservandoContexto/);
+  assert.match(contexto, /history\.replaceState/);
   assert.match(navigation, /Painel Operacional ao Vivo/);
   for (const removed of ["PRÉ \\/ TREINO \\/ PÓS", "Formulação Regulatória", "Replay Inteligente", "Telemetria Bridge"]) {
     assert.doesNotMatch(navigation, new RegExp(removed));
   }
+});
+
+test("menu global acompanha imediatamente o contexto organizacional trocado pela gestão", async () => {
+  const gestao = await source("components/gestao-operacional.tsx");
+  const cockpit = await source("components/operacao-homologacao.tsx");
+  const navegacao = await source("components/platform-navigation.tsx");
+  const contexto = await source("lib/contexto-navegacao.ts");
+
+  assert.match(contexto, /humanexus:contexto-navegacao-atualizado/);
+  assert.match(contexto, /window\.dispatchEvent/);
+  assert.match(gestao, /substituirUrlPreservandoContexto\(url\)/);
+  assert.match(cockpit, /substituirUrlPreservandoContexto\(url\)/);
+  assert.match(navegacao, /window\.location\.search\.slice\(1\)/);
+  assert.match(navegacao, /addEventListener\(EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO/);
+  assert.match(navegacao, /CHAVES_DO_CONTEXTO_NAVEGACAO/);
+  assert.doesNotMatch(gestao, /window\.history\.replaceState/);
+  assert.doesNotMatch(cockpit, /window\.history\.replaceState/);
 });
 
 test("rotas legadas preservam compatibilidade e convergem para o Cockpit", async () => {

@@ -4,6 +4,10 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import {
+  CHAVES_DO_CONTEXTO_NAVEGACAO,
+  EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO
+} from "@/lib/contexto-navegacao";
 
 type IconName = "command" | "building" | "people" | "anamnese" | "sessions" | "training" | "cockpit" | "vectors" | "resultant" | "routes" | "protocol" | "longitudinal" | "replay" | "reports" | "lab" | "admin" | "settings";
 type Item = { label: string; href: string; mark: string; icon: IconName; restricted?: "lab" | "admin" };
@@ -71,9 +75,18 @@ function NavigationIcon({ name }: { name: IconName }) {
 function NavigationItems({ podeVerLab, podeAdministrar, close }: { podeVerLab: boolean; podeAdministrar: boolean; close?: () => void }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const consultaDaRota = searchParams.toString();
+  const [consultaAtual, setConsultaAtual] = useState(consultaDaRota);
+  useEffect(() => {
+    const sincronizar = () => setConsultaAtual(window.location.search.slice(1));
+    sincronizar();
+    window.addEventListener(EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO, sincronizar);
+    return () => window.removeEventListener(EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO, sincronizar);
+  }, [consultaDaRota]);
+  const parametrosAtuais = new URLSearchParams(consultaAtual);
   const contexto = new URLSearchParams();
-  for (const chave of ["organizacao", "participante", "sessao", "thx"]) {
-    const valor = searchParams.get(chave);
+  for (const chave of CHAVES_DO_CONTEXTO_NAVEGACAO) {
+    const valor = parametrosAtuais.get(chave);
     if (valor) contexto.set(chave, valor);
   }
   return (
@@ -90,7 +103,7 @@ function NavigationItems({ podeVerLab, podeAdministrar, close }: { podeVerLab: b
               const [path, query = ""] = item.href.split("?");
               const itemQuery = new URLSearchParams(query);
               const visaoDoItem = itemQuery.get("visao");
-              const visaoAtual = searchParams.get("visao");
+              const visaoAtual = parametrosAtuais.get("visao");
               const active = pathname === path && (visaoDoItem
                 ? visaoAtual === visaoDoItem
                 : path === "/plataforma/cockpit-vivo"

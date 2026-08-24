@@ -20,6 +20,7 @@ import { CockpitOperacionalVivo } from "@/components/cockpit-operacional-vivo";
 import { SinteseValidacaoTirhV1 } from "@/components/sintese-validacao-tirh-v1";
 import { ConsolidacaoProfissionalDoRelatorio } from "@/components/consolidacao-profissional-relatorio";
 import { HxSectionHeader } from "@/components/hx-design-system";
+import { substituirUrlPreservandoContexto } from "@/lib/contexto-navegacao";
 import {
   chaveIdempotenteDocumental,
   consolidacaoConfirmadaNaAutoridade,
@@ -1862,7 +1863,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     url.pathname = "/plataforma/cockpit-vivo";
     url.searchParams.set("visao", destino);
     if (destino !== "tecnico") url.searchParams.delete("painel");
-    window.history.replaceState(window.history.state, "", url);
+    substituirUrlPreservandoContexto(url);
   };
 
   const carregar = async (
@@ -2128,7 +2129,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     url.searchParams.set("organizacao", atual.organizacao);
     url.searchParams.set("participante", atual.participante);
     url.searchParams.set("sessao", atual.sessao);
-    window.history.replaceState(window.history.state, "", url);
+    substituirUrlPreservandoContexto(url);
     return atual;
   };
 
@@ -2420,7 +2421,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         if (proxima[chave]) url.searchParams.set(chave, proxima[chave]);
         else url.searchParams.delete(chave);
       }
-      window.history.replaceState(window.history.state, "", url);
+      substituirUrlPreservandoContexto(url);
     } catch (causa) {
       setErro(causa instanceof Error ? causa.message : "Contexto recusado.");
     } finally {

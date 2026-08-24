@@ -7,6 +7,7 @@ import { PlatformErrorState } from "@/components/platform-error-state";
 import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multimodal";
 import { resolverIdentidadeDocumental } from "@/lib/humanexus-report-authority";
 import { portuguesVisivel } from "@/lib/portugues-visivel";
+import { substituirUrlPreservandoContexto } from "@/lib/contexto-navegacao";
 
 type Registro = Record<string, unknown>;
 type BaseOperacional = {
@@ -156,7 +157,7 @@ function atualizarContextoNaUrl(
     if (valor) url.searchParams.set(chave, valor);
     else url.searchParams.delete(chave);
   }
-  window.history.replaceState(window.history.state, "", url);
+  substituirUrlPreservandoContexto(url);
 }
 
 function valorDoCampoOperacional(nome: string, padrao = "") {

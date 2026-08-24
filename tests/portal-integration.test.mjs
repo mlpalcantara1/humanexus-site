@@ -140,6 +140,7 @@ test("convite usa a rota canônica", async () => {
 test("sessão e convites preservam o escopo organizacional selecionado", async () => {
   const management = await source("components/gestao-operacional.tsx");
   const navigation = await source("components/platform-navigation.tsx");
+  const navigationContext = await source("lib/contexto-navegacao.ts");
   const managementRoute = await source("app/api/gestao-operacional/route.ts");
   const invitationRoute = await source(
     "app/api/humanexus/gestao-convites/route.ts"
@@ -158,7 +159,7 @@ test("sessão e convites preservam o escopo organizacional selecionado", async (
   assert.doesNotMatch(management, />\s*(?:INICIAR SESSÃO|PAUSAR|RETOMAR)\s*</);
   assert.match(management, /atualizarContextoNaUrl/);
   for (const key of ["organizacao", "participante", "sessao", "thx"]) {
-    assert.match(navigation, new RegExp(`"${key}"`));
+    assert.match(`${navigation}\n${navigationContext}`, new RegExp(`"${key}"`));
   }
   assert.match(managementRoute, /x-humanexus-organization-id/);
   assert.match(invitationRoute, /x-humanexus-organization-id/);
