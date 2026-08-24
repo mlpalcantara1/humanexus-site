@@ -6,7 +6,11 @@ import { humanexusApi } from "@/lib/humanexus-api";
 import { resolverIdentidadeDocumental } from "@/lib/humanexus-report-authority";
 
 const NICHOS = ["AVIACAO", "SAUDE", "EMPRESARIAL", "POLITICA", "TRANSPORTE", "MARITIMO", "SEGURANCA_PUBLICA", "OUTROS"];
-const PUBLIC_BASE = process.env.NEXT_PUBLIC_HUMANEXUS_APP_URL;
+
+function montarLigacaoDoConvite(token: string) {
+  const base = window.location.origin.replace(/\/$/, "");
+  return `${base}/acesso-participante?token=${encodeURIComponent(token)}`;
+}
 
 type Convite = {
   identificador: string;
@@ -189,8 +193,7 @@ export function PainelProfissional() {
           usos_permitidos: 50
         })
       });
-      const base = PUBLIC_BASE || window.location.origin;
-      const conviteLink = `${base}/acesso-participante?token=${encodeURIComponent(gerado.token_de_entrega_unica)}`;
+      const conviteLink = montarLigacaoDoConvite(gerado.token_de_entrega_unica);
       setEntrega(gerado);
       setLink(conviteLink);
       setQr(await QRCode.toDataURL(conviteLink, {
@@ -277,8 +280,7 @@ export function PainelProfissional() {
   }
 
   async function exibirNovaEntrega(gerado: Entrega) {
-    const base = PUBLIC_BASE || window.location.origin;
-    const conviteLink = `${base}/acesso-participante?token=${encodeURIComponent(gerado.token_de_entrega_unica)}`;
+    const conviteLink = montarLigacaoDoConvite(gerado.token_de_entrega_unica);
     setEntrega(gerado);
     setLink(conviteLink);
     setQr(await QRCode.toDataURL(conviteLink, {
@@ -445,7 +447,7 @@ export function PainelProfissional() {
           <p aria-live="polite">{status}</p>
           {entrega ? <>
             <div className="hx-invite-code"><small>CÓDIGO ALTERNATIVO</small><strong>{entrega.codigo_de_entrega_unica}</strong></div>
-            <div className="hx-invite-link">{link}</div>
+            <div className="hx-invite-link" data-portugues-preservar="true">{link}</div>
             {qr ? <img src={qr} alt="Código QR do convite seguro para a Anamnese" /> : null}
             <div className="hx-invite-actions">
               <button type="button" onClick={() => void copiar(link, "Ligação copiada.")}>Copiar ligação</button>
