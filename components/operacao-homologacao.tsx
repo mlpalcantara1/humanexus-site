@@ -327,7 +327,7 @@ function RelatorioCanonicoV1({
           <div><dt>Versão documental</dt><dd>{texto(relatorio?.numero_da_versao, "Rascunho técnico")}</dd></div>
           <div><dt>Estado</dt><dd>{cicloDocumental.estado.replaceAll("_", " ")}</dd></div>
         </dl>
-        <p>Fonte de identidade: {identidade.fonte}. Referência operacional: {identidade.referenciaOperacional}. Trace de sessão: {texto(estado.sessao.identificador)}.</p>
+        <p>Fonte de identidade: {identidade.fonte}. Referência operacional: {identidade.referenciaOperacional}. Rastreamento da sessão: {texto(estado.sessao.identificador)}.</p>
       </header>
 
       <section className="hx-report-canonical__section">

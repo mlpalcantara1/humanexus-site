@@ -22,7 +22,7 @@ export async function GET() {
     return responderErroDaApi(erro, {
       modulo: "HUMANEXUS_LAB",
       rota: "/api/v1/humanexus-lab?modo=indice",
-      mensagemDeAcessoNegado: "HUMANEXUS LAB disponível somente ao Administrador Proprietário."
+      mensagemDeAcessoNegado: "Laboratório HUMANEXUS disponível somente ao Administrador Proprietário."
     });
   }
 }

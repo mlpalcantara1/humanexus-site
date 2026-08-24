@@ -15,7 +15,7 @@ const TITULOS: Record<PerfilHumanexus, string> = {
 };
 
 const ROTULOS_DAS_PERMISSOES: Record<string, string> = {
-  acessar_humanexus_lab: "Acessar o HUMANEXUS LAB",
+  acessar_humanexus_lab: "Acessar o Laboratório HUMANEXUS",
   administrar_organizacao: "Administrar organizações autorizadas",
   administrar_sistema: "Administrar a plataforma",
   conduzir_sessao: "Conduzir sessões",

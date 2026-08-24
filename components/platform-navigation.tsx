@@ -37,7 +37,7 @@ const GROUPS: Group[] = [
   {
     label: "Governança",
     items: [
-      { label: "HUMANEXUS LAB", href: "/plataforma/humanexus-lab", mark: "LAB", icon: "lab", restricted: "lab" },
+      { label: "Laboratório HUMANEXUS", href: "/plataforma/humanexus-lab", mark: "HX", icon: "lab", restricted: "lab" },
       { label: "Administração", href: "/admin", mark: "ADM", icon: "admin", restricted: "admin" },
       { label: "Configurações", href: "/plataforma/configuracoes", mark: "CFG", icon: "settings" }
     ]

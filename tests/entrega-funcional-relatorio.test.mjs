@@ -291,7 +291,8 @@ test("camada visível traduz termos estrangeiros sem alterar contratos internos"
     "experience", "system", "design", "demo", "radar", "HUD", "LAB",
     "bridge", "alias", "client", "secret", "power", "raw", "mock",
     "scrubber", "zoom", "tablet", "notebook", "regulatory", "cognitive",
-    "autonomic", "adaptive", "aviation", "real time", "HRV", "CRM"
+    "autonomic", "adaptive", "aviation", "real time", "HRV", "CRM",
+    "participant_self_report", "trace", "Person"
   ].join(" · ");
   const traduzida = portuguesVisivel(amostra).toLowerCase();
   for (const termo of TERMOS_ESTRANGEIROS_PROIBIDOS_NA_APRESENTACAO) {
@@ -305,6 +306,17 @@ test("camada visível traduz termos estrangeiros sem alterar contratos internos"
     portuguesVisivel("HUMANEXUS · AVIATION SYSTEM"),
     "HUMANEXUS · SISTEMA DE AVIAÇÃO"
   );
+  assert.equal(
+    portuguesVisivel("Fonte: participant_self_report"),
+    "Fonte: autorrelato do participante"
+  );
+  assert.equal(
+    portuguesVisivel("Trace de sessão"),
+    "Rastreamento da sessão"
+  );
+  assert.equal(portuguesVisivel("PRONTO_PARA_VALIDACAO"), "PRONTO PARA VALIDAÇÃO");
+  assert.equal(portuguesVisivel("NAO_CALCULAVEL"), "NÃO CALCULÁVEL");
+  assert.equal(portuguesVisivel("Person"), "PESSOA");
   assert.equal(
     portuguesVisivelPreservandoEspacos("  Preview em Production  "),
     "  Homologação em Produção  "
@@ -330,10 +342,13 @@ test("camada visível traduz termos estrangeiros sem alterar contratos internos"
   const camadaGlobal = await source("components/camada-portugues-visivel.tsx");
   const leiauteGlobal = await source("app/layout.tsx");
   const areaHumanexus = await source("app/(platform)/area-humanexus/page.tsx");
+  const navegacao = await source("components/platform-navigation.tsx");
   assert.match(camadaGlobal, /MutationObserver/);
   assert.match(camadaGlobal, /attributeFilter: \[\.\.\.ATRIBUTOS_VISIVEIS\]/);
   assert.match(camadaGlobal, /ELEMENTOS_PRESERVADOS/);
   assert.match(leiauteGlobal, /<CamadaPortuguesVisivel \/>/);
   assert.match(areaHumanexus, /Abra a ligação segura recebida/);
   assert.doesNotMatch(areaHumanexus, /link seguro/i);
+  assert.match(navegacao, /Laboratório HUMANEXUS/);
+  assert.doesNotMatch(navegacao, /HUMANEXUS LAB/);
 });
