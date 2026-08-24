@@ -31,6 +31,7 @@ const EQUIVALENCIAS_EXATAS: Record<string, string> = {
 const SUBSTITUICOES_VISIVEIS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\bhuman performance intelligence\b/gi, "inteligência do desempenho humano"],
   [/\bhuman performance system\b/gi, "sistema de desempenho humano"],
+  [/\baviation system\b/gi, "sistema de aviação"],
   [/\breal time\b/gi, "tempo real"],
   [/\bregulatory intelligence\b/gi, "inteligência regulatória"],
   [/\binstrução crm\b/gi, "instrução em gerenciamento de recursos de equipes"],

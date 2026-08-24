@@ -302,6 +302,10 @@ test("camada visível traduz termos estrangeiros sem alterar contratos internos"
   assert.match(traduzida, /afirmações científicas/);
   assert.match(traduzida, /substituição implícita/);
   assert.equal(
+    portuguesVisivel("HUMANEXUS · AVIATION SYSTEM"),
+    "HUMANEXUS · SISTEMA DE AVIAÇÃO"
+  );
+  assert.equal(
     portuguesVisivelPreservandoEspacos("  Preview em Production  "),
     "  Homologação em Produção  "
   );
