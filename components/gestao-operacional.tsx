@@ -142,6 +142,14 @@ function rotuloDoParticipante(registro: Registro | null | undefined) {
     : identidade.nomeCompleto;
 }
 
+function participanteAtivo(registro: Registro | null | undefined) {
+  return registro?.ativo !== false;
+}
+
+function organizacaoAtiva(registro: Registro | null | undefined) {
+  return registro?.ativa !== false;
+}
+
 function normalizar(valor: unknown) {
   return String(valor ?? "")
     .normalize("NFD")
@@ -559,6 +567,7 @@ export function GestaoOperacional({
     setSessao((estado) => {
       const participanteAtual = corpo.participantes?.find(
         (item: Registro) =>
+          participanteAtivo(item) &&
           String(item.identificador) === (
             participanteDaNavegacao || estado.identificador_do_participante
           )
@@ -604,6 +613,7 @@ export function GestaoOperacional({
     setConsentimento((estado) => {
       const participanteDoContexto = corpo.participantes?.find(
         (item: Registro) =>
+          participanteAtivo(item) &&
           String(item.identificador) === (
             participanteDaNavegacao || estado.identificador_do_participante
           )
@@ -622,9 +632,8 @@ export function GestaoOperacional({
     });
     setParticipanteDoCatalogo((atual) => (
       corpo.participantes?.some(
-        (item: Registro) => String(item.identificador) === (
-          participanteDaNavegacao || atual
-        )
+        (item: Registro) => participanteAtivo(item)
+          && String(item.identificador) === (participanteDaNavegacao || atual)
       )
         ? participanteDaNavegacao || atual
         : ""
@@ -1147,6 +1156,12 @@ export function GestaoOperacional({
       String(thx.codigo ?? "")
     ].join("::")))
   );
+  const organizacoesAtivas = (dados?.organizacoes ?? []).filter(
+    organizacaoAtiva
+  );
+  const participantesAtivos = (dados?.participantes ?? []).filter(
+    participanteAtivo
+  );
 
   const cabecalho = (
     <section className="hx-management-context">
@@ -1159,7 +1174,7 @@ export function GestaoOperacional({
         Organização
         <select
           value={organizacaoSelecionada}
-          disabled={ocupado || (dados?.organizacoes.length ?? 0) < 2}
+          disabled={ocupado || organizacoesAtivas.length < 2}
           onChange={(evento) => {
             const identificador = evento.target.value;
             setOrganizacaoSelecionada(identificador);
@@ -1180,7 +1195,7 @@ export function GestaoOperacional({
             void carregar(identificador);
           }}
         >
-          {dados?.organizacoes.map((item) => (
+          {organizacoesAtivas.map((item) => (
             <option key={String(item.identificador)} value={String(item.identificador)}>
               {texto(item.nome)}
             </option>
@@ -1465,19 +1480,19 @@ export function GestaoOperacional({
     }
     if (modulo === "clientes") {
       return {
-        participantes: dados.participantes.length,
+        participantes: dados.participantes.filter(participanteAtivo).length,
         sessoes: dados.sessoes.length
       };
     }
     if (modulo === "sessoes") {
       return {
-        participantes: dados.participantes.length,
+        participantes: dados.participantes.filter(participanteAtivo).length,
         sessoes: dados.sessoes.length
       };
     }
     if (modulo === "treinamentos") {
       return {
-        participantes: dados.participantes.length,
+        participantes: dados.participantes.filter(participanteAtivo).length,
         sessoes: dados.sessoes.length,
         treinamentos: dados.catalogo_treinamentos.length,
         programacoes: dados.programacoes.length
@@ -2570,7 +2585,7 @@ export function GestaoOperacional({
                 identificador_da_sessao: ""
               })}
             >
-              {dados.participantes.map((item) => (
+              {participantesAtivos.map((item) => (
                 <option
                   key={String(item.identificador)}
                   value={String(item.identificador)}
@@ -2809,7 +2824,7 @@ export function GestaoOperacional({
                 sessao: "",
                 thx: ""
               });
-            }}><option value="">Selecione</option>{dados.participantes.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{rotuloDoParticipante(item)}</option>)}</select></label>
+            }}><option value="">Selecione</option>{participantesAtivos.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{rotuloDoParticipante(item)}</option>)}</select></label>
             <label>Profissional responsável<select required value={sessao.identificador_do_profissional} onChange={(evento) => setSessao({ ...sessao, identificador_do_profissional: evento.target.value })}><option value="">Selecione</option>{dados.profissionais.map((item) => <option key={String(item.identificador)} value={String(item.identificador)}>{texto(item.nome)}</option>)}</select></label>
             <label>Anamnese concluída<select required value={sessao.identificador_da_anamnese} onChange={(evento) => setSessao({
               ...sessao,
@@ -3119,7 +3134,7 @@ export function GestaoOperacional({
                   });
                 }}
               >
-                {dados.participantes.map((item) => (
+                {participantesAtivos.map((item) => (
                   <option
                     key={String(item.identificador)}
                     value={String(item.identificador)}

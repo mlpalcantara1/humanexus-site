@@ -352,6 +352,17 @@ test("organização e participante usam ficha completa, versionada e reabrível"
   assert.match(management, /reativar-participante/);
   assert.doesNotMatch(management, /CADASTRO MINIMIZADO/);
 
+  assert.match(management, /function participanteAtivo/);
+  assert.match(management, /function organizacaoAtiva/);
+  assert.match(management, /const participantesAtivos = [\s\S]*filter\([\s\S]*participanteAtivo/);
+  assert.match(management, /const organizacoesAtivas = [\s\S]*filter\([\s\S]*organizacaoAtiva/);
+  assert.doesNotMatch(management, /\{dados\.participantes\.map/);
+  assert.doesNotMatch(management, /\{dados\?\.organizacoes\.map/);
+  assert.match(
+    management,
+    /participanteAtivo\(item\) &&[\s\S]*identificador_do_participante/
+  );
+
   assert.match(route, /\/api\/v1\/gestao\/contexto/);
   assert.match(route, /new URLSearchParams\(\{ modulo \}\)/);
   assert.doesNotMatch(route, /participantes\.flatMap/);
