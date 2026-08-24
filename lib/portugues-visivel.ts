@@ -31,7 +31,10 @@ const EQUIVALENCIAS_EXATAS: Record<string, string> = {
 const SUBSTITUICOES_VISIVEIS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\bhuman performance intelligence\b/gi, "inteligência do desempenho humano"],
   [/\bhuman performance system\b/gi, "sistema de desempenho humano"],
+  [/\breal time\b/gi, "tempo real"],
   [/\bregulatory intelligence\b/gi, "inteligência regulatória"],
+  [/\binstrução crm\b/gi, "instrução em gerenciamento de recursos de equipes"],
+  [/\bcrm humanexus\b/gi, "gerenciamento de recursos de equipes HUMANEXUS"],
   [/\bcommand center\b/gi, "centro de comando"],
   [/\bdesign system\b/gi, "sistema visual"],
   [/\bperformance metrics\b/gi, "métricas de desempenho"],
@@ -48,6 +51,13 @@ const SUBSTITUICOES_VISIVEIS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\bdashboards\b/gi, "painéis"],
   [/\bdashboard\b/gi, "painel"],
   [/\bperformance\b/gi, "desempenho"],
+  [/\bregulatory\b/gi, "regulatório"],
+  [/\bcognitive\b/gi, "cognitivo"],
+  [/\bautonomic\b/gi, "autonômico"],
+  [/\badaptive\b/gi, "adaptativo"],
+  [/\baviation\b/gi, "aviação"],
+  [/\bhrv\b/gi, "VFC"],
+  [/\bcrm\b/gi, "gerenciamento de recursos de equipes"],
   [/\bstatus\b/gi, "situação"],
   [/\bfallback\b/gi, "substituição implícita"],
   [/\bprint\b/gi, "impressão"],
@@ -210,5 +220,7 @@ export const TERMOS_ESTRANGEIROS_PROIBIDOS_NA_APRESENTACAO = [
   "hash", "command center", "design system", "intelligence", "command",
   "experience", "system", "design", "demo", "radar", "hud", "lab",
   "bridge", "alias", "client", "secret", "power", "raw", "mock",
-  "scrubber", "zoom", "tablet", "notebook"
+  "scrubber", "zoom", "tablet", "notebook", "regulatory", "cognitive",
+  "autonomic", "adaptive", "aviation",
+  "real time", "hrv", "crm"
 ] as const;

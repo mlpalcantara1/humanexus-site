@@ -290,7 +290,8 @@ test("camada visível traduz termos estrangeiros sem alterar contratos internos"
     "hash", "command center", "design system", "intelligence", "command",
     "experience", "system", "design", "demo", "radar", "HUD", "LAB",
     "bridge", "alias", "client", "secret", "power", "raw", "mock",
-    "scrubber", "zoom", "tablet", "notebook"
+    "scrubber", "zoom", "tablet", "notebook", "regulatory", "cognitive",
+    "autonomic", "adaptive", "aviation", "real time", "HRV", "CRM"
   ].join(" · ");
   const traduzida = portuguesVisivel(amostra).toLowerCase();
   for (const termo of TERMOS_ESTRANGEIROS_PROIBIDOS_NA_APRESENTACAO) {
