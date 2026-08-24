@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { ModuloDaPlataforma } from "@/components/modulo-integrado";
 import {
   CockpitSignalStack,
@@ -20,7 +21,10 @@ import { CockpitOperacionalVivo } from "@/components/cockpit-operacional-vivo";
 import { SinteseValidacaoTirhV1 } from "@/components/sintese-validacao-tirh-v1";
 import { ConsolidacaoProfissionalDoRelatorio } from "@/components/consolidacao-profissional-relatorio";
 import { HxSectionHeader } from "@/components/hx-design-system";
-import { substituirUrlPreservandoContexto } from "@/lib/contexto-navegacao";
+import {
+  EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO,
+  substituirUrlPreservandoContexto
+} from "@/lib/contexto-navegacao";
 import {
   chaveIdempotenteDocumental,
   consolidacaoConfirmadaNaAutoridade,
@@ -1773,6 +1777,8 @@ function SelecaoInicialDoCockpit({
 }
 
 export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) {
+  const parametrosDaRota = useSearchParams();
+  const consultaDaRota = parametrosDaRota.toString();
   const [estado, setEstado] = useState<Estado | null>(null);
   const [erro, setErro] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
@@ -1835,10 +1841,33 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   }, [ocupado]);
 
   useEffect(() => {
+    const sincronizarVisaoComARota = () => {
+      const parametros = new URLSearchParams(window.location.search);
+      const solicitada = parametros.get("visao") as VisaoCockpit | null;
+      setVisao(
+        solicitada && VISOES_COCKPIT.some((item) => item.id === solicitada)
+          ? solicitada
+          : "visao-geral"
+      );
+      setPainelTecnico(parametros.get("painel") || "fontes");
+    };
+    sincronizarVisaoComARota();
+    window.addEventListener("popstate", sincronizarVisaoComARota);
+    window.addEventListener(
+      EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO,
+      sincronizarVisaoComARota
+    );
+    return () => {
+      window.removeEventListener("popstate", sincronizarVisaoComARota);
+      window.removeEventListener(
+        EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO,
+        sincronizarVisaoComARota
+      );
+    };
+  }, [consultaDaRota]);
+
+  useEffect(() => {
     const parametros = new URLSearchParams(window.location.search);
-    const solicitada = parametros.get("visao") as VisaoCockpit | null;
-    if (solicitada && VISOES_COCKPIT.some((item) => item.id === solicitada)) setVisao(solicitada);
-    if (parametros.get("painel")) setPainelTecnico(parametros.get("painel") as string);
     const selecao = {
       organizacao: parametros.get("organizacao") ?? "",
       participante: parametros.get("participante") ?? "",

@@ -118,3 +118,15 @@ test("PDF, Print, Replay e Longitudinal permanecem no mesmo fluxo", () => {
   assert.match(operacao, /const visaoReplay = \(/);
   assert.match(operacao, /const visaoLongitudinal = \(/);
 });
+
+test("menu lateral mantém a visão solicitada sem fallback para a visão anterior", () => {
+  assert.match(operacao, /const parametrosDaRota = useSearchParams\(\)/);
+  assert.match(operacao, /const consultaDaRota = parametrosDaRota\.toString\(\)/);
+  assert.match(operacao, /sincronizarVisaoComARota/);
+  assert.match(operacao, /EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO/);
+  assert.match(operacao, /window\.addEventListener\("popstate", sincronizarVisaoComARota\)/);
+  assert.match(operacao, /\}, \[consultaDaRota\]\);/);
+  assert.match(operacao, /else if \(visao === "relatorio"\) conteudoDaVisao = visaoRelatorio/);
+  assert.match(operacao, /else if \(visao === "replay"\) conteudoDaVisao = visaoReplay/);
+  assert.match(operacao, /else if \(visao === "longitudinal"\) conteudoDaVisao = visaoLongitudinal/);
+});
