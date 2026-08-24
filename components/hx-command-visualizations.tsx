@@ -4,6 +4,7 @@ import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 import { HumanexusChart } from "@/components/hx-echarts";
 import { estadoGeometricoVetorial } from "@/lib/cockpit-vector-views";
+import { escaparHtml } from "@/lib/escape-html";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 
 export type HxDataPoint = {
@@ -93,14 +94,14 @@ function tooltipTemporal(parametros: unknown) {
   const linhas = validos.map((item) => {
     const dado = (item.data ?? {}) as HxDataPoint & { value?: unknown[] };
     const valor = Array.isArray(item.value) ? item.value[1] : item.value;
-    const unidade = String((item as { seriesName?: string }).seriesName ?? "");
+    const unidade = escaparHtml((item as { seriesName?: string }).seriesName ?? "");
     const detalhes = [
-      dado.phase ? `Fase: ${dado.phase}` : "",
-      dado.source ? `Fonte: ${dado.source}` : "",
+      dado.phase ? `Fase: ${escaparHtml(dado.phase)}` : "",
+      dado.source ? `Fonte: ${escaparHtml(dado.source)}` : "",
       dado.quality != null ? `Qualidade: ${(dado.quality * 100).toFixed(0)}%` : "",
       dado.coverage != null ? `Cobertura: ${(dado.coverage * 100).toFixed(0)}%` : "",
-      dado.connection ? `Conexão: ${dado.connection}` : "",
-      dado.event ? `Evento: ${dado.event}` : ""
+      dado.connection ? `Conexão: ${escaparHtml(dado.connection)}` : "",
+      dado.event ? `Evento: ${escaparHtml(dado.event)}` : ""
     ].filter(Boolean).join(" · ");
     return `<div class="hx-chart-tooltip__row"><span>${item.marker ?? ""}${unidade}</span><b>${valor == null ? "LACUNA" : Number(valor).toFixed(2)}</b></div>${detalhes ? `<small>${detalhes}</small>` : ""}`;
   }).join("");
@@ -507,10 +508,10 @@ export function PhaseComparisonChart({
           const itens = (Array.isArray(params) ? params : [params]) as Array<Record<string, unknown>>;
           const indice = Number(itens[0]?.dataIndex ?? 0);
           const phase = phases[indice];
-          return `<div class="hx-chart-tooltip"><strong>${phase?.name ?? ""} · ${phase ? dataHora(phase.time) : ""}</strong>
+          return `<div class="hx-chart-tooltip"><strong>${escaparHtml(phase?.name ?? "")} · ${phase ? dataHora(phase.time) : ""}</strong>
             <div class="hx-chart-tooltip__row"><span>Qualidade</span><b>${phase?.quality == null ? "AUSENTE" : `${phase.quality.toFixed(1)}%`}</b></div>
             <div class="hx-chart-tooltip__row"><span>Cobertura</span><b>${phase?.coverage == null ? "AUSENTE" : `${phase.coverage.toFixed(1)}%`}</b></div>
-            <small>Duração: ${phase?.durationSeconds == null ? "não registrada" : `${phase.durationSeconds}s`} · Fontes: ${phase?.sources.join(", ") || "não registradas"} · Lacunas: ${phase?.gaps.join(", ") || "nenhuma declarada"}</small></div>`;
+            <small>Duração: ${phase?.durationSeconds == null ? "não registrada" : `${phase.durationSeconds}s`} · Fontes: ${escaparHtml(phase?.sources.join(", ") || "não registradas")} · Lacunas: ${escaparHtml(phase?.gaps.join(", ") || "nenhuma declarada")}</small></div>`;
         }
       },
       grid: { left: 48, right: 28, top: 54, bottom: 70 },
@@ -788,7 +789,7 @@ export function ReplayTimelineChart({
         formatter: (param: unknown) => {
           const item = param as { data?: { value?: unknown[]; event?: string; source?: string; label?: string }; seriesName?: string };
           const time = Number(item.data?.value?.[0]);
-          return `<div class="hx-chart-tooltip"><strong>${dataHora(time)}</strong><div class="hx-chart-tooltip__row"><span>${item.seriesName ?? ""}</span><b>${item.data?.event ?? item.data?.label ?? "REGISTRO"}</b></div><small>Fonte: ${item.data?.source ?? "núcleo oficial"}</small></div>`;
+          return `<div class="hx-chart-tooltip"><strong>${dataHora(time)}</strong><div class="hx-chart-tooltip__row"><span>${escaparHtml(item.seriesName ?? "")}</span><b>${escaparHtml(item.data?.event ?? item.data?.label ?? "REGISTRO")}</b></div><small>Fonte: ${escaparHtml(item.data?.source ?? "núcleo oficial")}</small></div>`;
         }
       },
       toolbox: {
