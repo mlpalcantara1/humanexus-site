@@ -3,7 +3,7 @@ import Link from "next/link";
 const accesses = [
   {
     title: "Responder Anamnese",
-    description: "Abra o link seguro recebido do seu profissional e retome do ponto em que parou.",
+    description: "Abra a ligação segura recebida do seu profissional e retome do ponto em que parou.",
     href: "/acesso-participante",
     label: "Acesso do participante"
   },

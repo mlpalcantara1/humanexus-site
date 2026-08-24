@@ -329,8 +329,11 @@ test("camada visível traduz termos estrangeiros sem alterar contratos internos"
 
   const camadaGlobal = await source("components/camada-portugues-visivel.tsx");
   const leiauteGlobal = await source("app/layout.tsx");
+  const areaHumanexus = await source("app/(platform)/area-humanexus/page.tsx");
   assert.match(camadaGlobal, /MutationObserver/);
   assert.match(camadaGlobal, /attributeFilter: \[\.\.\.ATRIBUTOS_VISIVEIS\]/);
   assert.match(camadaGlobal, /ELEMENTOS_PRESERVADOS/);
   assert.match(leiauteGlobal, /<CamadaPortuguesVisivel \/>/);
+  assert.match(areaHumanexus, /Abra a ligação segura recebida/);
+  assert.doesNotMatch(areaHumanexus, /link seguro/i);
 });
