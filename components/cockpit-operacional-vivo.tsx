@@ -1099,7 +1099,7 @@ function DinamicaDaInteligenciaRegulatoria({
           : resultanteDisponivel
             ? texto(resultante.estado, "PARCIAL")
             : texto(resultante.estado, "NÃO CALCULÁVEL")}</dd></div>
-        <div><dt>Direção</dt><dd>{texto(resultante.vetor_dominante, "NÃO DETERMINÁVEL")}</dd></div>
+        <div><dt>Direção</dt><dd>{texto(resultante.direcao_funcional ?? resultante.vetor_dominante, "NÃO DETERMINÁVEL")}</dd></div>
         <div><dt>Sentido</dt><dd>{texto(resultante.sentido_contextual, "NÃO DETERMINÁVEL")}</dd></div>
         <div><dt>Tendência</dt><dd>{trajetoriaCalculada
           ? texto(trajetoria.valor)
