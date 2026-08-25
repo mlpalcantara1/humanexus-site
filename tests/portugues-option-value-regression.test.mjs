@@ -35,3 +35,16 @@ test("formulário de governança mantém os códigos canônicos como origem", as
     assert.match(governanca, new RegExp(`<option>${codigo}</option>`));
   }
 });
+
+test("governança propaga o escopo organizacional sem ampliar permissões", async () => {
+  const [componente, rota] = await Promise.all([
+    fonte("components/governanca-operacional.tsx"),
+    fonte("app/api/plataforma/governanca-operacional/route.ts")
+  ]);
+
+  assert.match(componente, /organizacaoDoContexto\(\)/);
+  assert.match(componente, /identificador_da_organizacao: organizacaoDoContexto\(\)/);
+  assert.match(rota, /x-humanexus-organization-id/);
+  assert.match(rota, /new URL\(request\.url\)\.searchParams/);
+  assert.match(rota, /corpo\.identificador_da_organizacao/);
+});

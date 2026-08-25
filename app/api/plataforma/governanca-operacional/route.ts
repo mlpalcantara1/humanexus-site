@@ -7,34 +7,45 @@ import { responderErroDaApi } from "@/lib/api-route-error";
 
 type Registro = Record<string, unknown>;
 
-export async function GET() {
+export async function GET(request: Request) {
   const token = (await cookies()).get(COOKIE_SESSAO)?.value;
   if (!token) {
     return NextResponse.json({ erro: { mensagem: "Sessão ausente." } }, { status: 401 });
   }
   try {
+    const organizacao = new URL(request.url).searchParams
+      .get("organizacao")
+      ?.trim() ?? "";
+    const init = organizacao
+      ? { headers: { "x-humanexus-organization-id": organizacao } }
+      : {};
     // O servidor local oficial é deliberadamente conservador. Consultas
     // sequenciais evitam uma fila concorrente que antes convertia latência em
     // falso 403 e podia derrubar a renderização do LAB.
     const governanca = await requisitarNucleoAutenticado<Registro>(
       "/api/v1/governanca-operacional",
-      token
+      token,
+      init
     );
     const backups = await requisitarNucleoAutenticado<Registro[]>(
       "/api/v1/governanca-operacional/backups",
-      token
+      token,
+      init
     ).catch(() => []);
     const consentimentos = await requisitarNucleoAutenticado<Registro>(
       "/api/v1/consentimentos/lab",
-      token
+      token,
+      init
     );
     const seguranca = await requisitarNucleoAutenticado<Registro>(
       "/api/v1/seguranca-proprietario",
-      token
+      token,
+      init
     );
     const instrumentoIntegrado = await requisitarNucleoAutenticado<Registro>(
       "/api/v1/instrumento-integrado/lab",
-      token
+      token,
+      init
     );
     return NextResponse.json({
       governanca,
@@ -61,6 +72,14 @@ export async function POST(request: Request) {
     const corpo = await request.json() as Registro;
     const acao = String(corpo.acao ?? "");
     const identificador = encodeURIComponent(String(corpo.identificador ?? ""));
+    const dados = corpo.dados && typeof corpo.dados === "object"
+      ? corpo.dados as Registro
+      : {};
+    const organizacao = String(
+      corpo.identificador_da_organizacao
+      ?? dados.identificador_da_organizacao
+      ?? ""
+    ).trim();
     const destinos: Record<string, string> = {
       "inventario-lgpd": "/api/v1/governanca-operacional/lgpd/inventario",
       "texto-juridico": "/api/v1/governanca-operacional/lgpd/textos",
@@ -85,7 +104,13 @@ export async function POST(request: Request) {
     const resultado = await requisitarNucleoAutenticado(
       caminho,
       token,
-      { method: "POST", body: JSON.stringify(corpo.dados ?? {}) }
+      {
+        method: "POST",
+        headers: organizacao
+          ? { "x-humanexus-organization-id": organizacao }
+          : undefined,
+        body: JSON.stringify(dados)
+      }
     );
     return NextResponse.json(resultado, { status: 201 });
   } catch (erro) {

@@ -77,11 +77,26 @@ export function GovernancaOperacional() {
   const [mensagem, setMensagem] = useState("");
   const [ocupado, setOcupado] = useState(false);
 
+  function organizacaoDoContexto() {
+    return new URLSearchParams(window.location.search)
+      .get("organizacao")
+      ?.trim() ?? "";
+  }
+
   async function carregar() {
     setErro("");
-    const corpo = await consultarJson<Dados>("/api/plataforma/governanca-operacional");
+    const organizacao = organizacaoDoContexto();
+    const consulta = organizacao
+      ? `?organizacao=${encodeURIComponent(organizacao)}`
+      : "";
+    const corpo = await consultarJson<Dados>(
+      `/api/plataforma/governanca-operacional${consulta}`
+    );
     setDados(corpo as Dados);
-    const corpoGestao = await consultarJson<Gestao>("/api/gestao-operacional", { tentativas: 1 });
+    const corpoGestao = await consultarJson<Gestao>(
+      `/api/gestao-operacional${consulta}`,
+      { tentativas: 1 }
+    );
     setGestao(corpoGestao as Gestao);
   }
 
@@ -103,7 +118,12 @@ export function GovernancaOperacional() {
           "content-type": "application/json",
           "x-humanexus-csrf": csrf()
         },
-        body: JSON.stringify({ acao, dados: payload, identificador })
+        body: JSON.stringify({
+          acao,
+          dados: payload,
+          identificador,
+          identificador_da_organizacao: organizacaoDoContexto()
+        })
       });
       const corpo = await resposta.json();
       if (!resposta.ok) throw new Error(corpo?.erro?.mensagem ?? "Operação recusada.");
