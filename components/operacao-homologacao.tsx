@@ -44,6 +44,10 @@ import { criarPayloadDoComandoPrincipal } from "@/lib/cockpit-operational-comman
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
 import { estadoOperacionalTerminal } from "@/lib/cockpit-terminal-eligibility";
 import { snapshotOficialDeFaseAplicavel } from "@/lib/cockpit-scientific-authority";
+import {
+  compatibilizarVetoresDoSnapshotHistorico,
+  itensCanonicosDaLinhaHistorica
+} from "@/lib/historical-vector-compatibility";
 import { estruturaVisivelEmPortugues, portuguesVisivel } from "@/lib/portugues-visivel";
 
 type Registro = Record<string, unknown>;
@@ -1035,7 +1039,7 @@ function nomeDoMacrocampo(registro: Registro) {
 }
 
 function codigoDoVetor(registro: Registro) {
-  return texto(valorDoRegistro(registro, "code", "codigo"), "");
+  return texto(valorDoRegistro(registro, "code", "codigo", "definicao"), "");
 }
 
 function nomeDoVetor(registro: Registro) {
@@ -1043,6 +1047,16 @@ function nomeDoVetor(registro: Registro) {
 }
 
 function projecaoCanonicaTirhV1(estado: Estado) {
+  const leitura = objeto(objeto(estado.cockpit_operacional).leitura_cientifica);
+  const snapshotDeFaseCanonico = snapshotOficialDeFaseAplicavel({
+    leituraCientifica: leitura,
+    identificadorDaSessao: String(estado.sessao.identificador ?? ""),
+    sessaoFinalizada: estadoOperacionalTerminal(estado.sessao.estado)
+  });
+  const tirhV1DoSnapshot = objeto(leitura.tirh_operacional_v1);
+  if (snapshotDeFaseCanonico && Object.keys(tirhV1DoSnapshot).length) {
+    return tirhV1DoSnapshot;
+  }
   const respostaPersistida = objeto(estado.tirh_v1);
   const sintesePersistida = objeto(respostaPersistida.sintese);
   if (Object.keys(sintesePersistida).length) {
@@ -1052,7 +1066,6 @@ function projecaoCanonicaTirhV1(estado: Estado) {
         ?? sintesePersistida.versao_cientifica
     };
   }
-  const leitura = objeto(objeto(estado.cockpit_operacional).leitura_cientifica);
   const tirhV1 = objeto(leitura.tirh_operacional_v1);
   return tirhV1;
 }
@@ -1073,23 +1086,28 @@ function vetoresDaProjecaoV1(estado: Estado): Registro[] {
   const vetores = snapshotDeFaseCanonico
     ? leitura.vetores
     : projecaoCanonicaTirhV1(estado).vetores;
-  if (Array.isArray(vetores)) return vetores.map(objeto);
-  return Object.entries(objeto(vetores)).map(([codigo, valor]) => ({
-    ...objeto(valor),
-    codigo: objeto(valor).codigo ?? codigo
-  }));
+  return compatibilizarVetoresDoSnapshotHistorico(
+    vetores
+  ).vetoresMomentaneosCanonicos;
 }
 
 function vetoresMomentaneosDaProjecaoV1(estado: Estado) {
-  return vetoresDaProjecaoV1(estado).filter(
-    (item) => codigoDoVetor(item) !== "VEV"
-  );
+  return vetoresDaProjecaoV1(estado);
 }
 
 function vetorLongitudinalDaProjecaoV1(estado: Estado): Registro {
-  return vetoresDaProjecaoV1(estado).find(
-    (item) => codigoDoVetor(item) === "VEV"
-  ) ?? ({} as Registro);
+  const leitura = leituraCientificaDaInspecao(estado);
+  const snapshotDeFaseCanonico = snapshotOficialDeFaseAplicavel({
+    leituraCientifica: leitura,
+    identificadorDaSessao: String(estado.sessao.identificador ?? ""),
+    sessaoFinalizada: estadoOperacionalTerminal(estado.sessao.estado)
+  });
+  const vetores = snapshotDeFaseCanonico
+    ? leitura.vetores
+    : projecaoCanonicaTirhV1(estado).vetores;
+  return compatibilizarVetoresDoSnapshotHistorico(
+    vetores
+  ).vetorLongitudinal ?? ({} as Registro);
 }
 
 function configuracaoBasalDaInspecao(estado: Estado) {
@@ -3308,45 +3326,21 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const midiasPersistidas = (estado.gravacao?.segmentos ?? []).filter(
     (item) => item.estado === "PERSISTIDO" && item.reproducao_autorizada
   );
-  const itensDaLinhaCientifica = itensReplay.flatMap((item) => {
-    const time = instante(item.timestamp_original);
-    if (!time) return [];
-    const detalhes = objeto(item.dados_de_inspecao_json);
-    return [{
-      time,
-      track: texto(item.modalidade),
-      label: texto(detalhes.tipo, "REGISTRO"),
-      event: texto(detalhes.tipo, ""),
-      source: texto(item.origem, "NÚCLEO OFICIAL")
-    }];
-  });
   const registroBaseline = estado.gravacao?.baseline?.registro;
-  const itensDoBaseline = registroBaseline?.iniciado_em
-    ? [
-        {
-          time: instante(registroBaseline.iniciado_em),
-          track: "REFERÊNCIA INICIAL",
-          label: "REFERÊNCIA INICIAL INICIADA",
-          event: "BASELINE_INICIADO",
-          source: "REGISTRO OPERACIONAL SEPARADO"
-        },
-        ...(registroBaseline.finalizado_em
-          ? [{
-              time: instante(registroBaseline.finalizado_em),
-              track: "REFERÊNCIA INICIAL",
-              label: "REFERÊNCIA INICIAL ENCERRADA",
-              event: "BASELINE_ENCERRADO",
-              source: "REGISTRO OPERACIONAL SEPARADO"
-            }]
-          : [])
-      ]
-    : [];
-  const itensDaLinha = [...itensDaLinhaCientifica, ...itensDoBaseline];
+  const itensDaLinha = itensCanonicosDaLinhaHistorica({
+    itensReplay,
+    eventos: estado.eventos,
+    registroBaseline
+  });
   const modalidadesReplay = [...new Set(itensDaLinha.map((item) => item.track))];
   const trilhasVisiveis = modalidadesReplay.filter((item) => trilhas[item] !== false);
   const replayDisponivel = itensDaLinha.length > 0;
   const projecaoReplay = projecaoCanonicaTirhV1(estado);
-  const vetoresReplay = vetoresMomentaneosDaProjecaoV1(estado);
+  const leituraReplay = leituraCientificaDaInspecao(estado);
+  const compatibilidadeReplay = compatibilizarVetoresDoSnapshotHistorico(
+    leituraReplay.vetores ?? projecaoReplay.vetores
+  );
+  const vetoresReplay = compatibilidadeReplay.vetoresMomentaneosCanonicos;
   const resultanteReplay = objeto(projecaoReplay.resultante);
   const estadoDaMaterializacaoVetorial = texto(
     projecaoReplay.vector_materialization_state
@@ -3365,7 +3359,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       </div>
       <section className="hx-replay hx-replay--operational">
         <div className="hx-replay__toolbar">
-          <div><p>REPRODUÇÃO HISTÓRICA MULTIMODAL SINCRONIZADA</p><strong>{texto(estado.replay?.linha?.identificador, "LINHA NÃO GERADA")}</strong></div>
+          <div><p>REPRODUÇÃO HISTÓRICA MULTIMODAL SINCRONIZADA</p><strong>{texto(estado.replay?.linha?.identificador, replayDisponivel ? "LINHA CANÔNICA REIDRATADA" : "LINHA NÃO GERADA")}</strong></div>
           <div><Botao onClick={comandos.replay} disabled={ocupado !== ""}>Atualizar linha</Botao><Botao forte onClick={comandos.exportarReplay} disabled={ocupado !== "" || !itensReplay.length}>Exportar intervalo</Botao></div>
         </div>
         <div className="hx-replay-controls">
@@ -3388,7 +3382,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           <span>Cobertura da Resultante · {formatarPercentualCanonico(resultanteReplay.cobertura)}</span>
           <span>Resultante estruturada · {texto(resultanteReplay.estado, "NÃO MATERIALIZADA")}</span>
           <span>Contrato · {texto(projecaoReplay.versao_cientifica, "TIRH V1 NÃO DISPONÍVEL")}</span>
-          <span>VEV · longitudinal separado</span>
+          <span>VEV · {compatibilidadeReplay.vetorLongitudinal ? "preservado separadamente no longitudinal" : "longitudinal separado"}</span>
+          {compatibilidadeReplay.bloqueadorExato ? (
+            <span>Bloqueador histórico · {compatibilidadeReplay.bloqueadorExato}</span>
+          ) : null}
         </div>
         {!replayDisponivel ? (
           <p className="hx-module__notice">
