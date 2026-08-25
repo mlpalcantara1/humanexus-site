@@ -48,6 +48,7 @@ import {
   compatibilizarVetoresDoSnapshotHistorico,
   itensCanonicosDaLinhaHistorica
 } from "@/lib/historical-vector-compatibility";
+import { resolverIirhAutoritativo } from "@/lib/authoritative-iirh-projection";
 import { estruturaVisivelEmPortugues, portuguesVisivel } from "@/lib/portugues-visivel";
 
 type Registro = Record<string, unknown>;
@@ -280,6 +281,7 @@ function RelatorioCanonicoV1({
   const vev = vetorLongitudinalDaProjecaoV1(estado);
   const resultante = objeto(projecao.resultante);
   const iirh = objeto(projecao.iirh);
+  const iirhAutoritativo = resolverIirhAutoritativo(iirh);
   const zona = objeto(projecao.zona);
   const identidade = resolverIdentidadeDocumental(
     estado.participante,
@@ -309,8 +311,7 @@ function RelatorioCanonicoV1({
     return [registro.magnitude, registro.valor, registro.value]
       .some((valor) => typeof valor === "number");
   });
-  const iirhCalculavel = ["PARCIAL", "PLENO"].includes(String(iirh.estado ?? ""))
-    && typeof iirh.valor === "number";
+  const iirhCalculavel = iirhAutoritativo.calculado;
   const rotas: Array<[string, unknown, string]> = [
     ["ARR · Análise das Rotas Regulatórias", estado.leitura_regulatoria.arr.at(-1) ?? cadeia.arr, "Análise profissional das rotas admissíveis."],
     ["RRD · Rota Regulatória Dominante", cadeia.rota_dominante, "Rota dominante somente quando sustentada e decidida."],
@@ -348,10 +349,13 @@ function RelatorioCanonicoV1({
         <small>01 · SÍNTESE EXECUTIVA DA SESSÃO</small>
         <h3>O que a sessão permite compreender</h3>
         <p>Resultante estrutural: <strong>{texto(resultante.estado, "NÃO MATERIALIZADA")}</strong>. {texto(resultante.motivo, "A leitura permanece limitada às evidências admissíveis do recorte.")}</p>
-        <p>IIRH: <strong>{iirhCalculavel ? `${iirh.valor} / 100` : "NÃO CALCULÁVEL"}</strong>. Zona: <strong>{texto(zona.codigo ?? zona.estado, "NÃO CLASSIFICÁVEL")}</strong>.</p>
+        <p>IIRH: <strong>{iirhCalculavel ? `${iirhAutoritativo.valor} / 100` : "NÃO CALCULÁVEL"}</strong>. Zona: <strong>{texto(zona.codigo ?? zona.estado, "NÃO CLASSIFICÁVEL")}</strong>.</p>
         <p>{iirhCalculavel
           ? "A medida foi materializada apenas com Macrocampos funcionalmente admissíveis."
-          : "A ausência do IIRH e da Zona não representa falha pessoal: informa que a cobertura funcional do recorte não sustenta essas sínteses com segurança."}</p>
+          : texto(
+              iirhAutoritativo.motivo,
+              "A ausência do IIRH não representa falha pessoal: o Núcleo não informou motivo científico adicional para este recorte."
+            )}</p>
       </section>
 
       <section className="hx-report-canonical__section">
@@ -411,7 +415,7 @@ function RelatorioCanonicoV1({
         <small>06 · RESULTANTE, IIRH, ZONA E TRAJETÓRIA</small>
         <h3>Estado estrutural da Resultante: {texto(resultante.estado, "NÃO MATERIALIZADA")}</h3>
         <p>Magnitude escalar: <strong>NÃO APLICÁVEL NA TIRH V1</strong>. {texto(resultante.motivo, "A Resultante descreve a organização vetorial sustentada neste recorte.")}</p>
-        <p>IIRH: {iirhCalculavel ? `${iirh.valor} / 100` : "não calculável"}. Zona: {texto(zona.codigo ?? zona.estado, "não classificável")}. Trajetória: {estado.leitura_regulatoria.trajetorias.length ? "registro longitudinal localizado" : "não inferível a partir de um único ponto"}.</p>
+        <p>IIRH: {iirhCalculavel ? `${iirhAutoritativo.valor} / 100` : `não calculável · ${texto(iirhAutoritativo.motivo, "motivo autoritativo não informado")}`}. Zona: {texto(zona.codigo ?? zona.estado, "não classificável")}. Trajetória: {estado.leitura_regulatoria.trajetorias.length ? "registro longitudinal localizado" : "não inferível a partir de um único ponto"}.</p>
         <p>O próximo registro válido e comparável pode ampliar a leitura temporal sem reclassificar retroativamente esta sessão.</p>
       </section>
 
@@ -1363,6 +1367,7 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
   const evidenciasDoMotor = objeto(cadeiaCientifica.evidencias);
   const evidenciasAceitas = lista(evidenciasDoMotor.aceitas);
   const iirh = objeto(leituraCientifica.iirh);
+  const iirhAutoritativo = resolverIirhAutoritativo(iirh);
   return (
     <section className="hx-cockpit-panel">
       <TituloDaVisao
@@ -1409,9 +1414,12 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
       </details>
       <div className="hx-limit-consolidated">
         <strong>LIMITAÇÃO CONSOLIDADA</strong>
-        <span>{iirh.estado === "CALCULADO"
+        <span>{iirhAutoritativo.calculado
           ? "O IIRH e os vetores presentes foram calculados pelo núcleo com as evidências admissíveis. Ausências, Zona e trajetória conservam seus próprios limites científicos."
-          : "Os dados disponíveis ainda não são suficientes para produzir uma leitura científica integral; nenhuma ausência foi convertida em zero."}</span>
+          : texto(
+              iirhAutoritativo.motivo,
+              "O Núcleo não informou motivo científico adicional; nenhuma ausência foi convertida em zero."
+            )}</span>
       </div>
       {estado.leitura_regulatoria.anamneses.length ? (
         <details className="hx-technical-details"><summary>Anamnese Regulatória autorizada como fonte de evidência</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues(estado.leitura_regulatoria.anamneses), null, 2)}</pre></details>
@@ -1603,6 +1611,7 @@ function ResultanteRegulatoria({ estado, resumida = false }: { estado: Estado; r
     ? resultadoCanonico
     : configuracao ?? avaliacao;
   const iirh = objeto(leituraCientifica.iirh);
+  const iirhAutoritativo = resolverIirhAutoritativo(iirh);
   const zona = objeto(leituraCientifica.zona);
   const motivo = objeto(resultado?.por_que_este_resultado).resumo
     ?? resultado?.justificativa
@@ -1622,9 +1631,15 @@ function ResultanteRegulatoria({ estado, resumida = false }: { estado: Estado; r
         <div><small>Sentido contextual</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "sentido_contextual", "sentido_predominante", "sentido"), "NÃO DETERMINÁVEL")}</strong></div>
         <div><small>Cobertura global</small><strong>{formatarPercentualCanonico(resultado?.cobertura)}</strong></div>
         <div><small>Confiabilidade global</small><strong>{formatarPercentualCanonico(resultado?.confianca ?? resultado?.confiabilidade)}</strong></div>
-        <div><small>IIRH</small><strong>{["PARCIAL", "PLENO"].includes(String(iirh.estado ?? "")) && typeof iirh.valor === "number" ? `${iirh.valor} · ${texto(iirh.unidade, "0-100")}` : "NÃO CALCULÁVEL"}</strong></div>
+        <div data-iirh-authoritative-state={iirhAutoritativo.estadoNormalizado || "AUSENTE"}><small>IIRH</small><strong>{iirhAutoritativo.calculado ? `${iirhAutoritativo.valor} · ${texto(iirhAutoritativo.unidade, "0-100")}` : "NÃO CALCULÁVEL"}</strong></div>
         <div><small>Zona Operacional</small><strong>{texto(zona.codigo ?? zona.nome, "NÃO CLASSIFICÁVEL")}</strong></div>
         <div><small>Versão científica</small><strong>{texto(valorDoRegistro(resultado ?? {}, "versao_cientifica", "versao_da_biblioteca", "versao_do_motor", "versao_algoritmo"), "PRESERVADA NO NÚCLEO")}</strong></div>
+      </div>
+      <div className="hx-limit-consolidated">
+        <strong>IIRH · AUTORIDADE DO NÚCLEO</strong>
+        <span>{iirhAutoritativo.calculado
+          ? `Estado ${texto(iirhAutoritativo.estado)} · valor autoritativo preservado sem recálculo no Portal.`
+          : texto(iirhAutoritativo.motivo, "Motivo autoritativo não informado pelo Núcleo.")}</span>
       </div>
       <div className="hx-limit-consolidated"><strong>MOTIVO CONSOLIDADO</strong><span>{texto(motivo, resultado ? "Consulte vetores contribuintes, tensões e compensações na rastreabilidade." : "As evidências disponíveis não são suficientes para compor a Resultante.")}</span></div>
       {!resumida && resultado ? <details className="hx-technical-details"><summary>Vetores contribuintes, preservados, comprometidos, tensões e compensações</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues(resultado), null, 2)}</pre></details> : null}
@@ -3337,6 +3352,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const replayDisponivel = itensDaLinha.length > 0;
   const projecaoReplay = projecaoCanonicaTirhV1(estado);
   const leituraReplay = leituraCientificaDaInspecao(estado);
+  const iirhReplayAutoritativo = resolverIirhAutoritativo(
+    objeto(leituraReplay.iirh)
+  );
   const compatibilidadeReplay = compatibilizarVetoresDoSnapshotHistorico(
     leituraReplay.vetores ?? projecaoReplay.vetores
   );
@@ -3381,6 +3399,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           <span>Vetores momentâneos V1 · {vetoresReplay.length}/9 projetados</span>
           <span>Cobertura da Resultante · {formatarPercentualCanonico(resultanteReplay.cobertura)}</span>
           <span>Resultante estruturada · {texto(resultanteReplay.estado, "NÃO MATERIALIZADA")}</span>
+          <span data-iirh-authoritative-state={iirhReplayAutoritativo.estadoNormalizado || "AUSENTE"}>IIRH · {iirhReplayAutoritativo.calculado
+            ? `${iirhReplayAutoritativo.valor} ${texto(iirhReplayAutoritativo.unidade, "0-100")}`
+            : `NÃO CALCULÁVEL · ${texto(iirhReplayAutoritativo.motivo, "motivo autoritativo não informado")}`}</span>
           <span>Contrato · {texto(projecaoReplay.versao_cientifica, "TIRH V1 NÃO DISPONÍVEL")}</span>
           <span>VEV · {compatibilidadeReplay.vetorLongitudinal ? "preservado separadamente no longitudinal" : "longitudinal separado"}</span>
           {compatibilidadeReplay.bloqueadorExato ? (

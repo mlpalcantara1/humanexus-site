@@ -7,6 +7,7 @@ import {
   decisoesProfissionaisPreservadasTirhV1
 } from "@/lib/validacao-profissional-tirh-v1";
 import { chaveIdempotenteDocumental } from "@/lib/humanexus-report-authority";
+import { resolverIirhAutoritativo } from "@/lib/authoritative-iirh-projection";
 import { portuguesVisivel } from "@/lib/portugues-visivel";
 
 export { claimElegivelParaValidacaoTirhV1 } from "@/lib/validacao-profissional-tirh-v1";
@@ -97,6 +98,7 @@ export function SinteseValidacaoTirhV1({
   const vetoresTirhV1 = objeto(tirhV1.vetores);
   const resultanteTirhV1 = objeto(tirhV1.resultante);
   const iirhTirhV1 = objeto(tirhV1.iirh);
+  const iirhAutoritativo = resolverIirhAutoritativo(iirhTirhV1);
   const zonaTirhV1 = objeto(tirhV1.zona);
   const claimsTirhV1 = lista(
     Array.isArray(tirhV1Persistida.claims)
@@ -192,12 +194,14 @@ export function SinteseValidacaoTirhV1({
         </article>
         <article>
           <small>IIRH operacional</small>
-          <strong>{typeof iirhTirhV1.valor === "number"
-            ? `${numero(iirhTirhV1.valor, 1)} / 100`
+          <strong data-iirh-authoritative-state={iirhAutoritativo.estadoNormalizado || "AUSENTE"}>{iirhAutoritativo.calculado
+            ? `${numero(iirhAutoritativo.valor, 1)} / 100`
             : "NÃO CALCULÁVEL"}</strong>
           <span>{texto(
-            iirhTirhV1.estado,
-            "Aguardando adequação funcional explícita dos macrocampos."
+            iirhAutoritativo.calculado
+              ? iirhAutoritativo.estado
+              : iirhAutoritativo.motivo,
+            "Motivo autoritativo não informado pelo Núcleo."
           )}</span>
         </article>
         <article>

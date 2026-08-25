@@ -32,6 +32,7 @@ import {
 } from "@/lib/cockpit-terminal-eligibility";
 import { snapshotOficialDeFaseAplicavel } from "@/lib/cockpit-scientific-authority";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
+import { resolverIirhAutoritativo } from "@/lib/authoritative-iirh-projection";
 import { estruturaVisivelEmPortugues, portuguesVisivel } from "@/lib/portugues-visivel";
 
 type Registro = Record<string, unknown>;
@@ -1387,6 +1388,9 @@ export function CockpitOperacionalVivo({
   const marcadoresAni = lista(aniTirh.marcadores_contextuais);
   const indicadoresInr = lista(inrExperimental.indicadores);
   const iirh = objeto(leituraCientifica.iirh);
+  const iirhAutoritativo = resolverIirhAutoritativo(
+    Object.keys(iirhTirhV1).length ? iirhTirhV1 : iirh
+  );
   const zona = objeto(leituraCientifica.zona);
   const resultante = objeto(leituraCientifica.resultante);
   const trajetoria = objeto(leituraCientifica.trajetoria);
@@ -1405,6 +1409,7 @@ export function CockpitOperacionalVivo({
   const snapshotBasal = objeto(configuracaoBasal.snapshot_basal);
   const vetoresDoSnapshot = Object.entries(objeto(snapshotBasal.vetores));
   const iirhDoSnapshot = objeto(snapshotBasal.iirh);
+  const iirhDoSnapshotAutoritativo = resolverIirhAutoritativo(iirhDoSnapshot);
   const zonaDoSnapshot = objeto(snapshotBasal.zona);
   const resultanteDoSnapshot = objeto(snapshotBasal.resultante);
   const motivosNulosDoSnapshot = objeto(snapshotBasal.motivos_dos_nulos);
@@ -1467,12 +1472,8 @@ export function CockpitOperacionalVivo({
     || configuracaoBasalCanonica
     || snapshotDeFaseCanonico
     || (modoHistorico && Object.keys(tirhV1).length > 0);
-  const iirhCanonicoCalculado = cienciaAtualAdmissivel && (
-    Object.keys(tirhV1).length
-      ? ["PARCIAL", "PLENO"].includes(String(iirhTirhV1.estado ?? ""))
-        && typeof iirhTirhV1.valor === "number"
-      : iirh.estado === "CALCULADO" && typeof iirh.valor === "number"
-  );
+  const iirhCanonicoCalculado = cienciaAtualAdmissivel
+    && iirhAutoritativo.calculado;
   const estadoDaResultanteAutoritativa = String(
     resultanteAutoritativa.estado ?? ""
   ).toUpperCase();
@@ -1515,11 +1516,7 @@ export function CockpitOperacionalVivo({
     ativo: cienciaAtualAdmissivel,
     vetores: radarVetorialCanonico,
     iirh: iirhCanonicoCalculado
-      ? Number(
-          Object.keys(tirhV1).length
-            ? iirhTirhV1.valor
-            : iirh.valor
-        )
+      ? Number(iirhAutoritativo.valor)
       : null,
     zona: zonaCanonicaCalculada
       ? String(
@@ -2085,7 +2082,7 @@ export function CockpitOperacionalVivo({
             <span>
               IIRH: {componentesIirhAusentes.length
                 ? `componentes funcionais ausentes — ${componentesIirhAusentes.map((item) => texto(item)).join(" · ")}`
-                : texto(iirhTirhV1.motivo ?? iirh.motivo, "adequações funcionais explícitas insuficientes")}
+                : texto(iirhAutoritativo.motivo, "motivo autoritativo não informado pelo Núcleo")}
               .
             </span>
           ) : null}
@@ -2153,7 +2150,7 @@ export function CockpitOperacionalVivo({
         </div>
         <div className="is-decision">
           <small>IIRH</small>
-          <strong>{iirhCalculado ? `${numero(iirhApresentado, 1)} ${texto(iirh.unidade, "")}` : "NÃO CALCULÁVEL"}</strong>
+          <strong data-iirh-authoritative-state={iirhAutoritativo.estadoNormalizado || "AUSENTE"}>{iirhCalculado ? `${numero(iirhApresentado, 1)} ${texto(iirhAutoritativo.unidade, "")}` : "NÃO CALCULÁVEL"}</strong>
           <span>{naturezaDoIirh}</span>
         </div>
         <div>
@@ -2388,7 +2385,7 @@ export function CockpitOperacionalVivo({
                     ? snapshotBasal.fontes.map((item) => texto(item)).join(" · ") || "Nenhuma"
                     : "Nenhuma"}</dd></div>
                 <div><dt>Famílias</dt><dd>{Array.isArray(snapshotBasal.familias) ? snapshotBasal.familias.map((item) => texto(item)).join(" · ") || "Nenhuma" : "Nenhuma"}</dd></div>
-                <div><dt>IIRH</dt><dd>{iirhDoSnapshot.valor == null ? `NULO · ${texto(iirhDoSnapshot.motivo)}` : `${numero(iirhDoSnapshot.valor, 1)} · qualidade ${percentual(iirhDoSnapshot.qualidade)} · confiança ${percentual(iirhDoSnapshot.confiabilidade ?? snapshotBasal.confianca)}`}</dd></div>
+                <div><dt>IIRH</dt><dd>{iirhDoSnapshotAutoritativo.calculado ? `${numero(iirhDoSnapshotAutoritativo.valor, 1)} · qualidade ${percentual(iirhDoSnapshot.qualidade)} · confiança ${percentual(iirhDoSnapshot.confiabilidade ?? snapshotBasal.confianca)}` : `NULO · ${texto(iirhDoSnapshotAutoritativo.motivo, "motivo autoritativo não informado pelo Núcleo")}`}</dd></div>
                 <div><dt>Zona</dt><dd>{texto(zonaDoSnapshot.nome ?? zonaDoSnapshot.codigo, `NULA · ${texto(zonaDoSnapshot.motivo, "Precondições não atendidas no registro congelado")}`)}</dd></div>
                 <div><dt>Resultante</dt><dd>{resultanteDoSnapshot.valor == null ? `NULA/PARCIAL · ${texto(resultanteDoSnapshot.motivo ?? resultanteDoSnapshot.justificativa)}` : `${numero(resultanteDoSnapshot.valor, 2)} · ${texto(resultanteDoSnapshot.estado)}`}</dd></div>
                 <div><dt>Proveniência</dt><dd>{referenciaCientificaLegivel(snapshotBasal.proveniencia) || "Proveniência preservada no registro congelado"}</dd></div>

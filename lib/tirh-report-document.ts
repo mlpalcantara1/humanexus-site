@@ -5,6 +5,7 @@ import {
   projetarEstadoFuncionalDoRelatorio,
   resolverIdentidadeDocumental
 } from "./humanexus-report-authority.ts";
+import { resolverIirhAutoritativo } from "./authoritative-iirh-projection.ts";
 import { portuguesVisivel } from "./portugues-visivel.ts";
 
 export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.0";
@@ -820,6 +821,7 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   );
   const resultante = valorResultante(entrada);
   const iirhV1 = objeto(projecaoV1.iirh);
+  const iirhV1Autoritativo = resolverIirhAutoritativo(iirhV1);
   const zona = estadoZona(entrada);
   const trajetoria = extrairTrajetoria(entrada);
   const gatilhos = extrairItens(entrada, "gatilhos");
@@ -881,11 +883,8 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   }
   y += 12;
   etiqueta(doc, "ZONA OPERACIONAL", normalizarZona(zona.codigo ?? zona.nome), 83, y, 200);
-  const valorIirhV1 = numero(iirhV1.valor);
-  const iirhV1Admissivel = ["PARCIAL", "PLENO"].includes(texto(iirhV1.estado, ""))
-    && valorIirhV1 != null;
   etiqueta(doc, "IIRH OPERACIONAL V1", Object.keys(projecaoV1).length
-    ? (iirhV1Admissivel ? valorIirhV1!.toFixed(1) : "Não calculável")
+    ? (iirhV1Autoritativo.calculado ? iirhV1Autoritativo.valor!.toFixed(1) : "Não calculável")
     : (numero(origem.iirh) == null ? "Ausente" : numero(origem.iirh)!.toFixed(1)), 303, y, 120);
   etiqueta(doc, "CONFIANÇA", proporcao(zona.confianca) == null ? "Não registrada" : `${Math.round((proporcao(zona.confianca) ?? 0) * 100)}%`, 443, y, 95);
   y += 62;
@@ -1111,6 +1110,7 @@ function renderOperacionalFinalConsolidado(
   const projecao = projecaoTirhV1(entrada);
   const resultante = objeto(projecao.resultante);
   const iirh = objeto(projecao.iirh);
+  const iirhAutoritativo = resolverIirhAutoritativo(iirh);
   const zona = objeto(projecao.zona);
   const vev = vetoresDaProjecaoTirhV1(entrada).find(
     (item) => texto(item.codigo, "").toUpperCase() === "VEV"
@@ -1180,8 +1180,8 @@ function renderOperacionalFinalConsolidado(
   bloco("02", "Síntese executiva da sessão", [
     `Contexto e objetivo: ${texto(consolidacao.contexto_e_objetivo)}.`,
     `Resultante: ${texto(resultante.estado, "não materializada")} — ${texto(resultante.motivo, "limitada às evidências admissíveis do recorte")}.`,
-    `IIRH: ${typeof iirh.valor === "number" ? `${iirh.valor} / 100` : "não calculável"}. Zona: ${texto(zona.codigo ?? zona.estado, "não classificável")}.`,
-    typeof iirh.valor === "number"
+    `IIRH: ${iirhAutoritativo.calculado ? `${iirhAutoritativo.valor} / 100` : `não calculável — ${texto(iirhAutoritativo.motivo, "motivo autoritativo não informado")}`}. Zona: ${texto(zona.codigo ?? zona.estado, "não classificável")}.`,
+    iirhAutoritativo.calculado
       ? "A medida utiliza somente Macrocampos funcionalmente admissíveis."
       : "A indisponibilidade de IIRH e Zona informa cobertura insuficiente; não representa falha pessoal."
   ]);
@@ -1213,7 +1213,7 @@ function renderOperacionalFinalConsolidado(
 
   bloco("07", "Resultante, IIRH, Zona e trajetória", [
     `Resultante estrutural: ${texto(resultante.estado, "não materializada")}. Magnitude escalar: não aplicável na TIRH V1.`,
-    `IIRH: ${typeof iirh.valor === "number" ? iirh.valor : "não calculável"}. Zona: ${texto(zona.codigo ?? zona.estado, "não classificável")}.`,
+    `IIRH: ${iirhAutoritativo.calculado ? iirhAutoritativo.valor : `não calculável — ${texto(iirhAutoritativo.motivo, "motivo autoritativo não informado")}`}. Zona: ${texto(zona.codigo ?? zona.estado, "não classificável")}.`,
     trajetoria.length
       ? `Trajetória: ${trajetoria.map((item) => `${item.rotulo} — ${item.valor == null ? "ausente" : item.valor} — ${item.zona}`).join(" · ")}.`
       : "Trajetória não inferível: ainda não há pontos válidos e comparáveis suficientes.",
