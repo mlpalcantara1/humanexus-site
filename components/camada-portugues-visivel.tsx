@@ -16,6 +16,14 @@ function podeTraduzirNoElemento(elemento: Element | null) {
 
 function traduzirTexto(no: Text) {
   if (!podeTraduzirNoElemento(no.parentElement)) return;
+  if (
+    no.parentElement instanceof HTMLOptionElement
+    && !no.parentElement.hasAttribute("value")
+  ) {
+    // Em <option> sem atributo value, o navegador deriva o valor do texto.
+    // Preserve o contrato canônico antes de traduzir apenas o rótulo visível.
+    no.parentElement.setAttribute("value", no.parentElement.value);
+  }
   const atual = no.nodeValue ?? "";
   const traduzido = portuguesVisivelPreservandoEspacos(atual);
   if (traduzido !== atual) no.nodeValue = traduzido;
