@@ -986,7 +986,18 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   assert.match(cockpit, /const iirhCanonicoCalculado = cienciaAtualAdmissivel/);
   assert.match(cockpit, /ativo: cienciaAtualAdmissivel/);
   assert.match(cockpit, /const resultanteCalculada = cienciaAtualAdmissivel/);
-  assert.match(cockpit, /const trajetoriaCalculada = leituraAoVivo/);
+  assert.match(
+    cockpit,
+    /const trajetoriaCalculada = \(leituraAoVivo \|\| snapshotDeFaseCanonico\)/
+  );
+  assert.match(
+    cockpit,
+    /snapshotOficialDeFaseAplicavel\(\{[\s\S]*identificadorDaSessao[\s\S]*sessaoFinalizada/
+  );
+  assert.match(
+    cockpit,
+    /snapshotDeFaseCanonico[\s\S]*\? estadoVetorial/
+  );
   assert.match(cockpit, /const projecaoOperacionalAtual = Number\.isFinite/);
   assert.match(
     cockpit,
@@ -1410,8 +1421,9 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
   assert.match(cockpit, /Somente relações autorais rastreáveis/);
   assert.match(cockpit, /nenhuma decisão automática/);
   assert.doesNotMatch(cockpit, /hx-live-regulatory-readout__seal/);
-  assert.match(cockpit, /resultante\.estado === "CALCULAVEL"/);
-  assert.match(cockpit, /resultante\.estado === "CONFLITANTE"/);
+  assert.match(cockpit, /resultanteAutoritativa/);
+  assert.match(cockpit, /"PLENA", "PARCIAL", "CONFLITANTE"/);
+  assert.match(cockpit, /"CALCULAVEL", "CONFLITANTE", "PARCIAL"/);
   assert.match(cockpit, /Cobertura[\s\S]*Qualidade[\s\S]*Confiança/);
   for (const item of [
     "Direção funcional",

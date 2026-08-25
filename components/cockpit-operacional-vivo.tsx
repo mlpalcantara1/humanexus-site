@@ -30,6 +30,7 @@ import {
 import {
   estadoOperacionalTerminal
 } from "@/lib/cockpit-terminal-eligibility";
+import { snapshotOficialDeFaseAplicavel } from "@/lib/cockpit-scientific-authority";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 import { estruturaVisivelEmPortugues, portuguesVisivel } from "@/lib/portugues-visivel";
 
@@ -1354,6 +1355,18 @@ export function CockpitOperacionalVivo({
     : acoesSecundarias.filter((comando) => !comandosDaFase.has(comando));
   const ciencia = objeto(estado.ciencia);
   const leituraCientifica = objeto(cockpit.leitura_cientifica);
+  const estadoDaJanelaCientifica = objeto(
+    leituraCientifica.estado_da_janela_cientifica
+  );
+  const requisitosDaJanela = lista(
+    estadoDaJanelaCientifica.requisitos_nao_atendidos_por_vetor
+  );
+  const referenciaHistoricaAnterior = objeto(
+    leituraCientifica.referencia_historica_da_fase_anterior
+  );
+  const referenciaCongeladaDaPausa = objeto(
+    cockpit.referencia_temporal_congelada
+  );
   const {
     tirhV1,
     tirhV1AoVivo,
@@ -1400,12 +1413,20 @@ export function CockpitOperacionalVivo({
     ""
   );
   const faseCientificaAtual = String(sessao.fase_atual ?? "");
+  const snapshotDeFaseCanonico = snapshotOficialDeFaseAplicavel({
+    leituraCientifica,
+    identificadorDaSessao,
+    sessaoFinalizada
+  });
   const configuracaoBasalCanonica = (sessaoBaseline || (
     !sessaoFinalizada && !faseCientificaAtual
   ))
     && !modoHistorico
     && texto(configuracaoBasal.identificador_da_sessao, "") === identificadorDaSessao;
   const coberturaVetorial = objeto(leituraCientifica.cobertura_vetorial);
+  const resultanteAutoritativa = Object.keys(resultanteTirhV1).length
+    ? resultanteTirhV1
+    : resultante;
   const definicoesVetoriais = lista(ciencia.vetores).filter(
     (definicao) => codigoVetorial(definicao) !== "VEV"
   );
@@ -1423,7 +1444,11 @@ export function CockpitOperacionalVivo({
       ? Object.keys(tirhV1AoVivo).length
         ? objeto(objeto(tirhV1AoVivo.vetores)[codigo])
         : estadoVetorial
-      : configuracaoBasalCanonica || modoHistorico
+      : snapshotDeFaseCanonico
+        ? Object.keys(tirhV1).length
+          ? objeto(objeto(tirhV1.vetores)[codigo])
+          : estadoVetorial
+        : configuracaoBasalCanonica || modoHistorico
         ? Object.keys(tirhV1).length
           ? objeto(objeto(tirhV1.vetores)[codigo])
           : Object.keys(sinteseTirhV1Persistida).length
@@ -1440,6 +1465,7 @@ export function CockpitOperacionalVivo({
   });
   const cienciaAtualAdmissivel = leituraAoVivo
     || configuracaoBasalCanonica
+    || snapshotDeFaseCanonico
     || (modoHistorico && Object.keys(tirhV1).length > 0);
   const iirhCanonicoCalculado = cienciaAtualAdmissivel && (
     Object.keys(tirhV1).length
@@ -1447,10 +1473,22 @@ export function CockpitOperacionalVivo({
         && typeof iirhTirhV1.valor === "number"
       : iirh.estado === "CALCULADO" && typeof iirh.valor === "number"
   );
-  const resultanteCalculada = cienciaAtualAdmissivel
-    && !Object.keys(tirhV1).length
-    && (resultante.estado === "CALCULAVEL" || resultante.estado === "CONFLITANTE")
-    && typeof resultante.valor === "number";
+  const estadoDaResultanteAutoritativa = String(
+    resultanteAutoritativa.estado ?? ""
+  ).toUpperCase();
+  const resultanteEstruturada = cienciaAtualAdmissivel
+    && ["PLENA", "PARCIAL", "CONFLITANTE"].includes(
+      estadoDaResultanteAutoritativa
+    );
+  const resultanteCalculada = cienciaAtualAdmissivel && (
+    resultanteEstruturada
+    || (
+      ["CALCULAVEL", "CONFLITANTE", "PARCIAL"].includes(
+        estadoDaResultanteAutoritativa
+      )
+      && typeof resultanteAutoritativa.valor === "number"
+    )
+  );
   const zonaCanonicaCalculada = cienciaAtualAdmissivel && (
     Object.keys(tirhV1).length
       ? zonaTirhV1.estado === "VALIDADA_PROFISSIONALMENTE"
@@ -1477,7 +1515,11 @@ export function CockpitOperacionalVivo({
     ativo: cienciaAtualAdmissivel,
     vetores: radarVetorialCanonico,
     iirh: iirhCanonicoCalculado
-      ? Number(Object.keys(tirhV1).length ? iirhTirhV1.valor : iirh.valor)
+      ? Number(
+          Object.keys(tirhV1).length
+            ? iirhTirhV1.valor
+            : iirh.valor
+        )
       : null,
     zona: zonaCanonicaCalculada
       ? String(
@@ -1552,21 +1594,40 @@ export function CockpitOperacionalVivo({
   const vetoresDaVisaoAtual = vetoresDaVisao(radarVetorial, visaoVetorial);
   const radarCompleto = radarVetorial.length === 9
     && radarVetorial.every((item) => item.value != null);
+  const radarParcial = radarVetorial.some((item) => item.value != null);
   const iirhCalculado = apresentacaoRegulatoria.iirh != null;
   const iirhApresentado = apresentacaoRegulatoria.iirh;
   const naturezaDoIirh = leituraAoVivo
     ? "Índice regulatório atual"
+    : snapshotDeFaseCanonico
+      ? "Snapshot oficial da fase · leitura preservada"
     : configuracaoBasalCanonica
       ? "Referência basal · evidência da anamnese"
       : "Sem leitura regulatória atual";
   const zonaCalculada = apresentacaoRegulatoria.zona != null;
   const zonaApresentada = apresentacaoRegulatoria.zona;
-  const trajetoriaCalculada = leituraAoVivo && trajetoria.valor != null;
+  const componentesIirhAusentes = Array.isArray(
+    iirhTirhV1.componentes_ausentes
+  )
+    ? iirhTirhV1.componentes_ausentes.map(String)
+    : [];
+  const precondicoesDaZonaAusentes = Array.isArray(
+    zona.precondicoes_nao_atendidas
+  )
+    ? zona.precondicoes_nao_atendidas.map(String)
+    : [];
+  const vetoresDaResultanteAusentes = Array.isArray(
+    resultanteAutoritativa.vetores_ausentes
+  )
+    ? resultanteAutoritativa.vetores_ausentes.map(String)
+    : [];
+  const trajetoriaCalculada = (leituraAoVivo || snapshotDeFaseCanonico)
+    && trajetoria.valor != null;
   const leituraCientificaVisivel = iirhCalculado
     || zonaCalculada
     || resultanteCalculada
     || trajetoriaCalculada
-    || radarCompleto;
+    || radarParcial;
   const diagnosticosCientificos = [
     ["VETORES", coberturaVetorial],
     ["IIRH", objeto(iirh.cobertura_cientifica)],
@@ -1995,6 +2056,83 @@ export function CockpitOperacionalVivo({
         <div className="hx-live-historical-warning" role="status">
           <strong>REPRODUÇÃO HISTÓRICA DE SESSÃO CIENTIFICAMENTE INCOMPLETA</strong>
           <span>Somente dados técnicos, eventos e registros realmente preservados são apresentados neste modo.</span>
+        </div>
+      ) : null}
+
+      {Object.keys(estadoDaJanelaCientifica).length ? (
+        <div
+          className="hx-live-historical-warning"
+          data-window-state={texto(estadoDaJanelaCientifica.estado)}
+          role="status"
+        >
+          <strong>{texto(
+            estadoDaJanelaCientifica.estado,
+            "JANELA EM FORMAÇÃO"
+          ).replaceAll("_", " ")}</strong>
+          <span>
+            Fase {texto(estadoDaJanelaCientifica.fase, "ainda não iniciada")}
+            {" · "}{numero(estadoDaJanelaCientifica.quantidade_de_vetores_calculados)} de 9 vetores momentâneos calculáveis pelo Núcleo.
+          </span>
+          {requisitosDaJanela.length ? (
+            <span>
+              Requisitos ainda não atendidos: {requisitosDaJanela
+                .slice(0, 9)
+                .map((item) => `${texto(item.vetor)} — ${texto(item.motivo, "evidência canônica insuficiente").replaceAll("_", " ")}`)
+                .join("; ")}.
+            </span>
+          ) : null}
+          {!iirhCalculado ? (
+            <span>
+              IIRH: {componentesIirhAusentes.length
+                ? `componentes funcionais ausentes — ${componentesIirhAusentes.map((item) => texto(item)).join(" · ")}`
+                : texto(iirhTirhV1.motivo ?? iirh.motivo, "adequações funcionais explícitas insuficientes")}
+              .
+            </span>
+          ) : null}
+          {!zonaCalculada ? (
+            <span>
+              Zona: {texto(
+                zonaTirhV1.motivo ?? zona.motivo,
+                precondicoesDaZonaAusentes.length
+                  ? precondicoesDaZonaAusentes.join(" · ")
+                  : "critérios semânticos multifonte e validação profissional ainda insuficientes"
+              )}.
+            </span>
+          ) : null}
+          {!resultanteCalculada ? (
+            <span>
+              Resultante, direção e sentido: {vetoresDaResultanteAusentes.length
+                ? `vetores ausentes — ${vetoresDaResultanteAusentes.map((item) => texto(item)).join(" · ")}`
+                : texto(resultanteAutoritativa.motivo ?? resultanteAutoritativa.justificativa, "configuração multivetorial insuficiente")}
+              .
+            </span>
+          ) : null}
+          {resultanteCalculada
+          && !texto(
+            resultanteAutoritativa.direcao_funcional
+            ?? resultanteAutoritativa.vetor_dominante,
+            ""
+          ) ? (
+            <span>
+              Direção: as interdependências explícitas admissíveis ainda não sustentam uma direção funcional única.
+            </span>
+          ) : null}
+          {resultanteCalculada
+          && !texto(resultanteAutoritativa.sentido_contextual, "") ? (
+            <span>
+              Sentido: as interdependências explícitas admissíveis ainda não sustentam um sentido contextual único.
+            </span>
+          ) : null}
+          {Object.keys(referenciaHistoricaAnterior).length ? (
+            <span>
+              A última leitura assinada da fase anterior permanece disponível somente como referência histórica identificada; não é apresentada como valor atual.
+            </span>
+          ) : null}
+          {Object.keys(referenciaCongeladaDaPausa).length ? (
+            <span>
+              Sessão pausada: a última leitura autoritativa está congelada como referência temporal e não representa resultado atual.
+            </span>
+          ) : null}
         </div>
       ) : null}
 
@@ -2515,7 +2653,7 @@ export function CockpitOperacionalVivo({
             />
             <DinamicaDaInteligenciaRegulatoria
               vetores={radarVetorial}
-              resultante={resultante}
+              resultante={resultanteAutoritativa}
               resultanteCalculada={resultanteCalculada}
               trajetoria={trajetoria}
               trajetoriaCalculada={trajetoriaCalculada}
@@ -2671,8 +2809,8 @@ export function CockpitOperacionalVivo({
               fallback={texto(zona.motivo, "As precondições científicas da Zona não foram satisfeitas.")}
             />
             <PorQueEsteResultado
-              valor={resultante.por_que_este_resultado}
-              fallback={texto(resultante.justificativa ?? resultante.motivo, "Configuração vetorial insuficiente.")}
+              valor={resultanteAutoritativa.por_que_este_resultado}
+              fallback={texto(resultanteAutoritativa.justificativa ?? resultanteAutoritativa.motivo, "Configuração vetorial insuficiente.")}
             />
             <PorQueEsteResultado
               valor={trajetoria.por_que_este_resultado}
@@ -2682,18 +2820,18 @@ export function CockpitOperacionalVivo({
           <details className="hx-live-vector-trace">
             <summary>Resultante · rastreabilidade científica</summary>
             <dl>
-              <div><dt>Direção funcional</dt><dd>{texto(resultante.vetor_dominante, "NÃO DETERMINÁVEL")}</dd></div>
-              <div><dt>Sentido contextual</dt><dd>{texto(resultante.sentido_contextual, "NÃO DETERMINÁVEL")}</dd></div>
-              <div><dt>Vetores contribuintes</dt><dd>{fontesDoIndicador(resultante.vetores_utilizados)}</dd></div>
-              <div><dt>Vetores ausentes</dt><dd>{fontesDoIndicador(resultante.vetores_ausentes)}</dd></div>
-              <div><dt>Macrocampos cobertos</dt><dd>{fontesDoIndicador(resultante.macrocampos_cobertos)}</dd></div>
-              <div><dt>Macrocampos ausentes</dt><dd>{fontesDoIndicador(resultante.macrocampos_ausentes)}</dd></div>
-              <div><dt>Conflitos</dt><dd>{fontesDoIndicador(resultante.conflitos)}</dd></div>
-              <div><dt>Compensações</dt><dd>{fontesDoIndicador(resultante.compensacoes)}</dd></div>
-              <div><dt>Versão científica</dt><dd>{texto(resultante.versao_cientifica ?? resultante.versao_do_algoritmo)}</dd></div>
-              <div><dt>Origem matemática</dt><dd>{referenciaCientificaLegivel(resultante.origem_matematica) || "Biblioteca Oficial"}</dd></div>
-              <div><dt>Justificativa</dt><dd>{texto(resultante.justificativa ?? resultante.motivo)}</dd></div>
-              <div><dt>Incertezas</dt><dd>{fontesDoIndicador(resultante.incertezas)}</dd></div>
+              <div><dt>Direção funcional</dt><dd>{texto(resultanteAutoritativa.direcao_funcional ?? resultanteAutoritativa.vetor_dominante, "NÃO DETERMINÁVEL")}</dd></div>
+              <div><dt>Sentido contextual</dt><dd>{texto(resultanteAutoritativa.sentido_contextual, "NÃO DETERMINÁVEL")}</dd></div>
+              <div><dt>Vetores contribuintes</dt><dd>{fontesDoIndicador(resultanteAutoritativa.vetores_contribuintes ?? resultanteAutoritativa.vetores_utilizados)}</dd></div>
+              <div><dt>Vetores ausentes</dt><dd>{fontesDoIndicador(resultanteAutoritativa.vetores_ausentes)}</dd></div>
+              <div><dt>Macrocampos cobertos</dt><dd>{fontesDoIndicador(resultanteAutoritativa.macrocampos_cobertos)}</dd></div>
+              <div><dt>Macrocampos ausentes</dt><dd>{fontesDoIndicador(resultanteAutoritativa.macrocampos_ausentes)}</dd></div>
+              <div><dt>Conflitos</dt><dd>{fontesDoIndicador(resultanteAutoritativa.conflitos)}</dd></div>
+              <div><dt>Compensações</dt><dd>{fontesDoIndicador(resultanteAutoritativa.compensacoes)}</dd></div>
+              <div><dt>Versão científica</dt><dd>{texto(resultanteAutoritativa.versao_cientifica ?? resultanteAutoritativa.versao_do_algoritmo)}</dd></div>
+              <div><dt>Origem matemática</dt><dd>{referenciaCientificaLegivel(resultanteAutoritativa.origem_matematica) || "Biblioteca Oficial"}</dd></div>
+              <div><dt>Justificativa</dt><dd>{texto(resultanteAutoritativa.justificativa ?? resultanteAutoritativa.motivo)}</dd></div>
+              <div><dt>Incertezas</dt><dd>{fontesDoIndicador(resultanteAutoritativa.incertezas)}</dd></div>
             </dl>
           </details>
           <details className="hx-live-vector-trace">

@@ -22,6 +22,7 @@ type SelecaoDeContexto = {
   identificador_da_organizacao?: string;
   identificador_do_participante?: string;
   identificador_da_sessao?: string;
+  fase_cientifica?: string;
 };
 type Contexto = Awaited<ReturnType<typeof estado>>;
 
@@ -206,6 +207,9 @@ async function atualizacaoLeve(
   }
   const parametros = new URLSearchParams();
   if (desdeVersao) parametros.set("desde_versao", desdeVersao);
+  if (selecao.fase_cientifica) {
+    parametros.set("fase", selecao.fase_cientifica);
+  }
   const inicioDaConsultaAoNucleo = Date.now();
   const dados = await consultar<{
     contrato: string;
@@ -341,6 +345,12 @@ async function estado(
     );
   }
   const sessaoId = String(sessao.identificador);
+  const faseCientifica = String(selecao.fase_cientifica ?? "").toUpperCase();
+  const parametroDaFase = ["BASELINE", "PRE", "TREINO", "POS"].includes(
+    faseCientifica
+  )
+    ? `?fase=${encodeURIComponent(faseCientifica)}`
+    : "";
   const consultasPrincipaisCompletas: ConsultaEmLote[] = [
     { chave: "fases", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/fases` },
     { chave: "ctrs", caminho: "/api/v1/ctrs" },
@@ -397,7 +407,7 @@ async function estado(
       }
     },
     { chave: "estadoOperacional", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/estado-operacional` },
-    { chave: "cockpitOperacional", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional` },
+    { chave: "cockpitOperacional", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional${parametroDaFase}` },
     ...(opcoes.incluirFormulacoesNoEscopo ? participantes : []).map((item) => ({
       chave: `formulacoes:${String(item.identificador)}`,
       caminho: `/api/v1/participantes/${encodeURIComponent(String(item.identificador))}/formulacoes`,
@@ -432,7 +442,7 @@ async function estado(
     },
     {
       chave: "cockpitOperacional",
-      caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional?limite_de_amostras=120`
+      caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional?limite_de_amostras=120${faseCientifica ? `&fase=${encodeURIComponent(faseCientifica)}` : ""}`
     },
     ...(opcoes.prepararComando ? [
       {
@@ -833,7 +843,9 @@ export async function GET(request: Request) {
       identificador_do_participante:
         url.searchParams.get("participante") ?? undefined,
       identificador_da_sessao:
-        url.searchParams.get("sessao") ?? undefined
+        url.searchParams.get("sessao") ?? undefined,
+      fase_cientifica:
+        url.searchParams.get("fase_cientifica") ?? undefined
     };
     const resultado = atualizacaoLeveSolicitada
         ? await atualizacaoLeve(

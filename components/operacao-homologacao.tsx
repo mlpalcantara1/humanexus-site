@@ -43,6 +43,7 @@ import { publicarEstadoDoNucleo } from "@/lib/client-request";
 import { criarPayloadDoComandoPrincipal } from "@/lib/cockpit-operational-command";
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
 import { estadoOperacionalTerminal } from "@/lib/cockpit-terminal-eligibility";
+import { snapshotOficialDeFaseAplicavel } from "@/lib/cockpit-scientific-authority";
 import { estruturaVisivelEmPortugues, portuguesVisivel } from "@/lib/portugues-visivel";
 
 type Registro = Record<string, unknown>;
@@ -1063,7 +1064,15 @@ function leituraCientificaDaInspecao(estado: Estado) {
 }
 
 function vetoresDaProjecaoV1(estado: Estado): Registro[] {
-  const vetores = projecaoCanonicaTirhV1(estado).vetores;
+  const leitura = leituraCientificaDaInspecao(estado);
+  const snapshotDeFaseCanonico = snapshotOficialDeFaseAplicavel({
+    leituraCientifica: leitura,
+    identificadorDaSessao: String(estado.sessao.identificador ?? ""),
+    sessaoFinalizada: estadoOperacionalTerminal(estado.sessao.estado)
+  });
+  const vetores = snapshotDeFaseCanonico
+    ? leitura.vetores
+    : projecaoCanonicaTirhV1(estado).vetores;
   if (Array.isArray(vetores)) return vetores.map(objeto);
   return Object.entries(objeto(vetores)).map(([codigo, valor]) => ({
     ...objeto(valor),
@@ -1101,6 +1110,12 @@ function vetoresCanonicosDaInspecao(estado: Estado) {
   );
   const vetoresBasais = lista(configuracaoBasal.vetores) as Registro[];
   const vetoresAtuais = vetoresDaProjecaoV1(estado);
+  const snapshotDeFaseCanonico = snapshotOficialDeFaseAplicavel({
+    leituraCientifica: leitura,
+    identificadorDaSessao: String(estado.sessao.identificador ?? ""),
+    sessaoFinalizada: estadoOperacionalTerminal(estado.sessao.estado)
+  });
+  if (snapshotDeFaseCanonico) return vetoresAtuais;
   return !fase && vetoresBasais.length ? vetoresBasais : vetoresAtuais;
 }
 
@@ -1941,6 +1956,12 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       window.location.search
     ).get("visao");
     if (visaoSolicitada) parametros.set("visao", visaoSolicitada);
+    const faseCientificaSolicitada = new URLSearchParams(
+      window.location.search
+    ).get("fase_cientifica");
+    if (faseCientificaSolicitada) {
+      parametros.set("fase_cientifica", faseCientificaSolicitada);
+    }
     if (
       new URLSearchParams(window.location.search).get("medir_latencia") === "1"
     ) {
