@@ -162,6 +162,10 @@ const CHAVES_VISUAIS_DAS_FONTES: Record<string, string> = {
   ANAMNESE_REGULATORIA_ESTRUTURADA: "ANAMNESE_REGULATORIA",
   EMOTIV_EPOC_X: "EPOC_X"
 };
+const FONTES_CONTEXTUAIS_NAO_CONFIGURAVEIS = new Set([
+  "ANAMNESE_REGULATORIA",
+  "ANAMNESE_REGULATORIA_ESTRUTURADA"
+]);
 const ROTULOS_DA_RETENCAO: Record<string, string> = {
   NAO_ARMAZENAR: "Não armazenar mídia",
   DURANTE_A_SESSAO: "Somente durante a sessão",
@@ -188,6 +192,7 @@ function fontesUnicasParaSelecao(
   >();
 
   for (const [codigo, rotulo] of Object.entries(ROTULOS_DAS_FONTES)) {
+    if (FONTES_CONTEXTUAIS_NAO_CONFIGURAVEIS.has(codigo)) continue;
     const chaveVisual = CHAVES_VISUAIS_DAS_FONTES[codigo] ?? codigo;
     const fonte = prontidao?.fontes.find((item) => item.codigo === codigo);
     const pontuacao =

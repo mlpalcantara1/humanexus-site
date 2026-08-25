@@ -100,6 +100,14 @@ test("seleção profissional consolida aliases da mesma fonte sem duplicar contr
     /ANAMNESE_REGULATORIA_ESTRUTURADA:\s*"ANAMNESE_REGULATORIA"/
   );
   assert.match(controle, /EMOTIV_EPOC_X:\s*"EPOC_X"/);
+  assert.match(
+    controle,
+    /FONTES_CONTEXTUAIS_NAO_CONFIGURAVEIS[\s\S]*ANAMNESE_REGULATORIA[\s\S]*ANAMNESE_REGULATORIA_ESTRUTURADA/
+  );
+  assert.match(
+    controle,
+    /FONTES_CONTEXTUAIS_NAO_CONFIGURAVEIS\.has\(codigo\)\) continue/
+  );
   assert.doesNotMatch(
     controle,
     /Object\.entries\(ROTULOS_DAS_FONTES\)\.map\(\(\[codigoDaFonte, rotulo\]\)/
