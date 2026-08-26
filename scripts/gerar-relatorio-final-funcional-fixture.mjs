@@ -9,6 +9,10 @@ const saida = resolve(
   process.env.HXP_FINAL_PDF_OUTPUT
     ?? resolve(raiz, "output/relatorio-final-funcional-fixture.pdf")
 );
+const contratoDocumental = process.env.HXP_FINAL_DOCUMENT_CONTRACT === "LEGACY_HISTORICO"
+  ? "LEGACY_HISTORICO"
+  : "TIRH_V1";
+const contratoLegado = contratoDocumental === "LEGACY_HISTORICO";
 
 const vetores = Object.fromEntries([
   ["VH", 72, .84], ["VT", 67, .81], ["VS", 76, .78],
@@ -84,7 +88,7 @@ const tirhV1 = {
 };
 
 const pdf = await gerarPdfVisualHumanexus({
-  contratoDocumental: "TIRH_V1",
+  contratoDocumental,
   tipoDocumento: "OPERACIONAL_TIRH",
   usuario: {
     identificador: "fixture-profissional-001",
@@ -126,8 +130,29 @@ const pdf = await gerarPdfVisualHumanexus({
   eventos: [],
   gravacao: {},
   contratoCientifico: { versao: "TIRH V1" },
-  tirhV1,
+  tirhV1: contratoLegado ? {} : tirhV1,
   cockpitOperacional: {
+    ...(contratoLegado ? {
+      leitura_cientifica: {
+        origem_temporal: "SNAPSHOT_FASE_PERSISTIDO",
+        snapshot_de_fase: {
+          identificador_da_sessao: "fixture-sessao-001",
+          fase: "POS",
+          integridade_sha256: "fixture-integridade-legada-preservada"
+        },
+        vetores: {
+          VETOR_HUMANO: {
+            codigo: "VETOR_HUMANO",
+            valor: 72,
+            confianca: .84,
+            estado: "CALCULADO",
+            motivo: "Valor preservado no snapshot histórico da fixture."
+          }
+        },
+        estado_da_janela: "ENCERRADA",
+        fase_atual: "POS"
+      }
+    } : {}),
     cadeia_cientifica: {
       arr: {
         estado: "PARCIAL",

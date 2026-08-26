@@ -14,6 +14,7 @@ import {
   MENSAGEM_UNICA_DE_INDISPONIBILIDADE,
   projetarMicrotrajetoriaRegulatoria
 } from "./projecao-narrativa-relatorio.ts";
+import { compatibilizarVetoresDoSnapshotHistorico } from "./historical-vector-compatibility.ts";
 
 export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.0";
 
@@ -386,12 +387,25 @@ function vetoresDaProjecaoTirhV1(entrada: EntradaRelatorioHumanexus): Registro[]
   }));
 }
 
+function vetoresDoContratoHistorico(entrada: EntradaRelatorioHumanexus): Registro[] {
+  if (entrada.contratoDocumental !== "LEGACY_HISTORICO") return [];
+  const leituraCientifica = objeto(
+    objeto(entrada.cockpitOperacional).leitura_cientifica
+  );
+  return compatibilizarVetoresDoSnapshotHistorico(
+    leituraCientifica.vetores
+  ).vetoresMomentaneosCanonicos;
+}
+
 function extrairVetores(entrada: EntradaRelatorioHumanexus): Vetor[] {
   const origem = documentoTirh(entrada);
   const canonicos = vetoresDaProjecaoTirhV1(entrada);
+  const historicos = vetoresDoContratoHistorico(entrada);
   const registros = canonicos.length
     ? canonicos
-    : lista(origem.vetores ?? entrada.relatorio.vetores_json).map((item) => objeto(item));
+    : entrada.contratoDocumental === "LEGACY_HISTORICO"
+      ? historicos
+      : lista(origem.vetores ?? entrada.relatorio.vetores_json).map((item) => objeto(item));
   return VETORES_OFICIAIS.map(([codigo, nome, macrocampo]) => {
     const registro = registros.find((item) => texto(item.codigo, "").toUpperCase() === codigo) ?? {};
     return {

@@ -4,6 +4,10 @@ import { requisitarNucleoAutenticado } from "@/lib/humanexus-core";
 import { gerarPdfVisualHumanexus } from "@/lib/humanexus-report-pdf";
 import { COOKIE_SESSAO } from "@/lib/portal-session";
 import { projetarEstadoFuncionalDoRelatorio } from "@/lib/humanexus-report-authority";
+import {
+  erroIndicaSnapshotHistoricoReproduzivel,
+  resolverContratoDocumentalSomenteLeitura
+} from "@/lib/compatibilidade-documental-historica";
 
 type Registro = Record<string, unknown>;
 
@@ -110,7 +114,7 @@ export async function GET(request: Request) {
       eventos,
       gravacao,
       contratoCientifico,
-      tirhV1,
+      consultaTirhV1,
       cockpitOperacional,
       protocoloThx
     ] = await Promise.all([
@@ -144,7 +148,16 @@ export async function GET(request: Request) {
       requisitarNucleoAutenticado<Registro>(
         `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/tirh-v1`,
         token
-      ),
+      ).then((dados) => ({
+        dados,
+        contratoLegadoDeclarado: false
+      })).catch((erro: unknown) => {
+        if (!erroIndicaSnapshotHistoricoReproduzivel(erro)) throw erro;
+        return {
+          dados: {} as Registro,
+          contratoLegadoDeclarado: true
+        };
+      }),
       requisitarNucleoAutenticado<Registro>(
         `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional`,
         token
@@ -156,6 +169,12 @@ export async function GET(request: Request) {
           ).catch(() => null)
         : Promise.resolve(null)
     ]);
+    const contratoDocumental = resolverContratoDocumentalSomenteLeitura({
+      relatorio,
+      tirhV1: consultaTirhV1.dados,
+      cockpitOperacional,
+      contratoLegadoDeclarado: consultaTirhV1.contratoLegadoDeclarado
+    });
     const pdf = await gerarPdfVisualHumanexus({
       usuario,
       organizacao,
@@ -169,15 +188,16 @@ export async function GET(request: Request) {
       relatorio,
       gravacao,
       contratoCientifico,
-      tirhV1,
+      tirhV1: contratoDocumental.tirhV1,
       cockpitOperacional,
-      contratoDocumental: "TIRH_V1"
+      contratoDocumental: contratoDocumental.contratoDocumental
     });
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
         "content-type": "application/pdf",
         "content-disposition": `${modoImpressao ? "inline" : "attachment"}; filename="humanexus-relatorio-tirh-${String(relatorio.identificador).slice(0, 8)}.pdf"`,
-        "cache-control": "private, no-store"
+        "cache-control": "private, no-store",
+        "x-humanexus-document-contract": contratoDocumental.contratoDocumental
       }
     });
   } catch (erro) {

@@ -164,7 +164,11 @@ test("rota preserva impressão, exportação e nome documental profissional", as
   assert.match(route, /\/api\/v1\/relatorios\/\$\{encodeURIComponent/);
   assert.match(route, /\/api\/v1\/sessoes\/\$\{encodeURIComponent\(sessaoId\)\}\/tirh-v1/);
   assert.match(route, /\/api\/v1\/sessoes\/\$\{encodeURIComponent\(sessaoId\)\}\/cockpit-operacional/);
-  assert.match(route, /contratoDocumental: "TIRH_V1"/);
+  assert.match(
+    route,
+    /contratoDocumental: contratoDocumental\.contratoDocumental/
+  );
+  assert.match(route, /resolverContratoDocumentalSomenteLeitura/);
   assert.doesNotMatch(route, /tirh-v1[\s\S]{0,180}\.catch\(\(\) => \(\{\}\)\)/);
   assert.match(route, /SEM EVIDÊNCIA CIENTÍFICA DISPONÍVEL PARA ESTA SESSÃO/);
   assert.doesNotMatch(route, /relatorios\.at\(-1\)/);
