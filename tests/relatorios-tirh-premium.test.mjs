@@ -143,7 +143,7 @@ test("fixtures geram os cinco PDFs premium com paginação esperada", async () =
   assert.match(texto.stdout, /VETORES MOMENTÂNEOS V1 · 9\/9 PROJETADOS/);
   assert.match(texto.stdout, /VEV.*LONGITUDINAL NÃO ELEGÍVEL/s);
   assert.match(texto.stdout, /PLENA\s+Não aplicável na TIRH V1/s);
-  assert.match(texto.stdout, /Não classificada\s+Não calculável/s);
+  assert.match(texto.stdout, /AGUARDANDO PRIMEIRA REFERÊNCIA[\s\S]*VÁLIDA/);
   assert.match(texto.stdout, /Validação Profissional V1/i);
   assert.match(texto.stdout, /COMPLETA\s+0[\s\S]*Decisão preservada: VALIDAR/);
   assert.match(texto.stdout, /Estado efetivo: VALIDADO PROFISSIONALMENTE/);

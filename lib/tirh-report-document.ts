@@ -5,7 +5,10 @@ import {
   projetarEstadoFuncionalDoRelatorio,
   resolverIdentidadeDocumental
 } from "./humanexus-report-authority.ts";
-import { resolverIirhAutoritativo } from "./authoritative-iirh-projection.ts";
+import {
+  resolverDisponibilidadeContinuaIirhZona,
+  rotuloDaDisponibilidadeAutoritativa
+} from "./authoritative-iirh-projection.ts";
 import { portuguesVisivel } from "./portugues-visivel.ts";
 
 export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.0";
@@ -449,6 +452,14 @@ function estadoZona(entrada: EntradaRelatorioHumanexus) {
   return objeto(origem.zona ?? entrada.relatorio.zona_json);
 }
 
+function disponibilidadeContinuaDoRelatorio(
+  entrada: EntradaRelatorioHumanexus
+) {
+  return resolverDisponibilidadeContinuaIirhZona(
+    objeto(entrada.cockpitOperacional).leitura_cientifica
+  );
+}
+
 function itensDeSecao(entrada: EntradaRelatorioHumanexus, codigo: string) {
   const secoes = lista(
     entrada.relatorio.secoes ?? entrada.relatorio.secoes_json
@@ -820,9 +831,9 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
     (item) => texto(item.codigo, "").toUpperCase() === VETOR_LONGITUDINAL[0]
   );
   const resultante = valorResultante(entrada);
-  const iirhV1 = objeto(projecaoV1.iirh);
-  const iirhV1Autoritativo = resolverIirhAutoritativo(iirhV1);
-  const zona = estadoZona(entrada);
+  const disponibilidadeContinua = disponibilidadeContinuaDoRelatorio(entrada);
+  const iirhV1Autoritativo = disponibilidadeContinua.iirh.projecao;
+  const zona = disponibilidadeContinua.zona.projecao;
   const trajetoria = extrairTrajetoria(entrada);
   const gatilhos = extrairItens(entrada, "gatilhos");
   const ganhos = extrairItens(entrada, "ganhos_regulatorios");
@@ -882,11 +893,13 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
     y += 255;
   }
   y += 12;
-  etiqueta(doc, "ZONA OPERACIONAL", normalizarZona(zona.codigo ?? zona.nome), 83, y, 200);
-  etiqueta(doc, "IIRH OPERACIONAL V1", Object.keys(projecaoV1).length
-    ? (iirhV1Autoritativo.calculado ? iirhV1Autoritativo.valor!.toFixed(1) : "Não calculável")
-    : (numero(origem.iirh) == null ? "Ausente" : numero(origem.iirh)!.toFixed(1)), 303, y, 120);
-  etiqueta(doc, "CONFIANÇA", proporcao(zona.confianca) == null ? "Não registrada" : `${Math.round((proporcao(zona.confianca) ?? 0) * 100)}%`, 443, y, 95);
+  etiqueta(doc, "ZONA OPERACIONAL", zona.classificada
+    ? normalizarZona(zona.codigo ?? zona.nome)
+    : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo), 83, y, 200);
+  etiqueta(doc, "IIRH OPERACIONAL V1", iirhV1Autoritativo.calculado
+    ? `${iirhV1Autoritativo.valor!.toFixed(1)} · ${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}`
+    : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo), 303, y, 120);
+  etiqueta(doc, "CONFIANÇA", proporcao(zona.registro.confianca) == null ? "Não registrada" : `${Math.round((proporcao(zona.registro.confianca) ?? 0) * 100)}%`, 443, y, 95);
   y += 62;
   y = tituloSecao(doc, "Trajetória Regulatória", y, "02");
   desenharTrajetoria(doc, trajetoria, 83, y + 6, 430, 185);
@@ -1109,9 +1122,9 @@ function renderOperacionalFinalConsolidado(
   const identidade = identificacaoDocumental(entrada);
   const projecao = projecaoTirhV1(entrada);
   const resultante = objeto(projecao.resultante);
-  const iirh = objeto(projecao.iirh);
-  const iirhAutoritativo = resolverIirhAutoritativo(iirh);
-  const zona = objeto(projecao.zona);
+  const disponibilidadeContinua = disponibilidadeContinuaDoRelatorio(entrada);
+  const iirhAutoritativo = disponibilidadeContinua.iirh.projecao;
+  const zona = disponibilidadeContinua.zona.projecao;
   const vev = vetoresDaProjecaoTirhV1(entrada).find(
     (item) => texto(item.codigo, "").toUpperCase() === "VEV"
   );
@@ -1180,7 +1193,7 @@ function renderOperacionalFinalConsolidado(
   bloco("02", "Síntese executiva da sessão", [
     `Contexto e objetivo: ${texto(consolidacao.contexto_e_objetivo)}.`,
     `Resultante: ${texto(resultante.estado, "não materializada")} — ${texto(resultante.motivo, "limitada às evidências admissíveis do recorte")}.`,
-    `IIRH: ${iirhAutoritativo.calculado ? `${iirhAutoritativo.valor} / 100` : `não calculável — ${texto(iirhAutoritativo.motivo, "motivo autoritativo não informado")}`}. Zona: ${texto(zona.codigo ?? zona.estado, "não classificável")}.`,
+    `IIRH: ${iirhAutoritativo.calculado ? `${iirhAutoritativo.valor} / 100` : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)} · ${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}. Zona: ${zona.classificada ? texto(zona.codigo ?? zona.nome) : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)} · ${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}.`,
     iirhAutoritativo.calculado
       ? "A medida utiliza somente Macrocampos funcionalmente admissíveis."
       : "A indisponibilidade de IIRH e Zona informa cobertura insuficiente; não representa falha pessoal."
@@ -1213,7 +1226,7 @@ function renderOperacionalFinalConsolidado(
 
   bloco("07", "Resultante, IIRH, Zona e trajetória", [
     `Resultante estrutural: ${texto(resultante.estado, "não materializada")}. Magnitude escalar: não aplicável na TIRH V1.`,
-    `IIRH: ${iirhAutoritativo.calculado ? iirhAutoritativo.valor : `não calculável — ${texto(iirhAutoritativo.motivo, "motivo autoritativo não informado")}`}. Zona: ${texto(zona.codigo ?? zona.estado, "não classificável")}.`,
+    `IIRH: ${iirhAutoritativo.calculado ? iirhAutoritativo.valor : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)} · ${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}. Zona: ${zona.classificada ? texto(zona.codigo ?? zona.nome) : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)} · ${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}.`,
     trajetoria.length
       ? `Trajetória: ${trajetoria.map((item) => `${item.rotulo} — ${item.valor == null ? "ausente" : item.valor} — ${item.zona}`).join(" · ")}.`
       : "Trajetória não inferível: ainda não há pontos válidos e comparáveis suficientes.",

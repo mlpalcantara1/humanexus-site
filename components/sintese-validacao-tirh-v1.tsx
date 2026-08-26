@@ -7,7 +7,10 @@ import {
   decisoesProfissionaisPreservadasTirhV1
 } from "@/lib/validacao-profissional-tirh-v1";
 import { chaveIdempotenteDocumental } from "@/lib/humanexus-report-authority";
-import { resolverIirhAutoritativo } from "@/lib/authoritative-iirh-projection";
+import {
+  resolverDisponibilidadeContinuaIirhZona,
+  rotuloDaDisponibilidadeAutoritativa
+} from "@/lib/authoritative-iirh-projection";
 import { portuguesVisivel } from "@/lib/portugues-visivel";
 
 export { claimElegivelParaValidacaoTirhV1 } from "@/lib/validacao-profissional-tirh-v1";
@@ -97,9 +100,14 @@ export function SinteseValidacaoTirhV1({
   const macrocamposTirhV1 = objeto(tirhV1.macrocampos);
   const vetoresTirhV1 = objeto(tirhV1.vetores);
   const resultanteTirhV1 = objeto(tirhV1.resultante);
-  const iirhTirhV1 = objeto(tirhV1.iirh);
-  const iirhAutoritativo = resolverIirhAutoritativo(iirhTirhV1);
-  const zonaTirhV1 = objeto(tirhV1.zona);
+  const leituraCientifica = objeto(
+    objeto(estado.cockpit_operacional).leitura_cientifica
+  );
+  const disponibilidadeContinua = resolverDisponibilidadeContinuaIirhZona(
+    leituraCientifica
+  );
+  const iirhAutoritativo = disponibilidadeContinua.iirh.projecao;
+  const zonaAutoritativa = disponibilidadeContinua.zona.projecao;
   const claimsTirhV1 = lista(
     Array.isArray(tirhV1Persistida.claims)
       ? tirhV1Persistida.claims
@@ -194,21 +202,25 @@ export function SinteseValidacaoTirhV1({
         </article>
         <article>
           <small>IIRH operacional</small>
-          <strong data-iirh-authoritative-state={iirhAutoritativo.estadoNormalizado || "AUSENTE"}>{iirhAutoritativo.calculado
+          <strong data-iirh-authoritative-state={disponibilidadeContinua.iirh.modo}>{iirhAutoritativo.calculado
             ? `${numero(iirhAutoritativo.valor, 1)} / 100`
-            : "NÃO CALCULÁVEL"}</strong>
-          <span>{texto(
+            : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}</strong>
+          <span>{rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)} · {texto(
             iirhAutoritativo.calculado
               ? iirhAutoritativo.estado
-              : iirhAutoritativo.motivo,
+              : objeto(disponibilidadeContinua.janelaAtual.iirh_atual).motivo,
             "Motivo autoritativo não informado pelo Núcleo."
           )}</span>
         </article>
         <article>
           <small>Zona Operacional</small>
-          <strong>{rotuloDaZona(zonaTirhV1.codigo)}</strong>
-          <span>{texto(
-            zonaTirhV1.estado,
+          <strong data-zone-authoritative-state={disponibilidadeContinua.zona.modo}>{zonaAutoritativa.classificada
+            ? rotuloDaZona(zonaAutoritativa.codigo)
+            : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}</strong>
+          <span>{rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)} · {texto(
+            zonaAutoritativa.classificada
+              ? zonaAutoritativa.estado
+              : objeto(disponibilidadeContinua.janelaAtual.zona_atual).motivo,
             "NÃO CLASSIFICÁVEL sem síntese semântica sustentada."
           )}</span>
         </article>

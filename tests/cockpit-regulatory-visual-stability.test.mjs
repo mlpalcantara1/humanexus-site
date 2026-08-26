@@ -13,7 +13,9 @@ function revisao(
   valor,
   zona,
   contexto = "org-a|p-a|s-a|BASELINE",
-  ativo = true
+  ativo = true,
+  iirhModo = "ATUAL",
+  zonaModo = "ATUAL"
 ) {
   return {
     contexto,
@@ -21,9 +23,38 @@ function revisao(
     ativo,
     vetores: [{ code: "VH", name: "Vetor Humano", value: valor }],
     iirh: valor,
-    zona
+    zona,
+    iirhModo,
+    zonaModo
   };
 }
+
+test("transição de referência congelada para atual é atômica e imediata", () => {
+  const congelada = estabilizarApresentacaoRegulatoria(
+    null,
+    revisao(
+      1,
+      42.5,
+      "ZA",
+      "org-a|p-a|s-a|TREINO",
+      true,
+      "REFERENCIA_CONGELADA",
+      "REFERENCIA_CONGELADA"
+    ),
+    0
+  );
+  const atual = estabilizarApresentacaoRegulatoria(
+    congelada,
+    revisao(2, 47, "ZO", congelada.contexto, true, "ATUAL", "ATUAL"),
+    10
+  );
+
+  assert.equal(atual.iirh, 47);
+  assert.equal(atual.zona, "ZO");
+  assert.equal(atual.iirhModo, "ATUAL");
+  assert.equal(atual.zonaModo, "ATUAL");
+  assert.equal(atual.revisoesNaJanela.length, 1);
+});
 
 test("revisões rápidas são preservadas e a apresentação usa cadência humana", () => {
   let estado = estabilizarApresentacaoRegulatoria(null, revisao(1, 47.8, "ZI"), 0);

@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-import { resolverIirhAutoritativo } from "../lib/authoritative-iirh-projection.ts";
+import {
+  resolverDisponibilidadeContinuaIirhZona,
+  resolverIirhAutoritativo
+} from "../lib/authoritative-iirh-projection.ts";
 
 const estruturaRealRedigida = {
   estado: "CALCULADO",
@@ -68,6 +71,99 @@ test("valor sem estado calculado explícito nunca vira fallback", () => {
   assert.equal(projecao.valor, null);
 });
 
+function leituraContinua({
+  modoIirh = "REFERENCIA_CONGELADA",
+  registroIirh = { estado: "CALCULADO", valor: 42.5 },
+  modoZona = "REFERENCIA_CONGELADA",
+  registroZona = { estado: "SUGERIDA", codigo: "ZA", nome: "Zona Adaptativa" }
+} = {}) {
+  const origem = {
+    identificador_da_sessao: "sessao-fixture",
+    fase: "PRE",
+    momento: "2026-08-25T12:00:00+00:00",
+    integridade_sha256: "integridade-fixture",
+    elegibilidade: "ELEGIVEL"
+  };
+  return {
+    disponibilidade_continua_iirh_zona: {
+      autoridade: "NUCLEO_HUMANEXUS",
+      portal_autorizado_a_calcular: false,
+      zona_derivada_do_iirh: false,
+      janela_atual: {
+        estado: "JANELA_EM_FORMACAO",
+        fase: "TREINO",
+        iirh_atual: {
+          estado: "NAO_CALCULAVEL",
+          valor: null,
+          motivo: "COBERTURA_FUNCIONAL_INSUFICIENTE"
+        },
+        zona_atual: {
+          estado: "NAO_CLASSIFICAVEL",
+          codigo: null,
+          motivo: "CRITERIOS_SEMANTICOS_MULTIFONTE_INSUFICIENTES"
+        }
+      },
+      iirh: { modo: modoIirh, registro: registroIirh, origem },
+      zona: { modo: modoZona, registro: registroZona, origem }
+    }
+  };
+}
+
+test("referência congelada preserva valor, zona e proveniência sem apresentá-los como atuais", () => {
+  const disponibilidade = resolverDisponibilidadeContinuaIirhZona(
+    leituraContinua()
+  );
+
+  assert.equal(disponibilidade.contratoAutoritativo, true);
+  assert.equal(disponibilidade.iirh.referenciaCongelada, true);
+  assert.equal(disponibilidade.iirh.projecao.valor, 42.5);
+  assert.equal(disponibilidade.zona.referenciaCongelada, true);
+  assert.equal(disponibilidade.zona.projecao.codigo, "ZA");
+  assert.equal(disponibilidade.iirh.origem.fase, "PRE");
+  assert.equal(disponibilidade.janelaAtual.estado, "JANELA_EM_FORMACAO");
+});
+
+test("primeira sessão sem referência mantém os dois quadros sem fabricar valor", () => {
+  const disponibilidade = resolverDisponibilidadeContinuaIirhZona(
+    leituraContinua({
+      modoIirh: "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA",
+      registroIirh: null,
+      modoZona: "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA",
+      registroZona: null
+    })
+  );
+
+  assert.equal(disponibilidade.iirh.aguardandoPrimeiraReferencia, true);
+  assert.equal(disponibilidade.iirh.projecao.valor, null);
+  assert.equal(disponibilidade.zona.aguardandoPrimeiraReferencia, true);
+  assert.equal(disponibilidade.zona.projecao.codigo, null);
+});
+
+test("IIRH atual zero permanece válido sem fabricar Zona", () => {
+  const disponibilidade = resolverDisponibilidadeContinuaIirhZona(
+    leituraContinua({
+      modoIirh: "ATUAL",
+      registroIirh: { estado: "CALCULADO", valor: 0 },
+      modoZona: "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA",
+      registroZona: null
+    })
+  );
+
+  assert.equal(disponibilidade.iirh.atual, true);
+  assert.equal(disponibilidade.iirh.projecao.valor, 0);
+  assert.equal(disponibilidade.zona.projecao.classificada, false);
+});
+
+test("contrato não autoritativo é recusado sem fallback local", () => {
+  const leitura = leituraContinua();
+  leitura.disponibilidade_continua_iirh_zona.portal_autorizado_a_calcular = true;
+  const disponibilidade = resolverDisponibilidadeContinuaIirhZona(leitura);
+
+  assert.equal(disponibilidade.contratoAutoritativo, false);
+  assert.equal(disponibilidade.iirh.projecao.valor, null);
+  assert.equal(disponibilidade.zona.projecao.codigo, null);
+});
+
 test("as projeções humanas usam o resolvedor compartilhado e não calculam IIRH", async () => {
   const arquivos = await Promise.all([
     "../components/operacao-homologacao.tsx",
@@ -77,7 +173,7 @@ test("as projeções humanas usam o resolvedor compartilhado e não calculam IIR
   ].map((caminho) => readFile(new URL(caminho, import.meta.url), "utf8")));
 
   for (const fonte of arquivos) {
-    assert.match(fonte, /resolverIirhAutoritativo/);
+    assert.match(fonte, /resolverDisponibilidadeContinuaIirhZona/);
     assert.doesNotMatch(fonte, /calcularIirh/i);
   }
 });

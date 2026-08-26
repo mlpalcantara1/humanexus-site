@@ -17,6 +17,8 @@ export type RevisaoRegulatoriaVisual = {
   vetores: VetorRegulatorioVisual[];
   iirh: number | null;
   zona: string | null;
+  iirhModo: string;
+  zonaModo: string;
 };
 
 type RevisaoNaJanela = {
@@ -47,6 +49,8 @@ function revisoesIguais(
     && esquerda.ativo === direita.ativo
     && esquerda.iirh === direita.iirh
     && esquerda.zona === direita.zona
+    && esquerda.iirhModo === direita.iirhModo
+    && esquerda.zonaModo === direita.zonaModo
     && vetoresIguais(esquerda.vetores, direita.vetores);
 }
 
@@ -57,6 +61,8 @@ export type EstadoDaApresentacaoRegulatoria = {
   vetores: VetorRegulatorioVisual[];
   iirh: number | null;
   zona: string | null;
+  iirhModo: string;
+  zonaModo: string;
   zonaCanonica: string | null;
   candidataDaZona: string | null;
   candidataDesde: number | null;
@@ -75,6 +81,8 @@ function novoEstado(
     vetores: revisao.vetores,
     iirh: revisao.iirh,
     zona: revisao.zona,
+    iirhModo: revisao.iirhModo,
+    zonaModo: revisao.zonaModo,
     zonaCanonica: revisao.zona,
     candidataDaZona: null,
     candidataDesde: null,
@@ -98,6 +106,8 @@ export function estabilizarApresentacaoRegulatoria(
     || estado.contexto !== revisao.contexto
     || revisao.ativo === false
     || opcoes.forcarCanonico === true
+    || estado.iirhModo !== revisao.iirhModo
+    || estado.zonaModo !== revisao.zonaModo
   ) {
     return novoEstado(revisao, agora);
   }
@@ -143,6 +153,8 @@ export function estabilizarApresentacaoRegulatoria(
     apresentadaEm: podeAtualizarLeitura ? agora : estado.apresentadaEm,
     vetores: podeAtualizarLeitura ? revisao.vetores : estado.vetores,
     iirh: podeAtualizarLeitura ? revisao.iirh : estado.iirh,
+    iirhModo: revisao.iirhModo,
+    zonaModo: revisao.zonaModo,
     zona,
     zonaCanonica: revisao.zona,
     candidataDaZona,
@@ -157,6 +169,8 @@ export function estabilizarApresentacaoRegulatoria(
     && proximo.zona === estado.zona
     && proximo.zonaCanonica === estado.zonaCanonica
     && proximo.iirh === estado.iirh
+    && proximo.iirhModo === estado.iirhModo
+    && proximo.zonaModo === estado.zonaModo
     && vetoresIguais(proximo.vetores, estado.vetores)
     && proximo.candidataDaZona === estado.candidataDaZona
     && proximo.candidataDesde === estado.candidataDesde

@@ -32,7 +32,11 @@ import {
 } from "@/lib/cockpit-terminal-eligibility";
 import { snapshotOficialDeFaseAplicavel } from "@/lib/cockpit-scientific-authority";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
-import { resolverIirhAutoritativo } from "@/lib/authoritative-iirh-projection";
+import {
+  resolverDisponibilidadeContinuaIirhZona,
+  resolverIirhAutoritativo,
+  rotuloDaDisponibilidadeAutoritativa
+} from "@/lib/authoritative-iirh-projection";
 import { estruturaVisivelEmPortugues, portuguesVisivel } from "@/lib/portugues-visivel";
 
 type Registro = Record<string, unknown>;
@@ -1392,6 +1396,11 @@ export function CockpitOperacionalVivo({
     Object.keys(iirhTirhV1).length ? iirhTirhV1 : iirh
   );
   const zona = objeto(leituraCientifica.zona);
+  const disponibilidadeContinua = resolverDisponibilidadeContinuaIirhZona(
+    leituraCientifica
+  );
+  const iirhContinuo = disponibilidadeContinua.iirh.projecao;
+  const zonaContinua = disponibilidadeContinua.zona.projecao;
   const resultante = objeto(leituraCientifica.resultante);
   const trajetoria = objeto(leituraCientifica.trajetoria);
   const elegibilidadeTemporal = objeto(
@@ -1496,6 +1505,8 @@ export function CockpitOperacionalVivo({
         && Boolean(zonaTirhV1.nome ?? zonaTirhV1.codigo)
       : iirhCanonicoCalculado && Boolean(zona.nome ?? zona.codigo)
   );
+  const iirhContinuoDisponivel = iirhContinuo.calculado;
+  const zonaContinuaDisponivel = zonaContinua.classificada;
   const contextoDaApresentacaoRegulatoria = [
     texto(organizacao.identificador, "sem-organizacao"),
     texto(participante.identificador, "sem-participante"),
@@ -1513,18 +1524,20 @@ export function CockpitOperacionalVivo({
     ordemCanonica: Number.isFinite(ordemCanonicaDaApresentacao)
       ? ordemCanonicaDaApresentacao
       : 0,
-    ativo: cienciaAtualAdmissivel,
+    ativo: cienciaAtualAdmissivel
+      || iirhContinuoDisponivel
+      || zonaContinuaDisponivel,
     vetores: radarVetorialCanonico,
-    iirh: iirhCanonicoCalculado
-      ? Number(iirhAutoritativo.valor)
+    iirh: iirhContinuoDisponivel
+      ? Number(iirhContinuo.valor)
       : null,
-    zona: zonaCanonicaCalculada
+    zona: zonaContinuaDisponivel
       ? String(
-          Object.keys(tirhV1).length
-            ? zonaTirhV1.codigo ?? zonaTirhV1.nome
-            : zona.codigo ?? zona.nome
+          zonaContinua.codigo ?? zonaContinua.nome
         )
-      : null
+      : null,
+    iirhModo: disponibilidadeContinua.iirh.modo,
+    zonaModo: disponibilidadeContinua.zona.modo
   };
   const revisaoRegulatoriaVisualRef = useRef(revisaoRegulatoriaVisual);
   revisaoRegulatoriaVisualRef.current = revisaoRegulatoriaVisual;
@@ -1541,6 +1554,8 @@ export function CockpitOperacionalVivo({
     revisaoRegulatoriaVisual.ativo,
     revisaoRegulatoriaVisual.iirh,
     revisaoRegulatoriaVisual.zona,
+    revisaoRegulatoriaVisual.iirhModo,
+    revisaoRegulatoriaVisual.zonaModo,
     radarVetorialCanonico
       .map((item) => [
         item.code,
@@ -1594,13 +1609,18 @@ export function CockpitOperacionalVivo({
   const radarParcial = radarVetorial.some((item) => item.value != null);
   const iirhCalculado = apresentacaoRegulatoria.iirh != null;
   const iirhApresentado = apresentacaoRegulatoria.iirh;
-  const naturezaDoIirh = leituraAoVivo
-    ? "Índice regulatório atual"
-    : snapshotDeFaseCanonico
-      ? "Snapshot oficial da fase · leitura preservada"
-    : configuracaoBasalCanonica
-      ? "Referência basal · evidência da anamnese"
-      : "Sem leitura regulatória atual";
+  const naturezaDoIirh = rotuloDaDisponibilidadeAutoritativa(
+    disponibilidadeContinua.iirh.modo
+  );
+  const origemDoIirhContinuo = disponibilidadeContinua.iirh.origem;
+  const origemDaZonaContinua = disponibilidadeContinua.zona.origem;
+  const detalheDaOrigem = (origem: typeof origemDoIirhContinuo) => [
+    origem.fase ? `fase ${origem.fase}` : null,
+    origem.identificadorDaSessao
+      ? `sessão ${origem.identificadorDaSessao}`
+      : null,
+    origem.momento ? `momento ${origem.momento}` : null
+  ].filter(Boolean).join(" · ");
   const zonaCalculada = apresentacaoRegulatoria.zona != null;
   const zonaApresentada = apresentacaoRegulatoria.zona;
   const componentesIirhAusentes = Array.isArray(
@@ -2078,7 +2098,7 @@ export function CockpitOperacionalVivo({
                 .join("; ")}.
             </span>
           ) : null}
-          {!iirhCalculado ? (
+          {!iirhCanonicoCalculado ? (
             <span>
               IIRH: {componentesIirhAusentes.length
                 ? `componentes funcionais ausentes — ${componentesIirhAusentes.map((item) => texto(item)).join(" · ")}`
@@ -2086,7 +2106,7 @@ export function CockpitOperacionalVivo({
               .
             </span>
           ) : null}
-          {!zonaCalculada ? (
+          {!zonaCanonicaCalculada ? (
             <span>
               Zona: {texto(
                 zonaTirhV1.motivo ?? zona.motivo,
@@ -2141,17 +2161,29 @@ export function CockpitOperacionalVivo({
       </section>
 
       <section id="hx-decision-level" className="hx-live-hud" aria-label="Barra operacional decisória">
-        <div className="is-decision" data-regulatory-state={zonaCalculada ? "CLASSIFICADA" : "NAO_CLASSIFICAVEL"}>
+        <div className="is-decision" data-regulatory-state={disponibilidadeContinua.zona.modo}>
           <small>ZONA</small>
-          <strong>{zonaCalculada ? rotuloDaZona(zonaApresentada) : "NÃO CLASSIFICÁVEL"}</strong>
+          <strong>{zonaCalculada
+            ? rotuloDaZona(zonaApresentada)
+            : rotuloDaDisponibilidadeAutoritativa(
+                disponibilidadeContinua.zona.modo
+              )}</strong>
           {zonaCalculada
-            ? <span>Estado regulatório atual</span>
+            ? <span>{rotuloDaDisponibilidadeAutoritativa(
+                disponibilidadeContinua.zona.modo
+              )}{detalheDaOrigem(origemDaZonaContinua)
+                ? ` · ${detalheDaOrigem(origemDaZonaContinua)}`
+                : ""}</span>
             : <button className="hx-live-hud__detail" type="button" onClick={abrirAnalitico}>Ver motivo</button>}
         </div>
-        <div className="is-decision">
+        <div className="is-decision" data-regulatory-state={disponibilidadeContinua.iirh.modo}>
           <small>IIRH</small>
-          <strong data-iirh-authoritative-state={iirhAutoritativo.estadoNormalizado || "AUSENTE"}>{iirhCalculado ? `${numero(iirhApresentado, 1)} ${texto(iirhAutoritativo.unidade, "")}` : "NÃO CALCULÁVEL"}</strong>
-          <span>{naturezaDoIirh}</span>
+          <strong data-iirh-authoritative-state={iirhContinuo.estadoNormalizado || "AUSENTE"}>{iirhCalculado
+            ? `${numero(iirhApresentado, 1)} ${texto(iirhContinuo.unidade, "")}`
+            : naturezaDoIirh}</strong>
+          <span>{naturezaDoIirh}{detalheDaOrigem(origemDoIirhContinuo)
+            ? ` · ${detalheDaOrigem(origemDoIirhContinuo)}`
+            : ""}</span>
         </div>
         <div>
           <small>EEG</small>
