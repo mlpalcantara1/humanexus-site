@@ -17,6 +17,24 @@ import { formatarPercentualCanonico } from "../lib/percentual-canonico.ts";
 const root = new URL("../", import.meta.url);
 const source = (path) => readFile(new URL(path, root), "utf8");
 
+test("IIRH e Zona permanecem projetados pelo mesmo componente autoritativo em todas as visões individuais do Cockpit", async () => {
+  const client = await source("components/operacao-homologacao.tsx");
+  assert.match(client, /function DisponibilidadeContinuaIirhZona/);
+  assert.match(
+    client,
+    /<main className="hx-cockpit-view"[\s\S]*?visao === "coletivo"[\s\S]*?<DisponibilidadeContinuaIirhZona estado=\{estado\} \/>[\s\S]*?\{conteudoDaVisao\}/
+  );
+  assert.match(client, /data-authority-contract=\{disponibilidade\.contratoAutoritativo/);
+  assert.match(client, /O Portal apenas projeta o contrato autoritativo e nunca calcula ou reclassifica/);
+  assert.match(client, /JANELA ATUAL/);
+  assert.match(client, /Nenhuma referência autoritativa elegível foi fornecida pelo Núcleo/);
+  assert.match(client, /visao === "coletivo"[\s\S]*?\? null/);
+  assert.doesNotMatch(
+    client,
+    /function DisponibilidadeContinuaIirhZona[\s\S]*?(?:calcular|classificar|inferir)Iirh/
+  );
+});
+
 test("cobertura canônica é formatada uma única vez", () => {
   assert.equal(formatarPercentualCanonico(0), "0%");
   assert.equal(formatarPercentualCanonico(0.44), "44%");

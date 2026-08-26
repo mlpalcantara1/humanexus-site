@@ -272,6 +272,102 @@ function dataLegivel(valor: unknown) {
       }).format(data);
 }
 
+function DisponibilidadeContinuaIirhZona({ estado }: { estado: Estado }) {
+  const disponibilidade = resolverDisponibilidadeContinuaIirhZona(
+    leituraCientificaDaInspecao(estado)
+  );
+  const faseDaJanela = texto(
+    disponibilidade.janelaAtual.fase,
+    texto(faseAtual(estado), "FASE NÃO INFORMADA")
+  );
+  const estadoDaJanela = texto(
+    disponibilidade.janelaAtual.estado,
+    "ESTADO DA JANELA NÃO INFORMADO"
+  );
+  const indicadores = [
+    {
+      codigo: "IIRH",
+      disponibilidade: disponibilidade.iirh,
+      valor: disponibilidade.iirh.projecao.calculado
+        ? `${disponibilidade.iirh.projecao.valor} · ${texto(disponibilidade.iirh.projecao.unidade, "0-100")}`
+        : rotuloDaDisponibilidadeAutoritativa(disponibilidade.iirh.modo),
+      motivoAtual: texto(
+        objeto(disponibilidade.janelaAtual.iirh_atual).motivo,
+        texto(
+          disponibilidade.iirh.projecao.motivo,
+          "O Núcleo não informou um motivo adicional para o estado atual."
+        )
+      ),
+      atributo: "iirh"
+    },
+    {
+      codigo: "ZONA",
+      disponibilidade: disponibilidade.zona,
+      valor: disponibilidade.zona.projecao.classificada
+        ? texto(
+            disponibilidade.zona.projecao.codigo,
+            texto(
+              disponibilidade.zona.projecao.nome,
+              "CLASSIFICAÇÃO AUTORITATIVA"
+            )
+          )
+        : rotuloDaDisponibilidadeAutoritativa(disponibilidade.zona.modo),
+      motivoAtual: texto(
+        objeto(disponibilidade.janelaAtual.zona_atual).motivo,
+        texto(
+          disponibilidade.zona.projecao.motivo,
+          "O Núcleo não informou um motivo adicional para o estado atual."
+        )
+      ),
+      atributo: "zona"
+    }
+  ] as const;
+
+  return (
+    <section
+      className="hx-cockpit-panel hx-continuous-authority"
+      aria-label="Disponibilidade contínua e autoritativa de IIRH e Zona"
+      data-authority-contract={disponibilidade.contratoAutoritativo ? "NUCLEO_HUMANEXUS" : "CONTRATO_NAO_AUTORITATIVO"}
+    >
+      <TituloDaVisao
+        kicker="REFERÊNCIA REGULATÓRIA CONTÍNUA"
+        titulo="IIRH e Zona permanecem disponíveis sem confundir referência e estado atual."
+        descricao="O Núcleo seleciona os snapshots elegíveis. O Portal apenas projeta o contrato autoritativo e nunca calcula ou reclassifica estes indicadores."
+      />
+      <div className="hx-resultant__core">
+        {indicadores.map((indicador) => {
+          const origem = indicador.disponibilidade.origem;
+          const origemVisivel = origem.identificadorDaSessao
+            ? `Fase ${texto(origem.fase, "NÃO INFORMADA")} · sessão ${origem.identificadorDaSessao} · ${dataLegivel(origem.momento)}`
+            : "Nenhuma referência autoritativa elegível foi fornecida pelo Núcleo.";
+          return (
+            <div
+              key={indicador.codigo}
+              data-iirh-authoritative-state={indicador.atributo === "iirh" ? indicador.disponibilidade.modo : undefined}
+              data-zone-authoritative-state={indicador.atributo === "zona" ? indicador.disponibilidade.modo : undefined}
+            >
+              <small>{indicador.codigo}</small>
+              <strong>{indicador.valor}</strong>
+              <span>{rotuloDaDisponibilidadeAutoritativa(indicador.disponibilidade.modo)}</span>
+              <span>{origemVisivel}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="hx-limit-consolidated">
+        <strong>JANELA ATUAL · {portuguesVisivel(faseDaJanela)} · {portuguesVisivel(estadoDaJanela)}</strong>
+        <span>IIRH atual: {portuguesVisivel(indicadores[0].motivoAtual)}</span>
+        <span>Zona atual: {portuguesVisivel(indicadores[1].motivoAtual)}</span>
+      </div>
+      {!disponibilidade.contratoAutoritativo ? (
+        <p className="hx-module__error" role="status">
+          O contrato autoritativo do Núcleo não está disponível. Nenhum valor foi calculado ou preenchido pelo Portal.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 function RelatorioCanonicoV1({
   estado,
   relatorio
@@ -3680,6 +3776,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           </aside>
         ) : null}
         <main className="hx-cockpit-view" data-cockpit-view={visao}>
+          {visao === "coletivo"
+            ? null
+            : <DisponibilidadeContinuaIirhZona estado={estado} />}
           {conteudoDaVisao}
           {operacional && acaoPrincipal !== "PREPARAR_SESSAO"
             ? controleDeBaseline
