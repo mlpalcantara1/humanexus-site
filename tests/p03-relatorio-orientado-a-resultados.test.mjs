@@ -54,6 +54,11 @@ test("relatório Web preserva indicadores oficiais e move gráficos para o conte
     cockpit.indexOf("const BANDAS_ANI_LONGITUDINAIS")
   );
   assert.match(bloco, /<ResultadoRegulatorioDaSessao microtrajetoria=\{microtrajetoria\}/);
+  assert.doesNotMatch(
+    bloco,
+    /if \(!Object\.keys\(projecao\)\.length\)\s*\{\s*return/,
+    "a ausência da projeção científica não pode ocultar a narrativa documental existente"
+  );
   for (const termo of [
     "IIRH",
     "Zona",

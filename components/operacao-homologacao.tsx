@@ -434,14 +434,6 @@ function RelatorioCanonicoV1({
       `Vetores momentâneos calculáveis: ${vetoresCalculaveis.length}/9. VEV: ${texto(vev.estado_epistemico ?? vev.estado, "NÃO ELEGÍVEL")}.`
     ]
   });
-  if (!Object.keys(projecao).length) {
-    return (
-      <EmptySignalState
-        title="PROJEÇÃO CANÔNICA TIRH V1"
-        reason="A projeção científica canônica desta sessão ainda não está disponível."
-      />
-    );
-  }
   return (
     <section className="hx-report-canonical hx-report-canonical--complete" aria-label="Relatório Operacional TIRH completo">
       <header className="hx-report-canonical__identity">
@@ -461,6 +453,13 @@ function RelatorioCanonicoV1({
       </header>
 
       <ResultadoRegulatorioDaSessao microtrajetoria={microtrajetoria} />
+
+      {!Object.keys(projecao).length ? (
+        <p className="hx-module__notice">
+          <strong>PROJEÇÃO CANÔNICA TIRH V1</strong><br />
+          Os indicadores científicos estruturados desta sessão não foram recebidos. A narrativa documental existente permanece visível sem cálculo ou preenchimento pelo Portal.
+        </p>
+      ) : null}
 
       <section className="hx-report-canonical__section">
         <small>INDICADORES OFICIAIS DA SESSÃO</small>
