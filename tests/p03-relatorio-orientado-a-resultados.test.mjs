@@ -12,7 +12,14 @@ test("componente compartilhado comunica a microtrajetória sem definir taxonomia
   const componente = await source("components/resultado-regulatorio-da-sessao.tsx");
   for (const trecho of [
     "MICROTRAJETÓRIA REGULATÓRIA DA SESSÃO",
-    "Como chegou, o que foi trabalhado, o que aconteceu e como saiu",
+    "Síntese de confiabilidade operacional",
+    "MAPA PREVENTIVO DO FUNCIONAMENTO",
+    "Como chegou",
+    "O que mudou",
+    "Como saiu",
+    "SINAIS PRECURSORES",
+    "LIMITE REGULATÓRIO OBSERVADO",
+    "CONFIABILIDADE OPERACIONAL HUMANA",
     "O objetivo foi alcançado?",
     "AGUARDANDO CONCLUSÃO PROFISSIONAL",
     "Conclusão registrada pelo profissional",
@@ -91,9 +98,9 @@ test("visão longitudinal comunica macrotrajetória sem fabricar evolução", as
     cockpit.indexOf("function MacrotrajetoriaRegulatoria"),
     cockpit.indexOf("function EvolucaoDaAssinaturaNeuroregulatoria")
   );
-  assert.match(bloco, /MACROTRAJETÓRIA REGULATÓRIA/);
-  assert.match(bloco, /Do funcionamento inicial ao estado atual/);
-  assert.match(bloco, /não transforma oscilação em melhora/);
+  assert.match(bloco, /MACROTRAJETÓRIA PREVENTIVA/);
+  assert.match(bloco, /confiabilidade operacional observada/);
+  assert.match(bloco, /metodologicamente comparáveis/);
   assert.match(cockpit, /<MacrotrajetoriaRegulatoria longitudinal=\{estado\.longitudinal\}/);
   assert.doesNotMatch(bloco, /calcula|recalcula|infere|fallback/i);
 });
@@ -118,7 +125,8 @@ test("PDF e impressão priorizam resultado, preservam gráficos e deixam rastrea
   assert.equal(extracao.status, 0, extracao.stderr);
   const texto = extracao.stdout;
   for (const termo of [
-    "Microtrajetória regulatória da sessão",
+    "Síntese de confiabilidade operacional",
+    "Mapa preventivo do funcionamento",
     "Objetivo da sessão ou treinamento",
     "Como chegou",
     "Demanda ou gatilho registrado",
@@ -127,7 +135,7 @@ test("PDF e impressão priorizam resultado, preservam gráficos e deixam rastrea
     "Resposta alternativa trabalhada",
     "Como saiu",
     "Mudança observada",
-    "THX-FIXTURE-001",
+    "THX ou intervenção",
     "Aguardando conclusão profissional",
     "O que ainda não se consolidou",
     "Próximo passo profissional",
@@ -136,9 +144,10 @@ test("PDF e impressão priorizam resultado, preservam gráficos e deixam rastrea
     "Rastreabilidade e limites da leitura"
   ]) assert.match(texto, new RegExp(termo, "i"));
   assert.ok(
-    texto.indexOf("Microtrajetória regulatória da sessão")
+    texto.indexOf("Síntese de confiabilidade operacional")
       < texto.lastIndexOf("Rastreabilidade e limites da leitura")
   );
+  assert.doesNotMatch(texto, /THX-FIXTURE-001/i);
   assert.doesNotMatch(texto, /objetivo foi alcançado[^\n]*(alcançado|parcialmente alcançado|não alcançado)[^.]*\./i);
 
   const rota = await source("app/api/operacao-homologacao/pdf/route.ts");

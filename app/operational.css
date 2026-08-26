@@ -1638,6 +1638,64 @@
   background: rgba(210, 179, 109, 0.05);
   padding: 14px;
 }
+.hx-session-result-summary__conditional {
+  max-width: 920px;
+  border-left: 2px solid rgba(210, 179, 109, 0.62);
+  padding-left: 14px;
+  color: #c9cfcc;
+}
+.hx-session-result-summary__executive,
+.hx-session-result-summary__three-moments,
+.hx-session-result-summary__evidence-status > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.hx-session-result-summary__executive {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.hx-session-result-summary__executive article,
+.hx-session-result-summary__three-moments > article,
+.hx-session-result-summary__evidence-status article {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(7, 19, 24, 0.72);
+  padding: 14px;
+}
+.hx-session-result-summary__three-moments h4 {
+  margin: 0 0 14px;
+  color: #e3e4dc;
+  font: 400 20px/1.25 Georgia, serif;
+}
+.hx-session-result-summary__three-moments div + div {
+  margin-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 12px;
+}
+.hx-session-result-summary__three-moments p,
+.hx-session-result-summary__preventive-map p,
+.hx-session-result-summary__evidence-status p {
+  margin: 6px 0 0;
+}
+.hx-session-result-summary__preventive-map,
+.hx-session-result-summary__professional-section,
+.hx-session-result-summary__evidence-status {
+  margin-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 18px;
+}
+.hx-session-result-summary__preventive-map ol {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.hx-session-result-summary__preventive-map li {
+  border-left: 2px solid rgba(210, 179, 109, 0.46);
+  padding: 4px 10px 4px 14px;
+}
 .hx-longitudinal-narrative__timeline {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1676,6 +1734,10 @@
   .hx-report-phase-table,
   .hx-session-result-summary__timeline,
   .hx-session-result-summary__professional,
+  .hx-session-result-summary__executive,
+  .hx-session-result-summary__three-moments,
+  .hx-session-result-summary__preventive-map ol,
+  .hx-session-result-summary__evidence-status > div,
   .hx-longitudinal-narrative__timeline,
   .hx-report-canonical__identity dl {
     grid-template-columns: 1fr;

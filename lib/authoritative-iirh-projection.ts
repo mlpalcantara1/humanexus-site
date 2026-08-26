@@ -93,7 +93,7 @@ function resolverOrigem(valor: unknown) {
   };
 }
 
-function resolverZonaAutoritativa(valor: unknown) {
+export function resolverZonaAutoritativa(valor: unknown) {
   const registro = objeto(valor);
   const estado = textoAutoritativo(registro.estado);
   const estadoNormalizado = normalizarEstado(estado);

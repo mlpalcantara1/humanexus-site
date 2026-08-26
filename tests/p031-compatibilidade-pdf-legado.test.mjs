@@ -142,7 +142,8 @@ test("PDF atual e legado são PDFs reais, preservam microtrajetória e ausência
   for (const termo of [
     "Participante de Verificação",
     "CPF 000.000.000-00",
-    "Microtrajetória regulatória da sessão",
+    "Síntese de confiabilidade operacional",
+    "Mapa preventivo do funcionamento",
     "Como chegou",
     "Resposta PRÉ / TREINO / PÓS",
     "Como saiu",
@@ -177,7 +178,7 @@ test("rota PDF e impressão compartilha o adaptador e nunca converte falha gené
   assert.doesNotMatch(gerador, /magnitude\s*\|\|\s*0|valor\s*\|\|\s*0/);
 });
 
-test("correção não altera relatório Web nem exposição coletiva", async () => {
+test("compatibilidade preserva o relatório Web compartilhado e a exposição coletiva", async () => {
   const cockpit = await source("components/operacao-homologacao.tsx");
   const coletivo = cockpit.slice(
     cockpit.indexOf("const visaoColetiva"),

@@ -23,7 +23,7 @@ test("PDF final funcional tem conteúdo real, paginação variável e paridade d
   const info = spawnSync("pdfinfo", [pdf], { encoding: "utf8" });
   assert.equal(info.status, 0, info.stderr);
   const paginas = Number(info.stdout.match(/Pages:\s+(\d+)/)?.[1]);
-  assert.ok(paginas >= 2 && paginas < 9, `paginação inesperada: ${paginas}`);
+  assert.ok(paginas >= 2 && paginas <= 9, `paginação inesperada: ${paginas}`);
 
   const texto = spawnSync("pdftotext", [pdf, "-"], { encoding: "utf8" });
   assert.equal(texto.status, 0, texto.stderr);
@@ -31,14 +31,15 @@ test("PDF final funcional tem conteúdo real, paginação variável e paridade d
     "Participante de Verificação",
     "000.000.000-00",
     "Organização de Verificação",
-    "Microtrajetória regulatória da sessão",
+    "Síntese de confiabilidade operacional",
+    "Mapa preventivo do funcionamento",
     "Demanda ou gatilho registrado",
     "Rota predominante registrada",
     "Ganho ou custo registrado",
     "Resposta alternativa trabalhada",
     "Nove Vetores momentâneos",
     "VEV longitudinal",
-    "Resultante, IIRH, Zona e trajetória",
+    "Indicadores oficiais integrados à leitura",
     "Devolutiva profissional autorizada",
     "Rastreabilidade e limites da leitura"
   ]) assert.match(texto.stdout, new RegExp(termo, "i"));
