@@ -439,6 +439,35 @@ function RelatorioCanonicoV1({
     return [registro.magnitude, registro.valor, registro.value]
       .some((valor) => typeof valor === "number");
   });
+  const registrosDaSessao = momentos(estado);
+  const fasesComComparacao = fases.filter(
+    (fase) => fase.coverage != null || fase.quality != null
+  );
+  const marcadoresDoRelatorio = marcadoresDaSessao(estado);
+  const trilhasDoRelatorio = trilhasDoCockpit(estado)
+    .filter((trilha) => !trilha.technical)
+    .map((trilha) => ({
+      ...trilha,
+      points: trilha.points.filter((ponto) => {
+        if (!Number.isFinite(ponto.time) || ponto.value == null || !Number.isFinite(ponto.value)) {
+          return false;
+        }
+        if (trilha.id !== "quality" && trilha.id !== "coverage") return true;
+        const registro = registrosDaSessao.find(
+          (item) => instante(item.coletado_em) === ponto.time
+        );
+        if (trilha.id === "quality") {
+          return typeof registro?.confiabilidade === "number"
+            && Number.isFinite(registro.confiabilidade);
+        }
+        if (trilha.id === "coverage") {
+          return typeof registro?.cobertura === "number"
+            && Number.isFinite(registro.cobertura);
+        }
+        return false;
+      })
+    }))
+    .filter((trilha) => trilha.points.length > 0);
   const iirhCalculavel = iirhAutoritativo.calculado;
   const microtrajetoria = projetarMicrotrajetoriaRegulatoria({
     relatorio,
@@ -552,20 +581,26 @@ function RelatorioCanonicoV1({
         <p>O próximo registro válido e comparável pode ampliar a leitura temporal sem reclassificar retroativamente esta sessão.</p>
       </section>
 
-      {vetoresCalculaveis.length >= 3
-        || fases.filter((fase) => fase.coverage != null || fase.quality != null).length >= 2 ? (
+      {fasesComComparacao.length >= 2 || trilhasDoRelatorio.length > 0 ? (
       <section className="hx-report-canonical__section hx-report-regulatory-charts" data-humanexus-report>
         <small>GRÁFICOS DA SESSÃO</small>
         <h3>Fases, intervenção e sinais efetivamente disponíveis</h3>
-        <p>As séries ausentes permanecem vazias e explicadas. Nenhuma trilha é completada pelo Portal.</p>
-        <PhaseComparisonChart phases={fases} markers={marcadoresDaSessao(estado).filter((item) => item.phase === "TREINO")} />
-        <CockpitSignalStack
-          tracks={trilhasDoCockpit(estado).filter((trilha) => !trilha.technical)}
-          markers={marcadoresDaSessao(estado)}
-          phases={faixasDasFases(estado)}
-          showTechnicalLegend={false}
-          primaryDataLabel="Evidência da sessão"
-        />
+        <p>Somente séries oficiais com pontos recebidos são apresentadas. Nenhuma trilha é completada pelo Portal.</p>
+        {fasesComComparacao.length >= 2 ? (
+          <PhaseComparisonChart
+            phases={fases}
+            markers={marcadoresDoRelatorio.filter((item) => item.phase === "TREINO")}
+          />
+        ) : null}
+        {trilhasDoRelatorio.length > 0 ? (
+          <CockpitSignalStack
+            tracks={trilhasDoRelatorio}
+            markers={marcadoresDoRelatorio}
+            phases={faixasDasFases(estado)}
+            showTechnicalLegend={false}
+            primaryDataLabel="Evidência da sessão"
+          />
+        ) : null}
       </section>
       ) : null}
 

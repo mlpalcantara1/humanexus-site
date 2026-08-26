@@ -110,8 +110,11 @@ test("IIRH e Zona do documento não são combinados com estado contínuo incompa
 test("gráficos vazios são omitidos e Vetores ausentes são resumidos sem lista técnica", async () => {
   const cockpit = await source("components/operacao-homologacao.tsx");
   const pdf = await source("lib/tirh-report-document.ts");
-  assert.match(cockpit, /vetoresCalculaveis\.length >= 3/);
-  assert.match(cockpit, /fases\.filter[\s\S]+\.length >= 2/);
+  assert.match(cockpit, /fasesComComparacao\.length >= 2 \|\| trilhasDoRelatorio\.length > 0/);
+  assert.match(cockpit, /\.filter\(\(trilha\) => trilha\.points\.length > 0\)/);
+  assert.match(cockpit, /trilha\.id === "quality"[\s\S]+typeof registro\?\.confiabilidade === "number"/);
+  assert.match(cockpit, /trilha\.id === "coverage"[\s\S]+typeof registro\?\.cobertura === "number"/);
+  assert.doesNotMatch(cockpit, /vetoresCalculaveis\.length >= 3[\s\S]+hx-report-regulatory-charts/);
   assert.match(pdf, /if \(possuiGraficoOficial\)/);
   assert.match(pdf, /vetoresCalculados\.length >= 3/);
   assert.match(pdf, /pontosDaTrajetoria >= 2/);

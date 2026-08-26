@@ -79,7 +79,7 @@ test("relatório Web preserva indicadores oficiais e move gráficos para o conte
   assert.match(bloco, /Direção: \{texto\(resultante\.direcao/);
   assert.match(bloco, /Sentido: \{texto\(resultante\.sentido/);
   assert.match(bloco, /Tendência: \{texto\(resultante\.tendencia/);
-  assert.match(bloco, /<PhaseComparisonChart phases=\{fases\}/);
+  assert.match(bloco, /<PhaseComparisonChart[\s\S]+phases=\{fases\}/);
   assert.match(bloco, /<CockpitSignalStack/);
   assert.match(bloco, /filter\(\(trilha\) => !trilha\.technical\)/);
   assert.match(cockpit, /name: "EEG autorizado"/);
