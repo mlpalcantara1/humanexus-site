@@ -1585,13 +1585,20 @@
   border-left: 3px solid #d2b36d !important;
   padding-left: 20px !important;
 }
-.hx-session-result-summary__grid {
+.hx-session-result-summary__timeline,
+.hx-session-result-summary__professional {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-top: 16px;
 }
-.hx-session-result-summary__grid article {
+.hx-session-result-summary__timeline {
+  counter-reset: hx-microtrajectory;
+  list-style: none;
+  padding: 0;
+}
+.hx-session-result-summary__timeline li,
+.hx-session-result-summary__professional article {
   display: grid;
   gap: 7px;
   min-width: 0;
@@ -1599,29 +1606,53 @@
   background: rgba(7, 19, 24, 0.72);
   padding: 14px;
 }
-.hx-session-result-summary__grid article.is-pending {
+.hx-session-result-summary__timeline li {
+  position: relative;
+  padding-left: 38px;
+  counter-increment: hx-microtrajectory;
+}
+.hx-session-result-summary__timeline li::before {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  color: #d2b36d;
+  content: counter(hx-microtrajectory, decimal-leading-zero);
+  font: 700 8px var(--font-geist-mono), monospace;
+}
+.hx-session-result-summary__timeline p {
+  margin: 0;
+  color: #d8ddda;
+  font: 12px/1.55 Arial, sans-serif;
+}
+.hx-session-result-summary__professional article.is-pending {
   border-style: dashed;
 }
-.hx-session-result-summary__grid strong {
+.hx-session-result-summary__professional strong {
   color: #e3e4dc;
   font: 400 16px/1.35 Georgia, serif;
 }
-.hx-session-result-summary__evidence,
+.hx-session-result-summary__absence,
 .hx-session-result-summary__feedback {
   margin-top: 12px;
   border: 1px solid rgba(210, 179, 109, 0.22);
   background: rgba(210, 179, 109, 0.05);
   padding: 14px;
 }
-.hx-session-result-summary__evidence ul {
+.hx-longitudinal-narrative__timeline {
   display: grid;
-  gap: 7px;
-  margin: 10px 0 0;
-  padding-left: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
 }
-.hx-session-result-summary__evidence li {
-  color: #aebbb7;
-  font: 11px/1.55 Arial, sans-serif;
+.hx-longitudinal-narrative__timeline li {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(7, 19, 24, 0.72);
+  padding: 14px;
+}
+.hx-longitudinal-narrative__timeline p {
+  margin: 7px 0 0;
 }
 .hx-collective-forming > section {
   margin-top: 16px;
@@ -1643,7 +1674,9 @@
   .hx-report-vector-grid,
   .hx-report-route-grid,
   .hx-report-phase-table,
-  .hx-session-result-summary__grid,
+  .hx-session-result-summary__timeline,
+  .hx-session-result-summary__professional,
+  .hx-longitudinal-narrative__timeline,
   .hx-report-canonical__identity dl {
     grid-template-columns: 1fr;
   }

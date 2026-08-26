@@ -240,18 +240,21 @@ test("fluxo humano é Síntese, Consolidação, Relatório e bloqueia PDF final 
   assert.match(pdf, /status: 409/);
 });
 
-test("relatório humano explica vetores, VEV, Resultante, IIRH, Zona, rotas e devolutiva", async () => {
+test("relatório humano comunica microtrajetória, indicadores, registro e devolutiva", async () => {
   const cockpit = await source("components/operacao-homologacao.tsx");
+  const componenteNarrativo = await source("components/resultado-regulatorio-da-sessao.tsx");
+  const relatorioHumano = `${cockpit}\n${componenteNarrativo}`;
   for (const termo of [
     "NOVE VETORES MOMENTÂNEOS",
     "VEV LONGITUDINAL",
     "RESULTANTE, IIRH, ZONA E TRAJETÓRIA",
-    "ARR / RRD / GRI / CRL / NRA",
+    "MICROTRAJETÓRIA REGULATÓRIA DA SESSÃO",
     "HX-OBS → TCR → ICR",
     "DEVOLUTIVA AO PARTICIPANTE",
+    "RASTREABILIDADE E LIMITES DA LEITURA",
     "Campos que impedem o relatório final"
-  ]) assert.match(cockpit, new RegExp(termo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.doesNotMatch(cockpit, /Magnitude escalar da Resultante:\s*\{?[^\n]*\|\|\s*0/);
+  ]) assert.match(relatorioHumano, new RegExp(termo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.doesNotMatch(relatorioHumano, /Magnitude escalar da Resultante:\s*\{?[^\n]*\|\|\s*0/);
 });
 
 test("coletivo mostra formação automática sem nome, CPF ou média individual", async () => {
@@ -294,7 +297,7 @@ test("PDF final usa identidade atual e paginação dirigida por conteúdo", asyn
   assert.match(identidadePdf, /entrada\.organizacao/);
   assert.doesNotMatch(identidadePdf, /identidadeDoCore\.nome_completo|valor\("nome completo:"\)|valor\("cpf:"\)/);
   assert.match(pdf, /renderOperacionalFinalConsolidado/);
-  assert.match(pdf, /if \(y \+ alturaDoItem > 735\) novaContinuacao\(\)/);
+  assert.match(pdf, /if \(y \+ alturaDoItem > 690\) novaContinuacao\(\)/);
   assert.doesNotMatch(
     pdf.slice(pdf.indexOf("function renderOperacionalFinalConsolidado")),
     /Nenhum registro autorizado para esta seção/

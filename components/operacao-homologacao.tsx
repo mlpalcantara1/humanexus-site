@@ -29,12 +29,16 @@ import {
 import {
   chaveIdempotenteDocumental,
   consolidacaoConfirmadaNaAutoridade,
-  MAPA_DE_FONTES_DO_RELATORIO,
   ordenarRelatoriosPorVersao,
   projetarEstadoFuncionalDoRelatorio,
   resolverIdentidadeDocumental,
   tituloHumanoDoRelatorio
 } from "@/lib/humanexus-report-authority";
+import {
+  MENSAGEM_UNICA_DE_INDISPONIBILIDADE,
+  projetarMacrotrajetoriaRegulatoria,
+  projetarMicrotrajetoriaRegulatoria
+} from "@/lib/projecao-narrativa-relatorio";
 import {
   atrasoDoPollingCanonico,
   chaveDoContextoVivo,
@@ -397,31 +401,12 @@ function RelatorioCanonicoV1({
     estado.thx_individual?.codigo,
     estado.thx_individual?.nome
   ].filter((item) => typeof item === "string" && item.trim()).join(" · ");
-  const evidenciasSelecionadas = Array.isArray(consolidacao.evidencias_utilizadas)
-    ? consolidacao.evidencias_utilizadas.map(String).filter(Boolean)
-    : consolidacao.evidencias_utilizadas
-      ? [String(consolidacao.evidencias_utilizadas)]
-      : [];
-  const conteudoDoResultado = {
-    objetivo: estado.execucao?.objetivo ?? relatorio?.objetivo ?? consolidacao.contexto_e_objetivo,
-    treinamento: treinamentoRealizado || undefined,
-    intervencao: consolidacao.intervencao,
-    respostaEsperada: estado.execucao?.objetivo,
-    respostaObservada: consolidacao.resposta_observada ?? estado.execucao?.resposta_observada_json,
-    classificacaoDoResultado: undefined,
-    conclusaoProfissional: consolidacao.conclusao,
-    evidencias: evidenciasSelecionadas,
-    limitacoes: consolidacao.limitacoes,
-    oQuePrecisaSerDesenvolvido: consolidacao.pontos_de_atencao,
-    proximoPasso: consolidacao.proximo_passo_regulatorio,
-    devolutiva: consolidacao.conteudo_da_devolutiva_ao_participante
-  };
   const nomesVetoriais: Record<string, [string, string]> = {
     VH: ["Vetor Humano", "Recursos humanos mobilizados diante da exigência registrada."],
     VT: ["Vetor Tarefa", "Relação funcional entre recursos disponíveis e demandas da tarefa."],
     VS: ["Vetor Social", "Influência do campo relacional e da coordenação social observável."],
     VSI: ["Vetor Simbólico", "Peso funcional atribuído ao significado da situação."],
-    VAR: ["Vetor Autonômico", "Organização autonômica observável, limitada às fontes admissíveis."],
+    VAR: ["Vetor Autonômico", "Organização autonômica observável, limitada às fontes recebidas pelo Núcleo."],
     VAM: ["Vetor Ação/Motor", "Disponibilidade funcional para organizar e sustentar a ação."],
     VJ: ["Vetor Julgamento", "Condições funcionais para discriminar e decidir no contexto."],
     VE: ["Vetor Estabilidade", "Capacidade momentânea de sustentar organização regulatória."],
@@ -437,13 +422,18 @@ function RelatorioCanonicoV1({
       .some((valor) => typeof valor === "number");
   });
   const iirhCalculavel = iirhAutoritativo.calculado;
-  const rotas: Array<[string, unknown, string]> = [
-    ["ARR · Análise das Rotas Regulatórias", estado.leitura_regulatoria.arr.at(-1) ?? cadeia.arr, "Análise profissional das rotas admissíveis."],
-    ["RRD · Rota Regulatória Dominante", cadeia.rota_dominante, "Rota dominante somente quando sustentada e decidida."],
-    ["GRI · Ganho Regulatório Imediato", objeto(cadeia.arr).gri, "Ganho imediato observado no recorte."],
-    ["CRL · Custo Regulatório Longitudinal", objeto(cadeia.arr).crl, "Custo que exige acompanhamento temporal comparável."],
-    ["NRA · Nova Rota Adaptativa", cadeia.nra, "Nova rota apenas após materialização profissional admissível."]
-  ];
+  const microtrajetoria = projetarMicrotrajetoriaRegulatoria({
+    relatorio,
+    consolidacao,
+    execucao: estado.execucao,
+    treinamento: treinamentoRealizado,
+    indicadores: [
+      `IIRH: ${iirhCalculavel ? `${iirhAutoritativo.valor} / 100` : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}.`,
+      `Zona: ${zonaAutoritativa.classificada ? texto(zonaAutoritativa.codigo ?? zonaAutoritativa.nome) : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}.`,
+      `Resultante: ${texto(resultante.estado, "NÃO MATERIALIZADA")}.`,
+      `Vetores momentâneos calculáveis: ${vetoresCalculaveis.length}/9. VEV: ${texto(vev.estado_epistemico ?? vev.estado, "NÃO ELEGÍVEL")}.`
+    ]
+  });
   if (!Object.keys(projecao).length) {
     return (
       <EmptySignalState
@@ -467,44 +457,34 @@ function RelatorioCanonicoV1({
           <div><dt>Versão documental</dt><dd>{texto(relatorio?.numero_da_versao, "Rascunho técnico")}</dd></div>
           <div><dt>Estado</dt><dd>{cicloDocumental.estado.replaceAll("_", " ")}</dd></div>
         </dl>
-        <p>Fonte de identidade: {identidade.fonte}. Referência operacional: {identidade.referenciaOperacional}. Rastreamento da sessão: {texto(estado.sessao.identificador)}.</p>
+        <p>Referência operacional: {identidade.referenciaOperacional}.</p>
       </header>
 
-      <ResultadoRegulatorioDaSessao conteudo={conteudoDoResultado} />
+      <ResultadoRegulatorioDaSessao microtrajetoria={microtrajetoria} />
 
       <section className="hx-report-canonical__section">
         <small>INDICADORES OFICIAIS DA SESSÃO</small>
-        <h3>O que os resultados autoritativos permitem apresentar</h3>
-        <p>Resultante estrutural: <strong>{texto(resultante.estado, "NÃO MATERIALIZADA")}</strong>. {texto(resultante.motivo, "A leitura permanece limitada às evidências admissíveis do recorte.")}</p>
+        <h3>O que os indicadores oficiais mostram neste recorte</h3>
+        <p>Resultante estrutural: <strong>{texto(resultante.estado, "NÃO MATERIALIZADA")}</strong>. {texto(resultante.motivo, "Não há informação adicional para este recorte.")}</p>
         <p>IIRH: <strong>{iirhCalculavel ? `${iirhAutoritativo.valor} / 100` : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}</strong> · {rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}. Zona: <strong>{zonaAutoritativa.classificada ? texto(zonaAutoritativa.codigo ?? zonaAutoritativa.nome) : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}</strong> · {rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}.</p>
         <p>{iirhCalculavel
-          ? "A medida foi materializada apenas com Macrocampos funcionalmente admissíveis."
+          ? "O valor exibido é o valor oficial recebido do Núcleo para esta sessão."
           : texto(
               iirhAutoritativo.motivo,
-              "A ausência do IIRH não representa falha pessoal: o Núcleo não informou motivo científico adicional para este recorte."
+              "O Núcleo não informou motivo adicional para este recorte."
             )}</p>
       </section>
 
       <section className="hx-report-canonical__section">
-        <small>02 · CONTEXTO, EVIDÊNCIAS E LIMITES</small>
-        <h3>{texto(consolidacao.contexto_e_objetivo, "Contexto profissional ainda não consolidado")}</h3>
-        <p>Fontes do relatório: {Object.values(MAPA_DE_FONTES_DO_RELATORIO).join(" · ")}.</p>
-        <p>Evidências selecionadas pelo profissional: {Array.isArray(consolidacao.evidencias_utilizadas)
-          ? consolidacao.evidencias_utilizadas.map(String).join(" · ")
-          : texto(consolidacao.evidencias_utilizadas, "AGUARDANDO SELEÇÃO PROFISSIONAL")}</p>
-        <p>Limitações: {texto(consolidacao.limitacoes, "A consolidação profissional ainda deve explicitar os limites específicos desta sessão.")}</p>
-      </section>
-
-      <section className="hx-report-canonical__section">
-        <small>03 · PRÉ / TREINO / PÓS</small>
-        <h3>Comparação sem interpolação de lacunas</h3>
+        <small>RESPOSTA PRÉ / TREINO / PÓS</small>
+        <h3>O que foi registrado em cada momento</h3>
         <div className="hx-report-phase-table">
           {fases.map((fase) => (
             <article key={fase.name}>
               <strong>{fase.name}</strong>
-              <span>Cobertura: {fase.coverage == null ? "AUSENTE" : `${fase.coverage.toFixed(1)}%`}</span>
-              <span>Confiança: {fase.quality == null ? "AUSENTE" : `${fase.quality.toFixed(1)}%`}</span>
-              <span>Fontes: {fase.sources.length ? fase.sources.join(" · ") : "NÃO REGISTRADAS"}</span>
+              {fase.coverage == null ? null : <span>Cobertura: {fase.coverage.toFixed(1)}%</span>}
+              {fase.quality == null ? null : <span>Confiança: {fase.quality.toFixed(1)}%</span>}
+              {fase.sources.length ? <span>Fontes: {fase.sources.join(" · ")}</span> : null}
               {fase.gaps.length ? <em>Lacunas: {fase.gaps.join(" · ")}</em> : null}
             </article>
           ))}
@@ -514,7 +494,7 @@ function RelatorioCanonicoV1({
       <section className="hx-report-canonical__section">
         <small>04 · NOVE VETORES MOMENTÂNEOS</small>
         <h3>{vetoresCalculaveis.length}/9 calculáveis · {vetoresProjetados.length}/9 projetados</h3>
-        <p>Cada ausência permanece nula; o radar não fecha lacunas nem as converte em zero.</p>
+        <p>Quando um vetor não está disponível, o relatório preserva a ausência sem apresentar um valor.</p>
         <div className="hx-report-vector-grid">
           {vetores.map(({ codigo, nome, significado, registro }) => {
             const valor = registro?.magnitude ?? registro?.valor ?? registro?.value;
@@ -523,10 +503,10 @@ function RelatorioCanonicoV1({
             return <article key={codigo} className={registro ? "" : "is-missing"}>
               <small>{codigo}</small><strong>{nome}</strong>
               <p>{significado}</p>
-              <span>Valor: {typeof valor === "number" ? valor : "AUSENTE"}</span>
-              <span>Confiança: {typeof confianca === "number" ? formatarPercentualCanonico(confianca) : "NÃO INFORMADA"}</span>
-              <span>Fonte: {fontes.length ? fontes.join(" · ") : "NÃO REGISTRADA"}</span>
-              <em>{texto(registro?.leitura_profissional ?? registro?.motivo, registro ? "Sem leitura vetorial profissional específica." : "Vetor não projetado: evidência funcional ausente no recorte.")}</em>
+              <span>Valor: {typeof valor === "number" ? valor : "INDISPONÍVEL"}</span>
+              {typeof confianca === "number" ? <span>Confiança: {formatarPercentualCanonico(confianca)}</span> : null}
+              {fontes.length ? <span>Fonte: {fontes.join(" · ")}</span> : null}
+              {texto(registro?.leitura_profissional ?? registro?.motivo, "") ? <em>{texto(registro?.leitura_profissional ?? registro?.motivo, "")}</em> : null}
             </article>;
           })}
         </div>
@@ -562,22 +542,7 @@ function RelatorioCanonicoV1({
       </section>
 
       <section className="hx-report-canonical__section">
-        <small>07 · ARR / RRD / GRI / CRL / NRA</small>
-        <h3>Rotas regulatórias e estados profissionais</h3>
-        <div className="hx-report-route-grid">
-          {rotas.map(([nome, valor, significado]) => {
-            const item = objeto(valor);
-            return <article key={nome}>
-              <strong>{nome}</strong><p>{significado}</p>
-              <span>{Object.keys(item).length ? texto(item.estado, "REGISTRO LOCALIZADO") : "NÃO MATERIALIZADO"}</span>
-              <em>{Object.keys(item).length ? texto(item.motivo, "Consulte a rastreabilidade da sessão.") : "Nenhuma decisão profissional admissível foi localizada para este produto."}</em>
-            </article>;
-          })}
-        </div>
-      </section>
-
-      <section className="hx-report-canonical__section">
-        <small>08 · INTERVENÇÃO, RESPOSTA E CADEIA PROFISSIONAL</small>
+        <small>INTERVENÇÃO, RESPOSTA E REGISTRO PROFISSIONAL</small>
         <h3>HX-OBS → TCR → ICR, quando calculável</h3>
         <p>Intervenção: {texto(consolidacao.intervencao, "AGUARDANDO CONSOLIDAÇÃO PROFISSIONAL")}</p>
         <p>Resposta observada: {texto(consolidacao.resposta_observada, "AGUARDANDO CONSOLIDAÇÃO PROFISSIONAL")}</p>
@@ -585,25 +550,25 @@ function RelatorioCanonicoV1({
       </section>
 
       <section className="hx-report-canonical__section">
-        <small>09 · LEITURA E DECISÃO PROFISSIONAL</small>
+        <small>LEITURA E DECISÃO PROFISSIONAL</small>
         <h3>{texto(consolidacao.interpretacao_profissional, "INTERPRETAÇÃO AINDA NÃO CONSOLIDADA")}</h3>
-        <p>Recursos observados: {texto(consolidacao.recursos_regulatorios_observados, "AGUARDANDO REGISTRO PROFISSIONAL")}</p>
-        <p>Pontos de atenção: {texto(consolidacao.pontos_de_atencao, "AGUARDANDO REGISTRO PROFISSIONAL")}</p>
-        <p>Conclusão: {texto(consolidacao.conclusao, "AGUARDANDO CONCLUSÃO PROFISSIONAL")}</p>
-        <p>Justificativa: {texto(consolidacao.justificativa, "AGUARDANDO JUSTIFICATIVA PROFISSIONAL")}</p>
-        <p>Recomendação: {texto(consolidacao.recomendacao, "AGUARDANDO RECOMENDAÇÃO PROFISSIONAL")}</p>
-        <p>Próximo passo regulatório: {texto(consolidacao.proximo_passo_regulatorio, "AGUARDANDO DEFINIÇÃO PROFISSIONAL")}</p>
+        {texto(consolidacao.recursos_regulatorios_observados, "") ? <p>Recursos observados: {texto(consolidacao.recursos_regulatorios_observados, "")}</p> : null}
+        {texto(consolidacao.pontos_de_atencao, "") ? <p>Pontos de atenção: {texto(consolidacao.pontos_de_atencao, "")}</p> : null}
+        {texto(consolidacao.conclusao, "") ? <p>Conclusão: {texto(consolidacao.conclusao, "")}</p> : null}
+        {texto(consolidacao.justificativa, "") ? <p>Justificativa: {texto(consolidacao.justificativa, "")}</p> : null}
+        {texto(consolidacao.recomendacao, "") ? <p>Recomendação: {texto(consolidacao.recomendacao, "")}</p> : null}
+        {texto(consolidacao.proximo_passo_regulatorio, "") ? <p>Próximo passo regulatório: {texto(consolidacao.proximo_passo_regulatorio, "")}</p> : null}
       </section>
 
       <section className="hx-report-canonical__section">
-        <small>10 · DEVOLUTIVA AO PARTICIPANTE</small>
+        <small>DEVOLUTIVA AO PARTICIPANTE</small>
         <h3>Conteúdo autorizado para devolutiva</h3>
-        <p>{texto(consolidacao.conteudo_da_devolutiva_ao_participante, "A devolutiva ainda não foi consolidada pelo profissional; este documento não está liberado como relatório final.")}</p>
+        <p>{texto(consolidacao.conteudo_da_devolutiva_ao_participante, MENSAGEM_UNICA_DE_INDISPONIBILIDADE)}</p>
       </section>
 
       <section className="hx-report-canonical__section">
-        <small>11 · VALIDAÇÃO, VERSÃO E RASTREABILIDADE</small>
-        <h3>{cicloDocumental.estado.replaceAll("_", " ")}</h3>
+        <small>RASTREABILIDADE E LIMITES DA LEITURA</small>
+        <h3>Estado documental: {cicloDocumental.estado.replaceAll("_", " ")}</h3>
         <p>Decisões sobre afirmações científicas permanecem separadas da consolidação e não autorizam, por si, a finalização do documento.</p>
         <p>Documento: {texto(relatorio?.codigo_publico, "ainda sem código público")} · versão {texto(relatorio?.numero_da_versao, "rascunho")} · sessão {texto(estado.sessao.identificador)}.</p>
         {!cicloDocumental.completa ? <p><strong>Campos que impedem o relatório final:</strong> {cicloDocumental.rotulosAusentes.join(" · ")}.</p> : null}
@@ -619,6 +584,31 @@ const BANDAS_ANI_LONGITUDINAIS = [
   { codigo: "beta_alta", nome: "Beta alta", cor: C.amber },
   { codigo: "gamma", nome: "Gamma", cor: C.red }
 ] as const;
+
+function MacrotrajetoriaRegulatoria({ longitudinal }: { longitudinal: Registro }) {
+  const etapas = projetarMacrotrajetoriaRegulatoria(longitudinal);
+  return (
+    <section className="hx-cockpit-panel hx-longitudinal-narrative" aria-label="Macrotrajetória regulatória longitudinal">
+      <HxSectionHeader
+        eyebrow="MACROTRAJETÓRIA REGULATÓRIA"
+        title="Do funcionamento inicial ao estado atual"
+        description="A sequência apresenta somente estados já registrados. A plataforma não transforma oscilação em melhora, não conclui transferência e não preenche lacunas."
+      />
+      {etapas.length ? (
+        <ol className="hx-longitudinal-narrative__timeline">
+          {etapas.map((etapa) => (
+            <li key={etapa.codigo} data-longitudinal-stage={etapa.codigo}>
+              <small>{etapa.rotulo}</small>
+              {etapa.itens.map((item) => <p key={item}>{portuguesVisivel(item)}</p>)}
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p>{MENSAGEM_UNICA_DE_INDISPONIBILIDADE}</p>
+      )}
+    </section>
+  );
+}
 
 function EvolucaoDaAssinaturaNeuroregulatoria({ longitudinal }: { longitudinal: Registro }) {
   const atual = objeto(longitudinal.atual ?? longitudinal.projecao_atual ?? longitudinal);
@@ -3473,8 +3463,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     }));
   const visaoLongitudinal = (
     <section className="hx-cockpit-panel">
-      <TituloDaVisao kicker="LONGITUDINAL" titulo="Histórico do participante sem recálculo silencioso." descricao="Sessões, ciclos, versões, lacunas e comparabilidade metodológica permanecem preservados." />
+      <TituloDaVisao kicker="LONGITUDINAL" titulo="Trajetória regulatória do funcionamento inicial ao estado atual." descricao="Sessões e ciclos comparáveis mostram o que foi trabalhado, o que oscilou e o que ainda exige confirmação profissional." />
       <div className="hx-report-operation"><div><strong>{texto(estado.longitudinal?.estado_da_evidencia, "EVIDÊNCIA LONGITUDINAL")}</strong><span>A trajetória descritiva existe desde a referência inicial; uma tendência madura continua submetida à elegibilidade temporal.</span></div><Botao onClick={comandos.longitudinal} disabled={ocupado !== ""}>Consolidar versão longitudinal</Botao></div>
+      <MacrotrajetoriaRegulatoria longitudinal={estado.longitudinal} />
       <LongitudinalEvolutionChart points={pontosLongitudinais} />
       <EvolucaoDaAssinaturaNeuroregulatoria longitudinal={estado.longitudinal} />
       <ReferenciaBaselineResumo estado={estado} />

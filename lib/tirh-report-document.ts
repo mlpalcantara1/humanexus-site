@@ -10,6 +10,10 @@ import {
   rotuloDaDisponibilidadeAutoritativa
 } from "./authoritative-iirh-projection.ts";
 import { portuguesVisivel } from "./portugues-visivel.ts";
+import {
+  MENSAGEM_UNICA_DE_INDISPONIBILIDADE,
+  projetarMicrotrajetoriaRegulatoria
+} from "./projecao-narrativa-relatorio.ts";
 
 export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.0";
 
@@ -1140,18 +1144,6 @@ function renderOperacionalFinalConsolidado(
     texto(protocoloThx.codigo, ""),
     texto(protocoloThx.nome, "")
   ].filter(Boolean).join(" · ");
-  const respostaDaExecucao = objeto(entrada.execucao?.resposta_observada_json);
-  const respostaObservada = consolidacao.resposta_observada
-    ?? respostaDaExecucao.descricao
-    ?? respostaDaExecucao.resposta
-    ?? respostaDaExecucao.resultado
-    ?? (
-      typeof entrada.execucao?.resposta_observada_json === "string"
-      && !String(entrada.execucao.resposta_observada_json).trim().startsWith("{")
-        ? entrada.execucao.resposta_observada_json
-        : null
-    );
-  const arr = objeto(cadeia.arr);
   const claims = lista(projecao.claims).map(objeto);
   const decisoes = decisoesProfissionaisPreservadasTirhV1(claims);
   const momentos = lista(entrada.ciclo?.momentos).map(objeto);
@@ -1185,12 +1177,24 @@ function renderOperacionalFinalConsolidado(
     }
     return [];
   });
+  const microtrajetoria = projetarMicrotrajetoriaRegulatoria({
+    relatorio: entrada.relatorio,
+    consolidacao,
+    execucao: entrada.execucao,
+    treinamento: treinamentoThx,
+    indicadores: [
+      `IIRH: ${iirhAutoritativo.calculado ? `${iirhAutoritativo.valor} / 100` : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}.`,
+      `Zona: ${zona.classificada ? texto(zona.codigo ?? zona.nome) : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}.`,
+      `Resultante: ${texto(resultante.estado, "não materializada")}.`,
+      `Vetores momentâneos calculáveis: ${vetores.filter((vetor) => vetor.magnitude != null).length}/9. VEV: ${texto(vev?.estado_epistemico ?? vev?.estado, "não elegível")}.`
+    ]
+  });
   let pagina = 1;
   let y = novaPagina(
     doc,
     "RELATÓRIO OPERACIONAL TIRH",
-    "Síntese, evidências e autoria profissional",
-    "Conteúdo governado pela mesma versão exibida na tela; ausências permanecem explícitas."
+    "Resultados e trajetória regulatória",
+    "Como chegou, o que foi trabalhado, o que aconteceu, como saiu e qual foi o próximo passo registrado."
   );
 
   const novaContinuacao = () => {
@@ -1203,8 +1207,11 @@ function renderOperacionalFinalConsolidado(
   };
 
   const bloco = (codigo: string, titulo: string, itens: string[]) => {
-    const limpos = itens.map((item) => item.trim()).filter(Boolean);
+    const limpos = itens
+      .map((item) => item.trim().replace(/([.!?])\.+$/, "$1"))
+      .filter(Boolean);
     if (!limpos.length) return;
+    doc.font("Helvetica").fontSize(8.2);
     const altura = 38 + limpos.reduce(
       (total, item) => total + doc.heightOfString(item, {
         width: 455,
@@ -1212,59 +1219,49 @@ function renderOperacionalFinalConsolidado(
       }) + 9,
       0
     );
-    if (y + Math.min(altura, 560) > 735) novaContinuacao();
+    if (y + Math.min(altura, 530) > 690) novaContinuacao();
     y = tituloSecao(doc, titulo, y, codigo);
     for (const item of limpos) {
+      doc.font("Helvetica").fontSize(8.2);
       const alturaDoItem = doc.heightOfString(item, {
         width: 440,
         lineGap: 2
-      }) + 13;
-      if (y + alturaDoItem > 735) novaContinuacao();
+      }) + 16;
+      if (y + alturaDoItem > 690) novaContinuacao();
       doc.circle(87, y + 5, 1.7).fill(CORES.ouro);
       doc.fillColor(CORES.texto).font("Helvetica").fontSize(8.2)
         .text(item, 97, y, { width: 440, lineGap: 2 });
       y += alturaDoItem;
     }
-    y += 7;
+    y += 12;
   };
 
-  bloco("01", "Resultado regulatório da sessão", [
-    `Objetivo da sessão ou treinamento: ${texto(entrada.execucao?.objetivo ?? entrada.relatorio.objetivo ?? consolidacao.contexto_e_objetivo, "não consolidado")}.`,
-    `Treinamento ou THX realizado: ${treinamentoThx || "não informado pelo contrato disponível para este documento"}.`,
-    `Intervenção aplicada: ${texto(consolidacao.intervencao, "não consolidada pelo profissional")}.`,
-    `Resposta ou resultado esperado: ${texto(entrada.execucao?.objetivo, "não informado na execução preservada")}.`,
-    `O que efetivamente aconteceu: ${texto(respostaObservada, "não consolidado pelo profissional")}.`,
-    "O objetivo foi alcançado? Ainda não foi possível determinar por classificação estruturada: o contrato vigente deste relatório não fornece esse estado e o Portal não o deduz dos indicadores.",
-    `Conclusão profissional: ${texto(consolidacao.conclusao, "não consolidada")}.`,
-    `O que ainda precisa ser desenvolvido: ${texto(consolidacao.pontos_de_atencao, "não consolidado")}.`,
-    `Próximo passo registrado pelo profissional: ${texto(consolidacao.proximo_passo_regulatorio, "não consolidado")}.`
+  bloco("01", "Microtrajetória regulatória da sessão", microtrajetoria.etapas.flatMap(
+    (etapa) => etapa.itens.map((item) => `${etapa.rotulo}: ${item}`)
+  ));
+
+  bloco("02", "Conclusão e devolutiva profissional", [
+    microtrajetoria.classificacaoProfissional
+      ? `O objetivo foi alcançado? ${microtrajetoria.classificacaoProfissional}.`
+      : "O objetivo foi alcançado? Aguardando conclusão profissional. A plataforma não conclui automaticamente a partir da variação dos indicadores.",
+    microtrajetoria.conclusaoProfissional
+      ? `Conclusão registrada pelo profissional: ${microtrajetoria.conclusaoProfissional}.`
+      : MENSAGEM_UNICA_DE_INDISPONIBILIDADE,
+    microtrajetoria.devolutiva
+      ? `Devolutiva profissional autorizada: ${microtrajetoria.devolutiva}.`
+      : ""
   ]);
 
-  bloco("02", "Indicadores oficiais e síntese da sessão", [
-    `Contexto e objetivo: ${texto(consolidacao.contexto_e_objetivo)}.`,
-    `Resultante: ${texto(resultante.estado, "não materializada")} — ${texto(resultante.motivo, "limitada às evidências admissíveis do recorte")}.`,
-    `Direção: ${texto(resultante.direcao, "não informada pelo Núcleo")}. Sentido: ${texto(resultante.sentido, "não informado pelo Núcleo")}. Tendência: ${texto(resultante.tendencia, "não informada pelo Núcleo")}.`,
-    `IIRH: ${iirhAutoritativo.calculado ? `${iirhAutoritativo.valor} / 100` : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)} · ${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}. Zona: ${zona.classificada ? texto(zona.codigo ?? zona.nome) : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)} · ${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}.`,
-    iirhAutoritativo.calculado
-      ? "A medida utiliza somente Macrocampos funcionalmente admissíveis."
-      : "A indisponibilidade de IIRH e Zona informa cobertura insuficiente; não representa falha pessoal."
-  ]);
-
-  bloco("03", "Evidências utilizadas e limites", [
-    ...lista(consolidacao.evidencias_utilizadas).map((item) => `Evidência selecionada: ${texto(item)}.`),
-    `Limitações: ${texto(consolidacao.limitacoes)}.`
-  ]);
-
-  bloco("04", "PRÉ / TREINO / PÓS", momentos.length
+  bloco("03", "Resposta PRÉ / TREINO / PÓS", momentos.length
     ? momentos.map((momento) => {
         const dados = objeto(momento.dados_preservados_json);
         return `${texto(momento.momento, "Momento")}: cobertura ${texto(momento.cobertura ?? dados.cobertura, "não registrada")}; confiança ${texto(momento.confiabilidade ?? dados.confiabilidade, "não registrada")}; lacunas ${lista(momento.ausencias_json ?? dados.ausencias).map((item) => texto(item)).join(" · ") || "não registradas"}.`;
       })
-    : ["Comparação PRÉ / TREINO / PÓS indisponível: os momentos equivalentes não estão preservados neste recorte."]
+    : [MENSAGEM_UNICA_DE_INDISPONIBILIDADE]
   );
 
   novaContinuacao();
-  y = tituloSecao(doc, "Gráficos regulatórios da sessão", y, "05");
+  y = tituloSecao(doc, "Gráficos regulatórios da sessão", y, "04");
   doc.fillColor(CORES.suave).font("Helvetica").fontSize(7.8).text(
     "Somente pontos oficiais disponíveis são desenhados. Ausências não fecham o radar, não completam a série e não são convertidas em zero.",
     83,
@@ -1274,23 +1271,23 @@ function renderOperacionalFinalConsolidado(
   desenharRadarVetorial(doc, vetores, 42, y + 38, 112);
   tabelaVetores(doc, vetores, 305, y + 26, 248);
   y += 315;
-  y = tituloSecao(doc, "Evolução oficialmente preservada", y, "06");
+  y = tituloSecao(doc, "Evolução oficialmente preservada", y, "05");
   desenharTrajetoria(doc, trajetoria, 92, y + 8, 420, 155);
   y += 205;
 
-  bloco("07", "Nove Vetores momentâneos", vetores.map((vetor) => (
+  bloco("06", "Nove Vetores momentâneos", vetores.map((vetor) => (
     `${vetor.codigo} · ${vetor.nome} · ${vetor.macrocampo}: `
     + `${vetor.magnitude == null ? "ausente" : `valor ${vetor.magnitude.toFixed(1)}`}; `
     + `confiança ${vetor.confianca == null ? "não registrada" : `${Math.round(vetor.confianca * 100)}%`}; `
-    + `${vetor.motivo || "fonte indicada na projeção canônica"}.`
+    + `${vetor.motivo || "fonte indicada pelo Núcleo"}.`
   )));
 
-  bloco("08", "VEV longitudinal", [
+  bloco("07", "VEV longitudinal", [
     `Estado: ${texto(vev?.estado_epistemico ?? vev?.estado, "não elegível")}.`,
     "O VEV permanece separado dos nove Vetores momentâneos e exige uma referência inicial mais quatro sessões válidas e comparáveis."
   ]);
 
-  bloco("09", "Resultante, IIRH, Zona e trajetória", [
+  bloco("08", "Resultante, IIRH, Zona e trajetória", [
     `Resultante estrutural: ${texto(resultante.estado, "não materializada")}. Magnitude escalar: não aplicável na TIRH V1.`,
     `IIRH: ${iirhAutoritativo.calculado ? iirhAutoritativo.valor : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)} · ${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}. Zona: ${zona.classificada ? texto(zona.codigo ?? zona.nome) : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)} · ${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}.`,
     trajetoria.length
@@ -1299,56 +1296,36 @@ function renderOperacionalFinalConsolidado(
     "Um próximo registro válido e comparável pode ampliar a leitura sem reclassificar retroativamente esta sessão."
   ]);
 
-  bloco("10", "EEG e indicadores autonômicos recebidos", leiturasFisiologicasRecebidas.length
+  bloco("09", "EEG e indicadores autonômicos recebidos", leiturasFisiologicasRecebidas.length
     ? leiturasFisiologicasRecebidas
     : [
-        "Nenhum indicador EEG ou autonômico simultaneamente recebido e admissível foi fornecido ao documento neste recorte. Nenhum valor foi inferido, completado ou convertido em evidência fisiológica."
+        MENSAGEM_UNICA_DE_INDISPONIBILIDADE
       ]
   );
 
-  const rotas: Array<[string, Registro]> = [
-    ["ARR", arr],
-    ["RRD", objeto(cadeia.rota_dominante)],
-    ["GRI", objeto(arr.gri)],
-    ["CRL", objeto(arr.crl)],
-    ["NRA", objeto(cadeia.nra)]
-  ];
-  bloco("11", "ARR, RRD, GRI, CRL e NRA", rotas.map(([codigo, item]) => (
-    `${codigo}: ${Object.keys(item).length ? texto(item.estado, "registro localizado") : "não materializado"} — ${Object.keys(item).length ? texto(item.motivo ?? item.descricao, "consulte a rastreabilidade") : "nenhuma decisão profissional admissível foi localizada"}.`
-  )));
-
-  bloco("12", "Intervenção, resposta, HX-OBS, TCR e ICR", [
-    `Intervenção: ${texto(consolidacao.intervencao)}.`,
-    `Resposta observada: ${texto(consolidacao.resposta_observada)}.`,
-    `TCR: ${texto(cadeia.tcr, "não materializada")}. ICR: ${texto(cadeia.icr, "não calculável")}.`
+  bloco("10", "Intervenção e registro profissional", [
+    texto(consolidacao.intervencao, "") ? `Intervenção: ${texto(consolidacao.intervencao, "")}.` : "",
+    texto(consolidacao.resposta_observada, "") ? `Resposta observada: ${texto(consolidacao.resposta_observada, "")}.` : "",
+    texto(consolidacao.interpretacao_profissional, "") ? `Interpretação profissional: ${texto(consolidacao.interpretacao_profissional, "")}.` : "",
+    texto(consolidacao.recursos_regulatorios_observados, "") ? `Recursos regulatórios observados: ${texto(consolidacao.recursos_regulatorios_observados, "")}.` : "",
+    texto(consolidacao.pontos_de_atencao, "") ? `Pontos de atenção: ${texto(consolidacao.pontos_de_atencao, "")}.` : "",
+    texto(cadeia.tcr, "") ? `TCR: ${texto(cadeia.tcr, "")}.` : "",
+    texto(cadeia.icr, "") ? `ICR: ${texto(cadeia.icr, "")}.` : ""
   ]);
 
-  bloco("13", "Interpretação, recursos e pontos de atenção", [
-    `Interpretação profissional: ${texto(consolidacao.interpretacao_profissional)}.`,
-    `Recursos regulatórios observados: ${texto(consolidacao.recursos_regulatorios_observados)}.`,
-    `Pontos de atenção: ${texto(consolidacao.pontos_de_atencao)}.`
+  bloco("11", "Próximo passo profissional", [
+    texto(consolidacao.recomendacao, "") ? `Recomendação: ${texto(consolidacao.recomendacao, "")}.` : "",
+    texto(consolidacao.proximo_passo_regulatorio, "") ? `Próximo passo regulatório: ${texto(consolidacao.proximo_passo_regulatorio, "")}.` : ""
   ]);
 
-  bloco("14", "Conclusão, recomendação e próximo passo", [
-    `Conclusão profissional: ${texto(consolidacao.conclusao)}.`,
-    `Justificativa: ${texto(consolidacao.justificativa)}.`,
-    `Recomendação: ${texto(consolidacao.recomendacao)}.`,
-    `Próximo passo regulatório: ${texto(consolidacao.proximo_passo_regulatorio)}.`
-  ]);
-
-  bloco("15", "Validação profissional e devolutiva", [
-    ...(decisoes.length
-      ? decisoes.map((decisao) => `Afirmação científica ${texto(decisao.claim_id, "preservada")}: ${texto(decisao.decisao)} · estado efetivo ${texto(decisao.estado)} · versão ${texto(decisao.versao_da_validacao)}.`)
-      : ["Nenhuma decisão sobre afirmação científica foi usada como substituto da consolidação do relatório."]),
-    `Devolutiva ao participante: ${texto(consolidacao.conteudo_da_devolutiva_ao_participante)}.`
-  ]);
-
-  bloco("16", "Rastreabilidade técnica e documental", [
+  bloco("12", "Rastreabilidade e limites da leitura", [
     `Nome completo: ${identidade.nomeCompleto}.`,
     `CPF: ${identidade.cpf}. Organização: ${identidade.organizacao}.`,
     `Sessão: ${texto(entrada.sessao.nome_operacional, "sessão registrada")} · ${data(entrada.sessao.finalizado_em ?? entrada.sessao.criado_em)}.`,
     `Responsável: ${texto(entrada.usuario.nome, "profissional registrado")} · ciência ${texto(projecao.versao_cientifica, "TIRH V1")} · documento ${texto(entrada.relatorio.codigo_publico, texto(entrada.relatorio.identificador))} · versão ${texto(entrada.relatorio.numero_da_versao, "não registrada")}.`,
     `Estado funcional: ${cicloDocumental.estado.replaceAll("_", " ")}.`,
+    `Decisões profissionais preservadas nesta versão: ${decisoes.length}.`,
+    texto(consolidacao.limitacoes, "") ? `Limitações registradas: ${texto(consolidacao.limitacoes, "")}.` : "",
     `Fontes, integridade, autoria, limites e estados documentais permanecem vinculados ao documento ${texto(entrada.relatorio.identificador, "sem identificador público")}.`
   ]);
 }

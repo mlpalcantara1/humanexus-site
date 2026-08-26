@@ -16,7 +16,7 @@ const vetores = Object.fromEntries([
   ["VJ", 74, .83], ["VE", 71, .80], ["VR", 79, .86]
 ].map(([codigo, valor, confianca]) => [codigo, {
   codigo, valor, confianca, estado: "CALCULADO",
-  motivo: "Fonte controlada e admissível da fixture funcional."
+  motivo: "Fonte controlada da fixture funcional."
 }]));
 
 const consolidacao = {
@@ -157,6 +157,44 @@ const pdf = await gerarPdfVisualHumanexus({
     titulo_humano: "Relatório Operacional TIRH — Participante de Verificação",
     estado_documental: "CONCLUIDO",
     criado_em: "2026-08-23T15:00:00-04:00",
+    secoes: [
+      {
+        codigo: "FINALIDADE_DO_TREINAMENTO",
+        itens: ["Desenvolver resposta funcional estável sob exigência controlada."]
+      },
+      {
+        codigo: "CONTEXTO_OPERACIONAL_HUMANO",
+        itens: ["Chegada com demanda elevada, estabilidade reduzida e recuperação disponível."]
+      },
+      {
+        codigo: "GATILHOS_E_CONTEXTO_DOCUMENTADOS",
+        itens: ["Pressão temporal registrada como gatilho no contexto autorizado."]
+      },
+      {
+        codigo: "ROTA_DOMINANTE",
+        itens: ["Rota predominante registrada pelo profissional na sessão controlada."]
+      },
+      {
+        codigo: "CUSTO_REGULATORIO",
+        itens: ["Ganho e custo foram registrados no recorte profissional autorizado."]
+      },
+      {
+        codigo: "AQUISICAO_E_CONSOLIDACAO",
+        itens: ["Resposta alternativa trabalhada; consolidação longitudinal ainda não demonstrada."]
+      },
+      {
+        codigo: "CTR_THX_THX_AER",
+        itens: ["THX-FIXTURE-001 aplicado na fase TREINO."]
+      },
+      {
+        codigo: "RESPOSTA_AO_TREINAMENTO",
+        itens: ["Reorganização progressiva durante o TREINO e recuperação preservada no PÓS."]
+      },
+      {
+        codigo: "PROXIMO_CICLO",
+        itens: ["Repetir tarefa equivalente em ciclo metodologicamente comparável."]
+      }
+    ],
     identidade_documental: {
       nome_completo: "Participante de Verificação",
       cpf: "000.000.000-00",

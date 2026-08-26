@@ -8,26 +8,43 @@ import test from "node:test";
 const raiz = new URL("../", import.meta.url);
 const source = (caminho) => readFile(new URL(caminho, raiz), "utf8");
 
-test("componente compartilhado comunica resultado sem definir taxonomia ou conclusão automática", async () => {
+test("componente compartilhado comunica a microtrajetória sem definir taxonomia ou conclusão automática", async () => {
   const componente = await source("components/resultado-regulatorio-da-sessao.tsx");
   for (const trecho of [
-    "Objetivo da sessão ou treinamento",
-    "Treinamento ou THX realizado",
-    "Intervenção aplicada",
-    "Resposta ou resultado esperado",
-    "O que efetivamente aconteceu",
+    "MICROTRAJETÓRIA REGULATÓRIA DA SESSÃO",
+    "Como chegou, o que foi trabalhado, o que aconteceu e como saiu",
     "O objetivo foi alcançado?",
-    "Indicadores e evidências selecionados pelo profissional",
-    "O que ainda precisa ser desenvolvido",
-    "Próximo passo registrado pelo profissional"
+    "AGUARDANDO CONCLUSÃO PROFISSIONAL",
+    "Conclusão registrada pelo profissional",
+    "DEVOLUTIVA PROFISSIONAL AUTORIZADA"
   ]) assert.match(componente, new RegExp(trecho.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(componente, /AINDA NÃO FOI POSSÍVEL DETERMINAR/);
-  assert.match(componente, /A plataforma não a deduz da variação dos indicadores/);
+  assert.match(componente, /A plataforma não conclui automaticamente/);
   assert.doesNotMatch(
     componente,
     /\b(?:ARR|RRD|GRI|CRL|RRO|NRA)\b|Dor Operacional|cadeia canônica|legado/i
   );
   assert.doesNotMatch(componente, /calcular|recalcular|inferir|fallback/i);
+});
+
+test("resolver compartilhado usa apenas seções e consolidação já existentes", async () => {
+  const resolver = await source("lib/projecao-narrativa-relatorio.ts");
+  for (const etapa of [
+    "OBJETIVO_DA_SESSAO",
+    "COMO_CHEGOU",
+    "DEMANDA_GATILHO",
+    "ROTA_PREDOMINANTE",
+    "GANHO_CUSTO",
+    "RESPOSTA_ALTERNATIVA",
+    "THX_INTERVENCAO",
+    "PRE_TREINO_POS",
+    "COMO_SAIU",
+    "MUDANCA_OBSERVADA",
+    "NAO_CONSOLIDADO",
+    "PROXIMO_PASSO"
+  ]) assert.match(resolver, new RegExp(`codigo: "${etapa}"`));
+  assert.match(resolver, /itensDeSecoesAutorizadas/);
+  assert.match(resolver, /MENSAGEM_UNICA_DE_INDISPONIBILIDADE/);
+  assert.doesNotMatch(resolver, /calcular|recalcular|reclassificar|fallback/i);
 });
 
 test("relatório Web preserva indicadores oficiais e move gráficos para o conteúdo governado", async () => {
@@ -36,7 +53,7 @@ test("relatório Web preserva indicadores oficiais e move gráficos para o conte
     cockpit.indexOf("function RelatorioCanonicoV1"),
     cockpit.indexOf("const BANDAS_ANI_LONGITUDINAIS")
   );
-  assert.match(bloco, /<ResultadoRegulatorioDaSessao conteudo=\{conteudoDoResultado\}/);
+  assert.match(bloco, /<ResultadoRegulatorioDaSessao microtrajetoria=\{microtrajetoria\}/);
   for (const termo of [
     "IIRH",
     "Zona",
@@ -57,6 +74,23 @@ test("relatório Web preserva indicadores oficiais e move gráficos para o conte
   assert.match(cockpit, /Polar ou sensor cardíaco humano não conectado/);
   assert.match(cockpit, /Nenhuma série humana de variabilidade foi recebida/);
   assert.doesNotMatch(bloco, /\?\?\s*0|\|\|\s*0/);
+  assert.match(bloco, /RASTREABILIDADE E LIMITES DA LEITURA/);
+  assert.ok(
+    bloco.indexOf("MICROTRAJETÓRIA") < bloco.indexOf("RASTREABILIDADE E LIMITES DA LEITURA")
+  );
+});
+
+test("visão longitudinal comunica macrotrajetória sem fabricar evolução", async () => {
+  const cockpit = await source("components/operacao-homologacao.tsx");
+  const bloco = cockpit.slice(
+    cockpit.indexOf("function MacrotrajetoriaRegulatoria"),
+    cockpit.indexOf("function EvolucaoDaAssinaturaNeuroregulatoria")
+  );
+  assert.match(bloco, /MACROTRAJETÓRIA REGULATÓRIA/);
+  assert.match(bloco, /Do funcionamento inicial ao estado atual/);
+  assert.match(bloco, /não transforma oscilação em melhora/);
+  assert.match(cockpit, /<MacrotrajetoriaRegulatoria longitudinal=\{estado\.longitudinal\}/);
+  assert.doesNotMatch(bloco, /calcula|recalcula|infere|fallback/i);
 });
 
 test("PDF e impressão priorizam resultado, preservam gráficos e deixam rastreabilidade no final", async () => {
@@ -79,21 +113,26 @@ test("PDF e impressão priorizam resultado, preservam gráficos e deixam rastrea
   assert.equal(extracao.status, 0, extracao.stderr);
   const texto = extracao.stdout;
   for (const termo of [
-    "Resultado regulatório da sessão",
+    "Microtrajetória regulatória da sessão",
     "Objetivo da sessão ou treinamento",
+    "Como chegou",
+    "Demanda ou gatilho registrado",
+    "Rota predominante registrada",
+    "Ganho ou custo registrado",
+    "Resposta alternativa trabalhada",
+    "Como saiu",
+    "Mudança observada",
     "THX-FIXTURE-001",
-    "Intervenção aplicada",
-    "O que efetivamente aconteceu",
-    "Ainda não foi possível determinar",
-    "O que ainda precisa ser desenvolvido",
-    "Próximo passo registrado pelo profissional",
+    "Aguardando conclusão profissional",
+    "O que ainda não se consolidou",
+    "Próximo passo profissional",
     "Gráficos regulatórios da sessão",
     "Nove Vetores momentâneos",
-    "Rastreabilidade técnica e documental"
+    "Rastreabilidade e limites da leitura"
   ]) assert.match(texto, new RegExp(termo, "i"));
   assert.ok(
-    texto.indexOf("Resultado regulatório da sessão")
-      < texto.lastIndexOf("Rastreabilidade técnica e documental")
+    texto.indexOf("Microtrajetória regulatória da sessão")
+      < texto.lastIndexOf("Rastreabilidade e limites da leitura")
   );
   assert.doesNotMatch(texto, /objetivo foi alcançado[^\n]*(alcançado|parcialmente alcançado|não alcançado)[^.]*\./i);
 
