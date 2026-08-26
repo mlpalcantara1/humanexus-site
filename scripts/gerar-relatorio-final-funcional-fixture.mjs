@@ -107,7 +107,14 @@ const pdf = await gerarPdfVisualHumanexus({
     criado_em: "2026-08-23T14:00:00-04:00",
     finalizado_em: "2026-08-23T14:45:00-04:00"
   },
-  execucao: { estado: "CONCLUIDA" },
+  execucao: {
+    estado: "CONCLUIDA",
+    objetivo: "Desenvolver resposta funcional estável sob exigência controlada."
+  },
+  protocoloThx: {
+    codigo: "THX-FIXTURE-001",
+    nome: "Treinamento HUMANEXUS de verificação documental"
+  },
   ciclo: {
     momentos: [
       { momento: "PRÉ", cobertura: .72, confiabilidade: .78, ausencias_json: [] },

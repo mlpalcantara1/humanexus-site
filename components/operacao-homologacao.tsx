@@ -20,6 +20,7 @@ import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multi
 import { CockpitOperacionalVivo } from "@/components/cockpit-operacional-vivo";
 import { SinteseValidacaoTirhV1 } from "@/components/sintese-validacao-tirh-v1";
 import { ConsolidacaoProfissionalDoRelatorio } from "@/components/consolidacao-profissional-relatorio";
+import { ResultadoRegulatorioDaSessao } from "@/components/resultado-regulatorio-da-sessao";
 import { HxSectionHeader } from "@/components/hx-design-system";
 import {
   EVENTO_CONTEXTO_NAVEGACAO_ATUALIZADO,
@@ -392,6 +393,29 @@ function RelatorioCanonicoV1({
   const consolidacao = cicloDocumental.consolidacao;
   const cadeia = objeto(objeto(estado.cockpit_operacional).cadeia_cientifica);
   const fases = fasesComparaveis(estado);
+  const treinamentoRealizado = [
+    estado.thx_individual?.codigo,
+    estado.thx_individual?.nome
+  ].filter((item) => typeof item === "string" && item.trim()).join(" · ");
+  const evidenciasSelecionadas = Array.isArray(consolidacao.evidencias_utilizadas)
+    ? consolidacao.evidencias_utilizadas.map(String).filter(Boolean)
+    : consolidacao.evidencias_utilizadas
+      ? [String(consolidacao.evidencias_utilizadas)]
+      : [];
+  const conteudoDoResultado = {
+    objetivo: estado.execucao?.objetivo ?? relatorio?.objetivo ?? consolidacao.contexto_e_objetivo,
+    treinamento: treinamentoRealizado || undefined,
+    intervencao: consolidacao.intervencao,
+    respostaEsperada: estado.execucao?.objetivo,
+    respostaObservada: consolidacao.resposta_observada ?? estado.execucao?.resposta_observada_json,
+    classificacaoDoResultado: undefined,
+    conclusaoProfissional: consolidacao.conclusao,
+    evidencias: evidenciasSelecionadas,
+    limitacoes: consolidacao.limitacoes,
+    oQuePrecisaSerDesenvolvido: consolidacao.pontos_de_atencao,
+    proximoPasso: consolidacao.proximo_passo_regulatorio,
+    devolutiva: consolidacao.conteudo_da_devolutiva_ao_participante
+  };
   const nomesVetoriais: Record<string, [string, string]> = {
     VH: ["Vetor Humano", "Recursos humanos mobilizados diante da exigência registrada."],
     VT: ["Vetor Tarefa", "Relação funcional entre recursos disponíveis e demandas da tarefa."],
@@ -446,9 +470,11 @@ function RelatorioCanonicoV1({
         <p>Fonte de identidade: {identidade.fonte}. Referência operacional: {identidade.referenciaOperacional}. Rastreamento da sessão: {texto(estado.sessao.identificador)}.</p>
       </header>
 
+      <ResultadoRegulatorioDaSessao conteudo={conteudoDoResultado} />
+
       <section className="hx-report-canonical__section">
-        <small>01 · SÍNTESE EXECUTIVA DA SESSÃO</small>
-        <h3>O que a sessão permite compreender</h3>
+        <small>INDICADORES OFICIAIS DA SESSÃO</small>
+        <h3>O que os resultados autoritativos permitem apresentar</h3>
         <p>Resultante estrutural: <strong>{texto(resultante.estado, "NÃO MATERIALIZADA")}</strong>. {texto(resultante.motivo, "A leitura permanece limitada às evidências admissíveis do recorte.")}</p>
         <p>IIRH: <strong>{iirhCalculavel ? `${iirhAutoritativo.valor} / 100` : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}</strong> · {rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}. Zona: <strong>{zonaAutoritativa.classificada ? texto(zonaAutoritativa.codigo ?? zonaAutoritativa.nome) : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}</strong> · {rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}.</p>
         <p>{iirhCalculavel
@@ -517,7 +543,22 @@ function RelatorioCanonicoV1({
         <h3>Estado estrutural da Resultante: {texto(resultante.estado, "NÃO MATERIALIZADA")}</h3>
         <p>Magnitude escalar: <strong>NÃO APLICÁVEL NA TIRH V1</strong>. {texto(resultante.motivo, "A Resultante descreve a organização vetorial sustentada neste recorte.")}</p>
         <p>IIRH: {iirhCalculavel ? `${iirhAutoritativo.valor} / 100` : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)} · {rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}. Zona: {zonaAutoritativa.classificada ? texto(zonaAutoritativa.codigo ?? zonaAutoritativa.nome) : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)} · {rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}. Trajetória: {estado.leitura_regulatoria.trajetorias.length ? "registro longitudinal localizado" : "não inferível a partir de um único ponto"}.</p>
+        <p>Direção: {texto(resultante.direcao, "NÃO INFORMADA PELO NÚCLEO")} · Sentido: {texto(resultante.sentido, "NÃO INFORMADO PELO NÚCLEO")} · Tendência: {texto(resultante.tendencia, "NÃO INFORMADA PELO NÚCLEO")}.</p>
         <p>O próximo registro válido e comparável pode ampliar a leitura temporal sem reclassificar retroativamente esta sessão.</p>
+      </section>
+
+      <section className="hx-report-canonical__section hx-report-regulatory-charts" data-humanexus-report>
+        <small>GRÁFICOS DA SESSÃO</small>
+        <h3>Fases, intervenção e sinais efetivamente disponíveis</h3>
+        <p>As séries ausentes permanecem vazias e explicadas. Nenhuma trilha é completada pelo Portal.</p>
+        <PhaseComparisonChart phases={fases} markers={marcadoresDaSessao(estado).filter((item) => item.phase === "TREINO")} />
+        <CockpitSignalStack
+          tracks={trilhasDoCockpit(estado).filter((trilha) => !trilha.technical)}
+          markers={marcadoresDaSessao(estado)}
+          phases={faixasDasFases(estado)}
+          showTechnicalLegend={false}
+          primaryDataLabel="Evidência da sessão"
+        />
       </section>
 
       <section className="hx-report-canonical__section">
@@ -3578,9 +3619,6 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             consolidar={comandos.consolidarRelatorio}
           />
           <RelatorioCanonicoV1 estado={estado} relatorio={relatorioAtual} />
-          <div className="hx-report-charts" data-humanexus-report>
-            <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
-          </div>
           <Rastreabilidade estado={estado} />
         </>
       )}

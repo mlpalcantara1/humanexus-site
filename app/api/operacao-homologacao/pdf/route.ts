@@ -111,7 +111,8 @@ export async function GET(request: Request) {
       gravacao,
       contratoCientifico,
       tirhV1,
-      cockpitOperacional
+      cockpitOperacional,
+      protocoloThx
     ] = await Promise.all([
       requisitarNucleoAutenticado<Registro[]>(`/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}`, token)
         .catch(() => []),
@@ -147,7 +148,13 @@ export async function GET(request: Request) {
       requisitarNucleoAutenticado<Registro>(
         `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/cockpit-operacional`,
         token
-      )
+      ),
+      execucao?.identificador_do_protocolo
+        ? requisitarNucleoAutenticado<Registro>(
+            `/api/v1/thx/protocolos/${encodeURIComponent(String(execucao.identificador_do_protocolo))}`,
+            token
+          ).catch(() => null)
+        : Promise.resolve(null)
     ]);
     const pdf = await gerarPdfVisualHumanexus({
       usuario,
@@ -155,6 +162,7 @@ export async function GET(request: Request) {
       participante,
       sessao,
       execucao,
+      protocoloThx,
       ciclo,
       telemetria,
       eventos,
