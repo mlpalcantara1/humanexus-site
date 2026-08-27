@@ -1,5 +1,27 @@
 import { NextResponse } from "next/server";
-import { requisitarNucleoPublico } from "@/lib/humanexus-core";
+import {
+  ErroDoNucleo,
+  requisitarNucleoPublico
+} from "@/lib/humanexus-core";
+
+function respostaDeErro(erro: unknown, padrao: string) {
+  if (!(erro instanceof ErroDoNucleo)) {
+    return NextResponse.json(
+      { erro: { codigo: "FALHA_TRANSITORIA", mensagem: padrao } },
+      { status: 503 }
+    );
+  }
+  const conviteIndisponivel = [401, 403, 404, 410].includes(erro.status);
+  const mensagem = conviteIndisponivel
+    ? "Este convite expirou ou não está mais disponível."
+    : erro.status >= 500
+      ? "O Núcleo está temporariamente indisponível. Aguarde alguns segundos e tente novamente sem recarregar a página."
+      : erro.message;
+  return NextResponse.json(
+    { erro: { codigo: erro.codigo, mensagem } },
+    { status: conviteIndisponivel ? 410 : erro.status }
+  );
+}
 
 export async function GET(
   _request: Request,
@@ -10,7 +32,9 @@ export async function GET(
     const seguro = encodeURIComponent(token);
     const [estrutura, progresso] = await Promise.all([
       requisitarNucleoPublico<Record<string, unknown>>(
-        `/api/v1/anamnese/convite/${seguro}/estrutura`
+        `/api/v1/anamnese/convite/${seguro}/estrutura`,
+        {},
+        { tempoLimiteMs: 20_000 }
       ),
       requisitarNucleoPublico<{
         anamnese: {
@@ -23,7 +47,11 @@ export async function GET(
           resposta_json: unknown;
           versao_de_controle: number;
         }[];
-      }>(`/api/v1/anamnese/convite/${seguro}/progresso`)
+      }>(
+        `/api/v1/anamnese/convite/${seguro}/progresso`,
+        {},
+        { tempoLimiteMs: 20_000 }
+      )
     ]);
     return NextResponse.json({
       ...estrutura,
@@ -34,11 +62,8 @@ export async function GET(
         control_version: resposta.versao_de_controle
       }))
     });
-  } catch {
-    return NextResponse.json(
-      { erro: { mensagem: "Convite inválido, expirado ou revogado." } },
-      { status: 404 }
-    );
+  } catch (erro) {
+    return respostaDeErro(erro, "Não foi possível carregar o convite agora. Tente novamente sem descartar o acesso recebido.");
   }
 }
 
@@ -63,7 +88,8 @@ export async function POST(
                 finalidade: "ANAMNESE_REGULATORIA"
               }
             })
-          }
+          },
+          { tempoLimiteMs: 20_000 }
         )
       );
     }
@@ -71,7 +97,8 @@ export async function POST(
       return NextResponse.json(
         await requisitarNucleoPublico(
           `/api/v1/anamnese/convite/${seguro}/concluir`,
-          { method: "POST" }
+          { method: "POST" },
+          { tempoLimiteMs: 20_000 }
         )
       );
     }
@@ -90,7 +117,8 @@ export async function POST(
               contexto_profissional_declarado: corpo.contexto_profissional_declarado,
               conflito_confirmado: corpo.conflito_confirmado
             })
-          }
+          },
+          { tempoLimiteMs: 20_000 }
         )
       );
     }
@@ -101,15 +129,13 @@ export async function POST(
           {
             method: "POST",
             body: JSON.stringify({ acao: "CONFIRMAR_REVISAO" })
-          }
+          },
+          { tempoLimiteMs: 20_000 }
         )
       );
     }
     throw new Error("Ação inválida");
-  } catch {
-    return NextResponse.json(
-      { erro: { mensagem: "Não foi possível atualizar a anamnese." } },
-      { status: 422 }
-    );
+  } catch (erro) {
+    return respostaDeErro(erro, "Não foi possível atualizar a anamnese. O conteúdo preenchido permanece nesta tela para uma nova tentativa.");
   }
 }

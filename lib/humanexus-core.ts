@@ -164,9 +164,10 @@ export async function requisitarNucleoBinario(
 
 export function requisitarNucleoPublico<T>(
   caminho: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  opcoes: OpcoesDaRequisicaoAoNucleo = {}
 ) {
-  return requisitar<T>(caminho, init);
+  return requisitar<T>(caminho, init, undefined, opcoes);
 }
 
 export async function entrarNoNucleo(

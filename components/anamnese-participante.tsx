@@ -223,6 +223,39 @@ function isQuestionAnswered(question: Question, value: Answer | undefined) {
   return true;
 }
 
+const TEMPO_LIMITE_DA_ANAMNESE_MS = 25_000;
+
+async function requisitarAnamnese<T>(
+  caminho: string,
+  opcoes: RequestInit = {}
+): Promise<T> {
+  const controlador = new AbortController();
+  let expirou = false;
+  const propagarCancelamento = () => controlador.abort(opcoes.signal?.reason);
+  if (opcoes.signal?.aborted) propagarCancelamento();
+  else opcoes.signal?.addEventListener("abort", propagarCancelamento, { once: true });
+  const limite = window.setTimeout(() => {
+    expirou = true;
+    controlador.abort();
+  }, TEMPO_LIMITE_DA_ANAMNESE_MS);
+  try {
+    return await humanexusApi<T>(caminho, {
+      ...opcoes,
+      signal: controlador.signal
+    });
+  } catch (erro) {
+    if (expirou) {
+      throw new Error(
+        "A confirmação demorou além do esperado. O conteúdo permanece nesta tela; verifique a ligação e tente novamente."
+      );
+    }
+    throw erro;
+  } finally {
+    window.clearTimeout(limite);
+    opcoes.signal?.removeEventListener("abort", propagarCancelamento);
+  }
+}
+
 export function AnamneseParticipante({ token }: { token: string }) {
   const [structure, setStructure] = useState<Structure | null>(null);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
@@ -232,6 +265,8 @@ export function AnamneseParticipante({ token }: { token: string }) {
   const [started, setStarted] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("SALVO");
   const [message, setMessage] = useState("");
+  const [syncMessage, setSyncMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [branchMessage, setBranchMessage] = useState("");
   const [completed, setCompleted] = useState(false);
   const [reviewing, setReviewing] = useState(false);
@@ -241,6 +276,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
   const [customNiche, setCustomNiche] = useState("");
   const [customFunction, setCustomFunction] = useState("");
   const syncPromise = useRef<Promise<boolean> | null>(null);
+  const conclusionLock = useRef(false);
   const queueLock = useRef<Promise<void>>(Promise.resolve());
   const versionsRef = useRef<Record<string, number>>({});
 
@@ -252,7 +288,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
 
   const load = useCallback(async (preserveCurrentSection = false) => {
     try {
-      const data = await humanexusApi<Structure>(
+      const data = await requisitarAnamnese<Structure>(
         `/api/humanexus/convites/${encodeURIComponent(token)}`
       );
       setStructure(data);
@@ -296,20 +332,27 @@ export function AnamneseParticipante({ token }: { token: string }) {
   useEffect(() => { void load(); }, [load]);
 
   const syncPending = useCallback(async (): Promise<boolean> => {
-    if (!navigator.onLine) return false;
+    if (!navigator.onLine) {
+      setSaveState("SEM_REDE");
+      setSyncMessage(
+        "Sem ligação com a internet. As respostas permanecem neste dispositivo e serão enviadas quando a ligação voltar."
+      );
+      return false;
+    }
     if (syncPromise.current) return syncPromise.current;
 
     const operation = withQueueLock(async (): Promise<boolean> => {
       const pending = await readQueue(token);
       if (!pending.length) {
         setSaveState("SALVO");
+        setSyncMessage("");
         return true;
       }
       setSaveState("SALVANDO");
       try {
         const remaining = [...pending];
         for (const item of pending) {
-          const saved = await humanexusApi<{ versao_de_controle: number }>(
+          const saved = await requisitarAnamnese<{ versao_de_controle: number }>(
             `/api/humanexus/convites/${encodeURIComponent(token)}/respostas/${item.pergunta}`,
             {
               method: "PUT",
@@ -326,9 +369,15 @@ export function AnamneseParticipante({ token }: { token: string }) {
         }
         await load(true);
         setSaveState("SALVO");
+        setSyncMessage("");
         return true;
-      } catch {
+      } catch (erro) {
         setSaveState("CONFLITO");
+        setSyncMessage(
+          erro instanceof Error
+            ? erro.message
+            : "Não foi possível confirmar as respostas. O conteúdo permanece nesta tela para uma nova tentativa."
+        );
         return false;
       }
     });
@@ -401,7 +450,14 @@ export function AnamneseParticipante({ token }: { token: string }) {
       [question.identificador]: value
     };
     setAnswers(answersRef.current);
-    void stageAnswer(question, value);
+    void stageAnswer(question, value).catch((erro) => {
+      setSaveState("CONFLITO");
+      setSyncMessage(
+        erro instanceof Error
+          ? `Não foi possível proteger a resposta no armazenamento local: ${erro.message}. Mantenha esta tela aberta e tente novamente.`
+          : "Não foi possível proteger a resposta no armazenamento local. Mantenha esta tela aberta e tente novamente."
+      );
+    });
   }, [stageAnswer]);
 
   useEffect(() => {
@@ -426,7 +482,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
     try {
       const synchronized = await syncPending();
       if (!synchronized && (await readQueue(token)).length) return;
-      await humanexusApi(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
+      await requisitarAnamnese(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
         method: "POST",
         body: JSON.stringify({
           acao: "SELECIONAR_RAMO",
@@ -450,7 +506,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
   }
 
   async function confirmBranchReview() {
-    await humanexusApi(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
+    await requisitarAnamnese(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
       method: "POST",
       body: JSON.stringify({ acao: "CONFIRMAR_REVISAO_DO_RAMO" })
     });
@@ -460,7 +516,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
   async function start() {
     if (!consent) return;
     try {
-      await humanexusApi(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
+      await requisitarAnamnese(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
         method: "POST",
         body: JSON.stringify({ acao: "INICIAR" })
       });
@@ -494,27 +550,47 @@ export function AnamneseParticipante({ token }: { token: string }) {
   }
 
   async function conclude() {
-    const synchronized = await syncPending();
-    if (!synchronized) return;
-    const authoritative = await load(true);
-    if (
-      !authoritative ||
-      authoritative.validacao.pendencias.length ||
-      authoritative.revisao_do_ramo_pendente ||
-      !authoritative.validacao.pode_concluir
-    ) {
-      setMessage("");
-      setReviewing(true);
-      return;
-    }
+    if (conclusionLock.current) return;
+    conclusionLock.current = true;
+    setSubmitting(true);
+    setMessage("");
     try {
-      await humanexusApi(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
+      const synchronized = await syncPending();
+      if (!synchronized) {
+        setMessage(
+          "O envio não foi realizado porque existem respostas ainda não confirmadas. O conteúdo continua preenchido; tente novamente após restabelecer a ligação."
+        );
+        return;
+      }
+      const authoritative = await load(true);
+      if (
+        !authoritative ||
+        authoritative.validacao.pendencias.length ||
+        authoritative.revisao_do_ramo_pendente ||
+        !authoritative.validacao.pode_concluir
+      ) {
+        setMessage(
+          authoritative?.validacao.pendencias.length
+            ? `Ainda existem ${authoritative.validacao.pendencias.length} pergunta(s) obrigatória(s). Use a lista abaixo para abrir o primeiro campo pendente.`
+            : "A revisão do contexto profissional precisa ser confirmada antes do envio."
+        );
+        setReviewing(true);
+        return;
+      }
+      await requisitarAnamnese(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
         method: "POST",
         body: JSON.stringify({ acao: "CONCLUIR" })
       });
       setCompleted(true);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível concluir.");
+      setMessage(
+        error instanceof Error
+          ? `${error.message} Nenhuma resposta foi apagada; tente novamente sem recarregar a página.`
+          : "Não foi possível concluir. Nenhuma resposta foi apagada; tente novamente sem recarregar a página."
+      );
+    } finally {
+      conclusionLock.current = false;
+      setSubmitting(false);
     }
   }
 
@@ -535,7 +611,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
     setReviewing(false);
   }
 
-  if (message) return <StateCard title="Acesso indisponível" text={message} />;
+  if (message && !structure) return <StateCard title="Acesso indisponível" text={message} />;
   if (!structure) return <StateCard title="Preparando sua Anamnese" text="Validando o convite seguro…" />;
   if (completed) return <StateCard title="Anamnese concluída" text="A versão enviada foi congelada com integridade e está disponível para revisão profissional." />;
   if (!started) {
@@ -546,6 +622,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
           <h1>Antes de começar</h1>
           <span>{structure.versao} · finalidade {structure.finalidade.replaceAll("_", " ")}</span>
           <article><strong>Aviso de privacidade</strong><p>{structure.privacidade.texto}</p><small>{structure.privacidade.codigo}</small></article>
+          {message ? <p className="hx-anamnese-alert" role="alert">{message}</p> : null}
           <label>
             <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
             <span>Li e compreendi a finalidade, o aviso de privacidade e as condições de preenchimento.</span>
@@ -564,6 +641,8 @@ export function AnamneseParticipante({ token }: { token: string }) {
         <div aria-label={`${percentage}% preenchido`}><i style={{ width: `${percentage}%` }} /></div>
       </header>
       <main className="hx-anamnese-form">
+        {syncMessage ? <p className="hx-anamnese-alert" role="alert" aria-live="assertive">{syncMessage}</p> : null}
+        {message ? <p className="hx-anamnese-alert" role="alert" aria-live="assertive">{message}</p> : null}
         {reviewing ? (
           <>
             <p className="hx-anamnese-kicker">REVISÃO ANTES DA CONCLUSÃO</p>
@@ -581,7 +660,12 @@ export function AnamneseParticipante({ token }: { token: string }) {
             <div className="hx-anamnese-actions">
               <button type="button" onClick={() => setReviewing(false)}>Voltar ao preenchimento</button>
               {structure.revisao_do_ramo_pendente ? <button type="button" onClick={() => void confirmBranchReview()}>Confirmar revisão do ramo</button> : null}
-              <button type="button" disabled={!structure.validacao.pode_concluir || saveState !== "SALVO"} onClick={conclude}>Confirmar e concluir</button>
+              <button
+                type="button"
+                disabled={submitting || !structure.validacao.pode_concluir || saveState !== "SALVO"}
+                aria-busy={submitting}
+                onClick={conclude}
+              >{submitting ? "Enviando com segurança…" : "Confirmar e concluir"}</button>
             </div>
           </>
         ) : (

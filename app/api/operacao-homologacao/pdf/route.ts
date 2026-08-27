@@ -19,6 +19,8 @@ export async function GET(request: Request) {
     const usuario = await requisitarNucleoAutenticado<Registro>("/api/v1/autenticacao/usuario-atual", token);
     const url = new URL(request.url);
     const modoImpressao = url.searchParams.get("modo") === "impressao";
+    const somenteDisponibilidade =
+      url.searchParams.get("modo") === "disponibilidade";
     const organizacaoId = String(
       usuario.identificador_da_organizacao
       ?? url.searchParams.get("organizacao")
@@ -102,6 +104,19 @@ export async function GET(request: Request) {
         },
         {
           status: 409,
+          headers: { "cache-control": "private, no-store" }
+        }
+      );
+    }
+    if (somenteDisponibilidade) {
+      return NextResponse.json(
+        {
+          disponivel: true,
+          estado: cicloDocumental.estado,
+          campos_ausentes: []
+        },
+        {
+          status: 200,
           headers: { "cache-control": "private, no-store" }
         }
       );

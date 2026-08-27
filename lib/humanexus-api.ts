@@ -1,4 +1,12 @@
-export class HumanexusApiError extends Error {}
+export class HumanexusApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly codigo: string = "FALHA_DA_OPERACAO"
+  ) {
+    super(message);
+  }
+}
 
 export async function humanexusApi<T>(
   path: string,
@@ -14,7 +22,11 @@ export async function humanexusApi<T>(
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new HumanexusApiError(data?.erro?.mensagem ?? "Não foi possível concluir a operação.");
+    throw new HumanexusApiError(
+      data?.erro?.mensagem ?? "Não foi possível concluir a operação.",
+      response.status,
+      String(data?.erro?.codigo ?? "FALHA_DA_OPERACAO")
+    );
   }
   return data as T;
 }

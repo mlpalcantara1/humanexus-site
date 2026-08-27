@@ -106,6 +106,7 @@ export function ConsolidacaoProfissionalDoRelatorio({
 
   return (
     <section
+      id="consolidacao-profissional"
       className="hx-professional-consolidation"
       aria-label="Consolidação profissional e devolutiva"
       data-report-functional-state={ciclo.estado}

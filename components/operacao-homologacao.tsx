@@ -62,6 +62,10 @@ import {
 import { estruturaVisivelEmPortugues, portuguesVisivel } from "@/lib/portugues-visivel";
 
 type Registro = Record<string, unknown>;
+type IndisponibilidadeDoDocumentoFinal = {
+  mensagem: string;
+  camposPendentes: string[];
+};
 type OpcoesDeCarregamento = {
   signal?: AbortSignal;
   identificadorDaConsulta?: number;
@@ -2089,6 +2093,19 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     "AGUARDANDO_VALIDACAO" | "CONCLUIDO" | null
   >(null);
   const [justificativaDaTransicao, setJustificativaDaTransicao] = useState("");
+  const [documentoFinalEmProcessamento, setDocumentoFinalEmProcessamento] =
+    useState<"pdf" | "impressao" | "">("");
+  const [indisponibilidadeDoDocumentoFinal, setIndisponibilidadeDoDocumentoFinal] =
+    useState<IndisponibilidadeDoDocumentoFinal | null>(null);
+  const chaveDaDisponibilidadeDocumental = estado
+    ? [
+        estado.contextos.selecao.identificador_da_organizacao,
+        estado.contextos.selecao.identificador_do_participante,
+        estado.contextos.selecao.identificador_da_sessao,
+        [...estado.relatorios].at(-1)?.identificador,
+        [...estado.relatorios].at(-1)?.estado_funcional
+      ].map(String).join("|")
+    : "";
 
   useEffect(() => {
     componenteMontado.current = true;
@@ -2104,6 +2121,53 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   useEffect(() => {
     ocupadoAtual.current = ocupado;
   }, [ocupado]);
+
+  useEffect(() => {
+    setIndisponibilidadeDoDocumentoFinal(null);
+    setDocumentoFinalEmProcessamento("");
+  }, [consultaDaRota]);
+
+  useEffect(() => {
+    if (!chaveDaDisponibilidadeDocumental) return;
+    const parametros = new URLSearchParams(consultaDaRota);
+    if (parametros.get("visao") !== "relatorio") return;
+    const controlador = new AbortController();
+    const [organizacao, participante, sessao] =
+      chaveDaDisponibilidadeDocumental.split("|");
+    const consulta = new URLSearchParams({
+      organizacao,
+      participante,
+      sessao,
+      modo: "disponibilidade"
+    });
+    void fetch(`/api/operacao-homologacao/pdf?${consulta}`, {
+      cache: "no-store",
+      headers: { accept: "application/json" },
+      signal: controlador.signal
+    }).then(async (resposta) => {
+      const retorno = await resposta.json().catch(() => ({})) as {
+        disponivel?: boolean;
+        erro?: { codigo?: string; campos_ausentes?: unknown };
+      };
+      if (controlador.signal.aborted) return;
+      if (resposta.ok && retorno.disponivel === true) {
+        setIndisponibilidadeDoDocumentoFinal(null);
+        return;
+      }
+      if (retorno.erro?.codigo === "RELATORIO_FINAL_INDISPONIVEL") {
+        setIndisponibilidadeDoDocumentoFinal({
+          mensagem: "Relatório final ainda não disponível",
+          camposPendentes: Array.isArray(retorno.erro.campos_ausentes)
+            ? retorno.erro.campos_ausentes.map(String).filter(Boolean)
+            : []
+        });
+      }
+    }).catch(() => {
+      // A checagem é somente leitura. Uma falha transitória não navega nem
+      // descarta estado; o clique continuará protegido pela mesma inspeção.
+    });
+    return () => controlador.abort();
+  }, [chaveDaDisponibilidadeDocumental, consultaDaRota]);
 
   useEffect(() => {
     const sincronizarVisaoComARota = () => {
@@ -3020,11 +3084,98 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     sessao: estado.contextos.selecao.identificador_da_sessao
   });
   const pdfHref = `/api/operacao-homologacao/pdf?${parametrosDoContexto}`;
+  const obterDocumentoFinal = async (modo: "pdf" | "impressao") => {
+    if (documentoFinalEmProcessamento) return;
+    const janelaDeImpressao = modo === "impressao"
+      ? window.open("about:blank", "_blank")
+      : null;
+    if (janelaDeImpressao) {
+      janelaDeImpressao.opener = null;
+      janelaDeImpressao.document.title = "Preparando impressão HUMANEXUS";
+      janelaDeImpressao.document.body.textContent =
+        "Preparando o documento final validado…";
+    }
+    setDocumentoFinalEmProcessamento(modo);
+    setErro("");
+    try {
+      const resposta = await fetch(
+        modo === "impressao" ? `${pdfHref}&modo=impressao` : pdfHref,
+        { cache: "no-store", headers: { accept: "application/pdf, application/json" } }
+      );
+      const tipo = String(resposta.headers.get("content-type") ?? "")
+        .toLocaleLowerCase("pt-BR");
+      if (resposta.ok && tipo.includes("application/pdf")) {
+        const arquivo = await resposta.blob();
+        const enderecoTemporario = URL.createObjectURL(arquivo);
+        if (modo === "impressao") {
+          if (!janelaDeImpressao) {
+            URL.revokeObjectURL(enderecoTemporario);
+            throw new Error(
+              "O navegador bloqueou a visualização de impressão. Autorize a nova aba e tente novamente."
+            );
+          }
+          janelaDeImpressao.location.replace(enderecoTemporario);
+        } else {
+          const disposicao = resposta.headers.get("content-disposition") ?? "";
+          const nomeRecebido = disposicao.match(/filename="?([^";]+)"?/i)?.[1];
+          const nomeSeguro = nomeRecebido?.toLocaleLowerCase("pt-BR").endsWith(".pdf")
+            ? nomeRecebido
+            : "humanexus-relatorio-final.pdf";
+          const ligacao = document.createElement("a");
+          ligacao.href = enderecoTemporario;
+          ligacao.download = nomeSeguro;
+          document.body.appendChild(ligacao);
+          ligacao.click();
+          ligacao.remove();
+        }
+        window.setTimeout(() => URL.revokeObjectURL(enderecoTemporario), 60_000);
+        setIndisponibilidadeDoDocumentoFinal(null);
+        return;
+      }
+
+      const retorno = await resposta.json().catch(() => ({})) as {
+        erro?: { codigo?: string; mensagem?: string; campos_ausentes?: unknown };
+      };
+      if (janelaDeImpressao) janelaDeImpressao.close();
+      if (retorno.erro?.codigo === "RELATORIO_FINAL_INDISPONIVEL") {
+        const camposPendentes = Array.isArray(retorno.erro.campos_ausentes)
+          ? retorno.erro.campos_ausentes.map(String).filter(Boolean)
+          : [];
+        setIndisponibilidadeDoDocumentoFinal({
+          mensagem: "Relatório final ainda não disponível",
+          camposPendentes
+        });
+        window.setTimeout(() => {
+          document.getElementById("relatorio-final-indisponivel")
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 0);
+        return;
+      }
+      throw new Error(
+        "O documento final não pôde ser preparado agora. A sessão e a consolidação permanecem preservadas."
+      );
+    } catch (causa) {
+      if (janelaDeImpressao && !janelaDeImpressao.closed) {
+        janelaDeImpressao.close();
+      }
+      setErro(
+        causa instanceof Error
+          ? causa.message
+          : "O documento final não pôde ser preparado agora."
+      );
+    } finally {
+      setDocumentoFinalEmProcessamento("");
+    }
+  };
   const relatoriosOrdenados = ordenarRelatoriosPorVersao(estado.relatorios);
   const relatorioAtual = relatoriosOrdenados.at(-1);
   const cicloDoRelatorioAtual = projetarEstadoFuncionalDoRelatorio(
     relatorioAtual
   );
+  const camposPendentesDoDocumento =
+    indisponibilidadeDoDocumentoFinal?.camposPendentes.length
+      ? indisponibilidadeDoDocumentoFinal.camposPendentes
+      : cicloDoRelatorioAtual.rotulosAusentes;
   const carregandoFontesAutorizadas = Boolean(
     estado.carregamento_progressivo
   );
@@ -3661,8 +3812,81 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           <ReferenciaBaselineResumo estado={estado} />
           <section className="hx-report-operation">
             <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{tituloDoRelatorioAtual}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(relatorioAtual?.criado_em)} · ${cicloDoRelatorioAtual.estado.replaceAll("_", " ")}` : "A geração materializa apenas o rascunho técnico; a autoria profissional vem depois."}</span></div>
-            <div><Botao forte onClick={comandos.relatorio} disabled={ocupado !== "" || !estadoOperacionalTerminal(estado.sessao.estado) || Boolean(relatorioAtual)}>{ocupado === "relatorio" ? "GERANDO RASCUNHO TÉCNICO…" : "GERAR RASCUNHO TÉCNICO"}</Botao>{cicloDoRelatorioAtual.completa && ["RASCUNHO", "EM_ELABORACAO"].includes(String(relatorioAtual?.estado_documental ?? "")) ? <Botao onClick={() => transicionarRelatorioAtual("AGUARDANDO_VALIDACAO")} disabled={ocupado !== ""}>{ocupado === "transicionar-relatorio" ? "ENVIANDO PARA VALIDAÇÃO…" : "ENVIAR PARA VALIDAÇÃO"}</Botao> : null}{cicloDoRelatorioAtual.completa && String(relatorioAtual?.estado_documental ?? "") === "AGUARDANDO_VALIDACAO" ? <Botao forte onClick={() => transicionarRelatorioAtual("CONCLUIDO")} disabled={ocupado !== ""}>{ocupado === "transicionar-relatorio" ? "VALIDANDO RELATÓRIO FINAL…" : "VALIDAR RELATÓRIO FINAL"}</Botao> : null}{cicloDoRelatorioAtual.finalDisponivel ? <><a className="hx-op-button" href={pdfHref} download>Baixar PDF final</a><a className="hx-op-button" href={`${pdfHref}&modo=impressao`} target="_blank" rel="noopener noreferrer">Abrir impressão final</a></> : <span className="hx-report-finalization-guard">PDF e impressão finais indisponíveis: complete e valide a consolidação profissional.</span>}</div>
+            <div>
+              <Botao
+                forte
+                onClick={comandos.relatorio}
+                disabled={
+                  ocupado !== ""
+                  || !estadoOperacionalTerminal(estado.sessao.estado)
+                  || Boolean(relatorioAtual)
+                }
+              >{ocupado === "relatorio" ? "GERANDO RASCUNHO TÉCNICO…" : "GERAR RASCUNHO TÉCNICO"}</Botao>
+              {cicloDoRelatorioAtual.completa
+                && ["RASCUNHO", "EM_ELABORACAO"].includes(
+                  String(relatorioAtual?.estado_documental ?? "")
+                ) ? (
+                  <Botao
+                    onClick={() => transicionarRelatorioAtual("AGUARDANDO_VALIDACAO")}
+                    disabled={ocupado !== ""}
+                  >{ocupado === "transicionar-relatorio" ? "ENVIANDO PARA VALIDAÇÃO…" : "ENVIAR PARA VALIDAÇÃO"}</Botao>
+                ) : null}
+              {cicloDoRelatorioAtual.completa
+                && String(relatorioAtual?.estado_documental ?? "") === "AGUARDANDO_VALIDACAO" ? (
+                  <Botao
+                    forte
+                    onClick={() => transicionarRelatorioAtual("CONCLUIDO")}
+                    disabled={ocupado !== ""}
+                  >{ocupado === "transicionar-relatorio" ? "VALIDANDO RELATÓRIO FINAL…" : "VALIDAR RELATÓRIO FINAL"}</Botao>
+                ) : null}
+              {cicloDoRelatorioAtual.finalDisponivel
+                && !indisponibilidadeDoDocumentoFinal ? (
+                  <>
+                    <Botao
+                      onClick={() => void obterDocumentoFinal("pdf")}
+                      disabled={Boolean(documentoFinalEmProcessamento)}
+                    >{documentoFinalEmProcessamento === "pdf" ? "Preparando PDF…" : "Baixar PDF final"}</Botao>
+                    <Botao
+                      onClick={() => void obterDocumentoFinal("impressao")}
+                      disabled={Boolean(documentoFinalEmProcessamento)}
+                    >{documentoFinalEmProcessamento === "impressao" ? "Preparando impressão…" : "Abrir impressão final"}</Botao>
+                  </>
+                ) : null}
+            </div>
           </section>
+          {!cicloDoRelatorioAtual.finalDisponivel
+            || indisponibilidadeDoDocumentoFinal ? (
+              <section
+                id="relatorio-final-indisponivel"
+                className="hx-report-unavailable"
+                role="status"
+                aria-live="polite"
+              >
+                <header>
+                  <small>DOCUMENTO FINAL PRESERVADO</small>
+                  <h3>Relatório final ainda não disponível</h3>
+                  <p>A sessão permanece preservada. PDF e impressão serão liberados somente depois que a consolidação profissional estiver completa e validada.</p>
+                </header>
+                {camposPendentesDoDocumento.length ? (
+                  <div>
+                    <strong>Campos profissionais pendentes</strong>
+                    <ul>{camposPendentesDoDocumento.map((campo) => (
+                      <li key={campo}>{campo}</li>
+                    ))}</ul>
+                  </div>
+                ) : null}
+                <footer>
+                  <button className="hx-op-button" type="button" disabled>Baixar PDF final</button>
+                  <button className="hx-op-button" type="button" disabled>Abrir impressão final</button>
+                  <button
+                    className="hx-op-button hx-op-button--gold"
+                    type="button"
+                    onClick={() => document.getElementById("consolidacao-profissional")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  >IR PARA CONSOLIDAÇÃO PROFISSIONAL</button>
+                </footer>
+              </section>
+            ) : null}
           {confirmacao ? (
             <p className="hx-module__success" role="status" aria-live="polite">
               {portuguesVisivel(confirmacao)}
