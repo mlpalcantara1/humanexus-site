@@ -1,7 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { humanexusApi } from "@/lib/humanexus-api";
+import { HumanexusApiError, humanexusApi } from "@/lib/humanexus-api";
+
+type ConfirmacaoPersistencia = {
+  request_received: boolean;
+  validation: "PASS" | "PENDING";
+  server_commit: boolean;
+  audit_concluido: number;
+  read_after_write: "CONCLUIDO_100_PERCENT" | "PENDING";
+  estado: string;
+  percentual: number;
+  identificador_de_correlacao?: string | null;
+  repeticao_idempotente?: boolean;
+  duplicacoes_persistidas: number;
+};
 
 type Question = {
   identificador: string;
@@ -78,6 +91,7 @@ type Structure = {
     funcao_customizada?: string | null;
   };
   respostas?: { question_id: string; answer: unknown; control_version: number }[];
+  confirmacao_persistencia?: ConfirmacaoPersistencia;
 };
 type Answer =
   | string
@@ -97,6 +111,33 @@ async function material(token: string) {
 async function queueName(token: string) {
   const bytes = await material(token);
   return `hx-anamnese-fila-${Array.from(bytes.slice(0, 8)).map((item) => item.toString(16).padStart(2, "0")).join("")}`;
+}
+
+async function conclusionKey(token: string) {
+  const bytes = await material(token);
+  return `anamnese:${Array.from(bytes).map((item) => item.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function correlationId() {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const value = Array.from(bytes).map((item) => item.toString(16).padStart(2, "0")).join("");
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+}
+
+function persistenceConfirmed(value?: ConfirmacaoPersistencia) {
+  return Boolean(
+    value?.request_received
+    && value.validation === "PASS"
+    && value.server_commit
+    && value.audit_concluido === 1
+    && value.read_after_write === "CONCLUIDO_100_PERCENT"
+    && value.estado === "CONCLUIDA_PELO_PARTICIPANTE"
+    && Number(value.percentual) === 100
+    && value.duplicacoes_persistidas === 0
+  );
 }
 
 async function queueKey(token: string) {
@@ -577,11 +618,53 @@ export function AnamneseParticipante({ token }: { token: string }) {
         setReviewing(true);
         return;
       }
-      await requisitarAnamnese(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
-        method: "POST",
-        body: JSON.stringify({ acao: "CONCLUIR" })
-      });
-      setCompleted(true);
+      const idempotencyKey = await conclusionKey(token);
+      const correlation = correlationId();
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          await requisitarAnamnese(`/api/humanexus/convites/${encodeURIComponent(token)}`, {
+            method: "POST",
+            keepalive: true,
+            headers: {
+              "x-humanexus-correlation-id": correlation,
+              "x-humanexus-idempotency-key": idempotencyKey
+            },
+            body: JSON.stringify({
+              acao: "CONCLUIR",
+              chave_de_idempotencia: idempotencyKey
+            })
+          });
+        } catch (error) {
+          lastError = error;
+        }
+
+        try {
+          const confirmed = await requisitarAnamnese<Structure>(
+            `/api/humanexus/convites/${encodeURIComponent(token)}`
+          );
+          if (persistenceConfirmed(confirmed.confirmacao_persistencia)) {
+            setCompleted(true);
+            setMessage("");
+            return;
+          }
+        } catch (error) {
+          lastError = lastError ?? error;
+        }
+
+        if (
+          lastError instanceof HumanexusApiError
+          && lastError.status >= 400
+          && lastError.status < 500
+        ) break;
+        if (!navigator.onLine || attempt === 1) break;
+        await new Promise((resolve) => window.setTimeout(resolve, 700));
+      }
+      throw lastError instanceof Error
+        ? lastError
+        : new Error(
+          "O Núcleo ainda não confirmou o recebimento e a persistência. O conteúdo permanece nesta tela. Verifique a ligação e toque novamente em enviar."
+        );
     } catch (error) {
       setMessage(
         error instanceof Error

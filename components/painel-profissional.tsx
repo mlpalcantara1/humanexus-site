@@ -30,6 +30,7 @@ type Convite = {
   identificador: string;
   identificador_da_anamnese: string;
   identificador_da_organizacao?: string;
+  tipo_atendimento?: "PARTICULAR" | "ORGANIZACIONAL";
   tipo_de_vinculo?: "PARTICULAR" | "ORGANIZACIONAL" | "MISTO";
   participante: string;
   organizacao?: string;
@@ -55,6 +56,9 @@ type RegistroParticipante = {
   identificador_da_organizacao: string;
   referencia_externa: string;
   ativo: boolean;
+  tipo_atendimento?: "PARTICULAR" | "ORGANIZACIONAL";
+  identificador_do_tenant?: string;
+  identificador_da_organizacao_de_vinculo?: string | null;
   identidade_individual_autoritativa?: Record<string, unknown>;
   perfil_operacional?: {
     tipo_de_vinculo?: "PARTICULAR" | "ORGANIZACIONAL" | "MISTO";
@@ -102,7 +106,7 @@ function dataLegivel(value?: string) {
 
 export function PainelProfissional() {
   const [form, setForm] = useState({
-    nome: "", email: "", telefone: "", funcao: "", tipo_vinculo: "ORGANIZACIONAL",
+    nome: "", email: "", telefone: "", funcao: "", tipo_atendimento: "ORGANIZACIONAL",
     organizacao: "", participante: "", modo: "NOVO", nicho: "OUTROS",
     validade_horas: 72
   });
@@ -189,13 +193,15 @@ export function PainelProfissional() {
           || participanteAtual.perfil_operacional?.contatos?.[0]?.telefone
           || ""
         : atual.telefone,
-      funcao: participanteAtual
+      funcao: participanteAtual?.tipo_atendimento !== "PARTICULAR" && participanteAtual
         ? participanteAtual.perfil_operacional?.dados_profissionais?.funcao
           || participanteAtual.perfil_operacional?.dados_profissionais?.cargo
           || ""
-        : atual.funcao,
-      tipo_vinculo: participanteAtual?.perfil_operacional?.tipo_de_vinculo
-        || atual.tipo_vinculo
+        : participanteAtual ? "" : atual.funcao,
+      tipo_atendimento: participanteAtual?.tipo_atendimento
+        || (participanteAtual?.perfil_operacional?.tipo_de_vinculo === "PARTICULAR"
+          ? "PARTICULAR"
+          : atual.tipo_atendimento)
     }));
     return dados;
   }
@@ -238,14 +244,22 @@ export function PainelProfissional() {
                 nome: form.nome,
                 email: form.email,
                 telefone: form.telefone,
-                funcao: form.funcao
+                funcao: form.tipo_atendimento === "ORGANIZACIONAL"
+                  ? form.funcao
+                  : ""
               }
             : null,
           chave_de_idempotencia:
             form.modo === "NOVO" ? chaveIdempotente : null,
-          tipo_de_vinculo: form.tipo_vinculo,
+          tipo_atendimento: form.tipo_atendimento,
+          identificador_da_organizacao_de_vinculo:
+            form.tipo_atendimento === "ORGANIZACIONAL"
+              ? form.organizacao
+              : null,
           nicho: form.nicho,
-          funcao: form.funcao,
+          funcao: form.tipo_atendimento === "ORGANIZACIONAL"
+            ? form.funcao
+            : "",
           validade_horas: form.validade_horas,
           usos_permitidos: 50
         })
@@ -293,8 +307,13 @@ export function PainelProfissional() {
       nome: cadastrais?.nome_social || cadastrais?.nome_completo || "",
       email: cadastrais?.email || contato?.email || "",
       telefone: cadastrais?.telefone || contato?.telefone || "",
-      funcao: profissionais?.funcao || profissionais?.cargo || "",
-      tipo_vinculo: perfil?.tipo_de_vinculo || atual.tipo_vinculo
+      funcao: registro?.tipo_atendimento !== "PARTICULAR"
+        ? profissionais?.funcao || profissionais?.cargo || ""
+        : "",
+      tipo_atendimento: registro?.tipo_atendimento
+        || (perfil?.tipo_de_vinculo === "PARTICULAR"
+          ? "PARTICULAR"
+          : atual.tipo_atendimento)
     }));
     atualizarContextoDaAnamnese(form.organizacao, identificador);
   }
@@ -450,10 +469,11 @@ export function PainelProfissional() {
     () => convites.filter((item) => {
       const texto = `${item.participante} ${item.organizacao ?? ""}`.toLowerCase();
       const pertoDeExpirar = new Date(item.expira_em).getTime() - Date.now() <= 24 * 60 * 60 * 1000;
-      const grupoCorreto = grupoConvite === "PARTICULAR"
-        ? item.tipo_de_vinculo === "PARTICULAR"
-          || item.tipo_de_vinculo === "MISTO"
-        : item.tipo_de_vinculo !== "PARTICULAR";
+      const tipoAtendimento = item.tipo_atendimento
+        ?? (item.tipo_de_vinculo === "PARTICULAR"
+          ? "PARTICULAR"
+          : "ORGANIZACIONAL");
+      const grupoCorreto = tipoAtendimento === grupoConvite;
       return grupoCorreto
         && (filtro === "TODOS" || item.estado === filtro)
         && (versaoFiltro === "TODAS" || item.versao_da_anamnese === versaoFiltro)
@@ -488,15 +508,15 @@ export function PainelProfissional() {
       <div className="hx-invites__workspace">
         <form onSubmit={criar} className="hx-invite-form">
           <header><small>GERAR CONVITE DE ANAMNESE</small><h3>Participante persistido</h3></header>
-          <label><span>Organização</span><select required value={form.organizacao} onChange={(event) => { const organizacao = event.target.value; setForm({ ...form, organizacao, participante: "", nome: "", email: "", telefone: "", funcao: "" }); atualizarContextoDaAnamnese(organizacao); void Promise.all([carregarParticipantes(organizacao), carregar(organizacao)]).catch((erro) => setStatus(erro instanceof Error ? erro.message : "Organização indisponível.")); }}><option value="">Selecione</option>{(contexto?.organizacoes ?? []).filter((item) => item.ativa !== false).map((item) => <option key={item.identificador} value={item.identificador}>{item.nome}</option>)}</select></label>
+          <label><span>Ambiente protegido HUMANEXUS</span><select required value={form.organizacao} onChange={(event) => { const organizacao = event.target.value; setForm({ ...form, organizacao, participante: "", nome: "", email: "", telefone: "", funcao: "" }); atualizarContextoDaAnamnese(organizacao); void Promise.all([carregarParticipantes(organizacao), carregar(organizacao)]).catch((erro) => setStatus(erro instanceof Error ? erro.message : "Ambiente protegido indisponível.")); }}><option value="">Selecione</option>{(contexto?.organizacoes ?? []).filter((item) => item.ativa !== false).map((item) => <option key={item.identificador} value={item.identificador}>{item.nome}</option>)}</select><small>Define somente o limite de segurança e de acesso. No atendimento particular, não representa vínculo do cliente com uma empresa.</small></label>
           <label><span>Origem do cadastro</span><select value={form.modo} onChange={(event) => setForm({ ...form, modo: event.target.value, participante: "", nome: "", email: "", telefone: "", funcao: "" })}><option value="NOVO">Novo participante</option><option value="EXISTENTE">Participante existente</option></select></label>
           {form.modo === "EXISTENTE" ? <label><span>Participante</span><select required value={form.participante} onChange={(event) => selecionarParticipanteExistente(event.target.value)}><option value="">Selecione</option>{(contexto?.participantes ?? []).filter((item) => item.ativo !== false).map((item) => { const identidade = resolverIdentidadeDocumental(item as unknown as Record<string, unknown>, { identificador: form.organizacao }); const rotulo = identidade.referenciaOperacional !== identidade.nomeCompleto ? `${identidade.nomeCompleto} — ${identidade.referenciaOperacional}` : identidade.nomeCompleto; return <option key={item.identificador} value={item.identificador}>{rotulo}</option>; })}</select></label> : <>
             <label><span>Nome</span><input required value={form.nome} onChange={(event) => setForm({ ...form, nome: event.target.value })} /></label>
             <label><span>Correio eletrônico</span><input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
           </>}
-          <div><label><span>Telefone</span><input value={form.telefone} onChange={(event) => setForm({ ...form, telefone: event.target.value })} /></label><label><span>Função</span><input value={form.funcao} onChange={(event) => setForm({ ...form, funcao: event.target.value })} /></label></div>
-          {form.modo === "EXISTENTE" && form.participante ? <small>Telefone, função e vínculo foram reutilizados do cadastro. Ajustes valem somente para este convite e não alteram a ficha original.</small> : null}
-          <div><label><span>Vínculo</span><select value={form.tipo_vinculo} onChange={(event) => setForm({ ...form, tipo_vinculo: event.target.value })}>{["PARTICULAR", "ORGANIZACIONAL", "MISTO"].map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Nicho</span><select value={form.nicho} onChange={(event) => setForm({ ...form, nicho: event.target.value })}>{NICHOS.map((item) => <option key={item}>{item}</option>)}</select></label></div>
+          <div><label><span>Telefone</span><input value={form.telefone} onChange={(event) => setForm({ ...form, telefone: event.target.value })} /></label>{form.tipo_atendimento === "ORGANIZACIONAL" ? <label><span>Função na organização</span><input value={form.funcao} onChange={(event) => setForm({ ...form, funcao: event.target.value })} /></label> : null}</div>
+          {form.modo === "EXISTENTE" && form.participante ? <small>O tipo de atendimento foi carregado da autoridade cadastral e não pode ser reclassificado por este convite.</small> : null}
+          <div><label><span>Tipo de atendimento</span><select disabled={form.modo === "EXISTENTE" && Boolean(form.participante)} value={form.tipo_atendimento} onChange={(event) => { const tipo = event.target.value; setForm({ ...form, tipo_atendimento: tipo, funcao: tipo === "PARTICULAR" ? "" : form.funcao }); }}><option value="PARTICULAR">PARTICULAR</option><option value="ORGANIZACIONAL">ORGANIZACIONAL</option></select></label><label><span>Nicho</span><select value={form.nicho} onChange={(event) => setForm({ ...form, nicho: event.target.value })}>{NICHOS.map((item) => <option key={item}>{item}</option>)}</select></label></div>
           <label><span>Validade</span><select value={form.validade_horas} onChange={(event) => setForm({ ...form, validade_horas: Number(event.target.value) })}><option value={24}>24 horas</option><option value={72}>72 horas</option><option value={168}>7 dias</option></select></label>
           <button disabled={ocupado || !form.organizacao || (form.modo === "EXISTENTE" && !form.participante)}>{ocupado ? "Processando…" : "Gerar convite seguro"}</button>
         </form>
@@ -519,7 +539,7 @@ export function PainelProfissional() {
       </div>
       <section className="hx-invites__panel">
         <header><div><small>PAINEL DE CONVITES</small><h3>Acompanhamento operacional</h3></div><div className="hx-invites__filters"><button type="button" onClick={() => setGrupoConvite("ORGANIZACIONAL")}>Organizacionais</button><button type="button" onClick={() => setGrupoConvite("PARTICULAR")}>Particulares</button><input aria-label="Filtrar por participante ou organização" placeholder="Participante ou organização" value={busca} onChange={(event) => setBusca(event.target.value)} /><select value={filtro} onChange={(event) => setFiltro(event.target.value)}><option value="TODOS">Todos os estados</option>{["CRIADO", "COMPARTILHAMENTO_INICIADO", "ENVIADO_CONFIRMADO", "ACESSADO", "EM_PREENCHIMENTO", "CONCLUIDO", "EXPIRADO", "REVOGADO", "REABERTO"].map((item) => <option key={item}>{item}</option>)}</select><select value={versaoFiltro} onChange={(event) => setVersaoFiltro(event.target.value)}><option value="TODAS">Todas as versões</option>{[...new Set(convites.map((item) => item.versao_da_anamnese))].map((item) => <option key={item}>{item}</option>)}</select><label><input type="checkbox" checked={expiracaoProxima} onChange={(event) => setExpiracaoProxima(event.target.checked)} /> Expira em até 24h</label></div></header>
-        <div className="hx-invites__table"><table><thead><tr><th>Participante</th><th>Organização</th><th>Versão</th><th>Criação / validade</th><th>Situação</th><th>Progresso</th><th>Ações</th></tr></thead><tbody>{visiveis.map((item) => <tr key={item.identificador}><td>{item.participante}</td><td>{item.organizacao || "Particular"}</td><td>{item.versao_da_anamnese}</td><td>{dataLegivel(item.criado_em)}<small>{dataLegivel(item.expira_em)}</small></td><td><span data-state={item.estado}>{item.estado.replaceAll("_", " ")}</span></td><td>{Number(item.progresso || 0).toFixed(0)}%</td><td><button onClick={() => void abrirRevisao(item.identificador_da_anamnese)}>Revisar</button><button onClick={() => void abrirAuditoria(item.identificador)}>Auditoria</button>{!["CONCLUIDO", "EXPIRADO", "REVOGADO"].includes(item.estado) ? <button onClick={() => void revogar(item.identificador)}>Revogar</button> : null}{["EXPIRADO", "REVOGADO"].includes(item.estado) ? <button onClick={() => void gerarNovoConvite(item.identificador_da_anamnese)}>Novo convite</button> : null}{item.estado === "CONCLUIDO" ? <button onClick={() => { setReabertura({ anamneseId: item.identificador_da_anamnese, participante: item.participante }); setJustificativaReabertura(""); }}>Reabrir</button> : null}</td></tr>)}</tbody></table></div>
+        <div className="hx-invites__table"><table><thead><tr><th>Participante</th><th>Organização de vínculo</th><th>Versão</th><th>Criação / validade</th><th>Situação</th><th>Progresso</th><th>Ações</th></tr></thead><tbody>{visiveis.map((item) => <tr key={item.identificador}><td>{item.participante}</td><td>{item.tipo_atendimento === "PARTICULAR" ? "Cliente particular" : item.organizacao || "Vínculo não informado"}</td><td>{item.versao_da_anamnese}</td><td>{dataLegivel(item.criado_em)}<small>{dataLegivel(item.expira_em)}</small></td><td><span data-state={item.estado}>{item.estado.replaceAll("_", " ")}</span></td><td>{Number(item.progresso || 0).toFixed(0)}%</td><td><button onClick={() => void abrirRevisao(item.identificador_da_anamnese)}>Revisar</button><button onClick={() => void abrirAuditoria(item.identificador)}>Auditoria</button>{!["CONCLUIDO", "EXPIRADO", "REVOGADO"].includes(item.estado) ? <button onClick={() => void revogar(item.identificador)}>Revogar</button> : null}{["EXPIRADO", "REVOGADO"].includes(item.estado) ? <button onClick={() => void gerarNovoConvite(item.identificador_da_anamnese)}>Novo convite</button> : null}{item.estado === "CONCLUIDO" ? <button onClick={() => { setReabertura({ anamneseId: item.identificador_da_anamnese, participante: item.participante }); setJustificativaReabertura(""); }}>Reabrir</button> : null}</td></tr>)}</tbody></table></div>
       </section>
       {reabertura ? <section className="hx-review">
         <header><div><small>REABERTURA AUDITÁVEL</small><h3>Preservar versão concluída e criar novo preenchimento</h3></div><span>{reabertura.participante}</span></header>

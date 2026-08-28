@@ -42,7 +42,9 @@ export async function POST(request: Request) {
               corpo.identificador_do_participante || null,
             novo_participante: corpo.novo_participante || null,
             chave_de_idempotencia: corpo.chave_de_idempotencia || null,
-            tipo_de_vinculo: corpo.tipo_de_vinculo,
+            tipo_atendimento: corpo.tipo_atendimento,
+            identificador_da_organizacao_de_vinculo:
+              corpo.identificador_da_organizacao_de_vinculo ?? null,
             nicho: corpo.nicho,
             funcao: corpo.funcao,
             validade_horas: Number(corpo.validade_horas ?? 72),

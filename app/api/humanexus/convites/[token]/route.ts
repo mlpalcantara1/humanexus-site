@@ -4,6 +4,20 @@ import {
   requisitarNucleoPublico
 } from "@/lib/humanexus-core";
 
+const CORRELACAO = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const IDEMPOTENCIA = /^[A-Za-z0-9._:-]{16,160}$/;
+
+async function chaveDeConclusao(token: string) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(token)
+  );
+  const hash = Array.from(new Uint8Array(digest))
+    .map((item) => item.toString(16).padStart(2, "0"))
+    .join("");
+  return `anamnese:${hash}`;
+}
+
 function respostaDeErro(erro: unknown, padrao: string) {
   if (!(erro instanceof ErroDoNucleo)) {
     return NextResponse.json(
@@ -47,6 +61,7 @@ export async function GET(
           resposta_json: unknown;
           versao_de_controle: number;
         }[];
+        confirmacao_persistencia?: Record<string, unknown>;
       }>(
         `/api/v1/anamnese/convite/${seguro}/progresso`,
         {},
@@ -56,6 +71,7 @@ export async function GET(
     return NextResponse.json({
       ...estrutura,
       progresso: progresso.anamnese,
+      confirmacao_persistencia: progresso.confirmacao_persistencia,
       respostas: progresso.respostas.map((resposta) => ({
         question_id: resposta.identificador_da_pergunta,
         answer: resposta.resposta_json,
@@ -94,10 +110,35 @@ export async function POST(
       );
     }
     if (acao === "CONCLUIR") {
+      const correlacaoRecebida = String(
+        request.headers.get("x-humanexus-correlation-id") ?? ""
+      ).trim();
+      const correlacao = CORRELACAO.test(correlacaoRecebida)
+        ? correlacaoRecebida
+        : crypto.randomUUID();
+      const chaveRecebida = String(
+        request.headers.get("x-humanexus-idempotency-key")
+        ?? corpo.chave_de_idempotencia
+        ?? ""
+      ).trim();
+      const chave = chaveRecebida || await chaveDeConclusao(token);
+      if (!IDEMPOTENCIA.test(chave)) {
+        return NextResponse.json(
+          { erro: { codigo: "CHAVE_DE_IDEMPOTENCIA_INVALIDA", mensagem: "Não foi possível preparar o envio seguro. Mantenha a tela aberta e tente novamente." } },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
         await requisitarNucleoPublico(
           `/api/v1/anamnese/convite/${seguro}/concluir`,
-          { method: "POST" },
+          {
+            method: "POST",
+            headers: {
+              "x-humanexus-correlation-id": correlacao,
+              "x-humanexus-idempotency-key": chave
+            },
+            body: JSON.stringify({ chave_de_idempotencia: chave })
+          },
           { tempoLimiteMs: 20_000 }
         )
       );

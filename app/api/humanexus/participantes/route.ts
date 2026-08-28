@@ -50,7 +50,12 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           identificador_da_organizacao: corpo.identificador_da_organizacao,
           referencia_externa: corpo.referencia_externa || randomUUID(),
-          tipo_de_vinculo: corpo.tipo_de_vinculo,
+          tipo_atendimento: corpo.tipo_atendimento,
+          identificador_da_organizacao_de_vinculo:
+            corpo.tipo_atendimento === "ORGANIZACIONAL"
+              ? corpo.identificador_da_organizacao
+              : null,
+          tipo_de_vinculo: corpo.tipo_atendimento,
           dados_minimizados: {
             nome_preferencial: corpo.nome
           },
@@ -59,9 +64,9 @@ export async function POST(request: Request) {
             email: corpo.email,
             telefone: corpo.telefone
           },
-          dados_profissionais: {
-            cargo: corpo.funcao
-          },
+          dados_profissionais: corpo.tipo_atendimento === "ORGANIZACIONAL"
+            ? { cargo: corpo.funcao }
+            : {},
           contatos: [],
           justificativa: "Cadastro realizado para Anamnese Regulatória."
         })

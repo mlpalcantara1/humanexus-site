@@ -224,12 +224,28 @@ export function resolverIdentidadeDocumental(
     ?? minimizados.referencia_operacional
     ?? ""
   ).trim();
+  const atendimento = objeto(participante.atendimento);
+  const tipoAtendimento = String(
+    autoridade.tipo_atendimento
+    ?? participante.tipo_atendimento
+    ?? atendimento.tipo_atendimento
+    ?? (perfil.tipo_de_vinculo === "PARTICULAR"
+      ? "PARTICULAR"
+      : "ORGANIZACIONAL")
+  ).toUpperCase();
+  const organizacaoParaExibicao = tipoAtendimento === "PARTICULAR"
+    ? "ATENDIMENTO PARTICULAR — VÍNCULO EMPRESARIAL NÃO SE APLICA"
+    : String(organizacao.nome ?? "ORGANIZAÇÃO DE VÍNCULO NÃO INFORMADA");
   return {
     nomeCompleto: nomeCompleto || "NOME CIVIL NÃO INFORMADO NO CADASTRO",
     cpf: cpf || "CPF NÃO INFORMADO NO CADASTRO",
     referenciaOperacional:
       referenciaOperacional || "REFERÊNCIA OPERACIONAL NÃO INFORMADA NO CADASTRO",
-    organizacao: String(organizacao.nome ?? "ORGANIZAÇÃO NÃO INFORMADA"),
+    organizacao: organizacaoParaExibicao,
+    ambienteProtegido: String(
+      organizacao.nome ?? "AMBIENTE PROTEGIDO NÃO INFORMADO"
+    ),
+    tipoAtendimento,
     fonte: String(
       autoridade.fonte
       ?? "PERFIL_CADASTRAL_DO_PARTICIPANTE_NO_ESCOPO"

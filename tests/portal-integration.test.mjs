@@ -681,9 +681,16 @@ test("fechamento da Fase 1 preserva contexto e remove bloqueios cadastrais", asy
 
   assert.match(invites, /selecionarParticipanteExistente/);
   assert.match(invites, /telefone: cadastrais\?\.telefone/);
-  assert.match(invites, /funcao: profissionais\?\.funcao/);
-  assert.match(invites, /não alteram a ficha original/);
-  assert.doesNotMatch(invites, /disabled=\{form\.modo === "EXISTENTE"\}/);
+  assert.match(invites, /tipo_atendimento !== "PARTICULAR"/);
+  assert.match(invites, /dados_profissionais\?\.funcao/);
+  assert.match(
+    invites,
+    /não pode ser reclassificado por este convite/
+  );
+  assert.match(
+    invites,
+    /disabled=\{form\.modo === "EXISTENTE" && Boolean\(form\.participante\)\}/
+  );
 
   assert.match(cep, /viacep\.com\.br/);
   assert.match(cep, /AbortSignal\.timeout\(4_000\)/);

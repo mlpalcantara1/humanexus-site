@@ -266,6 +266,7 @@ export function GestaoOperacional({
   const [participante, setParticipante] = useState({
     referencia_externa: "",
     tipo_de_vinculo: "ORGANIZACIONAL",
+    tipo_atendimento: "ORGANIZACIONAL",
     nome_completo: "",
     nome_social: "",
     data_de_nascimento: "",
@@ -433,9 +434,17 @@ export function GestaoOperacional({
     const identidade = documentos.find(
       (item) => item.tipo === "DOCUMENTO_DE_IDENTIDADE"
     ) ?? {};
+    const tipoAtendimento = String(
+      registro?.tipo_atendimento
+      ?? (perfil.tipo_de_vinculo === "PARTICULAR"
+        ? "PARTICULAR"
+        : "ORGANIZACIONAL")
+    );
+    const dadosOrganizacionais = tipoAtendimento === "ORGANIZACIONAL";
     setParticipante({
       referencia_externa: String(registro?.referencia_externa ?? ""),
-      tipo_de_vinculo: String(perfil.tipo_de_vinculo ?? "ORGANIZACIONAL"),
+      tipo_de_vinculo: tipoAtendimento,
+      tipo_atendimento: tipoAtendimento,
       nome_completo: String(cadastrais.nome_completo ?? ""),
       nome_social: String(cadastrais.nome_social ?? ""),
       data_de_nascimento: String(cadastrais.data_de_nascimento ?? ""),
@@ -444,7 +453,7 @@ export function GestaoOperacional({
       cpf: String(cpf.numero ?? ""),
       documento_de_identidade: String(identidade.numero ?? ""),
       profissao: String(profissionais.profissao ?? ""),
-      empresa: String(
+      empresa: dadosOrganizacionais ? String(
         profissionais.empresa
         ?? (
           registro
@@ -453,15 +462,17 @@ export function GestaoOperacional({
               ?? organizacaoDeOrigem?.nome
               ?? ""
         )
-      ),
-      cargo: String(profissionais.cargo ?? ""),
-      funcao: String(profissionais.funcao ?? ""),
-      matricula: String(profissionais.matricula ?? ""),
-      unidade: String(profissionais.unidade ?? ""),
-      setor: String(profissionais.setor ?? ""),
-      equipe: String(profissionais.equipe ?? ""),
+      ) : "",
+      cargo: dadosOrganizacionais ? String(profissionais.cargo ?? "") : "",
+      funcao: dadosOrganizacionais ? String(profissionais.funcao ?? "") : "",
+      matricula: dadosOrganizacionais ? String(profissionais.matricula ?? "") : "",
+      unidade: dadosOrganizacionais ? String(profissionais.unidade ?? "") : "",
+      setor: dadosOrganizacionais ? String(profissionais.setor ?? "") : "",
+      equipe: dadosOrganizacionais ? String(profissionais.equipe ?? "") : "",
       registro_profissional: String(profissionais.registro_profissional ?? ""),
-      regime_de_trabalho: String(profissionais.regime_de_trabalho ?? ""),
+      regime_de_trabalho: dadosOrganizacionais
+        ? String(profissionais.regime_de_trabalho ?? "")
+        : "",
       contato_emergencia_nome: String(contato.nome ?? ""),
       contato_emergencia_parentesco: String(contato.parentesco ?? ""),
       contato_emergencia_telefone: String(contato.telefone ?? ""),
@@ -473,6 +484,24 @@ export function GestaoOperacional({
       ativo: registro?.ativo !== false,
       justificativa: ""
     });
+  }
+
+  function alterarTipoAtendimento(tipo: string) {
+    setParticipante((atual) => ({
+      ...atual,
+      tipo_atendimento: tipo,
+      tipo_de_vinculo: tipo,
+      ...(tipo === "PARTICULAR" ? {
+        empresa: "",
+        cargo: "",
+        funcao: "",
+        matricula: "",
+        unidade: "",
+        setor: "",
+        equipe: "",
+        regime_de_trabalho: ""
+      } : {})
+    }));
   }
 
   useEffect(() => {
@@ -1236,10 +1265,14 @@ export function GestaoOperacional({
     const cadastrais = objeto(perfil.dados_cadastrais);
     const profissionais = objeto(perfil.dados_profissionais);
     const documentos = lista(perfil.documentos);
-    const vinculo = String(perfil.tipo_de_vinculo ?? "ORGANIZACIONAL");
+    const vinculo = String(
+      item.tipo_atendimento
+      ?? (perfil.tipo_de_vinculo === "PARTICULAR"
+        ? "PARTICULAR"
+        : "ORGANIZACIONAL")
+    );
     const pertenceAoGrupo = grupoParticipante === "TODOS"
-      || vinculo === grupoParticipante
-      || vinculo === "MISTO";
+      || vinculo === grupoParticipante;
     const conjunto = normalizar([
       item.referencia_externa,
       cadastrais.nome_completo,
@@ -1279,15 +1312,21 @@ export function GestaoOperacional({
           const perfil = objeto(item.perfil_operacional);
           const cadastrais = objeto(perfil.dados_cadastrais);
           const profissionais = objeto(perfil.dados_profissionais);
+          const tipoAtendimento = String(
+            item.tipo_atendimento
+            ?? (perfil.tipo_de_vinculo === "PARTICULAR"
+              ? "PARTICULAR"
+              : "ORGANIZACIONAL")
+          );
           return (
             <article key={String(item.identificador)}>
               <div>
                 <small>Participante</small>
                 <strong>{rotuloDoParticipante(item)}</strong>
               </div>
-              <div><small>Vínculo</small><strong>{texto(perfil.tipo_de_vinculo)}</strong></div>
-              <div><small>Organização / unidade</small><strong>{texto(profissionais.empresa, texto(dados?.organizacao?.nome))} · {texto(profissionais.unidade)}</strong></div>
-              <div><small>Setor / equipe</small><strong>{texto(profissionais.setor)} · {texto(profissionais.equipe)}</strong></div>
+              <div><small>Tipo de atendimento</small><strong>{tipoAtendimento}</strong></div>
+              <div><small>Organização de vínculo / unidade</small><strong>{tipoAtendimento === "PARTICULAR" ? "Cliente particular · não se aplica" : `${texto(profissionais.empresa, "Vínculo não informado")} · ${texto(profissionais.unidade)}`}</strong></div>
+              <div><small>Setor / equipe</small><strong>{tipoAtendimento === "PARTICULAR" ? "Não se aplica" : `${texto(profissionais.setor)} · ${texto(profissionais.equipe)}`}</strong></div>
               <div><small>Situação</small><strong>{item.ativo ? "ATIVO" : "INATIVO"}</strong></div>
               <div><small>Versão</small><strong>{texto(perfil.numero_da_versao, "1")}</strong></div>
               <div className="hx-management-actions">
@@ -2166,7 +2205,12 @@ export function GestaoOperacional({
               {
               identificador_da_organizacao: organizacaoAtual?.identificador,
               referencia_externa: participante.referencia_externa,
-              tipo_de_vinculo: participante.tipo_de_vinculo,
+              tipo_atendimento: participante.tipo_atendimento,
+              identificador_da_organizacao_de_vinculo:
+                participante.tipo_atendimento === "ORGANIZACIONAL"
+                  ? organizacaoAtual?.identificador
+                  : null,
+              tipo_de_vinculo: participante.tipo_atendimento,
               dados_minimizados: {
                 referencia_operacional: participante.referencia_externa,
                 nome_preferencial:
@@ -2180,18 +2224,23 @@ export function GestaoOperacional({
                 telefone: participante.telefone,
                 observacoes: participante.observacoes
               },
-              dados_profissionais: {
-                profissao: participante.profissao,
-                empresa: participante.empresa,
-                cargo: participante.cargo,
-                funcao: participante.funcao,
-                matricula: participante.matricula,
-                unidade: participante.unidade,
-                setor: participante.setor,
-                equipe: participante.equipe,
-                registro_profissional: participante.registro_profissional,
-                regime_de_trabalho: participante.regime_de_trabalho
-              },
+              dados_profissionais: participante.tipo_atendimento === "ORGANIZACIONAL"
+                ? {
+                    profissao: participante.profissao,
+                    empresa: participante.empresa,
+                    cargo: participante.cargo,
+                    funcao: participante.funcao,
+                    matricula: participante.matricula,
+                    unidade: participante.unidade,
+                    setor: participante.setor,
+                    equipe: participante.equipe,
+                    registro_profissional: participante.registro_profissional,
+                    regime_de_trabalho: participante.regime_de_trabalho
+                  }
+                : {
+                    profissao: participante.profissao,
+                    registro_profissional: participante.registro_profissional
+                  },
               contatos: participante.contato_emergencia_nome
                 || participante.contato_emergencia_telefone
                 ? [{
@@ -2282,7 +2331,7 @@ export function GestaoOperacional({
                 <label>Nome completo<input required value={participante.nome_completo} onChange={(evento) => setParticipante({ ...participante, nome_completo: evento.target.value })} /></label>
                 <label>Nome social ou preferencial<input value={participante.nome_social} onChange={(evento) => setParticipante({ ...participante, nome_social: evento.target.value })} /></label>
                 <label>Data de nascimento<input type="date" value={participante.data_de_nascimento} onChange={(evento) => setParticipante({ ...participante, data_de_nascimento: evento.target.value })} /></label>
-                <label>Tipo de vínculo<select value={participante.tipo_de_vinculo} onChange={(evento) => setParticipante({ ...participante, tipo_de_vinculo: evento.target.value })}><option>ORGANIZACIONAL</option><option>PARTICULAR</option><option>MISTO</option></select></label>
+                <label>Tipo de atendimento<select disabled={Boolean(participanteSelecionado)} value={participante.tipo_atendimento} onChange={(evento) => alterarTipoAtendimento(evento.target.value)}><option value="ORGANIZACIONAL">ORGANIZACIONAL</option><option value="PARTICULAR">PARTICULAR</option></select>{participanteSelecionado ? <small>A reclassificação exige procedimento separado e auditado.</small> : null}</label>
                 <label>Elegibilidade<select value={participante.elegibilidade} onChange={(evento) => setParticipante({ ...participante, elegibilidade: evento.target.value })}><option value="PENDENTE">Pendente</option><option value="ELEGIVEL">Elegível</option><option value="NAO_ELEGIVEL">Não elegível</option></select></label>
               </div>
               <label>Justificativa da elegibilidade<textarea value={participante.justificativa_da_elegibilidade} onChange={(evento) => setParticipante({ ...participante, justificativa_da_elegibilidade: evento.target.value })} /></label>
@@ -2297,8 +2346,8 @@ export function GestaoOperacional({
               </div>
             </fieldset>
             <fieldset className="hx-record-section">
-              <legend>Dados profissionais</legend>
-              {!participanteSelecionado && participante.empresa ? (
+              <legend>{participante.tipo_atendimento === "PARTICULAR" ? "Dados profissionais pessoais" : "Dados profissionais e organizacionais"}</legend>
+              {!participanteSelecionado && participante.tipo_atendimento === "ORGANIZACIONAL" && participante.empresa ? (
                 <p className="hx-field-origin">
                   Organização de vínculo reutilizada do cadastro institucional.
                   Este campo permanece editável e não altera dados pessoais.
@@ -2306,8 +2355,9 @@ export function GestaoOperacional({
               ) : null}
               <div className="hx-fields-grid">
                 <label>Profissão<input value={participante.profissao} onChange={(evento) => setParticipante({ ...participante, profissao: evento.target.value })} /></label>
+                {participante.tipo_atendimento === "ORGANIZACIONAL" ? <>
                 <label>Empresa ou organização de vínculo<input value={participante.empresa} onChange={(evento) => setParticipante({ ...participante, empresa: evento.target.value })} /></label>
-                <label>Cargo ou função<input value={participante.cargo} onChange={(evento) => setParticipante({ ...participante, cargo: evento.target.value })} /></label>
+                <label>Cargo<input value={participante.cargo} onChange={(evento) => setParticipante({ ...participante, cargo: evento.target.value })} /></label>
                 <label>Função operacional<input value={participante.funcao} onChange={(evento) => setParticipante({ ...participante, funcao: evento.target.value })} /></label>
                 <label>Matrícula<input value={participante.matricula} onChange={(evento) => setParticipante({ ...participante, matricula: evento.target.value })} /></label>
                 <label>Base operacional<select value={participante.unidade} onChange={(evento) => setParticipante({ ...participante, unidade: evento.target.value })}>
@@ -2328,8 +2378,9 @@ export function GestaoOperacional({
                 </select></label>
                 <label>Setor<input value={participante.setor} onChange={(evento) => setParticipante({ ...participante, setor: evento.target.value })} /></label>
                 <label>Equipe<input value={participante.equipe} onChange={(evento) => setParticipante({ ...participante, equipe: evento.target.value })} /></label>
-                <label>Registro profissional<input value={participante.registro_profissional} onChange={(evento) => setParticipante({ ...participante, registro_profissional: evento.target.value })} /></label>
                 <label>Regime de trabalho<input value={participante.regime_de_trabalho} onChange={(evento) => setParticipante({ ...participante, regime_de_trabalho: evento.target.value })} /></label>
+                </> : null}
+                <label>Registro profissional<input value={participante.registro_profissional} onChange={(evento) => setParticipante({ ...participante, registro_profissional: evento.target.value })} /></label>
               </div>
             </fieldset>
             <fieldset className="hx-record-section">
