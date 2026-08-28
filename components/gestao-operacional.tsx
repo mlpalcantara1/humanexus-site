@@ -1207,6 +1207,10 @@ export function GestaoOperacional({
           onChange={(evento) => {
             const identificador = evento.target.value;
             setOrganizacaoSelecionada(identificador);
+            setDados(null);
+            setParticipanteSelecionado("");
+            setParticipanteDoCatalogo("");
+            preencherParticipante(null);
             setSessao(sessaoInicial());
             setSessaoCriada(null);
             setSessaoEmEdicao("");

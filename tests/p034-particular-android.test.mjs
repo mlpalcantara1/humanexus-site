@@ -122,3 +122,17 @@ test("relatório particular não apresenta o tenant como empresa do cliente", as
   assert.equal(particular.ambienteProtegido, "Instituto HUMANEXUS");
   assert.equal(particular.tipoAtendimento, "PARTICULAR");
 });
+
+test("troca de tenant descarta o participante anterior antes da nova consulta", async () => {
+  const gestao = await ler("components/gestao-operacional.tsx");
+  assert.match(
+    gestao,
+    /setOrganizacaoSelecionada\(identificador\);[\s\S]*setDados\(null\);[\s\S]*setParticipanteSelecionado\(""\);[\s\S]*setParticipanteDoCatalogo\(""\);[\s\S]*preencherParticipante\(null\);[\s\S]*void carregar\(identificador\);/
+  );
+});
+
+test("instrumento público preserva somente credenciais da própria origem", async () => {
+  const instrumento = await ler("components/instrumento-integrado.tsx");
+  assert.match(instrumento, /credentials: "same-origin"/);
+  assert.doesNotMatch(instrumento, /credentials: "omit"/);
+});

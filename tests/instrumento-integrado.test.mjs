@@ -64,7 +64,8 @@ test("proxy público protege origem e não persiste token", async () => {
     rota,
     /COOKIE_SESSAO|cookies\(\)|requisitarNucleoAutenticado|authorization/i
   );
-  assert.match(componente, /credentials: "omit"/);
+  assert.match(componente, /credentials: "same-origin"/);
+  assert.doesNotMatch(componente, /credentials: "omit"/);
   assert.match(componente, /new AbortController\(\)/);
   assert.match(componente, /setConsulta\(null\)/);
   assert.match(

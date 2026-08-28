@@ -173,7 +173,7 @@ export function InstrumentoIntegrado() {
   const obterCopia = useCallback(async () => {
     const retorno = await fetch(
       `${caminho}?token=${encodeURIComponent(token)}&copia=1`,
-      { cache: "no-store", credentials: "omit" }
+      { cache: "no-store", credentials: "same-origin" }
     );
     if (!retorno.ok) return null;
     return await retorno.json() as Copia;
@@ -196,7 +196,7 @@ export function InstrumentoIntegrado() {
         `${caminho}?token=${encodeURIComponent(token)}`,
         {
           cache: "no-store",
-          credentials: "omit",
+          credentials: "same-origin",
           signal: abortar.signal
         }
       );
@@ -257,7 +257,7 @@ export function InstrumentoIntegrado() {
     const retorno = await fetch(caminho, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      credentials: "omit",
+      credentials: "same-origin",
       body: JSON.stringify({ acao, token, ...payload })
     });
     const corpo = await retorno.json();
