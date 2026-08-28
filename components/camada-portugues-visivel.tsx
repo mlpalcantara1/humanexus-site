@@ -62,34 +62,96 @@ function traduzirArvore(raiz: Node) {
   }
 }
 
+type JanelaComPeriodoOcioso = Window & {
+  requestIdleCallback?: (
+    callback: IdleRequestCallback,
+    options?: IdleRequestOptions
+  ) => number;
+  cancelIdleCallback?: (identificador: number) => void;
+};
+
+/**
+ * A árvore inicial pertence ao React até o fim da hidratação. A tradução
+ * imperativa só pode começar depois do carregamento completo, de dois quadros
+ * de pintura e de um período ocioso; assim nenhum texto emitido pelo servidor
+ * é alterado enquanto ainda está sendo reconciliado no navegador.
+ */
+function ativarTraducaoDepoisDaHidratacaoInicial(
+  ativar: () => void
+) {
+  const janela = window as JanelaComPeriodoOcioso;
+  let primeiroQuadro = 0;
+  let segundoQuadro = 0;
+  let periodoOcioso = 0;
+  let temporizador = 0;
+  let cancelado = false;
+
+  const concluir = () => {
+    if (!cancelado) ativar();
+  };
+  const depoisDoCarregamento = () => {
+    primeiroQuadro = window.requestAnimationFrame(() => {
+      segundoQuadro = window.requestAnimationFrame(() => {
+        if (janela.requestIdleCallback) {
+          periodoOcioso = janela.requestIdleCallback(concluir, {
+            timeout: 1_500
+          });
+          return;
+        }
+        temporizador = window.setTimeout(concluir, 0);
+      });
+    });
+  };
+
+  if (document.readyState === "complete") depoisDoCarregamento();
+  else window.addEventListener("load", depoisDoCarregamento, { once: true });
+
+  return () => {
+    cancelado = true;
+    window.removeEventListener("load", depoisDoCarregamento);
+    if (primeiroQuadro) window.cancelAnimationFrame(primeiroQuadro);
+    if (segundoQuadro) window.cancelAnimationFrame(segundoQuadro);
+    if (periodoOcioso && janela.cancelIdleCallback) {
+      janela.cancelIdleCallback(periodoOcioso);
+    }
+    if (temporizador) window.clearTimeout(temporizador);
+  };
+}
+
 /**
  * Proteção final da camada de apresentação. Não altera dados, valores de
  * formulários, rotas, identificadores, contratos ou conteúdo persistido.
  */
 export function CamadaPortuguesVisivel() {
   useEffect(() => {
-    traduzirArvore(document.body);
-    const observador = new MutationObserver((alteracoes) => {
-      for (const alteracao of alteracoes) {
-        if (alteracao.type === "characterData") {
-          traduzirTexto(alteracao.target as Text);
-          continue;
+    let observador: MutationObserver | null = null;
+    const cancelarAtivacao = ativarTraducaoDepoisDaHidratacaoInicial(() => {
+      traduzirArvore(document.body);
+      observador = new MutationObserver((alteracoes) => {
+        for (const alteracao of alteracoes) {
+          if (alteracao.type === "characterData") {
+            traduzirTexto(alteracao.target as Text);
+            continue;
+          }
+          if (alteracao.type === "attributes") {
+            traduzirAtributos(alteracao.target as Element);
+            continue;
+          }
+          alteracao.addedNodes.forEach(traduzirArvore);
         }
-        if (alteracao.type === "attributes") {
-          traduzirAtributos(alteracao.target as Element);
-          continue;
-        }
-        alteracao.addedNodes.forEach(traduzirArvore);
-      }
+      });
+      observador.observe(document.body, {
+        subtree: true,
+        childList: true,
+        characterData: true,
+        attributes: true,
+        attributeFilter: [...ATRIBUTOS_VISIVEIS]
+      });
     });
-    observador.observe(document.body, {
-      subtree: true,
-      childList: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: [...ATRIBUTOS_VISIVEIS]
-    });
-    return () => observador.disconnect();
+    return () => {
+      cancelarAtivacao();
+      observador?.disconnect();
+    };
   }, []);
   return null;
 }
