@@ -49,6 +49,22 @@ test("a correção preserva tradução, observação dinâmica e limpeza complet
   assert.match(fonte, /observador\?\.disconnect\(\)/);
 });
 
+test("o painel de Anamnese não é alterado imperativamente durante a hidratação", async () => {
+  const fonte = await ler("components/painel-profissional.tsx");
+
+  assert.match(
+    fonte,
+    /<section className="hx-invites" data-portugues-preservar="true">/
+  );
+  assert.match(fonte, /<span>Correio eletrônico<\/span>/);
+  assert.match(fonte, />Correio eletrônico<\/button>/);
+  assert.doesNotMatch(fonte, />E-mail<\/button>/);
+  assert.doesNotMatch(
+    fonte,
+    /Participante persistido e convite criado\. Link, código e QR Code/
+  );
+});
+
 test("a página administrativa permanece SSR e sem supressão genérica", async () => {
   const [pagina, layout, camada] = await Promise.all([
     ler("app/(platform)/admin/page.tsx"),

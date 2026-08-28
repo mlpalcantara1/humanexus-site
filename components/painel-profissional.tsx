@@ -270,7 +270,7 @@ export function PainelProfissional() {
         funcao: ""
       }));
       setChaveDeOperacao("");
-      setStatus("Participante persistido e convite criado. Link, código e QR Code são exibidos somente nesta entrega.");
+      setStatus("Participante persistido e convite criado. Ligação, código e código QR são exibidos somente nesta entrega.");
       await carregar(form.organizacao);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Não foi possível criar o convite.");
@@ -472,7 +472,7 @@ export function PainelProfissional() {
   };
 
   return (
-    <section className="hx-invites">
+    <section className="hx-invites" data-portugues-preservar="true">
       <header className="hx-invites__head">
         <div><p>ANAMNESE REGULATÓRIA / OPERAÇÃO</p><h2>Convites, acompanhamento e revisão profissional.</h2><span>ANAMNESE-REGULATORIA-TIRH-1.0 · 156 perguntas autorais ativas · 195 preservadas · 14 módulos</span></div>
         <span>SESSÃO PROTEGIDA NO NAVEGADOR · NÚCLEO PROTEGIDO</span>
@@ -492,7 +492,7 @@ export function PainelProfissional() {
           <label><span>Origem do cadastro</span><select value={form.modo} onChange={(event) => setForm({ ...form, modo: event.target.value, participante: "", nome: "", email: "", telefone: "", funcao: "" })}><option value="NOVO">Novo participante</option><option value="EXISTENTE">Participante existente</option></select></label>
           {form.modo === "EXISTENTE" ? <label><span>Participante</span><select required value={form.participante} onChange={(event) => selecionarParticipanteExistente(event.target.value)}><option value="">Selecione</option>{(contexto?.participantes ?? []).filter((item) => item.ativo !== false).map((item) => { const identidade = resolverIdentidadeDocumental(item as unknown as Record<string, unknown>, { identificador: form.organizacao }); const rotulo = identidade.referenciaOperacional !== identidade.nomeCompleto ? `${identidade.nomeCompleto} — ${identidade.referenciaOperacional}` : identidade.nomeCompleto; return <option key={item.identificador} value={item.identificador}>{rotulo}</option>; })}</select></label> : <>
             <label><span>Nome</span><input required value={form.nome} onChange={(event) => setForm({ ...form, nome: event.target.value })} /></label>
-            <label><span>E-mail</span><input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
+            <label><span>Correio eletrônico</span><input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
           </>}
           <div><label><span>Telefone</span><input value={form.telefone} onChange={(event) => setForm({ ...form, telefone: event.target.value })} /></label><label><span>Função</span><input value={form.funcao} onChange={(event) => setForm({ ...form, funcao: event.target.value })} /></label></div>
           {form.modo === "EXISTENTE" && form.participante ? <small>Telefone, função e vínculo foram reutilizados do cadastro. Ajustes valem somente para este convite e não alteram a ficha original.</small> : null}
@@ -511,7 +511,7 @@ export function PainelProfissional() {
               <button type="button" onClick={() => void copiar(link, "Ligação copiada.")}>Copiar ligação</button>
               <button type="button" onClick={() => void copiar(entrega.codigo_de_entrega_unica, "Código copiado.")}>Copiar código</button>
               <button type="button" onClick={whatsapp}>WhatsApp</button>
-              <button type="button" onClick={email}>E-mail</button>
+              <button type="button" onClick={email}>Correio eletrônico</button>
               <a href={link} target="_blank" rel="noreferrer">Visualizar como participante</a>
             </div>
           </> : <div className="hx-invite-empty">O código secreto original não será exibido novamente após sair desta entrega.</div>}
