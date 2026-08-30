@@ -31,17 +31,20 @@ test("PDF final funcional tem conteúdo real, paginação variável e paridade d
     "Participante de Verificação",
     "000.000.000-00",
     "Organização de Verificação",
-    "Síntese de confiabilidade operacional",
-    "Mapa preventivo do funcionamento",
-    "Demanda ou gatilho registrado",
-    "Rota predominante registrada",
-    "Ganho ou custo registrado",
-    "Resposta alternativa trabalhada",
+    "O que os resultados mostram",
+    "Como chegou",
+    "Pontos fortes e capacidades observadas",
+    "Pontos de atenção",
+    "Resposta ao treinamento",
+    "O que isso significa na prática",
+    "O que precisa ser desenvolvido",
+    "Recomendações",
     "Nove Vetores momentâneos",
     "VEV longitudinal",
     "Indicadores oficiais integrados à leitura",
-    "Devolutiva profissional autorizada",
-    "Rastreabilidade e limites da leitura"
+    "Devolutiva ao participante",
+    "Limites da leitura",
+    "Rastreabilidade técnica"
   ]) assert.match(texto.stdout, new RegExp(termo, "i"));
   assert.doesNotMatch(texto.stdout, /Nenhum registro autorizado/i);
   assert.doesNotMatch(texto.stdout, /Nome completo não informado|CPF não informado/i);

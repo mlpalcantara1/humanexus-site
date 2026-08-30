@@ -15,7 +15,7 @@ const MARCADORES_DE_AUSENCIA = new Set([
   "Validação profissional específica não registrada nesta emissão."
 ]);
 
-const LINGUAGEM_TECNICA_INTERNA = /\b(?:fixture|pipeline|contrato\s+(?:legado|cient[ií]fico)|legacy_historico|vers[aã]o\s+de\s+schema|migra[cç][aã]o|proveni[eê]ncia\s+computacional|dado\s+sint[eé]tico|sem\s+pessoa\s+real)\b/i;
+const LINGUAGEM_TECNICA_INTERNA = /\b(?:fixture|pipeline|contrato\s+(?:legado|cient[ií]fico)|legacy_historico|vers[aã]o\s+de\s+schema|migra[cç][aã]o|proveni[eê]ncia\s+computacional|dado\s+sint[eé]tico|sem\s+pessoa\s+real|cobertura\s+t[eé]cnica|confian[cç]a\s+computacional|m[ií]nimo\s+autoral\s+migrado)\b/i;
 
 function objeto(valor: unknown): Registro {
   if (valor && typeof valor === "object" && !Array.isArray(valor)) {
@@ -151,7 +151,25 @@ export type MicrotrajetoriaRegulatoria = {
   conclusaoProfissional: string;
   classificacaoProfissional: string;
   devolutiva: string;
+  leituraPratica: LeituraPraticaDaSessao;
 };
+
+export type LeituraPraticaDaSessao = {
+  resultados: string[];
+  comoChegou: string[];
+  pontosFortes: string[];
+  pontosDeAtencao: string[];
+  respostaAoTreinamento: string[];
+  significadoPratico: string[];
+  desenvolvimento: string[];
+  recomendacoes: string[];
+  devolutivaAoParticipante: string[];
+  limitesDaLeitura: string[];
+};
+
+function comIntroducao(introducao: string, valores: unknown[], limite = 2) {
+  return primeiros(valores, limite).map((item) => `${introducao}: ${item}`);
+}
 
 function porCodigo(etapas: EtapaNarrativa[], ...codigos: string[]) {
   return etapas.filter((etapa) => codigos.includes(etapa.codigo));
@@ -219,7 +237,15 @@ export function projetarMicrotrajetoriaRegulatoria({
     consolidacao.recursos_regulatorios_observados,
     ...itensDeSecoesAutorizadas(relatorio, "MUDANCA_DE_ROTA")
   ], 2);
+  const desenvolvimentoRegistrado = primeiros([
+    consolidacao.o_que_ainda_precisa_ser_desenvolvido,
+    consolidacao.o_que_ainda_nao_se_consolidou,
+    consolidacao.what_is_not_consolidated,
+    consolidacao.nao_consolidado,
+    ...itensDeSecoesAutorizadas(relatorio, "NAO_CONSOLIDADO")
+  ], 2);
   const naoConsolidado = primeiros([
+    ...desenvolvimentoRegistrado,
     consolidacao.pontos_de_atencao,
     consolidacao.limitacoes
   ], 2);
@@ -228,6 +254,32 @@ export function projetarMicrotrajetoriaRegulatoria({
     consolidacao.proximo_passo_regulatorio,
     ...itensDeSecoesAutorizadas(relatorio, "PROXIMO_CICLO")
   ], 1);
+  const conclusaoProfissional = limparParaCliente(consolidacao.conclusao);
+  const interpretacaoProfissional = primeiros([
+    consolidacao.interpretacao_profissional
+  ], 1);
+  const recursosObservados = primeiros([
+    consolidacao.recursos_regulatorios_observados,
+    ...itensDeSecoesAutorizadas(relatorio, "RECURSOS_REGULATORIOS_OBSERVADOS")
+  ], 3);
+  const recomendacoesRegistradas = primeiros([
+    consolidacao.recomendacao,
+    consolidacao.proximo_passo_regulatorio,
+    ...itensDeSecoesAutorizadas(relatorio, "PROXIMO_CICLO")
+  ], 2);
+  const devolutivaAoParticipante = primeiros([
+    consolidacao.conteudo_da_devolutiva_ao_participante
+  ], 1);
+  const limitacoesRegistradas = primeiros([
+    consolidacao.limitacoes
+  ], 2);
+  const resultadoRegistrado = primeiros([
+    conclusaoProfissional,
+    classificacao
+  ], 2);
+  const capacidadesRegistradas = recursosObservados.length
+    ? recursosObservados
+    : respostaAlternativa;
 
   const etapas: EtapaNarrativa[] = [
     { codigo: "OBJETIVO_DA_SESSAO", rotulo: "Objetivo da sessão ou treinamento", itens: objetivo },
@@ -271,6 +323,62 @@ export function projetarMicrotrajetoriaRegulatoria({
     consolidacao.condicao_para_progressao,
     ...itensDeSecoesAutorizadas(relatorio, "LEITURA_PREVENTIVA_PROFISSIONAL")
   ], 5);
+  const leituraPratica: LeituraPraticaDaSessao = {
+    resultados: comIntroducao(
+      "Os resultados mostram",
+      resultadoRegistrado.length ? resultadoRegistrado : resposta,
+      2
+    ),
+    comoChegou: comIntroducao(
+      "Durante a condição observada",
+      [...chegada, ...gatilho],
+      2
+    ),
+    pontosFortes: comIntroducao(
+      "Capacidades e recursos observados",
+      capacidadesRegistradas,
+      3
+    ),
+    pontosDeAtencao: comIntroducao(
+      "Pontos de atenção registrados",
+      [
+        consolidacao.pontos_de_atencao,
+        ...sinaisPrecursores,
+        ...limiteRegulatorio
+      ],
+      3
+    ),
+    respostaAoTreinamento: valoresNarrativos(
+      ...objetivo.map((item) => `Objetivo registrado: ${item}`),
+      ...primeiros([
+        treinamento,
+        consolidacao.intervencao,
+        ...itensDeSecoesAutorizadas(relatorio, "CTR_THX_THX_AER")
+      ], 2).map((item) => `Intervenção realizada: ${item}`),
+      ...resposta.map((item) => `Resposta observada: ${item}`),
+      ...respostaPorFase
+    ).slice(0, 8),
+    significadoPratico: comIntroducao(
+      "Na prática, a leitura profissional indica",
+      [...interpretacaoProfissional, ...confiabilidadeOperacional],
+      2
+    ),
+    desenvolvimento: comIntroducao(
+      "O que ainda precisa ser desenvolvido ou confirmado",
+      desenvolvimentoRegistrado,
+      2
+    ),
+    recomendacoes: comIntroducao(
+      "O próximo passo recomendado é",
+      [...recomendacoesRegistradas, ...leituraPreventiva],
+      3
+    ),
+    devolutivaAoParticipante,
+    limitesDaLeitura: valoresNarrativos(
+      ...limitacoesRegistradas,
+      LINGUAGEM_DE_PREVISIBILIDADE_CONDICIONAL
+    )
+  };
   const estadosDaMudanca: EtapaNarrativa[] = [
     { codigo: "RESPOSTA_AGUDA", rotulo: "Resposta aguda", itens: resposta },
     { codigo: "AQUISICAO", rotulo: "Aquisição", itens: primeiros([consolidacao.aquisicao, ...itensDeSecoesAutorizadas(relatorio, "AQUISICAO")], 2) },
@@ -291,11 +399,12 @@ export function projetarMicrotrajetoriaRegulatoria({
     confiabilidadeOperacional,
     leituraPreventiva,
     estadosDaMudanca,
-    conclusaoProfissional: limparParaCliente(consolidacao.conclusao),
+    conclusaoProfissional,
     classificacaoProfissional: limparParaCliente(classificacao),
     devolutiva: limparParaCliente(
       consolidacao.conteudo_da_devolutiva_ao_participante
-    )
+    ),
+    leituraPratica
   };
 }
 

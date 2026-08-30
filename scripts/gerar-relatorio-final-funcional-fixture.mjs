@@ -44,6 +44,7 @@ const consolidacao = {
   conclusao: "A sessão documenta reorganização funcional contextual após a intervenção registrada.",
   justificativa: "A conclusão integra fases, vetores, resposta observada e limites explicitamente preservados.",
   recomendacao: "Realizar novo ciclo comparável antes de confirmar consolidação longitudinal.",
+  o_que_ainda_nao_se_consolidou: "A manutenção da resposta em ciclos comparáveis ainda precisa ser confirmada.",
   proximo_passo_regulatorio: "Repetir tarefa equivalente com o mesmo contrato científico e registrar HX-OBS por fase.",
   conteudo_da_devolutiva_ao_participante: "Nesta sessão, você mobilizou recursos de recuperação diante de uma demanda elevada. A leitura descreve apenas este contexto e orienta observar como essa organização se sustenta em um próximo ciclo comparável."
 };

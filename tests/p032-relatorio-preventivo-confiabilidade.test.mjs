@@ -80,10 +80,10 @@ test("linguagem é condicional, nenhuma conclusão determinística é produzida 
   for (const termo of [
     "previsibilidade",
     "não prevê comportamento específico",
-    "SINAIS PRECURSORES",
-    "LIMITE REGULATÓRIO OBSERVADO",
-    "CONFIABILIDADE OPERACIONAL HUMANA",
-    "Resposta aguda não equivale automaticamente a consolidação"
+    "Pontos fortes e capacidades observadas",
+    "Pontos de atenção",
+    "O que isso significa na prática",
+    "O que já apareceu e o que ainda precisa ser confirmado"
   ]) {
     assert.match(resolver + componente + pdf, new RegExp(termo, "i"));
   }
@@ -172,16 +172,15 @@ test("PDF atual e LEGACY_HISTORICO mantêm conteúdo preventivo equivalente e PD
     const texto = textoBruto.replace(/\s+/g, " ");
     for (const termo of [
       "Prevenção adaptativa e confiabilidade operacional humana",
-      "Síntese de confiabilidade operacional",
-      "Mapa preventivo do funcionamento",
-      "Sinais precursores",
-      "Limite regulatório observado",
-      "Efeito do treinamento",
-      "Confiabilidade operacional humana",
-      "Resposta aguda, aquisição, consolidação, transferência e manutenção",
+      "O que os resultados mostram",
       "Como chegou",
-      "O que mudou",
-      "Como saiu"
+      "Pontos fortes e capacidades observadas",
+      "Pontos de atenção",
+      "Resposta ao treinamento",
+      "O que isso significa na prática",
+      "Recomendações",
+      "Devolutiva ao participante",
+      "Limites da leitura"
     ]) assert.match(texto, new RegExp(termo, "i"));
     assert.doesNotMatch(texto, /THX-FIXTURE-001/i);
     assert.doesNotMatch(texto, /IIRH:\s*0\s*\/\s*100/i);

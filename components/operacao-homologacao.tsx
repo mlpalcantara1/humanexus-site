@@ -609,32 +609,13 @@ function RelatorioCanonicoV1({
       ) : null}
 
       <section className="hx-report-canonical__section">
-        <small>INTERVENÇÃO, RESPOSTA E REGISTRO PROFISSIONAL</small>
-        <h3>HX-OBS → TCR → ICR, quando calculável</h3>
-        <p>Intervenção: {texto(consolidacao.intervencao, "AGUARDANDO CONSOLIDAÇÃO PROFISSIONAL")}</p>
-        <p>Resposta observada: {texto(consolidacao.resposta_observada, "AGUARDANDO CONSOLIDAÇÃO PROFISSIONAL")}</p>
+        <small>REGISTRO PROFISSIONAL E MEDIDAS COMPLEMENTARES</small>
+        <h3>HX-OBS, TCR e ICR, quando disponíveis</h3>
         <p>HX-OBS qualificados: {lista(objeto(estado.evidencias_profissionais).qualificadas).length}. TCR: {texto(cadeia.tcr, "NÃO MATERIALIZADA")}. ICR: {texto(cadeia.icr, "NÃO CALCULÁVEL")}</p>
       </section>
 
       <section className="hx-report-canonical__section">
-        <small>LEITURA E DECISÃO PROFISSIONAL</small>
-        <h3>{texto(consolidacao.interpretacao_profissional, "INTERPRETAÇÃO AINDA NÃO CONSOLIDADA")}</h3>
-        {texto(consolidacao.recursos_regulatorios_observados, "") ? <p>Recursos observados: {texto(consolidacao.recursos_regulatorios_observados, "")}</p> : null}
-        {texto(consolidacao.pontos_de_atencao, "") ? <p>Pontos de atenção: {texto(consolidacao.pontos_de_atencao, "")}</p> : null}
-        {texto(consolidacao.conclusao, "") ? <p>Conclusão: {texto(consolidacao.conclusao, "")}</p> : null}
-        {texto(consolidacao.justificativa, "") ? <p>Justificativa: {texto(consolidacao.justificativa, "")}</p> : null}
-        {texto(consolidacao.recomendacao, "") ? <p>Recomendação: {texto(consolidacao.recomendacao, "")}</p> : null}
-        {texto(consolidacao.proximo_passo_regulatorio, "") ? <p>Próximo passo regulatório: {texto(consolidacao.proximo_passo_regulatorio, "")}</p> : null}
-      </section>
-
-      <section className="hx-report-canonical__section">
-        <small>DEVOLUTIVA AO PARTICIPANTE</small>
-        <h3>Conteúdo autorizado para devolutiva</h3>
-        <p>{texto(consolidacao.conteudo_da_devolutiva_ao_participante, MENSAGEM_UNICA_DE_INDISPONIBILIDADE)}</p>
-      </section>
-
-      <section className="hx-report-canonical__section">
-        <small>RASTREABILIDADE E LIMITES DA LEITURA</small>
+        <small>RASTREABILIDADE TÉCNICA</small>
         <h3>Estado documental: {cicloDocumental.estado.replaceAll("_", " ")}</h3>
         <p>Decisões sobre afirmações científicas permanecem separadas da consolidação e não autorizam, por si, a finalização do documento.</p>
         <p>Documento: {texto(relatorio?.codigo_publico, "ainda sem código público")} · versão {texto(relatorio?.numero_da_versao, "rascunho")} · sessão {texto(estado.sessao.identificador)}.</p>

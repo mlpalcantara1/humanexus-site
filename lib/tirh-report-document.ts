@@ -13,8 +13,6 @@ import {
 } from "./authoritative-iirh-projection.ts";
 import { portuguesVisivel } from "./portugues-visivel.ts";
 import {
-  LINGUAGEM_DE_PREVISIBILIDADE_CONDICIONAL,
-  MENSAGEM_DE_CONFIABILIDADE_PENDENTE,
   MENSAGEM_UNICA_DE_INDISPONIBILIDADE,
   projetarMicrotrajetoriaRegulatoria
 } from "./projecao-narrativa-relatorio.ts";
@@ -1228,7 +1226,7 @@ function renderOperacionalFinalConsolidado(
     doc,
     "RELATÓRIO OPERACIONAL TIRH",
     "Prevenção adaptativa e confiabilidade operacional humana",
-    "Como chegou, o que mudou, como saiu e o que os registros profissionais permitem concluir neste contexto."
+    "Resultados, capacidades, pontos de atenção, resposta ao treinamento, significado prático e próximos passos registrados."
   );
 
   const novaContinuacao = () => {
@@ -1270,63 +1268,28 @@ function renderOperacionalFinalConsolidado(
     y += 12;
   };
 
-  const itensDasEtapas = (etapas: typeof microtrajetoria.etapas) => etapas.flatMap(
-    (etapa) => etapa.itens.map((item) => `${etapa.rotulo}: ${item}`)
-  );
-  const itensDoMomento = (titulo: string, etapas: typeof microtrajetoria.etapas) => etapas.flatMap(
-    (etapa) => etapa.itens.map((item) => (
-      etapa.rotulo === titulo ? item : `${etapa.rotulo}: ${item}`
-    ))
-  );
   const vetoresCalculados = vetores.filter((vetor) => vetor.magnitude != null);
   const pontosDaTrajetoria = trajetoria.filter((item) => item.valor != null).length;
   const possuiRadarVetorialLegivel = vetoresCalculados.length >= 3;
   const possuiTrajetoriaLegivel = pontosDaTrajetoria >= 2;
   const possuiGraficoOficial = possuiRadarVetorialLegivel || possuiTrajetoriaLegivel;
 
-  bloco("01", "Síntese de confiabilidade operacional", [
-    LINGUAGEM_DE_PREVISIBILIDADE_CONDICIONAL,
-    ...itensDasEtapas(microtrajetoria.etapas.filter((etapa) => (
-      ["OBJETIVO_DA_SESSAO", "THX_INTERVENCAO", "PROXIMO_PASSO"].includes(etapa.codigo)
-    ))),
-    microtrajetoria.classificacaoProfissional
-      ? `O objetivo foi alcançado? ${microtrajetoria.classificacaoProfissional}.`
-      : "O objetivo foi alcançado? Aguardando conclusão profissional. A plataforma não conclui automaticamente a partir da variação dos indicadores.",
-    microtrajetoria.conclusaoProfissional
-      ? `Conclusão registrada pelo profissional: ${microtrajetoria.conclusaoProfissional}.`
-      : "",
-    microtrajetoria.devolutiva
-      ? `Devolutiva profissional autorizada: ${microtrajetoria.devolutiva}.`
-      : ""
-  ]);
-
-  bloco("02", "Mapa preventivo do funcionamento", itensDasEtapas(
-    microtrajetoria.mapaPreventivo
-  ));
-
-  bloco("03", "Como chegou", itensDoMomento("Como chegou", microtrajetoria.comoChegou));
-  bloco("04", "O que mudou", itensDoMomento("O que mudou", microtrajetoria.oQueMudou));
-  bloco("05", "Como saiu", itensDoMomento("Como saiu", microtrajetoria.comoSaiu));
-  bloco("06", "Sinais precursores", microtrajetoria.sinaisPrecursores.length
-    ? microtrajetoria.sinaisPrecursores
+  const leituraPratica = microtrajetoria.leituraPratica;
+  bloco("01", "O que os resultados mostram", leituraPratica.resultados.length
+    ? leituraPratica.resultados
     : [MENSAGEM_UNICA_DE_INDISPONIBILIDADE]);
-  bloco("07", "Limite regulatório observado", microtrajetoria.limiteRegulatorio.length
-    ? microtrajetoria.limiteRegulatorio
-    : [MENSAGEM_UNICA_DE_INDISPONIBILIDADE]);
-  bloco("08", "Efeito do treinamento", microtrajetoria.efeitoDoTreinamento.length
-    ? microtrajetoria.efeitoDoTreinamento
-    : [MENSAGEM_UNICA_DE_INDISPONIBILIDADE]);
-  bloco("09", "Confiabilidade operacional humana", microtrajetoria.confiabilidadeOperacional.length
-    ? microtrajetoria.confiabilidadeOperacional
-    : [MENSAGEM_DE_CONFIABILIDADE_PENDENTE]);
-  bloco("10", "Leitura preventiva profissional", microtrajetoria.leituraPreventiva.length
-    ? microtrajetoria.leituraPreventiva
-    : [MENSAGEM_UNICA_DE_INDISPONIBILIDADE]);
-  bloco("11", "Resposta aguda, aquisição, consolidação, transferência e manutenção",
+  bloco("02", "Como chegou", leituraPratica.comoChegou);
+  bloco("03", "Pontos fortes e capacidades observadas", leituraPratica.pontosFortes);
+  bloco("04", "Pontos de atenção", leituraPratica.pontosDeAtencao);
+  bloco("05", "Resposta ao treinamento", leituraPratica.respostaAoTreinamento);
+  bloco("06", "O que isso significa na prática", leituraPratica.significadoPratico);
+  bloco("07", "O que precisa ser desenvolvido", leituraPratica.desenvolvimento);
+  bloco("08", "Recomendações", leituraPratica.recomendacoes);
+  bloco("09", "Devolutiva ao participante", leituraPratica.devolutivaAoParticipante);
+  bloco("10", "Limites da leitura", leituraPratica.limitesDaLeitura);
+  bloco("11", "O que já apareceu e o que ainda precisa ser confirmado",
     microtrajetoria.estadosDaMudanca.flatMap((etapa) => (
-      etapa.itens.length
-        ? etapa.itens.map((item) => `${etapa.rotulo}: ${item}`)
-        : [`${etapa.rotulo}: não demonstrável com os registros profissionais disponíveis.`]
+      etapa.itens.map((item) => `${etapa.rotulo}: ${item}`)
     ))
   );
 
@@ -1375,26 +1338,15 @@ function renderOperacionalFinalConsolidado(
     "O VEV permanece separado dos nove Vetores momentâneos e exige uma referência inicial mais quatro sessões válidas e comparáveis."
   ]);
 
-  bloco("17", "EEG e indicadores autonômicos recebidos", leiturasFisiologicasRecebidas.length
-    ? leiturasFisiologicasRecebidas
-    : [MENSAGEM_UNICA_DE_INDISPONIBILIDADE]
-  );
+  bloco("17", "EEG e indicadores autonômicos recebidos", leiturasFisiologicasRecebidas);
 
-  bloco("18", "Intervenção e registro profissional", [
-    texto(consolidacao.intervencao, "") ? `Intervenção: ${texto(consolidacao.intervencao, "")}.` : "",
-    texto(consolidacao.resposta_observada, "") ? `Resposta observada: ${texto(consolidacao.resposta_observada, "")}.` : "",
-    texto(consolidacao.interpretacao_profissional, "") ? `Interpretação profissional: ${texto(consolidacao.interpretacao_profissional, "")}.` : "",
-    texto(consolidacao.recursos_regulatorios_observados, "") ? `Recursos regulatórios observados: ${texto(consolidacao.recursos_regulatorios_observados, "")}.` : "",
-    texto(consolidacao.pontos_de_atencao, "") ? `Pontos de atenção: ${texto(consolidacao.pontos_de_atencao, "")}.` : "",
+  bloco("18", "Registro profissional e medidas complementares", [
+    "As observações e decisões profissionais usadas nesta leitura permanecem vinculadas ao documento validado.",
     texto(cadeia.tcr, "") ? `TCR: ${texto(cadeia.tcr, "")}.` : "",
     texto(cadeia.icr, "") ? `ICR: ${texto(cadeia.icr, "")}.` : ""
   ]);
 
-  bloco("19", "Próximo passo profissional", itensDasEtapas(
-    microtrajetoria.etapas.filter((etapa) => etapa.codigo === "PROXIMO_PASSO")
-  ));
-
-  bloco("20", "Rastreabilidade e limites da leitura", [
+  bloco("19", "Rastreabilidade técnica", [
     `Participante: ${identidade.nomeCompleto} · CPF ${identidade.cpf} · organização ${identidade.organizacao}. Sessão: ${texto(entrada.sessao.nome_operacional, "sessão registrada")} · ${data(entrada.sessao.finalizado_em ?? entrada.sessao.criado_em)}.`,
     `Documento: ${texto(entrada.relatorio.codigo_publico, texto(entrada.relatorio.identificador))} · versão ${texto(entrada.relatorio.numero_da_versao, "não registrada")} · responsável ${texto(entrada.usuario.nome, "profissional registrado")} · ciência ${texto(projecao.versao_cientifica, "TIRH V1")} · estado ${cicloDocumental.estado.replaceAll("_", " ")}.`,
     texto(consolidacao.limitacoes, "")

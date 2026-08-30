@@ -240,7 +240,7 @@ test("fluxo humano é Síntese, Consolidação, Relatório e bloqueia PDF final 
   assert.match(pdf, /status: 409/);
 });
 
-test("relatório humano comunica microtrajetória, indicadores, registro e devolutiva", async () => {
+test("relatório humano comunica resultados práticos, indicadores, registro e devolutiva", async () => {
   const cockpit = await source("components/operacao-homologacao.tsx");
   const componenteNarrativo = await source("components/resultado-regulatorio-da-sessao.tsx");
   const relatorioHumano = `${cockpit}\n${componenteNarrativo}`;
@@ -248,10 +248,10 @@ test("relatório humano comunica microtrajetória, indicadores, registro e devol
     "NOVE VETORES MOMENTÂNEOS",
     "VEV LONGITUDINAL",
     "RESULTANTE, IIRH, ZONA E TRAJETÓRIA",
-    "MICROTRAJETÓRIA REGULATÓRIA DA SESSÃO",
-    "HX-OBS → TCR → ICR",
+    "RESULTADOS E DEVOLUTIVA DA SESSÃO",
+    "HX-OBS, TCR e ICR",
     "DEVOLUTIVA AO PARTICIPANTE",
-    "RASTREABILIDADE E LIMITES DA LEITURA",
+    "RASTREABILIDADE TÉCNICA",
     "Campos que impedem o relatório final"
   ]) assert.match(relatorioHumano, new RegExp(termo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.doesNotMatch(relatorioHumano, /Magnitude escalar da Resultante:\s*\{?[^\n]*\|\|\s*0/);

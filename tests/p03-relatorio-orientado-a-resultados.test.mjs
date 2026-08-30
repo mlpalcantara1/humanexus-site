@@ -8,22 +8,22 @@ import test from "node:test";
 const raiz = new URL("../", import.meta.url);
 const source = (caminho) => readFile(new URL(caminho, raiz), "utf8");
 
-test("componente compartilhado comunica a microtrajetória sem definir taxonomia ou conclusão automática", async () => {
+test("componente compartilhado comunica a leitura prática sem definir taxonomia ou conclusão automática", async () => {
   const componente = await source("components/resultado-regulatorio-da-sessao.tsx");
   for (const trecho of [
-    "MICROTRAJETÓRIA REGULATÓRIA DA SESSÃO",
-    "Síntese de confiabilidade operacional",
-    "MAPA PREVENTIVO DO FUNCIONAMENTO",
+    "RESULTADOS E DEVOLUTIVA DA SESSÃO",
+    "O que os resultados mostram",
     "Como chegou",
-    "O que mudou",
-    "Como saiu",
-    "SINAIS PRECURSORES",
-    "LIMITE REGULATÓRIO OBSERVADO",
-    "CONFIABILIDADE OPERACIONAL HUMANA",
+    "Pontos fortes e capacidades observadas",
+    "Pontos de atenção",
+    "Resposta ao treinamento",
+    "O que isso significa na prática",
+    "O que precisa ser desenvolvido",
+    "Recomendações",
     "O objetivo foi alcançado?",
     "AGUARDANDO CONCLUSÃO PROFISSIONAL",
-    "Conclusão registrada pelo profissional",
-    "DEVOLUTIVA PROFISSIONAL AUTORIZADA"
+    "DEVOLUTIVA AO PARTICIPANTE",
+    "LIMITES DA LEITURA"
   ]) assert.match(componente, new RegExp(trecho.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(componente, /A plataforma não conclui automaticamente/);
   assert.doesNotMatch(
@@ -73,7 +73,6 @@ test("relatório Web preserva indicadores oficiais e move gráficos para o conte
     "NOVE VETORES MOMENTÂNEOS",
     "VEV LONGITUDINAL",
     "PRÉ / TREINO / PÓS",
-    "Intervenção",
     "HX-OBS"
   ]) assert.match(bloco, new RegExp(termo));
   assert.match(bloco, /Direção: \{texto\(resultante\.direcao/);
@@ -86,9 +85,9 @@ test("relatório Web preserva indicadores oficiais e move gráficos para o conte
   assert.match(cockpit, /Polar ou sensor cardíaco humano não conectado/);
   assert.match(cockpit, /Nenhuma série humana de variabilidade foi recebida/);
   assert.doesNotMatch(bloco, /\?\?\s*0|\|\|\s*0/);
-  assert.match(bloco, /RASTREABILIDADE E LIMITES DA LEITURA/);
+  assert.match(bloco, /RASTREABILIDADE TÉCNICA/);
   assert.ok(
-    bloco.indexOf("MICROTRAJETÓRIA") < bloco.indexOf("RASTREABILIDADE E LIMITES DA LEITURA")
+    bloco.indexOf("ResultadoRegulatorioDaSessao") < bloco.indexOf("RASTREABILIDADE TÉCNICA")
   );
 });
 
@@ -125,27 +124,22 @@ test("PDF e impressão priorizam resultado, preservam gráficos e deixam rastrea
   assert.equal(extracao.status, 0, extracao.stderr);
   const texto = extracao.stdout;
   for (const termo of [
-    "Síntese de confiabilidade operacional",
-    "Mapa preventivo do funcionamento",
-    "Objetivo da sessão ou treinamento",
+    "O que os resultados mostram",
     "Como chegou",
-    "Demanda ou gatilho registrado",
-    "Rota predominante registrada",
-    "Ganho ou custo registrado",
-    "Resposta alternativa trabalhada",
-    "Como saiu",
-    "Mudança observada",
-    "THX ou intervenção",
-    "Aguardando conclusão profissional",
-    "O que ainda não se consolidou",
-    "Próximo passo profissional",
+    "Pontos fortes e capacidades observadas",
+    "Pontos de atenção",
+    "Resposta ao treinamento",
+    "O que isso significa na prática",
+    "Recomendações",
+    "Devolutiva ao participante",
+    "Limites da leitura",
     "Gráficos regulatórios da sessão",
     "Nove Vetores momentâneos",
-    "Rastreabilidade e limites da leitura"
+    "Rastreabilidade técnica"
   ]) assert.match(texto, new RegExp(termo, "i"));
   assert.ok(
-    texto.indexOf("Síntese de confiabilidade operacional")
-      < texto.lastIndexOf("Rastreabilidade e limites da leitura")
+    texto.indexOf("O que os resultados mostram")
+      < texto.lastIndexOf("Rastreabilidade técnica")
   );
   assert.doesNotMatch(texto, /THX-FIXTURE-001/i);
   assert.doesNotMatch(texto, /objetivo foi alcançado[^\n]*(alcançado|parcialmente alcançado|não alcançado)[^.]*\./i);

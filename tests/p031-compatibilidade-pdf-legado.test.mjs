@@ -142,18 +142,19 @@ test("PDF atual e legado são PDFs reais, preservam microtrajetória e ausência
   for (const termo of [
     "Participante de Verificação",
     "CPF 000.000.000-00",
-    "Síntese de confiabilidade operacional",
-    "Mapa preventivo do funcionamento",
+    "O que os resultados mostram",
     "Como chegou",
-    "Resposta PRÉ / TREINO / PÓS",
-    "Como saiu",
-    "Próximo passo profissional",
-    "Rastreabilidade e limites da leitura"
+    "Pontos fortes e capacidades observadas",
+    "Resposta ao treinamento",
+    "O que isso significa na prática",
+    "Recomendações",
+    "Limites da leitura",
+    "Rastreabilidade técnica"
   ]) {
     assert.match(textoAtual.stdout, new RegExp(termo, "i"));
     assert.match(textoLegado.stdout, new RegExp(termo, "i"));
   }
-  assert.match(textoLegado.stdout, /calculáveis:\s*1\/9/i);
+  assert.match(textoLegado.stdout, /1\/9 Vetores momentâneos possuem valor oficial/i);
   assert.match(textoLegado.stdout, /INDISPONÍVEL|AUSENTE|não materializada/i);
   assert.doesNotMatch(textoLegado.stdout, /IIRH:\s*0\s*\/\s*100/i);
 });
