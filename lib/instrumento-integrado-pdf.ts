@@ -42,6 +42,8 @@ function cabecalho(doc: PDFKit.PDFDocument, pagina: number) {
 }
 
 function rodape(doc: PDFKit.PDFDocument) {
+  const margemInferior = doc.page.margins.bottom;
+  doc.page.margins.bottom = 0;
   doc.moveTo(46, 757).lineTo(550, 757).lineWidth(.5).strokeColor("#d7dedb").stroke();
   doc.fillColor("#75817e").font("Helvetica").fontSize(6.4)
     .text(
@@ -50,18 +52,20 @@ function rodape(doc: PDFKit.PDFDocument) {
       766,
       { width: 504, align: "center", lineBreak: false }
     );
+  doc.page.margins.bottom = margemInferior;
 }
 
 export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
   const doc = new PDFDocument({
     size: "A4",
-    margins: { top: 72, right: 46, bottom: 62, left: 46 },
+    margins: { top: 76, right: 46, bottom: 100, left: 46 },
     info: {
       Title: "Instrumento Integrado HUMANEXUS",
       Author: "Instituto HUMANEXUS",
       Subject: "Cópia integral da resposta operacional única"
     },
     autoFirstPage: false,
+    bufferPages: true,
     compress: true
   });
   const partes: Buffer[] = [];
@@ -70,12 +74,8 @@ export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
     doc.on("end", () => resolve(Buffer.concat(partes)));
     doc.on("error", reject);
   });
-  let pagina = 0;
   function novaPagina() {
-    if (pagina > 0) rodape(doc);
     doc.addPage();
-    pagina += 1;
-    cabecalho(doc, pagina);
     doc.x = 46;
     doc.y = 76;
   }
@@ -330,7 +330,12 @@ export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
       { width: 500, lineGap: 3 }
     );
 
-  rodape(doc);
+  const paginas = doc.bufferedPageRange();
+  for (let indice = paginas.start; indice < paginas.start + paginas.count; indice += 1) {
+    doc.switchToPage(indice);
+    cabecalho(doc, indice - paginas.start + 1);
+    rodape(doc);
+  }
   doc.end();
   return concluido;
 }

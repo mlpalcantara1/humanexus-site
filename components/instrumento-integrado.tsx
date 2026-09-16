@@ -231,6 +231,11 @@ export function InstrumentoIntegrado() {
       setRevisao(revisaoRef.current);
       if (dados.apresentacao.estado === "CONFIRMADO") {
         const comprovante = await obterCopia();
+        if (!comprovante) {
+          throw new Error(
+            "A resposta foi registrada, mas a cópia integral está temporariamente indisponível. Não confirme novamente; tente recarregar mais tarde."
+          );
+        }
         setCopia(comprovante);
         if (
           comprovante?.resposta_operacional_unica === "AUTORIZO"
@@ -271,7 +276,7 @@ export function InstrumentoIntegrado() {
 
   const salvar = useCallback(async (
     nova: "" | "AUTORIZO" | "NAO_AUTORIZO"
-  ) => {
+  ): Promise<boolean> => {
     setSincronizacao("SALVANDO_NO_NUCLEO");
     try {
       const resultado = await enviar("salvar", {
@@ -281,16 +286,18 @@ export function InstrumentoIntegrado() {
       revisaoRef.current = Number(resultado.revisao);
       setRevisao(revisaoRef.current);
       setSincronizacao("PERSISTIDO_NO_NUCLEO");
+      return true;
     } catch (causa) {
       setSincronizacao("NAO_PERSISTIDO");
       setErro(causa instanceof Error ? causa.message : "Falha ao salvar.");
+      return false;
     }
   // caminho e token permanecem estáveis nesta apresentação.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caminho, token]);
 
   function escolher(valor: "AUTORIZO" | "NAO_AUTORIZO") {
-    if (copia) return;
+    if (copia || consulta?.apresentacao.estado === "CONFIRMADO") return;
     setResposta(valor);
     setErro("");
     setSincronizacao("ALTERACAO_PENDENTE");
@@ -299,6 +306,7 @@ export function InstrumentoIntegrado() {
   }
 
   async function confirmar() {
+    if (!consulta || consulta.apresentacao.estado === "CONFIRMADO") return;
     if (!resposta) {
       setErro("Escolha AUTORIZO ou NÃO AUTORIZO antes de confirmar.");
       document.getElementById("resposta-unica")?.scrollIntoView({
@@ -311,9 +319,12 @@ export function InstrumentoIntegrado() {
     setErro("");
     try {
       if (temporizador.current) clearTimeout(temporizador.current);
-      await salvar(resposta);
+      if (!(await salvar(resposta))) return;
       const resultado = await enviar("confirmar", {
         resposta_operacional: resposta,
+        codigo_do_instrumento: consulta.instrumento.codigo,
+        versao_do_instrumento: consulta.instrumento.versao,
+        hash_do_documento: consulta.instrumento.hash_do_documento,
         horario_do_dispositivo: new Date().toISOString(),
         fuso_horario: Intl.DateTimeFormat().resolvedOptions().timeZone,
         classe_do_dispositivo: /Mobi|Android/i.test(navigator.userAgent)
@@ -324,10 +335,61 @@ export function InstrumentoIntegrado() {
       setCopia(resultado as Copia);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (causa) {
-      setErro(causa instanceof Error ? causa.message : "Falha ao confirmar.");
+      try {
+        const estado = await fetch(
+          `${caminho}?token=${encodeURIComponent(token)}`,
+          { cache: "no-store", credentials: "same-origin" }
+        );
+        if (estado.ok) {
+          const atualizado = await estado.json() as Consulta;
+          if (atualizado.apresentacao.estado === "CONFIRMADO") {
+            setConsulta(atualizado);
+            const comprovante = await obterCopia();
+            if (comprovante) {
+              setCopia(comprovante);
+              setErro("");
+              return;
+            }
+            setErro("Resposta registrada. A cópia está temporariamente indisponível; não confirme novamente.");
+            return;
+          }
+        }
+      } catch {
+        // Sem nova confirmação: o estado remoto é desconhecido até recarregar.
+      }
+      setErro(
+        `${causa instanceof Error ? causa.message : "Falha ao confirmar."} `
+        + "Se a conexão falhou após o envio, recarregue antes de tentar novamente."
+      );
     } finally {
       setOcupado(false);
     }
+  }
+
+  function baixarTextoIntegral() {
+    if (!consulta) return;
+    const linhas = [
+      consulta.instrumento.titulo,
+      `${consulta.instrumento.codigo} · versão ${consulta.instrumento.versao}`,
+      `Integridade do documento: ${consulta.instrumento.hash_do_documento}`,
+      `Finalidade apresentada: ${consulta.identificacao.finalidade}`,
+      ...consulta.instrumento.secoes.flatMap((secao, indice) => [
+        "",
+        `${indice + 1}. ${secao.titulo}`,
+        secao.texto,
+        `Consequência: ${secao.consequencia}`
+      ])
+    ];
+    const url = URL.createObjectURL(new Blob(
+      [linhas.join("\n")], { type: "text/plain;charset=utf-8" }
+    ));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `instrumento-humanexus-${consulta.instrumento.codigo}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   async function revogar(codigo: string) {
@@ -372,14 +434,28 @@ export function InstrumentoIntegrado() {
   const contextoDaApresentacao = contexto
     ? json<Record<string, unknown>>(contexto)
     : {};
-  const confirmado = Boolean(copia);
+  const confirmado = Boolean(copia)
+    || consulta.apresentacao.estado === "CONFIRMADO";
+  const estruturaMinimaPresente = [
+    "TCLE", "AVISO_PRIVACIDADE", "TERMOS_USO"
+  ].every((codigo) => consulta.instrumento.secoes.some(
+    (secao) => secao.codigo === codigo
+  )) && consulta.instrumento.secoes.every((secao) => Boolean(
+    secao.titulo?.trim() && secao.texto?.trim() && secao.consequencia?.trim()
+  )) && (!consulta.fluxo_simplificado || Boolean(
+    configuracao?.autorizo?.trim()
+    && configuracao?.nao_autorizo?.trim()
+    && configuracao?.modalidades_abrangidas?.length
+    && configuracao?.consequencias?.AUTORIZO?.trim()
+    && configuracao?.consequencias?.NAO_AUTORIZO?.trim()
+  ));
   const textoEscolhido = resposta === "AUTORIZO"
     ? configuracao?.autorizo ?? TEXTO_AUTORIZO
     : resposta === "NAO_AUTORIZO"
       ? configuracao?.nao_autorizo ?? TEXTO_NAO_AUTORIZO
       : "Nenhuma resposta escolhida.";
   const consequencia = resposta
-    ? configuracao?.consequencias[resposta]
+    ? configuracao?.consequencias?.[resposta]
     : "A consequência operacional será apresentada após sua escolha.";
 
   if (areaAutorizacoes) {
@@ -450,6 +526,10 @@ export function InstrumentoIntegrado() {
         <article><small>VERSÃO</small><strong>{consulta.instrumento.versao}</strong></article>
       </section>
 
+      <button type="button" onClick={baixarTextoIntegral}>
+        BAIXAR TEXTO INTEGRAL ANTES DE DECIDIR
+      </button>
+
       {!confirmado && (
         <aside className="hxiicca__progresso" aria-live="polite">
           <div><span style={{ width: resposta ? "100%" : "0%" }} /></div>
@@ -477,7 +557,7 @@ export function InstrumentoIntegrado() {
               className="hxiicca__secao"
               id={`secao-${secao.codigo}`}
               key={secao.codigo}
-              open={indice < 2}
+              open
             >
               <summary>
                 <span>{String(indice + 1).padStart(2, "0")}</span>
@@ -485,7 +565,10 @@ export function InstrumentoIntegrado() {
                 <em data-classificacao={secao.classificacao}>{rotulo(secao.classificacao)}</em>
               </summary>
               <div className="hxiicca__secao-conteudo">
-                <p>{secao.texto}</p>
+                {secao.texto.split(/\n\s*\n/).map((paragrafo, parte) => (
+                  <p key={`${secao.codigo}-${parte}`}>{paragrafo}</p>
+                ))}
+                <aside><strong>Consequência desta seção</strong><span>{secao.consequencia}</span></aside>
               </div>
             </details>
           ))}
@@ -567,11 +650,18 @@ export function InstrumentoIntegrado() {
                     <span>{consulta.instrumento.codigo} · {consulta.instrumento.versao}</span>
                   </article>
                 </div>
+                {!estruturaMinimaPresente && (
+                  <p className="hxiicca__erro" role="alert">
+                    A estrutura obrigatória do documento não foi recebida por
+                    completo. A confirmação foi bloqueada; tente novamente ou
+                    peça esclarecimentos ao Instituto HUMANEXUS.
+                  </p>
+                )}
                 {!confirmado && (
                   <button
                     className="hxiicca__confirmar"
                     type="button"
-                    disabled={ocupado || !resposta}
+                    disabled={ocupado || !resposta || !estruturaMinimaPresente}
                     onClick={() => void confirmar()}
                   >
                     CONFIRMAR MINHA RESPOSTA
