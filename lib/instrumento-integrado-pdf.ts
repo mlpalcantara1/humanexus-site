@@ -56,13 +56,16 @@ function rodape(doc: PDFKit.PDFDocument) {
 }
 
 export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
+  const simplificado = Boolean(copia.fluxo_simplificado);
   const doc = new PDFDocument({
     size: "A4",
     margins: { top: 76, right: 46, bottom: 100, left: 46 },
     info: {
       Title: "Instrumento Integrado HUMANEXUS",
       Author: "Instituto HUMANEXUS",
-      Subject: "Cópia integral da resposta operacional única"
+      Subject: simplificado
+        ? "Cópia integral da resposta operacional única"
+        : "Cópia integral dos atos e escolhas independentes"
     },
     autoFirstPage: false,
     bufferPages: true,
@@ -86,13 +89,13 @@ export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
   novaPagina();
   const instrumento = objeto(copia.instrumento);
   const manifestacao = objeto(copia.manifestacao);
+  const identificacaoInstitucional = objeto(copia.identificacao_institucional);
   const secoes = Array.isArray(instrumento.secoes)
     ? instrumento.secoes as Registro[]
     : [];
   const decisoes = Array.isArray(copia.decisoes)
     ? copia.decisoes as Registro[]
     : [];
-  const simplificado = Boolean(copia.fluxo_simplificado);
   const consolidado = objeto(manifestacao.estado_consolidado_json);
   const respostaUnica = String(
     copia.resposta_operacional_unica
@@ -114,6 +117,14 @@ export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
       `${valor(instrumento.codigo)} · versão ${valor(instrumento.versao)}`,
       { lineGap: 2 }
     );
+  if (!simplificado && identificacaoInstitucional.razao_social) {
+    doc.moveDown(.5);
+    doc.fillColor("#34413f").font("Helvetica").fontSize(8.5)
+      .text(`Prestador: ${valor(identificacaoInstitucional.razao_social)}`);
+    if (identificacaoInstitucional.cnpj) {
+      doc.text(`CNPJ: ${valor(identificacaoInstitucional.cnpj)}`);
+    }
+  }
   doc.moveDown(1.5);
   const yResumo = doc.y;
   doc.roundedRect(46, yResumo, 504, 94, 4).fillAndStroke("#f4f6f5", "#d7dedb");
@@ -178,6 +189,17 @@ export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
       .text(`Consequência: ${valor(secao.consequencia)}`, 78, doc.y, {
         width: 472
       });
+    if (!simplificado && secao.decisao_obrigatoria
+      && Array.isArray(secao.opcoes)) {
+      doc.moveDown(.4);
+      doc.fillColor("#60706c").font("Helvetica").fontSize(7.2)
+        .text(
+          `Opções apresentadas: ${(secao.opcoes as unknown[]).map(valor).join(" / ")}`,
+          78,
+          doc.y,
+          { width: 472 }
+        );
+    }
     if (decisao && !simplificado) {
       doc.moveDown(.55);
       const cor = ["NAO_AUTORIZO", "NAO_CONCORDO"].includes(String(decisao.decisao))

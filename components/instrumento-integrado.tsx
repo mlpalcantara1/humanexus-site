@@ -11,6 +11,8 @@ type Secao = {
   natureza: string;
   classificacao: string;
   consequencia: string;
+  decisao_obrigatoria?: boolean;
+  opcoes?: string[];
 };
 type Modalidade = {
   codigo: string;
@@ -82,6 +84,7 @@ type DecisaoRegistrada = {
 };
 type Copia = {
   instrumento: Consulta["instrumento"];
+  identificacao_institucional?: { razao_social?: string; cnpj?: string };
   manifestacao: {
     confirmado_em: string;
     hash_do_documento: string;
@@ -162,6 +165,8 @@ export function InstrumentoIntegrado() {
   const [copia, setCopia] = useState<Copia | null>(null);
   const [resposta, setResposta] =
     useState<"" | "AUTORIZO" | "NAO_AUTORIZO">("");
+  const [decisoesIndependentes, setDecisoesIndependentes] =
+    useState<Record<string, string>>({});
   const [revisao, setRevisao] = useState(0);
   const revisaoRef = useRef(0);
   const [sincronizacao, setSincronizacao] =
@@ -185,6 +190,7 @@ export function InstrumentoIntegrado() {
     setConsulta(null);
     setCopia(null);
     setResposta("");
+    setDecisoesIndependentes({});
     setErro("");
     setOcupado(false);
     setSincronizacao("PERSISTIDO_NO_NUCLEO");
@@ -222,6 +228,15 @@ export function InstrumentoIntegrado() {
       );
       const persistida = rascunho.RESPOSTA_OPERACIONAL_UNICA;
       setConsulta(dados);
+      if (!dados.fluxo_simplificado) {
+        const permitidas = new Map(dados.instrumento.secoes
+          .filter((secao) => secao.decisao_obrigatoria)
+          .map((secao) => [secao.codigo, secao.opcoes ?? []]));
+        setDecisoesIndependentes(Object.fromEntries(
+          Object.entries(rascunho).filter(([codigo, valor]) =>
+            permitidas.get(codigo)?.includes(valor))
+        ));
+      }
       if (persistida === "AUTORIZO" || persistida === "NAO_AUTORIZO") {
         setResposta(persistida);
       }
@@ -237,6 +252,13 @@ export function InstrumentoIntegrado() {
           );
         }
         setCopia(comprovante);
+        if (!dados.fluxo_simplificado) {
+          setDecisoesIndependentes(Object.fromEntries(
+            comprovante.decisoes.map((item) => [
+              item.codigo_da_decisao, item.decisao
+            ])
+          ));
+        }
         if (
           comprovante?.resposta_operacional_unica === "AUTORIZO"
           || comprovante?.resposta_operacional_unica === "NAO_AUTORIZO"
@@ -366,6 +388,64 @@ export function InstrumentoIntegrado() {
     }
   }
 
+  async function confirmarEscolhasIndependentes() {
+    if (!consulta || consulta.fluxo_simplificado ||
+      consulta.apresentacao.estado === "CONFIRMADO") return;
+    const pendentes = consulta.instrumento.secoes.filter((secao) =>
+      secao.decisao_obrigatoria &&
+      !secao.opcoes?.includes(decisoesIndependentes[secao.codigo] ?? "")
+    );
+    if (pendentes.length) {
+      setErro("Revise os atos e escolhas ainda sem resposta antes de confirmar.");
+      document.getElementById(`secao-${pendentes[0].codigo}`)?.scrollIntoView({
+        behavior: "smooth", block: "center"
+      });
+      return;
+    }
+    setOcupado(true);
+    setErro("");
+    try {
+      const resultado = await enviar("confirmar", {
+        decisoes: decisoesIndependentes,
+        codigo_do_instrumento: consulta.instrumento.codigo,
+        versao_do_instrumento: consulta.instrumento.versao,
+        hash_do_documento: consulta.instrumento.hash_do_documento,
+        horario_do_dispositivo: new Date().toISOString(),
+        fuso_horario: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        classe_do_dispositivo: /Mobi|Android/i.test(navigator.userAgent)
+          ? "DISPOSITIVO_MOVEL" : "COMPUTADOR",
+        agente_minimizado: navigator.userAgent
+      });
+      setCopia(resultado as Copia);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (causa) {
+      try {
+        const estado = await fetch(
+          `${caminho}?token=${encodeURIComponent(token)}`,
+          { cache: "no-store", credentials: "same-origin" }
+        );
+        if (estado.ok) {
+          const atualizado = await estado.json() as Consulta;
+          if (atualizado.apresentacao.estado === "CONFIRMADO") {
+            setConsulta(atualizado);
+            const comprovante = await obterCopia();
+            if (comprovante) {
+              setCopia(comprovante);
+              setErro("");
+              return;
+            }
+          }
+        }
+      } catch {
+        // Uma falha de rede não autoriza repetir a manifestação.
+      }
+      setErro(`${causa instanceof Error ? causa.message : "Falha ao confirmar."} `
+        + "Recarregue para verificar o registro antes de tentar novamente.");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   function baixarTextoIntegral() {
     if (!consulta) return;
     const linhas = [
@@ -377,7 +457,10 @@ export function InstrumentoIntegrado() {
         "",
         `${indice + 1}. ${secao.titulo}`,
         secao.texto,
-        `Consequência: ${secao.consequencia}`
+        `Consequência: ${secao.consequencia}`,
+        ...(secao.decisao_obrigatoria
+          ? [`Opções de manifestação: ${(secao.opcoes ?? []).map(rotulo).join(" / ")}`]
+          : [])
       ])
     ];
     const url = URL.createObjectURL(new Blob(
@@ -436,6 +519,13 @@ export function InstrumentoIntegrado() {
     : {};
   const confirmado = Boolean(copia)
     || consulta.apresentacao.estado === "CONFIRMADO";
+  const secoesComEscolha = consulta.instrumento.secoes.filter(
+    (secao) => secao.decisao_obrigatoria
+  );
+  const escolhasCompletas = secoesComEscolha.length > 0 &&
+    secoesComEscolha.every((secao) =>
+      secao.opcoes?.includes(decisoesIndependentes[secao.codigo] ?? "")
+    );
   const estruturaMinimaPresente = [
     "TCLE", "AVISO_PRIVACIDADE", "TERMOS_USO"
   ].every((codigo) => consulta.instrumento.secoes.some(
@@ -497,6 +587,106 @@ export function InstrumentoIntegrado() {
               </article>
             ))}
           <a href={`?token=${encodeURIComponent(token)}`}>Voltar ao comprovante</a>
+        </section>
+      </main>
+    );
+  }
+
+  if (!consulta.fluxo_simplificado) {
+    return (
+      <main className="hxiicca hxiicca--escolhas-independentes">
+        <header className="hxiicca__hero">
+          <div className="hxiicca__brand"><span>HX</span><div>
+            <strong>HUMANEXUS</strong><small>ACESSO DO PARTICIPANTE</small>
+          </div></div>
+          <div className="hxiicca__hero-copy">
+            <small>DOCUMENTO IDENTIFICADO · {consulta.instrumento.codigo}</small>
+            <h1>{consulta.instrumento.titulo}</h1>
+            <p>Leia o conteúdo integral. Ciência, concordância e autorizações
+              facultativas são atos distintos; nenhuma escolha é presumida.</p>
+          </div>
+        </header>
+        <section className="hxiicca__contexto" aria-label="Identificação">
+          <article><small>PRESTADOR</small><strong>{consulta.identificacao.instituto}</strong></article>
+          <article><small>PARTICIPANTE</small><strong>{consulta.identificacao.participante}</strong></article>
+          <article><small>{consulta.identificacao.rotulo_do_cliente}</small><strong>{consulta.identificacao.cliente}</strong></article>
+          <article><small>FINALIDADE</small><strong>{consulta.identificacao.finalidade}</strong></article>
+          <article><small>VERSÃO</small><strong>{consulta.instrumento.versao}</strong></article>
+        </section>
+        <button type="button" onClick={baixarTextoIntegral}>
+          BAIXAR TEXTO INTEGRAL ANTES DE DECIDIR
+        </button>
+        <section className="hxiicca__documento">
+          {consulta.instrumento.secoes.map((secao, indice) => (
+            <details className="hxiicca__secao" id={`secao-${secao.codigo}`}
+              key={secao.codigo} open>
+              <summary><span>{String(indice + 1).padStart(2, "0")}</span>
+                <div><h2>{secao.titulo}</h2><small>{rotulo(secao.natureza)}</small></div>
+                <em data-classificacao={secao.classificacao}>{rotulo(secao.classificacao)}</em>
+              </summary>
+              <div className="hxiicca__secao-conteudo">
+                {secao.texto.split(/\n\s*\n/).map((paragrafo, parte) =>
+                  <p key={`${secao.codigo}-${parte}`}>{paragrafo}</p>)}
+                <aside><strong>Consequência desta seção</strong><span>{secao.consequencia}</span></aside>
+                {secao.decisao_obrigatoria && (
+                  <fieldset disabled={confirmado || ocupado}>
+                    <legend>{secao.natureza === "AUTORIZACAO"
+                      ? `Escolha facultativa: ${secao.titulo}`
+                      : `Ato distinto: ${secao.titulo}`}</legend>
+                    {(secao.opcoes ?? []).map((opcao) => (
+                      <label key={opcao}
+                        className={decisoesIndependentes[secao.codigo] === opcao
+                          ? "is-selected" : ""}>
+                        <input type="radio" name={`decisao-${secao.codigo}`}
+                          value={opcao}
+                          checked={decisoesIndependentes[secao.codigo] === opcao}
+                          onChange={() => setDecisoesIndependentes((anteriores) => ({
+                            ...anteriores, [secao.codigo]: opcao
+                          }))} />
+                        <span>{rotulo(opcao)}</span>
+                      </label>
+                    ))}
+                  </fieldset>
+                )}
+              </div>
+            </details>
+          ))}
+          {!confirmado && (
+            <section className="hxiicca__revisao" id="revisao">
+              <h2>Revisão das escolhas independentes</h2>
+              <p>Uma escolha não autoriza outra. Respostas em branco não são autorização.</p>
+              <div className="hxiicca__revisao-grid">
+                {secoesComEscolha.map((secao) => <article key={secao.codigo}>
+                  <small>{secao.titulo}</small>
+                  <strong>{decisoesIndependentes[secao.codigo]
+                    ? rotulo(decisoesIndependentes[secao.codigo]) : "PENDENTE"}</strong>
+                </article>)}
+              </div>
+              {erro && <p className="hxiicca__erro" role="alert">{erro}</p>}
+              <button className="hxiicca__confirmar" type="button"
+                disabled={ocupado || !escolhasCompletas || !estruturaMinimaPresente}
+                onClick={() => void confirmarEscolhasIndependentes()}>
+                CONFIRMAR OS ATOS E AS ESCOLHAS ACIMA
+              </button>
+            </section>
+          )}
+          {confirmado && copia && (
+            <section className="hxiicca__copia">
+              <h2>Manifestação preservada</h2>
+              <p>{dataLegivel(copia.manifestacao.confirmado_em)}</p>
+              {copia.decisoes.map((item) => <article key={item.identificador}>
+                <strong>{rotulo(item.codigo_da_decisao)}</strong>
+                <span>{rotulo(item.decisao)} · {rotulo(item.estado)}</span>
+              </article>)}
+              <a className="hxiicca__pdf"
+                href={`${caminho}/pdf?token=${encodeURIComponent(token)}`}
+                target="_blank" rel="noreferrer">BAIXAR CÓPIA INTEGRAL EM PDF</a>
+              <a className="hxiicca__autorizacoes-link"
+                href={`?token=${encodeURIComponent(token)}&area=autorizacoes`}>
+                Minhas autorizações
+              </a>
+            </section>
+          )}
         </section>
       </main>
     );

@@ -37,7 +37,9 @@ test("PDF efetivo reproduz conteúdo e consequências da cópia canônica", asyn
       texto: "Categorias e finalidades documentadas no instrumento.\n\nParágrafo distinto para direitos do titular.",
       consequencia: "A ciência não autoriza usos opcionais.",
       natureza: "CIENCIA",
-      classificacao: "ESSENCIAL"
+      classificacao: "ESSENCIAL",
+      decisao_obrigatoria: true,
+      opcoes: ["LI_E_ESTOU_CIENTE", "NAO_ESTOU_CIENTE"]
     },
     {
       codigo: "TERMOS_USO",
@@ -45,10 +47,16 @@ test("PDF efetivo reproduz conteúdo e consequências da cópia canônica", asyn
       texto: "Condições de acesso e limites da plataforma apresentados antes da decisão.",
       consequencia: "A recusa não é convertida em autorização.",
       natureza: "CONCORDANCIA",
-      classificacao: "ESSENCIAL"
+      classificacao: "ESSENCIAL",
+      decisao_obrigatoria: true,
+      opcoes: ["CONCORDO", "NAO_CONCORDO"]
     }
   ];
   const pdf = await gerar({
+    identificacao_institucional: {
+      razao_social: "PRESTADOR SINTETICO DE TESTE LTDA",
+      cnpj: "00.000.000/0000-00"
+    },
     instrumento: {
       codigo: "IICCA-HXP-TESTE",
       versao: "TESTE",
@@ -64,7 +72,14 @@ test("PDF efetivo reproduz conteúdo e consequências da cópia canônica", asyn
       integridade_sha256: "c".repeat(64),
       estado_consolidado_json: {}
     },
-    decisoes: [],
+    decisoes: [{
+      codigo_da_decisao: "AVISO_PRIVACIDADE",
+      decisao: "LI_E_ESTOU_CIENTE",
+      estado: "VIGENTE"
+    }, {
+      codigo_da_decisao: "TERMOS_USO",
+      decisao: "CONCORDO", estado: "VIGENTE"
+    }],
     fluxo_simplificado: false,
     historico_de_versoes: [],
     modalidades_excluidas: []
@@ -89,6 +104,8 @@ test("PDF efetivo reproduz conteúdo e consequências da cópia canônica", asyn
   ]) {
     assert.ok(texto.includes(parte), `Trecho ausente no PDF: ${parte}`);
   }
+  assert.ok(texto.includes("PRESTADOR SINTETICO DE TESTE LTDA"));
+  assert.ok(texto.includes("Opções apresentadas:"));
 });
 
 test("seção documental longa mantém texto e cabeçalho nas páginas automáticas", async (t) => {

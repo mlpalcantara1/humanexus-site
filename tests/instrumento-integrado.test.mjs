@@ -18,10 +18,20 @@ test("instrumento integrado usa página única e confirmação final única", as
   );
   assert.match(componente, /UMA ÚNICA RESPOSTA/);
   assert.doesNotMatch(componente, /Autorizar tudo|AUTORIZAR_TUDO/);
-  assert.doesNotMatch(
-    componente,
-    /name=\{`decisao-\$\{secao\.codigo\}`\}/
-  );
+  assert.match(componente, /if \(!consulta\.fluxo_simplificado\)/);
+  assert.match(componente, /name=\{`decisao-\$\{secao\.codigo\}`\}/);
+  assert.doesNotMatch(componente, /defaultChecked|localStorage|sessionStorage/);
+});
+
+test("versão genérica exige atos independentes sem ativar a versão candidata", async () => {
+  const componente = await fonte("components/instrumento-integrado.tsx");
+  assert.match(componente, /decisao_obrigatoria/);
+  assert.match(componente, /escolhasCompletas/);
+  assert.match(componente, /decisoes: decisoesIndependentes/);
+  assert.match(componente, /hash_do_documento: consulta\.instrumento\.hash_do_documento/);
+  assert.match(componente, /PRESTADOR.*consulta\.identificacao\.instituto/s);
+  assert.match(componente, /nenhuma escolha é presumida/i);
+  assert.match(componente, /if \(!consulta\.fluxo_simplificado\)/);
   assert.doesNotMatch(componente, /defaultChecked|localStorage|sessionStorage/);
 });
 
