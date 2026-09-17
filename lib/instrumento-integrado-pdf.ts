@@ -220,7 +220,9 @@ export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
         .text(
           simplificado
             ? "Finalidade incluída no documento único; não houve resposta individual."
-            : "Seção informativa sem decisão independente.",
+            : secao.decisao_obrigatoria
+              ? "Nenhuma decisão registrada nesta seção; esta cópia não comprova ciência ou concordância."
+              : "Seção informativa sem decisão independente.",
           78,
           doc.y
         );

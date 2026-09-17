@@ -166,3 +166,36 @@ test("seção documental longa mantém texto e cabeçalho nas páginas automáti
     "Consequência documental preservada no fim da seção."
   ));
 });
+
+test("cópia sintética sem ato não rotula escolha obrigatória como informativa", async (t) => {
+  if (spawnSync("pdftotext", ["-v"]).error) {
+    t.skip("pdftotext indisponível neste ambiente");
+    return;
+  }
+  const gerar = await gerador();
+  const pdf = await gerar({
+    instrumento: {
+      codigo: "IICCA-HXP-TESTE",
+      versao: "TESTE",
+      titulo: "Instrumento sintético",
+      secoes: [{
+        codigo: "TERMOS_USO",
+        titulo: "Termos de Uso integrais",
+        texto: "Texto integral sintético para verificar a cópia.",
+        consequencia: "A recusa não é autorização.",
+        natureza: "CONCORDANCIA",
+        classificacao: "ESSENCIAL",
+        decisao_obrigatoria: true,
+        opcoes: ["CONCORDO", "NAO_CONCORDO"]
+      }]
+    },
+    manifestacao: {estado_consolidado_json: {}},
+    decisoes: [],
+    fluxo_simplificado: false
+  });
+  const extraido = spawnSync("pdftotext", ["-", "-"], {input: pdf});
+  assert.equal(extraido.status, 0);
+  const texto = extraido.stdout.toString();
+  assert.ok(texto.includes("Nenhuma decisão registrada nesta seção"));
+  assert.ok(!texto.includes("Seção informativa sem decisão independente"));
+});
