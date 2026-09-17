@@ -2,6 +2,7 @@
 
 import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { respostaIiccaVigente } from "@/lib/iicca-request-order";
 
 type Registro = Record<string, unknown>;
 type Secao = {
@@ -174,6 +175,9 @@ export function InstrumentoIntegrado() {
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const geracaoDaPagina = useRef(0);
+  const sequenciaDaCopia = useRef(0);
+  const [revisaoDoPolling, setRevisaoDoPolling] = useState(0);
 
   const obterCopia = useCallback(async () => {
     const retorno = await fetch(
@@ -186,6 +190,7 @@ export function InstrumentoIntegrado() {
 
   useEffect(() => {
     let ativo = true;
+    const geracao = ++geracaoDaPagina.current;
     const abortar = new AbortController();
     setConsulta(null);
     setCopia(null);
@@ -210,7 +215,9 @@ export function InstrumentoIntegrado() {
       if (!retorno.ok) {
         throw new Error(corpo?.erro?.mensagem ?? "Instrumento indisponível.");
       }
-      if (!ativo) return;
+      if (!ativo || !respostaIiccaVigente(
+        geracao, geracaoDaPagina.current
+      )) return;
       const dados = corpo as Consulta;
       if (
         dados.apresentacao.identificador !== identificador
@@ -246,6 +253,9 @@ export function InstrumentoIntegrado() {
       setRevisao(revisaoRef.current);
       if (dados.apresentacao.estado === "CONFIRMADO") {
         const comprovante = await obterCopia();
+        if (!ativo || !respostaIiccaVigente(
+          geracao, geracaoDaPagina.current
+        )) return;
         if (!comprovante) {
           throw new Error(
             "A resposta foi registrada, mas a cópia integral está temporariamente indisponível. Não confirme novamente; tente recarregar mais tarde."
@@ -272,10 +282,46 @@ export function InstrumentoIntegrado() {
     });
     return () => {
       ativo = false;
+      geracaoDaPagina.current++;
       abortar.abort();
       if (temporizador.current) clearTimeout(temporizador.current);
     };
   }, [caminho, identificador, obterCopia, token]);
+
+  useEffect(() => {
+    if (consulta?.apresentacao.estado !== "CONFIRMADO") return;
+    let ativo = true;
+    const geracao = geracaoDaPagina.current;
+    async function atualizar() {
+      const sequencia = ++sequenciaDaCopia.current;
+      const comprovante = await obterCopia().catch(() => null);
+      if (
+        !ativo || !respostaIiccaVigente(
+          geracao, geracaoDaPagina.current,
+          sequencia, sequenciaDaCopia.current
+        )
+      ) return;
+      if (comprovante) {
+        setCopia(comprovante);
+        setErro((atual) => atual ===
+          "Estado atual temporariamente indisponível. Tente recarregar."
+          ? "" : atual);
+      } else {
+        setCopia(null);
+        setErro("Estado atual temporariamente indisponível. Tente recarregar.");
+      }
+    }
+    const intervalo = setInterval(() => void atualizar(), 5000);
+    const retomar = () => {
+      if (document.visibilityState === "visible") void atualizar();
+    };
+    document.addEventListener("visibilitychange", retomar);
+    return () => {
+      ativo = false;
+      clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", retomar);
+    };
+  }, [consulta?.apresentacao.estado, obterCopia, revisaoDoPolling]);
 
   async function enviar(
     acao: "salvar" | "confirmar" | "revogar",
@@ -299,17 +345,20 @@ export function InstrumentoIntegrado() {
   const salvar = useCallback(async (
     nova: "" | "AUTORIZO" | "NAO_AUTORIZO"
   ): Promise<boolean> => {
+    const geracao = geracaoDaPagina.current;
     setSincronizacao("SALVANDO_NO_NUCLEO");
     try {
       const resultado = await enviar("salvar", {
         resposta_operacional: nova,
         revisao: revisaoRef.current
       });
+      if (geracao !== geracaoDaPagina.current) return false;
       revisaoRef.current = Number(resultado.revisao);
       setRevisao(revisaoRef.current);
       setSincronizacao("PERSISTIDO_NO_NUCLEO");
       return true;
     } catch (causa) {
+      if (geracao !== geracaoDaPagina.current) return false;
       setSincronizacao("NAO_PERSISTIDO");
       setErro(causa instanceof Error ? causa.message : "Falha ao salvar.");
       return false;
@@ -329,6 +378,7 @@ export function InstrumentoIntegrado() {
 
   async function confirmar() {
     if (!consulta || consulta.apresentacao.estado === "CONFIRMADO") return;
+    const geracao = geracaoDaPagina.current;
     if (!resposta) {
       setErro("Escolha AUTORIZO ou NÃO AUTORIZO antes de confirmar.");
       document.getElementById("resposta-unica")?.scrollIntoView({
@@ -342,6 +392,7 @@ export function InstrumentoIntegrado() {
     try {
       if (temporizador.current) clearTimeout(temporizador.current);
       if (!(await salvar(resposta))) return;
+      if (geracao !== geracaoDaPagina.current) return;
       const resultado = await enviar("confirmar", {
         resposta_operacional: resposta,
         codigo_do_instrumento: consulta.instrumento.codigo,
@@ -354,9 +405,11 @@ export function InstrumentoIntegrado() {
           : "COMPUTADOR",
         agente_minimizado: navigator.userAgent
       });
+      if (geracao !== geracaoDaPagina.current) return;
       setCopia(resultado as Copia);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (causa) {
+      if (geracao !== geracaoDaPagina.current) return;
       try {
         const estado = await fetch(
           `${caminho}?token=${encodeURIComponent(token)}`,
@@ -364,9 +417,11 @@ export function InstrumentoIntegrado() {
         );
         if (estado.ok) {
           const atualizado = await estado.json() as Consulta;
+          if (geracao !== geracaoDaPagina.current) return;
           if (atualizado.apresentacao.estado === "CONFIRMADO") {
             setConsulta(atualizado);
             const comprovante = await obterCopia();
+            if (geracao !== geracaoDaPagina.current) return;
             if (comprovante) {
               setCopia(comprovante);
               setErro("");
@@ -379,18 +434,20 @@ export function InstrumentoIntegrado() {
       } catch {
         // Sem nova confirmação: o estado remoto é desconhecido até recarregar.
       }
+      if (geracao !== geracaoDaPagina.current) return;
       setErro(
         `${causa instanceof Error ? causa.message : "Falha ao confirmar."} `
         + "Se a conexão falhou após o envio, recarregue antes de tentar novamente."
       );
     } finally {
-      setOcupado(false);
+      if (geracao === geracaoDaPagina.current) setOcupado(false);
     }
   }
 
   async function confirmarEscolhasIndependentes() {
     if (!consulta || consulta.fluxo_simplificado ||
       consulta.apresentacao.estado === "CONFIRMADO") return;
+    const geracao = geracaoDaPagina.current;
     const pendentes = consulta.instrumento.secoes.filter((secao) =>
       secao.decisao_obrigatoria &&
       !secao.opcoes?.includes(decisoesIndependentes[secao.codigo] ?? "")
@@ -416,9 +473,11 @@ export function InstrumentoIntegrado() {
           ? "DISPOSITIVO_MOVEL" : "COMPUTADOR",
         agente_minimizado: navigator.userAgent
       });
+      if (geracao !== geracaoDaPagina.current) return;
       setCopia(resultado as Copia);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (causa) {
+      if (geracao !== geracaoDaPagina.current) return;
       try {
         const estado = await fetch(
           `${caminho}?token=${encodeURIComponent(token)}`,
@@ -426,9 +485,11 @@ export function InstrumentoIntegrado() {
         );
         if (estado.ok) {
           const atualizado = await estado.json() as Consulta;
+          if (geracao !== geracaoDaPagina.current) return;
           if (atualizado.apresentacao.estado === "CONFIRMADO") {
             setConsulta(atualizado);
             const comprovante = await obterCopia();
+            if (geracao !== geracaoDaPagina.current) return;
             if (comprovante) {
               setCopia(comprovante);
               setErro("");
@@ -439,10 +500,11 @@ export function InstrumentoIntegrado() {
       } catch {
         // Uma falha de rede não autoriza repetir a manifestação.
       }
+      if (geracao !== geracaoDaPagina.current) return;
       setErro(`${causa instanceof Error ? causa.message : "Falha ao confirmar."} `
         + "Recarregue para verificar o registro antes de tentar novamente.");
     } finally {
-      setOcupado(false);
+      if (geracao === geracaoDaPagina.current) setOcupado(false);
     }
   }
 
@@ -479,14 +541,28 @@ export function InstrumentoIntegrado() {
     if (!window.confirm(
       "Revogar esta modalidade para novas coletas e novos produtos?"
     )) return;
+    const geracao = ++geracaoDaPagina.current;
+    sequenciaDaCopia.current++;
     setOcupado(true);
     try {
       await enviar("revogar", { codigo_da_decisao: codigo });
-      setCopia(await obterCopia());
+      if (geracao !== geracaoDaPagina.current) return;
+      const copiaAtual = await obterCopia();
+      if (geracao !== geracaoDaPagina.current) return;
+      if (!copiaAtual) {
+        throw new Error("Revogação registrada. Recarregue para obter o estado atual.");
+      }
+      setCopia(copiaAtual);
+      setErro("");
     } catch (causa) {
-      setErro(causa instanceof Error ? causa.message : "Falha ao revogar.");
+      if (geracao === geracaoDaPagina.current) {
+        setErro(causa instanceof Error ? causa.message : "Falha ao revogar.");
+      }
     } finally {
-      setOcupado(false);
+      if (geracao === geracaoDaPagina.current) {
+        setOcupado(false);
+        setRevisaoDoPolling((atual) => atual + 1);
+      }
     }
   }
 
