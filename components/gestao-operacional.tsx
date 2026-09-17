@@ -8,6 +8,7 @@ import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multi
 import { resolverIdentidadeDocumental } from "@/lib/humanexus-report-authority";
 import { portuguesVisivel } from "@/lib/portugues-visivel";
 import { substituirUrlPreservandoContexto } from "@/lib/contexto-navegacao";
+import { HistoricoInstrumentoParticipante } from "@/components/historico-instrumento-participante";
 
 type Registro = Record<string, unknown>;
 type BaseOperacional = {
@@ -2628,6 +2629,15 @@ export function GestaoOperacional({
               </fieldset>
             ) : null}
           </form>
+          {podeGerenciarParticipantes && participanteSelecionado
+            && organizacaoAtual?.identificador ? (
+            <HistoricoInstrumentoParticipante
+              key={`${organizacaoAtual.identificador}:${participanteSelecionado}`}
+              organizacao={String(organizacaoAtual.identificador)}
+              participante={participanteSelecionado}
+              nome={nomeDoParticipanteSelecionado}
+            />
+          ) : null}
           <form onSubmit={(evento) => void apresentarConsentimento(evento)}>
             <small>IICCA-HXP-1.1 · RESPOSTA ÚNICA</small>
             <h2>Instrumento integrado único</h2>
