@@ -185,6 +185,7 @@ export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
     doc.fillColor("#4f5d5a").font("Helvetica").fontSize(8.2)
       .text(valor(secao.texto), 78, doc.y, { width: 472, lineGap: 2 });
     doc.moveDown(.5);
+    garantir(72);
     doc.fillColor("#6d7775").font("Helvetica-Oblique").fontSize(7.2)
       .text(`Consequência: ${valor(secao.consequencia)}`, 78, doc.y, {
         width: 472
@@ -232,7 +233,14 @@ export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
     doc.moveDown(.8);
   });
 
-  novaPagina();
+  // Uma seção longa pode ter criado uma página automaticamente só para sua
+  // última linha. Nesse caso, aproveite essa página para o resumo, sem deixar
+  // uma folha quase vazia entre o texto integral e o estado das decisões.
+  if (doc.y >= 200) novaPagina();
+  else {
+    doc.x = 46;
+    doc.moveDown(2);
+  }
   doc.fillColor("#172126").font("Times-Roman").fontSize(22)
     .text(simplificado ? "Resposta única e escopo" : "Resumo das manifestações");
   doc.moveDown(1);
