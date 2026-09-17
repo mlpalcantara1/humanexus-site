@@ -912,6 +912,7 @@ export function GestaoOperacional({
   async function apresentarConsentimento(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     const resultado = await executar("apresentar-instrumento-integrado", {
+      versao_do_instrumento: "1.2",
       identificador_da_organizacao: String(dados?.organizacao?.identificador ?? ""),
       identificador_do_participante:
         consentimento.identificador_do_participante,
@@ -2639,8 +2640,13 @@ export function GestaoOperacional({
             />
           ) : null}
           <form onSubmit={(evento) => void apresentarConsentimento(evento)}>
-            <small>IICCA-HXP-1.1 · RESPOSTA ÚNICA</small>
+            <small>IICCA-HXP-1.2 · NOVA MANIFESTAÇÃO</small>
             <h2>Instrumento integrado único</h2>
+            <p className="hx-module__notice">
+              A nova versão só gera convite quando estiver disponível no Núcleo.
+              Se ainda estiver em revisão, nenhuma manifestação será criada.
+              Cópias e respostas históricas permanecem preservadas.
+            </p>
             <label>Participante<select
               required
               value={consentimento.identificador_do_participante}

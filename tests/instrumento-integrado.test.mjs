@@ -35,6 +35,13 @@ test("versão genérica exige atos independentes sem ativar a versão candidata"
   assert.doesNotMatch(componente, /defaultChecked|localStorage|sessionStorage/);
 });
 
+test("novos convites pedem a versão 1.2 sem recuar silenciosamente à 1.1", async () => {
+  const gestao = await fonte("components/gestao-operacional.tsx");
+  assert.match(gestao, /versao_do_instrumento: "1\.2"/);
+  assert.match(gestao, /Se ainda estiver em revisão, nenhuma manifestação será criada/);
+  assert.doesNotMatch(gestao, /IICCA-HXP-1\.1 · RESPOSTA ÚNICA/);
+});
+
 test("somente AUTORIZO e NÃO AUTORIZO são respostas visíveis", async () => {
   const componente = await fonte("components/instrumento-integrado.tsx");
   assert.match(componente, /name="resposta-operacional-unica"/);
