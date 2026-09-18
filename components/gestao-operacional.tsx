@@ -341,7 +341,9 @@ export function GestaoOperacional({
   const [consentimento, setConsentimento] = useState({
     identificador_do_participante: "",
     identificador_da_sessao: "",
-    finalidade: "HOMOLOGACAO_FISICA_AUTORIZADA",
+    finalidade: "",
+    servico_efetivo: "",
+    programa: "",
     validade_em_horas: "72",
     polar: false,
     eeg: false,
@@ -349,12 +351,24 @@ export function GestaoOperacional({
     audio: false,
     video: false,
     replay: false,
-    relatorio: false,
+    relatorio: true,
     longitudinal: false,
     coletivo: false,
     pesquisa: false,
     politica_de_retencao: "NAO_ARMAZENAR"
   });
+  const [fichasDoPrograma, setFichasDoPrograma] = useState<
+    Record<string, Record<string, string>>
+  >({});
+  useEffect(() => {
+    setFichasDoPrograma({});
+    setEntregaDeConsentimento(null);
+  }, [
+    consentimento.identificador_do_participante,
+    consentimento.servico_efetivo,
+    consentimento.programa,
+    organizacaoSelecionada
+  ]);
   const [entregaDeConsentimento, setEntregaDeConsentimento] =
     useState<Registro | null>(null);
   const [impactoCritico, setImpactoCritico] = useState<Registro | null>(null);
@@ -912,13 +926,23 @@ export function GestaoOperacional({
   async function apresentarConsentimento(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     const resultado = await executar("apresentar-instrumento-integrado", {
-      versao_do_instrumento: "1.2",
+      versao_do_instrumento: "1.3",
       identificador_da_organizacao: String(dados?.organizacao?.identificador ?? ""),
       identificador_do_participante:
         consentimento.identificador_do_participante,
       identificador_da_sessao:
         consentimento.identificador_da_sessao || null,
       finalidade: consentimento.finalidade,
+      servico_efetivo: consentimento.servico_efetivo,
+      programa: consentimento.programa,
+      fichas_do_programa: Object.fromEntries(
+        ([
+          ["TELEMETRIA", consentimento.telemetria],
+          ["LONGITUDINAL", consentimento.longitudinal],
+          ["INDICADOR_COLETIVO", consentimento.coletivo]
+        ] as const).filter(([, selecionado]) => selecionado)
+          .map(([codigo]) => [codigo, fichasDoPrograma[codigo] ?? {}])
+      ),
       validade_em_horas: Number(consentimento.validade_em_horas),
       recursos: {
         dados_sensiveis: true,
@@ -2640,7 +2664,7 @@ export function GestaoOperacional({
             />
           ) : null}
           <form onSubmit={(evento) => void apresentarConsentimento(evento)}>
-            <small>IICCA-HXP-1.2 · NOVA MANIFESTAÇÃO</small>
+            <small>IICCA-HXP-1.3 · NOVA MANIFESTAÇÃO</small>
             <h2>Instrumento integrado único</h2>
             <p className="hx-module__notice">
               A nova versão só gera convite quando estiver disponível no Núcleo.
@@ -2695,6 +2719,26 @@ export function GestaoOperacional({
                 finalidade: evento.target.value
               })}
             /></label>
+            <label>Serviço efetivamente oferecido<select required
+              value={consentimento.servico_efetivo}
+              onChange={(evento) => setConsentimento({
+                ...consentimento,
+                servico_efetivo: evento.target.value
+              })}
+            >
+              <option value="">Selecione o serviço</option>
+              <option value="ATENDIMENTO_PSICOLOGICO">Atendimento psicológico</option>
+              <option value="TREINAMENTO_REGULATORIO">Treinamento regulatório</option>
+            </select></label>
+            <label>Programa ou atividade específica<input required
+              minLength={3}
+              maxLength={180}
+              value={consentimento.programa}
+              onChange={(evento) => setConsentimento({
+                ...consentimento,
+                programa: evento.target.value
+              })}
+            /></label>
             <fieldset className="hx-integrated-resources">
               <legend>Recursos planejados para esta atividade</legend>
               {([
@@ -2704,14 +2748,14 @@ export function GestaoOperacional({
                 ["audio", "Áudio"],
                 ["video", "Imagem e vídeo"],
                 ["replay", "Reprodução histórica"],
-                ["relatorio", "Relatório individual"],
+                ["relatorio", "Relatório individual devido (informativo)"],
                 ["longitudinal", "Acompanhamento longitudinal"],
-                ["coletivo", "Indicador coletivo anonimizado"],
-                ["pesquisa", "Pesquisa científica"]
+                ["coletivo", "Produto coletivo condicionado à ficha do programa"]
               ] as const).map(([campo, rotulo]) => (
                 <label key={campo}>
                   <input
                     type="checkbox"
+                    disabled={campo === "relatorio"}
                     checked={consentimento[campo]}
                     onChange={(evento) => setConsentimento((atual) => {
                       const proximo = {
@@ -2742,6 +2786,60 @@ export function GestaoOperacional({
                 </label>
               ))}
             </fieldset>
+            {(["TELEMETRIA", "LONGITUDINAL", "INDICADOR_COLETIVO"] as const)
+              .filter((codigo) => ({
+                TELEMETRIA: consentimento.telemetria,
+                LONGITUDINAL: consentimento.longitudinal,
+                INDICADOR_COLETIVO: consentimento.coletivo
+              })[codigo])
+              .map((codigo) => (
+                <fieldset className="hx-integrated-resources" key={codigo}>
+                  <legend>Ficha concreta · {codigo.replaceAll("_", " ")}</legend>
+                  <p>Documente o programa antes do convite. A ficha será lida pelo
+                    participante, preservada na cópia e exigida pelo Núcleo.</p>
+                  <label>Regime da operação<select required
+                    value={fichasDoPrograma[codigo]?.regime ?? ""}
+                    onChange={(evento) => setFichasDoPrograma((atual) => ({
+                      ...atual,
+                      [codigo]: {
+                        ...(atual[codigo] ?? {}),
+                        regime: evento.target.value
+                      }
+                    }))}
+                  >
+                    <option value="">Selecione após classificar a finalidade</option>
+                    <option value="DEVER_PROFISSIONAL_DOCUMENTADO">Dever profissional documentado</option>
+                    <option value="CONTRATO_DOCUMENTADO">Contrato aplicável ao titular documentado</option>
+                    <option value="OBRIGACAO_LEGAL_DOCUMENTADA">Obrigação legal documentada</option>
+                    {codigo === "INDICADOR_COLETIVO" && (
+                      <option value="CONSENTIMENTO_ESPECIFICO">Consentimento específico para o produto</option>
+                    )}
+                  </select></label>
+                  {([
+                    ["finalidade", "Finalidade desta operação"],
+                    ["dados", "Dados usados"],
+                    ["fundamento", "Fundamento para estes dados e serviço"],
+                    ["destinatarios", "Destinatários autorizados"],
+                    ["criterio_de_retencao", "Critério de guarda e revisão"],
+                    ["consequencia_da_recusa", "Consequência da recusa ou revogação"],
+                    ...(codigo === "INDICADOR_COLETIVO"
+                      ? [["produto_coletivo", "Produto coletivo protegido"]] as const
+                      : [])
+                  ] as readonly (readonly [string, string])[]).map(([campo, rotulo]) => (
+                    <label key={campo}>{rotulo}<textarea required minLength={4}
+                      maxLength={600}
+                      value={fichasDoPrograma[codigo]?.[campo] ?? ""}
+                      onChange={(evento) => setFichasDoPrograma((atual) => ({
+                        ...atual,
+                        [codigo]: {
+                          ...(atual[codigo] ?? {}),
+                          [campo]: evento.target.value
+                        }
+                      }))}
+                    /></label>
+                  ))}
+                </fieldset>
+              ))}
             {consentimento.audio || consentimento.video ? (
               <label>Política de armazenamento da mídia<select
                 value={consentimento.politica_de_retencao}

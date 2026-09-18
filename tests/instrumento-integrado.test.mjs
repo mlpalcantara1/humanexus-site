@@ -35,11 +35,24 @@ test("versão genérica exige atos independentes sem ativar a versão candidata"
   assert.doesNotMatch(componente, /defaultChecked|localStorage|sessionStorage/);
 });
 
-test("novos convites pedem a versão 1.2 sem recuar silenciosamente à 1.1", async () => {
+test("novos convites pedem a versão integral 1.3 sem recuar à 1.1/1.2", async () => {
   const gestao = await fonte("components/gestao-operacional.tsx");
-  assert.match(gestao, /versao_do_instrumento: "1\.2"/);
+  assert.match(gestao, /versao_do_instrumento: "1\.3"/);
+  assert.match(gestao, /servico_efetivo: consentimento\.servico_efetivo/);
+  assert.match(gestao, /fichas_do_programa: Object\.fromEntries/);
+  assert.match(gestao, /setFichasDoPrograma\(\{\}\)/);
   assert.match(gestao, /Se ainda estiver em revisão, nenhuma manifestação será criada/);
   assert.doesNotMatch(gestao, /IICCA-HXP-1\.1 · RESPOSTA ÚNICA/);
+});
+
+test("contexto e fichas concretas aparecem na leitura e na cópia integral", async () => {
+  const componente = await fonte("components/instrumento-integrado.tsx");
+  const pdf = await fonte("lib/instrumento-integrado-pdf.ts");
+  assert.match(componente, /Finalidades concretas deste programa/);
+  assert.match(componente, /contextoDaApresentacao\.fichas_do_programa/);
+  assert.match(componente, /Ficha do programa: \$\{codigo\}/);
+  assert.match(pdf, /manifestacao\.contexto_json/);
+  assert.match(pdf, /Ficha do programa: \$\{valor\(codigo\)\}/);
 });
 
 test("somente AUTORIZO e NÃO AUTORIZO são respostas visíveis", async () => {

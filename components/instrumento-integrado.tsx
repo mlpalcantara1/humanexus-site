@@ -85,6 +85,7 @@ type DecisaoRegistrada = {
 };
 type Copia = {
   instrumento: Consulta["instrumento"];
+  identificacao?: Consulta["identificacao"];
   identificacao_institucional?: { razao_social?: string; cnpj?: string };
   manifestacao: {
     confirmado_em: string;
@@ -92,6 +93,7 @@ type Copia = {
     hash_das_decisoes: string;
     integridade_sha256: string;
     politica_de_retencao: string;
+    contexto_json: Record<string, unknown> | string;
     estado_consolidado_json: Registro | string;
   };
   decisoes: DecisaoRegistrada[];
@@ -510,11 +512,24 @@ export function InstrumentoIntegrado() {
 
   function baixarTextoIntegral() {
     if (!consulta) return;
+    const contexto = json<Record<string, unknown>>(
+      consulta.apresentacao.contexto_json ?? {}
+    );
+    const fichas = (contexto.fichas_do_programa ?? {}) as
+      Record<string, Record<string, string>>;
     const linhas = [
       consulta.instrumento.titulo,
       `${consulta.instrumento.codigo} · versão ${consulta.instrumento.versao}`,
       `Integridade do documento: ${consulta.instrumento.hash_do_documento}`,
       `Finalidade apresentada: ${consulta.identificacao.finalidade}`,
+      ...(consulta.instrumento.versao === "1.3" ? [
+        `Serviço efetivo: ${String(contexto.servico_efetivo ?? "")}`,
+        `Programa: ${String(contexto.programa ?? "")}`,
+        ...Object.entries(fichas).flatMap(([codigo, ficha]) => [
+          `Ficha do programa: ${codigo}`,
+          ...Object.entries(ficha).map(([campo, valor]) => `${campo}: ${valor}`)
+        ])
+      ] : []),
       ...consulta.instrumento.secoes.flatMap((secao, indice) => [
         "",
         `${indice + 1}. ${secao.titulo}`,
@@ -593,6 +608,9 @@ export function InstrumentoIntegrado() {
   const contextoDaApresentacao = contexto
     ? json<Record<string, unknown>>(contexto)
     : {};
+  const fichasDaApresentacao = (
+    contextoDaApresentacao.fichas_do_programa ?? {}
+  ) as Record<string, Record<string, string>>;
   const confirmado = Boolean(copia)
     || consulta.apresentacao.estado === "CONFIRMADO";
   const secoesComEscolha = consulta.instrumento.secoes.filter(
@@ -688,7 +706,29 @@ export function InstrumentoIntegrado() {
           <article><small>{consulta.identificacao.rotulo_do_cliente}</small><strong>{consulta.identificacao.cliente}</strong></article>
           <article><small>FINALIDADE</small><strong>{consulta.identificacao.finalidade}</strong></article>
           <article><small>VERSÃO</small><strong>{consulta.instrumento.versao}</strong></article>
+          {consulta.instrumento.versao === "1.3" && <>
+            <article><small>SERVIÇO</small><strong>{rotulo(String(
+              contextoDaApresentacao.servico_efetivo ?? ""
+            ))}</strong></article>
+            <article><small>PROGRAMA</small><strong>{String(
+              contextoDaApresentacao.programa ?? ""
+            )}</strong></article>
+          </>}
         </section>
+        {consulta.instrumento.versao === "1.3" &&
+          Object.entries(fichasDaApresentacao).length > 0 && (
+          <section className="hxiicca__documento" aria-label="Fichas do programa">
+            <h2>Finalidades concretas deste programa</h2>
+            {Object.entries(fichasDaApresentacao).map(([codigo, ficha]) => (
+              <article className="hxiicca__secao-conteudo" key={codigo}>
+                <h3>{rotulo(codigo)}</h3>
+                {Object.entries(ficha).map(([campo, valor]) => (
+                  <p key={campo}><strong>{rotulo(campo)}:</strong> {valor}</p>
+                ))}
+              </article>
+            ))}
+          </section>
+        )}
         <button type="button" onClick={baixarTextoIntegral}>
           BAIXAR TEXTO INTEGRAL ANTES DE DECIDIR
         </button>

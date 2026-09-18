@@ -676,7 +676,7 @@ test("fechamento da Fase 1 preserva contexto e remove bloqueios cadastrais", asy
   assert.match(management, /elegibilidade_nova/);
   assert.match(management, /Organização de vínculo reutilizada/);
   assert.match(management, /replay: false/);
-  assert.match(management, /relatorio: false/);
+  assert.match(management, /relatorio: true/);
   assert.match(management, /longitudinal: false/);
 
   assert.match(invites, /selecionarParticipanteExistente/);

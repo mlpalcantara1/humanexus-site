@@ -199,3 +199,58 @@ test("cópia sintética sem ato não rotula escolha obrigatória como informativ
   assert.ok(texto.includes("Nenhuma decisão registrada nesta seção"));
   assert.ok(!texto.includes("Seção informativa sem decisão independente"));
 });
+
+test("PDF 1.3 preserva serviço, programa e ficha concreta apresentada", async (t) => {
+  if (spawnSync("pdftotext", ["-v"]).error) {
+    t.skip("pdftotext indisponível");
+    return;
+  }
+  const gerar = await gerador();
+  const pdf = await gerar({
+    identificacao: { participante: "Participante Sintético" },
+    instrumento: {
+      codigo: "IICCA-HXP-1.3", versao: "1.3",
+      titulo: "Instrumento integral de teste",
+      secoes: [{
+        codigo: "AVISO_PRIVACIDADE", titulo: "Aviso completo de teste",
+        texto: "Finalidades e direitos sintéticos completos.",
+        natureza: "CIENCIA", classificacao: "ESSENCIAL",
+        consequencia: "Ciência não autoriza sensor.",
+        decisao_obrigatoria: true, opcoes: ["LI_E_ESTOU_CIENTE"]
+      }, {
+        codigo: "TERMOS_USO", titulo: "Termos completos de teste",
+        texto: "Uso da plataforma sem renúncia de direitos.",
+        natureza: "CONCORDANCIA", classificacao: "ESSENCIAL",
+        consequencia: "Recusa impede uso desta atividade.",
+        decisao_obrigatoria: true, opcoes: ["CONCORDO", "NAO_CONCORDO"]
+      }]
+    },
+    manifestacao: {
+      confirmado_em: "2026-09-17T12:00:00Z",
+      identificador_do_participante: "id-sintetico",
+      contexto_json: {
+        servico_efetivo: "TREINAMENTO_REGULATORIO",
+        programa: "Programa sintético",
+        fichas_do_programa: {
+          INDICADOR_COLETIVO: {
+            finalidade: "Síntese sintética",
+            destinatarios: "Pessoa autorizada sintética"
+          }
+        }
+      },
+      estado_consolidado_json: {}
+    },
+    decisoes: [], fluxo_simplificado: false
+  });
+  if (process.env.HXP_IICCA_13_PDF_QA) {
+    await writeFile(process.env.HXP_IICCA_13_PDF_QA, pdf);
+  }
+  const resultado = spawnSync("pdftotext", ["-", "-"], { input: pdf });
+  assert.equal(resultado.status, 0);
+  const texto = resultado.stdout.toString();
+  for (const trecho of [
+    "Participante Sintético", "TREINAMENTO REGULATORIO", "Programa sintético",
+    "INDICADOR COLETIVO", "Pessoa autorizada sintética",
+    "Aviso completo de teste", "Termos completos de teste"
+  ]) assert.ok(texto.includes(trecho), `Trecho ausente: ${trecho}`);
+});

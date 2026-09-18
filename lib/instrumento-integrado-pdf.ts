@@ -89,6 +89,9 @@ export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
   novaPagina();
   const instrumento = objeto(copia.instrumento);
   const manifestacao = objeto(copia.manifestacao);
+  const identificacao = objeto(copia.identificacao);
+  const contexto = objeto(manifestacao.contexto_json);
+  const fichasDoPrograma = objeto(contexto.fichas_do_programa);
   const identificacaoInstitucional = objeto(copia.identificacao_institucional);
   const secoes = Array.isArray(instrumento.secoes)
     ? instrumento.secoes as Registro[]
@@ -166,6 +169,35 @@ export async function gerarPdfInstrumentoIntegrado(copia: Registro) {
         : "Seções e decisões registradas"
     );
   doc.moveDown(1);
+  if (String(instrumento.versao) === "1.3") {
+    doc.fillColor("#172126").font("Helvetica-Bold").fontSize(10)
+      .text("Contexto identificado da apresentação");
+    doc.moveDown(.5);
+    for (const [rotulo, conteudo] of [
+      ["Participante", identificacao.participante],
+      ["Identificador", manifestacao.identificador_do_participante],
+      ["Serviço", contexto.servico_efetivo],
+      ["Programa", contexto.programa]
+    ]) {
+      doc.fillColor("#52615f").font("Helvetica").fontSize(8)
+        .text(`${rotulo}: ${valor(conteudo)}`, { width: 500 });
+    }
+    doc.moveDown(1);
+    for (const [codigo, valorDaFicha] of Object.entries(fichasDoPrograma)) {
+      garantir(100);
+      doc.fillColor("#a17c3e").font("Helvetica-Bold").fontSize(9)
+        .text(`Ficha do programa: ${valor(codigo)}`);
+      doc.moveDown(.35);
+      for (const [campo, conteudo] of Object.entries(objeto(valorDaFicha))) {
+        garantir(32);
+        doc.fillColor("#52615f").font("Helvetica").fontSize(7.8)
+          .text(`${valor(campo)}: ${valor(conteudo)}`, {
+            width: 500, lineGap: 2
+          });
+      }
+      doc.moveDown(.8);
+    }
+  }
   secoes.forEach((secao, indice) => {
     const decisao = porCodigo.get(String(secao.codigo));
     garantir(122);
