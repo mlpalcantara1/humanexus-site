@@ -55,6 +55,13 @@ test("contexto e fichas concretas aparecem na leitura e na cópia integral", asy
   assert.match(pdf, /Ficha do programa: \$\{valor\(codigo\)\}/);
 });
 
+test("instrumento integral impede tradução automática que altere nome e termos jurídicos", async () => {
+  const componente = await fonte("components/instrumento-integrado.tsx");
+  const pagina = await fonte("app/(participant)/instrumento-integrado/[id]/page.tsx");
+  assert.match(componente, /hxiicca--escolhas-independentes"[\s\S]*?translate="no" data-portugues-preservar="true"/);
+  assert.match(pagina, /google: "notranslate"/);
+});
+
 test("somente AUTORIZO e NÃO AUTORIZO são respostas visíveis", async () => {
   const componente = await fonte("components/instrumento-integrado.tsx");
   assert.match(componente, /name="resposta-operacional-unica"/);

@@ -688,7 +688,8 @@ export function InstrumentoIntegrado() {
 
   if (!consulta.fluxo_simplificado) {
     return (
-      <main className="hxiicca hxiicca--escolhas-independentes">
+      <main className="hxiicca hxiicca--escolhas-independentes"
+        translate="no" data-portugues-preservar="true">
         <header className="hxiicca__hero">
           <div className="hxiicca__brand"><span>HX</span><div>
             <strong>HUMANEXUS</strong><small>ACESSO DO PARTICIPANTE</small>
