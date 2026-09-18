@@ -1,5 +1,7 @@
 "use client";
 
+import { JornadaParticipante } from "@/components/jornada-participante";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ModuloDaPlataforma } from "@/components/modulo-integrado";
@@ -4110,6 +4112,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           {visao !== "coletivo" && podeConduzirOperacao ? <RegistroIntegradoDaSessao
             estado={estado as unknown as Registro} revisar={visao === "relatorio"}
           /> : null}
+          {podeConduzirOperacao && ["visao-geral", "formulacao"].includes(visao) ? <JornadaParticipante key={`${estado.organizacao.identificador}:${estado.participante.identificador}:${estado.sessao.identificador}`} organizacao={String(estado.organizacao.identificador)} participante={String(estado.participante.identificador)} sessao={String(estado.sessao.identificador)} somentePreparacao={visao !== "formulacao"} /> : null}
           {conteudoDaVisao}
           {operacional && acaoPrincipal !== "PREPARAR_SESSAO"
             ? controleDeBaseline

@@ -8,6 +8,7 @@ import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multi
 import { resolverIdentidadeDocumental } from "@/lib/humanexus-report-authority";
 import { portuguesVisivel } from "@/lib/portugues-visivel";
 import { substituirUrlPreservandoContexto } from "@/lib/contexto-navegacao";
+import { JornadaParticipante } from "@/components/jornada-participante";
 import { HistoricoInstrumentoParticipante } from "@/components/historico-instrumento-participante";
 
 type Registro = Record<string, unknown>;
@@ -625,13 +626,10 @@ export function GestaoOperacional({
       const anamneses = Array.isArray(participanteAtual?.anamneses)
         ? participanteAtual.anamneses as Registro[]
         : [];
-      const anamneseAtual = anamneses.find(
-        (item) =>
-          String(item.identificador) === estado.identificador_da_anamnese
-          && item.estado === "CONCLUIDA_PELO_PARTICIPANTE"
-          && Number(item.percentual_concluido) === 100
-          && item.validade_cientifica === "VALIDA"
-      );
+      const elegiveis = anamneses.filter((item) => item.estado === "CONCLUIDA_PELO_PARTICIPANTE"
+        && Number(item.percentual_concluido) === 100 && item.validade_cientifica === "VALIDA");
+      const anamneseAtual = elegiveis.find((item) => String(item.identificador) === estado.identificador_da_anamnese)
+        ?? (!estado.identificador_da_anamnese && elegiveis.length === 1 ? elegiveis[0] : null);
       const ctrAtual = corpo.vinculos_ctr_thx_validados?.find(
         (item: Registro) =>
           String(item.codigo_do_ctr) === estado.codigo_do_ctr
@@ -1358,6 +1356,7 @@ export function GestaoOperacional({
               <div><small>Organização de vínculo / unidade</small><strong>{tipoAtendimento === "PARTICULAR" ? "Cliente particular · não se aplica" : `${texto(profissionais.empresa, "Vínculo não informado")} · ${texto(profissionais.unidade)}`}</strong></div>
               <div><small>Setor / equipe</small><strong>{tipoAtendimento === "PARTICULAR" ? "Não se aplica" : `${texto(profissionais.setor)} · ${texto(profissionais.equipe)}`}</strong></div>
               <div><small>Situação</small><strong>{item.ativo ? "ATIVO" : "INATIVO"}</strong></div>
+              {objeto(item.proxima_acao).href ? <div><small>Próxima ação</small><a href={String(objeto(item.proxima_acao).href)}>{String(objeto(item.proxima_acao).titulo)}</a></div> : null}
               <div><small>Versão</small><strong>{texto(perfil.numero_da_versao, "1")}</strong></div>
               <div className="hx-management-actions">
                 <button
@@ -2211,6 +2210,7 @@ export function GestaoOperacional({
         </>
       ) : null}
 
+      {modulo === "clientes" && participanteSelecionado && organizacaoAtual?.identificador && permissoesDoUsuario.includes("conduzir_sessao") ? <JornadaParticipante key={`${organizacaoAtual.identificador}:${participanteSelecionado}`} organizacao={String(organizacaoAtual.identificador)} participante={participanteSelecionado} /> : null}
       {modulo === "clientes" ? (
         <div className="hx-management-grid hx-management-grid--participants">
           <form className="hx-record-form" onSubmit={async (evento: FormEvent) => {
