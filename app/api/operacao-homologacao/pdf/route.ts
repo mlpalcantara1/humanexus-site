@@ -1,3 +1,4 @@
+import { GET as obterPdfPreservado } from "@/app/api/governanca-relatorios/[id]/pdf/route";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { requisitarNucleoAutenticado } from "@/lib/humanexus-core";
@@ -120,6 +121,13 @@ export async function GET(request: Request) {
           headers: { "cache-control": "private, no-store" }
         }
       );
+    }
+    // Novas versões integradas usam exatamente o PDF imutável aprovado.
+    const contextoPreservado = typeof relatorio.contexto_json === "string"
+      ? JSON.parse(relatorio.contexto_json) as Registro
+      : relatorio.contexto_json as Registro | undefined;
+    if (contextoPreservado?.registro_integrado) {
+      return obterPdfPreservado(request, { params: Promise.resolve({ id: String(relatorio.identificador) }) });
     }
     const execucao = execucoes.find((item) => item.identificador_da_sessao === sessao.identificador) ?? null;
     const sessaoId = String(sessao.identificador);

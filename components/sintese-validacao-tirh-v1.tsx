@@ -204,7 +204,7 @@ export function SinteseValidacaoTirhV1({
           <small>IIRH operacional</small>
           <strong data-iirh-authoritative-state={disponibilidadeContinua.iirh.modo}>{iirhAutoritativo.calculado
             ? `${numero(iirhAutoritativo.valor, 1)} / 100`
-            : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}</strong>
+            : texto(iirhAutoritativo.estado, "NÃO CALCULÁVEL")}</strong>
           <span>{rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)} · {texto(
             iirhAutoritativo.calculado
               ? iirhAutoritativo.estado
@@ -216,7 +216,7 @@ export function SinteseValidacaoTirhV1({
           <small>Zona Operacional</small>
           <strong data-zone-authoritative-state={disponibilidadeContinua.zona.modo}>{zonaAutoritativa.classificada
             ? rotuloDaZona(zonaAutoritativa.codigo)
-            : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}</strong>
+            : texto(zonaAutoritativa.estado, "NÃO CLASSIFICÁVEL")}</strong>
           <span>{rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)} · {texto(
             zonaAutoritativa.classificada
               ? zonaAutoritativa.estado

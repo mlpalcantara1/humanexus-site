@@ -131,6 +131,39 @@ test("fim da atualidade remove imediatamente qualquer apresentação viva", () =
   assert.equal(ausente.vetores[0].value, null);
 });
 
+test("janela atual indisponível remove valor sem esperar a cadência visual", () => {
+  const vivo = estabilizarApresentacaoRegulatoria(null, revisao(5, 45, "ZI"), 0);
+  const janelaEmFormacao = estabilizarApresentacaoRegulatoria(
+    vivo,
+    revisao(6, null, null, vivo.contexto, true, "ATUAL", "ATUAL"),
+    100
+  );
+
+  assert.equal(janelaEmFormacao.iirh, null);
+  assert.equal(janelaEmFormacao.zona, null);
+  assert.equal(janelaEmFormacao.vetores[0].value, null);
+  assert.equal(janelaEmFormacao.maiorOrdemCanonica, 6);
+});
+
+test("resposta atrasada não contorna uma mudança de modo", () => {
+  const atual = estabilizarApresentacaoRegulatoria(null, revisao(8, 62, "ZI"), 1_000);
+  const atrasada = estabilizarApresentacaoRegulatoria(
+    atual,
+    revisao(
+      7,
+      42,
+      "ZA",
+      atual.contexto,
+      true,
+      "REFERENCIA_CONGELADA",
+      "REFERENCIA_CONGELADA"
+    ),
+    2_000
+  );
+
+  assert.equal(atrasada, atual);
+});
+
 test("janela visual descarta revisão antiga sem alterar a evidência", () => {
   let estado = estabilizarApresentacaoRegulatoria(null, revisao(1, 40, "ZI"), 0);
   estado = estabilizarApresentacaoRegulatoria(

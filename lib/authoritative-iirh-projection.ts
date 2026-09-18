@@ -156,6 +156,8 @@ export function resolverDisponibilidadeContinuaIirhZona(
     leitura.disponibilidade_continua_iirh_zona
   );
   const janelaAtual = objeto(contrato.janela_atual);
+  const estadoAtual = objeto(contrato.estado_atual);
+  const referenciaCongelada = objeto(contrato.referencia_congelada);
   const contratoAutoritativo = contrato.autoridade === "NUCLEO_HUMANEXUS"
     && contrato.portal_autorizado_a_calcular === false
     && contrato.zona_derivada_do_iirh === false;
@@ -165,6 +167,8 @@ export function resolverDisponibilidadeContinuaIirhZona(
       contrato,
       contratoAutoritativo: false,
       janelaAtual,
+      estadoAtual,
+      referenciaCongelada,
       iirh: indicadorContinuo(
         { modo: "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA", registro: null },
         resolverIirhAutoritativo
@@ -172,16 +176,109 @@ export function resolverDisponibilidadeContinuaIirhZona(
       zona: indicadorContinuo(
         { modo: "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA", registro: null },
         resolverZonaAutoritativa
+      ),
+      iirhReferencia: indicadorContinuo(
+        { modo: "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA", registro: null },
+        resolverIirhAutoritativo
+      ),
+      zonaReferencia: indicadorContinuo(
+        { modo: "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA", registro: null },
+        resolverZonaAutoritativa
       )
     };
   }
+
+  const contratoIirhLegado = objeto(contrato.iirh);
+  const contratoZonaLegado = objeto(contrato.zona);
+  const modoIirhLegado = modoAutoritativo(contratoIirhLegado.modo);
+  const modoZonaLegado = modoAutoritativo(contratoZonaLegado.modo);
+  const origemAtualLegada = {
+    identificador_da_sessao: contrato.identificador_da_sessao,
+    fase: janelaAtual.fase,
+    momento: janelaAtual.momento
+  };
+  const iirhAtual = Object.keys(objeto(estadoAtual.iirh)).length
+    ? estadoAtual.iirh
+    : modoIirhLegado === "ATUAL" || modoIirhLegado === "SNAPSHOT_SELECIONADO"
+      ? contrato.iirh
+      : {
+          modo: "ATUAL",
+          registro: janelaAtual.iirh_atual,
+          origem: origemAtualLegada
+        };
+  const zonaAtual = Object.keys(objeto(estadoAtual.zona)).length
+    ? estadoAtual.zona
+    : modoZonaLegado === "ATUAL" || modoZonaLegado === "SNAPSHOT_SELECIONADO"
+      ? contrato.zona
+      : {
+          modo: "ATUAL",
+          registro: janelaAtual.zona_atual,
+          origem: origemAtualLegada
+        };
+  const iirhReferencia = Object.keys(objeto(referenciaCongelada.iirh)).length
+    ? referenciaCongelada.iirh
+    : modoIirhLegado === "REFERENCIA_CONGELADA"
+      || modoIirhLegado === "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA"
+      ? contrato.iirh
+      : {
+          modo: "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA",
+          registro: null
+        };
+  const zonaReferencia = Object.keys(objeto(referenciaCongelada.zona)).length
+    ? referenciaCongelada.zona
+    : modoZonaLegado === "REFERENCIA_CONGELADA"
+      || modoZonaLegado === "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA"
+      ? contrato.zona
+      : {
+          modo: "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA",
+          registro: null
+        };
 
   return {
     contrato,
     contratoAutoritativo: true,
     janelaAtual,
-    iirh: indicadorContinuo(contrato.iirh, resolverIirhAutoritativo),
-    zona: indicadorContinuo(contrato.zona, resolverZonaAutoritativa)
+    estadoAtual,
+    referenciaCongelada,
+    iirh: indicadorContinuo(iirhAtual, resolverIirhAutoritativo),
+    zona: indicadorContinuo(zonaAtual, resolverZonaAutoritativa),
+    iirhReferencia: indicadorContinuo(
+      iirhReferencia,
+      resolverIirhAutoritativo
+    ),
+    zonaReferencia: indicadorContinuo(
+      zonaReferencia,
+      resolverZonaAutoritativa
+    )
+  };
+}
+
+/**
+ * Lê o snapshot corrente já materializado pelo Núcleo. Nenhum campo é
+ * calculado, completado ou combinado no Portal.
+ */
+export function resolverActiveTirhSnapshot(leituraCientifica: unknown) {
+  const leitura = objeto(leituraCientifica);
+  const snapshot = objeto(leitura.active_tirh_snapshot);
+  const liveState = objeto(snapshot.live_state);
+  const referenceState = objeto(snapshot.reference_state);
+  const canonicalState = objeto(snapshot.canonical_state);
+  const contratoAutoritativo = snapshot.authority === "NUCLEO_HUMANEXUS"
+    && snapshot.portal_authorized_to_calculate === false
+    && snapshot.reference_used_as_live_fallback === false;
+  return {
+    snapshot,
+    liveState: contratoAutoritativo ? liveState : {},
+    referenceState: contratoAutoritativo ? referenceState : {},
+    canonicalState: contratoAutoritativo ? canonicalState : {},
+    vectors: contratoAutoritativo ? objeto(liveState.vectors) : {},
+    resultant: contratoAutoritativo ? objeto(liveState.resultant) : {},
+    trend: contratoAutoritativo ? objeto(liveState.trend) : {},
+    revision: contratoAutoritativo ? textoAutoritativo(snapshot.revision) : null,
+    sequence: contratoAutoritativo && typeof snapshot.sequence === "number"
+      ? snapshot.sequence
+      : null,
+    authoritative: contratoAutoritativo
   };
 }
 

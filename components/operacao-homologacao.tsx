@@ -19,7 +19,7 @@ import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 import { ControleGravacaoMultimodal } from "@/components/controle-gravacao-multimodal";
 import { CockpitOperacionalVivo } from "@/components/cockpit-operacional-vivo";
 import { SinteseValidacaoTirhV1 } from "@/components/sintese-validacao-tirh-v1";
-import { ConsolidacaoProfissionalDoRelatorio } from "@/components/consolidacao-profissional-relatorio";
+import { RegistroIntegradoDaSessao } from "@/components/registro-integrado-sessao";
 import { ResultadoRegulatorioDaSessao } from "@/components/resultado-regulatorio-da-sessao";
 import { HxSectionHeader } from "@/components/hx-design-system";
 import {
@@ -295,13 +295,15 @@ function DisponibilidadeContinuaIirhZona({ estado }: { estado: Estado }) {
     disponibilidade.janelaAtual.estado,
     "ESTADO DA JANELA NÃO INFORMADO"
   );
-  const indicadores = [
+  const indicadoresAtuais = [
     {
       codigo: "IIRH",
       disponibilidade: disponibilidade.iirh,
       valor: disponibilidade.iirh.projecao.calculado
         ? `${disponibilidade.iirh.projecao.valor} · ${texto(disponibilidade.iirh.projecao.unidade, "0-100")}`
-        : rotuloDaDisponibilidadeAutoritativa(disponibilidade.iirh.modo),
+        : portuguesVisivel(
+            texto(disponibilidade.iirh.projecao.estado, "INDISPONÍVEL")
+          ),
       motivoAtual: texto(
         objeto(disponibilidade.janelaAtual.iirh_atual).motivo,
         texto(
@@ -322,7 +324,9 @@ function DisponibilidadeContinuaIirhZona({ estado }: { estado: Estado }) {
               "CLASSIFICAÇÃO AUTORITATIVA"
             )
           )
-        : rotuloDaDisponibilidadeAutoritativa(disponibilidade.zona.modo),
+        : portuguesVisivel(
+            texto(disponibilidade.zona.projecao.estado, "INDISPONÍVEL")
+          ),
       motivoAtual: texto(
         objeto(disponibilidade.janelaAtual.zona_atual).motivo,
         texto(
@@ -330,6 +334,34 @@ function DisponibilidadeContinuaIirhZona({ estado }: { estado: Estado }) {
           "O Núcleo não informou um motivo adicional para o estado atual."
         )
       ),
+      atributo: "zona"
+    }
+  ] as const;
+  const indicadoresDeReferencia = [
+    {
+      codigo: "IIRH",
+      disponibilidade: disponibilidade.iirhReferencia,
+      valor: disponibilidade.iirhReferencia.projecao.calculado
+        ? `${disponibilidade.iirhReferencia.projecao.valor} · ${texto(disponibilidade.iirhReferencia.projecao.unidade, "0-100")}`
+        : rotuloDaDisponibilidadeAutoritativa(
+            disponibilidade.iirhReferencia.modo
+          ),
+      atributo: "iirh"
+    },
+    {
+      codigo: "ZONA",
+      disponibilidade: disponibilidade.zonaReferencia,
+      valor: disponibilidade.zonaReferencia.projecao.classificada
+        ? texto(
+            disponibilidade.zonaReferencia.projecao.codigo,
+            texto(
+              disponibilidade.zonaReferencia.projecao.nome,
+              "CLASSIFICAÇÃO AUTORITATIVA"
+            )
+          )
+        : rotuloDaDisponibilidadeAutoritativa(
+            disponibilidade.zonaReferencia.modo
+          ),
       atributo: "zona"
     }
   ] as const;
@@ -346,18 +378,38 @@ function DisponibilidadeContinuaIirhZona({ estado }: { estado: Estado }) {
         descricao="O Núcleo seleciona os snapshots elegíveis. O Portal apenas projeta o contrato autoritativo e nunca calcula ou reclassifica estes indicadores."
       />
       <div className="hx-resultant__core">
-        {indicadores.map((indicador) => {
+        {indicadoresAtuais.map((indicador) => {
+          const origem = indicador.disponibilidade.origem;
+          const origemVisivel = origem.identificadorDaSessao
+            ? `Fase ${texto(origem.fase, "NÃO INFORMADA")} · sessão ${origem.identificadorDaSessao} · ${dataLegivel(origem.momento)}`
+            : `Fase ${faseDaJanela} · origem atual não informada pelo Núcleo.`;
+          return (
+            <div
+              key={`atual-${indicador.codigo}`}
+              data-authoritative-role="CURRENT_STATE"
+              data-iirh-authoritative-state={indicador.atributo === "iirh" ? indicador.disponibilidade.modo : undefined}
+              data-zone-authoritative-state={indicador.atributo === "zona" ? indicador.disponibilidade.modo : undefined}
+            >
+              <small>{indicador.codigo} · ESTADO ATUAL</small>
+              <strong>{indicador.valor}</strong>
+              <span>{portuguesVisivel(indicador.motivoAtual)}</span>
+              <span>{origemVisivel}</span>
+            </div>
+          );
+        })}
+        {indicadoresDeReferencia.map((indicador) => {
           const origem = indicador.disponibilidade.origem;
           const origemVisivel = origem.identificadorDaSessao
             ? `Fase ${texto(origem.fase, "NÃO INFORMADA")} · sessão ${origem.identificadorDaSessao} · ${dataLegivel(origem.momento)}`
             : "Nenhuma referência autoritativa elegível foi fornecida pelo Núcleo.";
           return (
             <div
-              key={indicador.codigo}
-              data-iirh-authoritative-state={indicador.atributo === "iirh" ? indicador.disponibilidade.modo : undefined}
-              data-zone-authoritative-state={indicador.atributo === "zona" ? indicador.disponibilidade.modo : undefined}
+              key={`referencia-${indicador.codigo}`}
+              data-authoritative-role="FROZEN_REFERENCE"
+              data-iirh-reference-state={indicador.atributo === "iirh" ? indicador.disponibilidade.modo : undefined}
+              data-zone-reference-state={indicador.atributo === "zona" ? indicador.disponibilidade.modo : undefined}
             >
-              <small>{indicador.codigo}</small>
+              <small>{indicador.codigo} · REFERÊNCIA CONGELADA</small>
               <strong>{indicador.valor}</strong>
               <span>{rotuloDaDisponibilidadeAutoritativa(indicador.disponibilidade.modo)}</span>
               <span>{origemVisivel}</span>
@@ -367,8 +419,8 @@ function DisponibilidadeContinuaIirhZona({ estado }: { estado: Estado }) {
       </div>
       <div className="hx-limit-consolidated">
         <strong>JANELA ATUAL · {portuguesVisivel(faseDaJanela)} · {portuguesVisivel(estadoDaJanela)}</strong>
-        <span>IIRH atual: {portuguesVisivel(indicadores[0].motivoAtual)}</span>
-        <span>Zona atual: {portuguesVisivel(indicadores[1].motivoAtual)}</span>
+        <span>IIRH atual: {portuguesVisivel(indicadoresAtuais[0].motivoAtual)}</span>
+        <span>Zona atual: {portuguesVisivel(indicadoresAtuais[1].motivoAtual)}</span>
       </div>
       {!disponibilidade.contratoAutoritativo ? (
         <p className="hx-module__error" role="status">
@@ -1822,15 +1874,15 @@ function ResultanteRegulatoria({ estado, resumida = false }: { estado: Estado; r
         <div><small>Sentido contextual</small><strong>{valorVetorial(valorDoRegistro(resultado ?? {}, "sentido_contextual", "sentido_predominante", "sentido"), "NÃO DETERMINÁVEL")}</strong></div>
         <div><small>Cobertura global</small><strong>{formatarPercentualCanonico(resultado?.cobertura)}</strong></div>
         <div><small>Confiabilidade global</small><strong>{formatarPercentualCanonico(resultado?.confianca ?? resultado?.confiabilidade)}</strong></div>
-        <div data-iirh-authoritative-state={disponibilidadeContinua.iirh.modo}><small>IIRH</small><strong>{iirhAutoritativo.calculado ? `${iirhAutoritativo.valor} · ${texto(iirhAutoritativo.unidade, "0-100")}` : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}</strong><span>{rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}</span></div>
-        <div data-zone-authoritative-state={disponibilidadeContinua.zona.modo}><small>Zona Operacional</small><strong>{zonaAutoritativa.classificada ? texto(zonaAutoritativa.codigo ?? zonaAutoritativa.nome) : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}</strong><span>{rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)}</span></div>
+        <div data-iirh-authoritative-state={disponibilidadeContinua.iirh.modo}><small>IIRH · estado atual</small><strong>{iirhAutoritativo.calculado ? `${iirhAutoritativo.valor} · ${texto(iirhAutoritativo.unidade, "0-100")}` : portuguesVisivel(texto(iirhAutoritativo.estado, "NÃO CALCULÁVEL"))}</strong><span>ESTADO ATUAL</span></div>
+        <div data-zone-authoritative-state={disponibilidadeContinua.zona.modo}><small>Zona Operacional · estado atual</small><strong>{zonaAutoritativa.classificada ? texto(zonaAutoritativa.codigo ?? zonaAutoritativa.nome) : portuguesVisivel(texto(zonaAutoritativa.estado, "NÃO CLASSIFICÁVEL"))}</strong><span>ESTADO ATUAL</span></div>
         <div><small>Versão científica</small><strong>{texto(valorDoRegistro(resultado ?? {}, "versao_cientifica", "versao_da_biblioteca", "versao_do_motor", "versao_algoritmo"), "PRESERVADA NO NÚCLEO")}</strong></div>
       </div>
       <div className="hx-limit-consolidated">
         <strong>IIRH · AUTORIDADE DO NÚCLEO</strong>
         <span>{iirhAutoritativo.calculado
           ? `Estado ${texto(iirhAutoritativo.estado)} · ${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)} · valor autoritativo preservado sem recálculo no Portal.`
-          : `${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)} · ${texto(objeto(disponibilidadeContinua.janelaAtual.iirh_atual).motivo, "Motivo autoritativo não informado pelo Núcleo.")}`}</span>
+          : `Estado atual ${texto(iirhAutoritativo.estado, "NÃO CALCULÁVEL")} · ${texto(iirhAutoritativo.motivo ?? objeto(disponibilidadeContinua.janelaAtual.iirh_atual).motivo, "Motivo autoritativo não informado pelo Núcleo.")}`}</span>
       </div>
       <div className="hx-limit-consolidated"><strong>MOTIVO CONSOLIDADO</strong><span>{texto(motivo, resultado ? "Consulte vetores contribuintes, tensões e compensações na rastreabilidade." : "As evidências disponíveis não são suficientes para compor a Resultante.")}</span></div>
       {!resumida && resultado ? <details className="hx-technical-details"><summary>Vetores contribuintes, preservados, comprometidos, tensões e compensações</summary><pre>{JSON.stringify(estruturaVisivelEmPortugues(resultado), null, 2)}</pre></details> : null}
@@ -2563,7 +2615,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       "humanexus:baseline-atualizado",
       atualizarBaseline
     );
+    window.addEventListener("humanexus:registro-validado", atualizarBaseline);
     return () => {
+      window.removeEventListener("humanexus:registro-validado", atualizarBaseline);
       window.removeEventListener(
         "humanexus:baseline-atualizado",
         atualizarBaseline
@@ -3385,7 +3439,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     if (comando === "ABRIR_REPLAY") {
       return selecionarVisao("replay");
     }
-    if (comando === "GERAR_RELATORIO") return void comandos.relatorio();
+    if (comando === "GERAR_RELATORIO") return selecionarVisao("relatorio");
     void comandos.operacional(comando);
   };
 
@@ -3794,32 +3848,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           <section className="hx-report-operation">
             <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{tituloDoRelatorioAtual}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(relatorioAtual?.criado_em)} · ${cicloDoRelatorioAtual.estado.replaceAll("_", " ")}` : "A geração materializa apenas o rascunho técnico; a autoria profissional vem depois."}</span></div>
             <div>
-              <Botao
-                forte
-                onClick={comandos.relatorio}
-                disabled={
-                  ocupado !== ""
-                  || !estadoOperacionalTerminal(estado.sessao.estado)
-                  || Boolean(relatorioAtual)
-                }
-              >{ocupado === "relatorio" ? "GERANDO RASCUNHO TÉCNICO…" : "GERAR RASCUNHO TÉCNICO"}</Botao>
-              {cicloDoRelatorioAtual.completa
-                && ["RASCUNHO", "EM_ELABORACAO"].includes(
-                  String(relatorioAtual?.estado_documental ?? "")
-                ) ? (
-                  <Botao
-                    onClick={() => transicionarRelatorioAtual("AGUARDANDO_VALIDACAO")}
-                    disabled={ocupado !== ""}
-                  >{ocupado === "transicionar-relatorio" ? "ENVIANDO PARA VALIDAÇÃO…" : "ENVIAR PARA VALIDAÇÃO"}</Botao>
-                ) : null}
-              {cicloDoRelatorioAtual.completa
-                && String(relatorioAtual?.estado_documental ?? "") === "AGUARDANDO_VALIDACAO" ? (
-                  <Botao
-                    forte
-                    onClick={() => transicionarRelatorioAtual("CONCLUIDO")}
-                    disabled={ocupado !== ""}
-                  >{ocupado === "transicionar-relatorio" ? "VALIDANDO RELATÓRIO FINAL…" : "VALIDAR RELATÓRIO FINAL"}</Botao>
-                ) : null}
+              <p>Revise e confirme no registro integrado acima. A confirmação cria a versão profissional, o PDF e a atualização longitudinal.</p>
               {cicloDoRelatorioAtual.finalDisponivel
                 && !indisponibilidadeDoDocumentoFinal ? (
                   <>
@@ -3878,12 +3907,6 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             validarClaimTirhV1={(payload) => {
               void enviar("validar-claim-tirh-v1", { payload });
             }}
-          />
-          <ConsolidacaoProfissionalDoRelatorio
-            estado={estado as unknown as Registro}
-            relatorio={relatorioAtual}
-            ocupado={ocupado === "consolidar-relatorio"}
-            consolidar={comandos.consolidarRelatorio}
           />
           <RelatorioCanonicoV1 estado={estado} relatorio={relatorioAtual} />
           <Rastreabilidade estado={estado} />
@@ -4084,6 +4107,9 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           {visao === "coletivo"
             ? null
             : <DisponibilidadeContinuaIirhZona estado={estado} />}
+          {visao !== "coletivo" && podeConduzirOperacao ? <RegistroIntegradoDaSessao
+            estado={estado as unknown as Registro} revisar={visao === "relatorio"}
+          /> : null}
           {conteudoDaVisao}
           {operacional && acaoPrincipal !== "PREPARAR_SESSAO"
             ? controleDeBaseline

@@ -17,10 +17,10 @@ test("Premium Experience consolida uma única camada visual compartilhada", () =
   assert.match(css, /\.hx-live-intelligence-instruments/);
 });
 
-test("HUD preserva oito posições dinâmicas canônicas e responde sem rolagem horizontal", () => {
+test("HUD preserva dez posições atuais e de referência sem rolagem horizontal", () => {
   assert.match(
     css,
-    /HUMANEXUS PREMIUM EXPERIENCE 2\.0[\s\S]*?\.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(8,[^;]+\);/
+    /HUMANEXUS PREMIUM EXPERIENCE 2\.0[\s\S]*?\.hx-live-hud\s*\{[\s\S]*?grid-template-columns:\s*repeat\(10,[^;]+\);/
   );
   assert.match(css, /\.hx-live-hud\s*\{[\s\S]*?grid-auto-rows:\s*minmax\(88px, auto\);/);
   assert.match(css, /\.hx-live-hud > div\s*\{[\s\S]*?min-height:\s*88px;[\s\S]*?height:\s*auto;/);

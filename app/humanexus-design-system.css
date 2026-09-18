@@ -1016,6 +1016,16 @@
     linear-gradient(180deg, rgba(205, 178, 116, .105), rgba(205, 178, 116, .018));
 }
 
+.hx-live-hud > div.is-reference {
+  background:
+    linear-gradient(180deg, rgba(111, 130, 130, .09), rgba(111, 130, 130, .012));
+}
+
+.hx-live-hud > div.is-reference strong {
+  color: #b8c2bd;
+  font-size: 12px;
+}
+
 .hx-live-hud > div.is-decision[data-regulatory-state="NAO_CLASSIFICAVEL"] {
   background:
     linear-gradient(180deg, rgba(181, 142, 84, .095), rgba(181, 142, 84, .012));
@@ -1693,7 +1703,7 @@
 }
 
 .hx-live-hud {
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   grid-auto-rows: minmax(88px, auto);
 }
 

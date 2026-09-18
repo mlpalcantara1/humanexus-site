@@ -203,7 +203,10 @@ test("interface documental bloqueia repetição e confirma persistência autorit
   assert.match(componente, /disabled=\{ocupado \|\| conteudoJaPreservado\}/);
   assert.match(cockpit, /acaoDocumentalEmAndamento/);
   assert.match(cockpit, /consolidacaoConfirmadaNaAutoridade/);
-  assert.match(cockpit, /ENVIANDO PARA VALIDAÇÃO/);
+  const integrado = await source("components/registro-integrado-sessao.tsx");
+  assert.match(integrado, /Confirmar e criar versão validada/);
+  assert.match(integrado, /confirmacao_final: true/);
+  assert.match(integrado, /assinatura_do_rascunho/);
   assert.match(cockpit, /role="dialog"/);
   assert.match(cockpit, /Justificativa profissional obrigatória/);
   assert.match(cockpit, /CONFIRMAR ENVIO PARA VALIDAÇÃO/);
@@ -222,7 +225,7 @@ test("interface documental bloqueia repetição e confirma persistência autorit
   assert.match(rota, /conciliarRelatorioPersistido/);
 });
 
-test("fluxo humano é Síntese, Consolidação, Relatório e bloqueia PDF final incompleto", async () => {
+test("fluxo humano mantém registro integrado único e bloqueia PDF final incompleto", async () => {
   const cockpit = await source("components/operacao-homologacao.tsx");
   const pdf = await source("app/api/operacao-homologacao/pdf/route.ts");
   const bloco = cockpit.slice(
@@ -230,12 +233,12 @@ test("fluxo humano é Síntese, Consolidação, Relatório e bloqueia PDF final 
     cockpit.indexOf("const visaoColetiva")
   );
   const sintese = bloco.indexOf("<SinteseValidacaoTirhV1");
-  const consolidacao = bloco.indexOf("<ConsolidacaoProfissionalDoRelatorio");
   const relatorio = bloco.indexOf("<RelatorioCanonicoV1");
-  assert.ok(sintese >= 0 && consolidacao > sintese && relatorio > consolidacao);
+  assert.ok(sintese >= 0 && relatorio > sintese);
+  assert.equal(cockpit.split("<RegistroIntegradoDaSessao").length - 1, 1);
+  assert.doesNotMatch(cockpit, /<ConsolidacaoProfissionalDoRelatorio/);
   assert.match(cockpit, /cicloDoRelatorioAtual\.finalDisponivel/);
-  assert.match(cockpit, /ENVIAR PARA VALIDAÇÃO/);
-  assert.match(cockpit, /VALIDAR RELATÓRIO FINAL/);
+  assert.match(cockpit, /confirme no registro integrado/);
   assert.match(pdf, /RELATORIO_FINAL_INDISPONIVEL/);
   assert.match(pdf, /status: 409/);
 });

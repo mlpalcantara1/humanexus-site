@@ -8,6 +8,8 @@ export type VetorRegulatorioVisual = {
   value: number | null;
   macrofield?: string | null;
   trend?: string | null;
+  status?: string | null;
+  reason?: string | null;
 };
 
 export type RevisaoRegulatoriaVisual = {
@@ -36,7 +38,9 @@ function vetoresIguais(
       && vetor.name === comparado?.name
       && vetor.value === comparado?.value
       && vetor.macrofield === comparado?.macrofield
-      && vetor.trend === comparado?.trend;
+      && vetor.trend === comparado?.trend
+      && vetor.status === comparado?.status
+      && vetor.reason === comparado?.reason;
   });
 }
 
@@ -106,14 +110,28 @@ export function estabilizarApresentacaoRegulatoria(
     || estado.contexto !== revisao.contexto
     || revisao.ativo === false
     || opcoes.forcarCanonico === true
-    || estado.iirhModo !== revisao.iirhModo
-    || estado.zonaModo !== revisao.zonaModo
   ) {
     return novoEstado(revisao, agora);
   }
 
   // Uma resposta atrasada nunca regressa a apresentação nem a janela recente.
   if (revisao.ordemCanonica < estado.maiorOrdemCanonica) return estado;
+
+  const calculabilidadeDoIirhMudou = (estado.iirh == null)
+    !== (revisao.iirh == null);
+  const classificacaoDaZonaMudou = (estado.zona == null)
+    !== (revisao.zona == null);
+  if (
+    estado.iirhModo !== revisao.iirhModo
+    || estado.zonaModo !== revisao.zonaModo
+    || calculabilidadeDoIirhMudou
+    || classificacaoDaZonaMudou
+  ) {
+    // A cadência nunca pode manter um valor corrente depois de o Núcleo
+    // declarar a janela pendente/indisponível, nem atrasar o primeiro valor
+    // que acabou de se tornar autoritativamente calculável.
+    return novoEstado(revisao, agora);
+  }
 
   const janelaRetida = estado.revisoesNaJanela.filter(
     (item) => agora - item.recebidaEm <= JANELA_VISUAL_REGULATORIA_MS

@@ -38,7 +38,10 @@ const nextConfig: NextConfig = {
     if (emHomologacao) {
       seguranca.push({ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" });
     }
-    return [{ source: "/(.*)", headers: seguranca }];
+    return [
+      { source: "/(.*)", headers: seguranca },
+      { source: "/plataforma/cockpit-vivo", headers: [{ key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(), browsing-topics=()" }] }
+    ];
   }
 };
 

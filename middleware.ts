@@ -19,7 +19,9 @@ export function middleware(request: NextRequest) {
   resposta.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   resposta.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=()"
+    request.nextUrl.pathname === "/plataforma/cockpit-vivo"
+      ? "camera=(), microphone=(self), geolocation=()"
+      : "camera=(), microphone=(), geolocation=()"
   );
 
   const privada = ROTAS_PRIVADAS.some(

@@ -185,6 +185,8 @@ export type HxVectorAxis = {
   value: number | null;
   macrofield?: string | null;
   trend?: string | null;
+  status?: string | null;
+  reason?: string | null;
 };
 
 function pontoNoEixo(indice: number, total: number, raio: number) {

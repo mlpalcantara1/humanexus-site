@@ -10,3 +10,5 @@ node_modules/
 tests/
 public/media/*.mov
 public/media/*-web.mov
+
+.next-session-test/

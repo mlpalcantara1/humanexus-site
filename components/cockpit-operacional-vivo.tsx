@@ -33,11 +33,13 @@ import {
 import { snapshotOficialDeFaseAplicavel } from "@/lib/cockpit-scientific-authority";
 import { HX_CHART_COLORS as C } from "@/lib/humanexus-chart-theme";
 import {
+  resolverActiveTirhSnapshot,
   resolverDisponibilidadeContinuaIirhZona,
   resolverIirhAutoritativo,
   rotuloDaDisponibilidadeAutoritativa
 } from "@/lib/authoritative-iirh-projection";
 import { estruturaVisivelEmPortugues, portuguesVisivel } from "@/lib/portugues-visivel";
+import { resolverPreflightTirh } from "@/lib/tirh-operational-readiness";
 
 type Registro = Record<string, unknown>;
 type Fonte = Registro & {
@@ -131,6 +133,10 @@ const METRICAS_TAREFA_RAPIDA = [
   ["precision", "Precisão"], ["motor_error", "Erro motor"],
   ["performance_stability", "Estabilidade de desempenho"]
 ] as const;
+const METRICAS_ESTAVEIS_DA_TAREFA = new Set([
+  "complexity", "ambiguity", "error_consequence", "coordination",
+  "communication", "symbolic_context"
+]);
 
 const ROTULOS_DAS_ZONAS: Record<string, string> = {
   ZO: "Zona Ótima",
@@ -1050,8 +1056,9 @@ function DinamicaDaInteligenciaRegulatoria({
   trajetoria: Registro;
   trajetoriaCalculada: boolean;
 }) {
+  const vetorEvolucao = objeto(trajetoria.vetor_evolucao);
   const estadoDaResultante = texto(resultante.estado, "NÃO CALCULÁVEL").toUpperCase();
-  const resultanteDisponivel = ["CALCULAVEL", "CONFLITANTE", "PARCIAL"].includes(
+  const resultanteDisponivel = ["CALCULAVEL", "PLENA", "CONFLITANTE", "PARCIAL"].includes(
     estadoDaResultante.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
   );
   const magnitude = resultanteCalculada
@@ -1099,7 +1106,7 @@ function DinamicaDaInteligenciaRegulatoria({
         ) : null}
       </div>
       <dl>
-        <div><dt>Resultante</dt><dd>{resultanteCalculada
+        <div><dt>Resultante</dt><dd>{resultanteCalculada && typeof resultante.valor === "number"
           ? `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`
           : resultanteDisponivel
             ? texto(resultante.estado, "PARCIAL")
@@ -1107,7 +1114,10 @@ function DinamicaDaInteligenciaRegulatoria({
         <div><dt>Direção</dt><dd>{texto(resultante.direcao_funcional ?? resultante.vetor_dominante, "NÃO DETERMINÁVEL")}</dd></div>
         <div><dt>Sentido</dt><dd>{texto(resultante.sentido_contextual, "NÃO DETERMINÁVEL")}</dd></div>
         <div><dt>Tendência</dt><dd>{trajetoriaCalculada
-          ? texto(trajetoria.valor)
+          ? [
+              texto(vetorEvolucao.nivel_longitudinal, ""),
+              texto(vetorEvolucao.direcao, "")
+            ].filter(Boolean).join(" · ")
           : "AINDA NÃO INFERÍVEL"}</dd></div>
         {resultanteDisponivel ? (
           <>
@@ -1153,6 +1163,9 @@ export function CockpitOperacionalVivo({
   const [estadoDaEvidencia, setEstadoDaEvidencia] = useState("");
   const [qualificacoes, setQualificacoes] = useState<Record<string, Record<string, string | boolean>>>({});
   const [perfilTarefa, setPerfilTarefa] = useState<Record<string, string>>({});
+  const [identificadorDaTarefa, setIdentificadorDaTarefa] = useState("");
+  const [capturasNarrativasSelecionadas, setCapturasNarrativasSelecionadas] = useState<string[]>([]);
+  const [ajustesNarrativos, setAjustesNarrativos] = useState<Record<string, string>>({});
   const cockpit = objeto(estado.cockpit_operacional);
   const sessao = objeto(cockpit.sessao);
   const contextoSessao = objeto(estado.sessao);
@@ -1162,9 +1175,24 @@ export function CockpitOperacionalVivo({
   const semanticaDasAncorasDisponivel = regraQualificacao.semantica_das_ancoras_disponivel === true;
   const catalogoEvidencia = lista(evidenciasProfissionais.catalogo);
   const pendentesEvidencia = lista(evidenciasProfissionais.pendentes);
+  const pendentesNarrativos = pendentesEvidencia.filter(
+    (item) => String(item.tipo ?? "") === "NARRATIVA"
+  );
+  const pendentesEstruturados = pendentesEvidencia.filter(
+    (item) => String(item.tipo ?? "ESTRUTURADA") !== "NARRATIVA"
+  );
   const qualificadasEvidencia = lista(evidenciasProfissionais.qualificadas);
+  const autoHidratacao = objeto(evidenciasProfissionais.auto_hidratacao);
   const faseDaPaleta = objeto(evidenciasProfissionais.fase_atual);
   const capturaRapidaPermitida = String(faseDaPaleta.estado ?? "").toUpperCase() === "INICIADA" || String(faseDaPaleta.estado ?? "").toUpperCase() === "INICIADO";
+  const faseProfissionalExistente = ["BASELINE", "PRE", "TREINO", "POS"].includes(
+    String(faseDaPaleta.codigo ?? "").toUpperCase()
+  );
+  const metricasDisponiveisNoPerfil = faseProfissionalExistente
+    ? METRICAS_TAREFA_RAPIDA
+    : METRICAS_TAREFA_RAPIDA.filter(([codigo]) => (
+        METRICAS_ESTAVEIS_DA_TAREFA.has(codigo)
+      ));
   const atalhosEvidencia = ATALHOS_EVIDENCIA
     .map((codigo) => catalogoEvidencia.find((item) => String(item.codigo ?? "") === codigo))
     .filter(Boolean) as Registro[];
@@ -1172,6 +1200,28 @@ export function CockpitOperacionalVivo({
     componente, rotulo: ROTULOS_COMPONENTES_EVIDENCIA[componente],
     itens: catalogoEvidencia.filter((item) => String(item.componente ?? "") === componente)
   })).filter((grupo) => grupo.itens.length);
+  const perfilTarefaAtual = objeto(
+    evidenciasProfissionais.perfil_tarefa_atual
+  );
+  const perfilHidratado = objeto(perfilTarefaAtual.task);
+  const identificadorDaTarefaHidratado = texto(
+    perfilTarefaAtual.identificador_da_tarefa
+    ?? objeto(sessao.contexto_operacional).tarefa,
+    ""
+  );
+  const assinaturaDoPerfilHidratado = JSON.stringify(perfilHidratado);
+
+  useEffect(() => {
+    setPerfilTarefa(Object.fromEntries(
+      Object.entries(perfilHidratado).map(([codigo, valor]) => [
+        codigo,
+        String(valor ?? "")
+      ])
+    ));
+    setIdentificadorDaTarefa(identificadorDaTarefaHidratado);
+    // A assinatura muda apenas quando o Núcleo muda o perfil elegível.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assinaturaDoPerfilHidratado, identificadorDaTarefaHidratado]);
 
   const capturarEvidenciaRapida = async (codigoEvidencia: string) => {
     if (evidenciaEmEnvio || !capturaRapidaPermitida) return;
@@ -1188,6 +1238,45 @@ export function CockpitOperacionalVivo({
       await registrarEvidenciaProfissional({ acao: "EVENTO_TAREFA", codigo_evento: codigoEvento });
       setEstadoDaEvidencia(`${codigoEvento} PRESERVADO NO INSTANTE ATUAL`);
     } finally { setEvidenciaEmEnvio(false); }
+  };
+  const validarNarrativasSelecionadas = async (
+    decisao: "CONFIRMAR" | "REJEITAR"
+  ) => {
+    if (!capturasNarrativasSelecionadas.length || evidenciaEmEnvio) return;
+    setEvidenciaEmEnvio(true);
+    try {
+      await registrarEvidenciaProfissional({
+        acao: "VALIDAR_LOTE",
+        identificadores_das_capturas: capturasNarrativasSelecionadas,
+        decisao
+      });
+      setEstadoDaEvidencia(
+        `${capturasNarrativasSelecionadas.length} REGISTRO(S) ${
+          decisao === "CONFIRMAR" ? "CONFIRMADO(S)" : "REJEITADO(S)"
+        }`
+      );
+      setCapturasNarrativasSelecionadas([]);
+    } finally {
+      setEvidenciaEmEnvio(false);
+    }
+  };
+  const ajustarNarrativa = async (identificador: string) => {
+    const valor = String(ajustesNarrativos[identificador] ?? "").trim();
+    if (!valor || evidenciaEmEnvio) return;
+    setEvidenciaEmEnvio(true);
+    try {
+      await registrarEvidenciaProfissional({
+        acao: "AJUSTAR_NARRATIVA",
+        identificador_da_captura: identificador,
+        texto: valor
+      });
+      setAjustesNarrativos((atual) => ({ ...atual, [identificador]: "" }));
+      setEstadoDaEvidencia(
+        "REGISTRO AJUSTADO · CONTEÚDO BRUTO PRESERVADO · AINDA PENDENTE"
+      );
+    } finally {
+      setEvidenciaEmEnvio(false);
+    }
   };
   const atualizarQualificacao = (id: string, campo: string, valor: string | boolean) => {
     setQualificacoes((atual) => ({ ...atual, [id]: { ...(atual[id] ?? {}), [campo]: valor } }));
@@ -1235,12 +1324,19 @@ export function CockpitOperacionalVivo({
   };
   const salvarPerfilDaTarefa = async () => {
     const metricas = Object.fromEntries(Object.entries(perfilTarefa).filter(([, valor]) => valor !== "").map(([codigo, valor]) => [codigo, Number(valor)]));
+    if (!identificadorDaTarefa.trim()) {
+      setEstadoDaEvidencia("IDENTIFIQUE A TAREFA OU O PROTOCOLO ANTES DE PRESERVAR"); return;
+    }
     if (!Object.keys(metricas).length || evidenciaEmEnvio) {
       setEstadoDaEvidencia("PERFIL DA TAREFA SEM VALORES EXPLÍCITOS"); return;
     }
     setEvidenciaEmEnvio(true);
     try {
-      await registrarEvidenciaProfissional({ acao: "PERFIL_TAREFA", metricas });
+      await registrarEvidenciaProfissional({
+        acao: "PERFIL_TAREFA",
+        identificador_da_tarefa: identificadorDaTarefa.trim(),
+        metricas
+      });
       setEstadoDaEvidencia("PERFIL DA TAREFA PRESERVADO · SEM DEFAULT");
       setPerfilTarefa({}); setPerfilTarefaAberto(false);
     } finally { setEvidenciaEmEnvio(false); }
@@ -1393,16 +1489,25 @@ export function CockpitOperacionalVivo({
   const indicadoresInr = lista(inrExperimental.indicadores);
   const iirh = objeto(leituraCientifica.iirh);
   const iirhAutoritativo = resolverIirhAutoritativo(
-    Object.keys(iirhTirhV1).length ? iirhTirhV1 : iirh
+    Object.keys(iirh).length ? iirh : iirhTirhV1
   );
   const zona = objeto(leituraCientifica.zona);
   const disponibilidadeContinua = resolverDisponibilidadeContinuaIirhZona(
     leituraCientifica
   );
+  const activeTirhSnapshot = resolverActiveTirhSnapshot(leituraCientifica);
   const iirhContinuo = disponibilidadeContinua.iirh.projecao;
   const zonaContinua = disponibilidadeContinua.zona.projecao;
+  const iirhReferencia = disponibilidadeContinua.iirhReferencia.projecao;
+  const zonaReferencia = disponibilidadeContinua.zonaReferencia.projecao;
   const resultante = objeto(leituraCientifica.resultante);
   const trajetoria = objeto(leituraCientifica.trajetoria);
+  const trajetoriaAutoritativa = Object.keys(activeTirhSnapshot.trend).length
+    ? activeTirhSnapshot.trend
+    : trajetoria;
+  const vetorEvolucaoAutoritativo = objeto(
+    trajetoriaAutoritativa.vetor_evolucao
+  );
   const elegibilidadeTemporal = objeto(
     leituraCientifica.elegibilidade_temporal_da_zona
   );
@@ -1438,9 +1543,11 @@ export function CockpitOperacionalVivo({
     && !modoHistorico
     && texto(configuracaoBasal.identificador_da_sessao, "") === identificadorDaSessao;
   const coberturaVetorial = objeto(leituraCientifica.cobertura_vetorial);
-  const resultanteAutoritativa = Object.keys(resultanteTirhV1).length
-    ? resultanteTirhV1
-    : resultante;
+  const resultanteAutoritativa = Object.keys(activeTirhSnapshot.resultant).length
+    ? activeTirhSnapshot.resultant
+    : Object.keys(resultanteTirhV1).length
+      ? resultanteTirhV1
+      : resultante;
   const definicoesVetoriais = lista(ciencia.vetores).filter(
     (definicao) => codigoVetorial(definicao) !== "VEV"
   );
@@ -1454,10 +1561,13 @@ export function CockpitOperacionalVivo({
     const estadoVetorial = estadosVetoriaisPorDefinicao.get(identificador)
       ?? estadosVetoriaisPorDefinicao.get(codigo);
     const vetorBasal = vetoresBasaisPorCodigo.get(codigo);
+    const vetorDoSnapshotAtivo = objeto(activeTirhSnapshot.vectors[codigo]);
     const vetorCanonicoDoContexto = leituraAoVivo
-      ? Object.keys(tirhV1AoVivo).length
-        ? objeto(objeto(tirhV1AoVivo.vetores)[codigo])
-        : estadoVetorial
+      ? Object.keys(vetorDoSnapshotAtivo).length
+        ? vetorDoSnapshotAtivo
+        : Object.keys(tirhV1AoVivo).length
+          ? objeto(objeto(tirhV1AoVivo.vetores)[codigo])
+          : estadoVetorial
       : snapshotDeFaseCanonico
         ? Object.keys(tirhV1).length
           ? objeto(objeto(tirhV1.vetores)[codigo])
@@ -1474,15 +1584,43 @@ export function CockpitOperacionalVivo({
       name: nomeVetorial(definicao),
       macrofield: macrocampoVetorial(definicao),
       trend: tendenciaVetorialCanonica(vetorCanonicoDoContexto),
-      value: valorNormalizado(vetorCanonicoDoContexto?.magnitude)
+      status: texto(
+        vetorCanonicoDoContexto?.status
+        ?? vetorCanonicoDoContexto?.estado,
+        "AUSENTE"
+      ),
+      reason: texto(
+        vetorCanonicoDoContexto?.reason
+        ?? vetorCanonicoDoContexto?.motivo,
+        ""
+      ) || null,
+      value: valorNormalizado(
+        vetorCanonicoDoContexto?.value
+        ?? vetorCanonicoDoContexto?.magnitude
+      )
     };
   });
+  const preflightTirh = resolverPreflightTirh({
+    autoHidratacao,
+    fontes,
+    vetores: radarVetorialCanonico,
+    resultante: resultanteAutoritativa,
+    tendencia: trajetoriaAutoritativa
+  });
+  const comandoIniciaFase = /^INICIAR_(PRE|TREINO|POS)$/.test(
+    acaoPrincipalVisivel
+  );
+  const inicioDeFaseBloqueado = comandoIniciaFase
+    && preflightTirh.inicio.estado === "BLOCKED";
+  const vetoresPendentesDeAcaoProfissional = preflightTirh.vetores.filter(
+    (item) => item.estado !== "READY" && item.resolucao === "PROFISSIONAL"
+  );
   const cienciaAtualAdmissivel = leituraAoVivo
     || configuracaoBasalCanonica
     || snapshotDeFaseCanonico
     || (modoHistorico && Object.keys(tirhV1).length > 0);
   const iirhCanonicoCalculado = cienciaAtualAdmissivel
-    && iirhAutoritativo.calculado;
+    && iirhContinuo.calculado;
   const estadoDaResultanteAutoritativa = String(
     resultanteAutoritativa.estado ?? ""
   ).toUpperCase();
@@ -1499,12 +1637,8 @@ export function CockpitOperacionalVivo({
       && typeof resultanteAutoritativa.valor === "number"
     )
   );
-  const zonaCanonicaCalculada = cienciaAtualAdmissivel && (
-    Object.keys(tirhV1).length
-      ? zonaTirhV1.estado === "VALIDADA_PROFISSIONALMENTE"
-        && Boolean(zonaTirhV1.nome ?? zonaTirhV1.codigo)
-      : iirhCanonicoCalculado && Boolean(zona.nome ?? zona.codigo)
-  );
+  const zonaCanonicaCalculada = cienciaAtualAdmissivel
+    && zonaContinua.classificada;
   const iirhContinuoDisponivel = iirhContinuo.calculado;
   const zonaContinuaDisponivel = zonaContinua.classificada;
   const contextoDaApresentacaoRegulatoria = [
@@ -1513,17 +1647,20 @@ export function CockpitOperacionalVivo({
     identificadorDaSessao || "sem-sessao",
     faseCientificaAtual || (sessaoBaseline ? "BASELINE" : "SEM_FASE")
   ].join("|");
-  const ordemCanonicaDaApresentacao = new Date(String(
-    revisaoCientifica.calculado_em
-    ?? cockpit.polling_confirmado_em
-    ?? cockpit.atualizado_em
-    ?? 0
+  const ordemTemporalDaApresentacao = new Date(String(
+    activeTirhSnapshot.snapshot.updated_at
+      ?? revisaoCientifica.calculado_em
+      ?? cockpit.polling_confirmado_em
+      ?? cockpit.atualizado_em
+      ?? 0
   )).getTime();
+  const ordemCanonicaDaApresentacao = activeTirhSnapshot.sequence
+    ?? (Number.isFinite(ordemTemporalDaApresentacao)
+      ? ordemTemporalDaApresentacao
+      : 0);
   const revisaoRegulatoriaVisual: RevisaoRegulatoriaVisual = {
     contexto: contextoDaApresentacaoRegulatoria,
-    ordemCanonica: Number.isFinite(ordemCanonicaDaApresentacao)
-      ? ordemCanonicaDaApresentacao
-      : 0,
+    ordemCanonica: ordemCanonicaDaApresentacao,
     ativo: cienciaAtualAdmissivel
       || iirhContinuoDisponivel
       || zonaContinuaDisponivel,
@@ -1561,7 +1698,9 @@ export function CockpitOperacionalVivo({
         item.code,
         item.macrofield,
         item.value == null ? "nulo" : item.value,
-        item.trend ?? "sem-tendencia"
+        item.trend ?? "sem-tendencia",
+        item.status ?? "sem-estado",
+        item.reason ?? "sem-motivo"
       ].join(":"))
       .join("|")
   ].join("::");
@@ -1614,6 +1753,8 @@ export function CockpitOperacionalVivo({
   );
   const origemDoIirhContinuo = disponibilidadeContinua.iirh.origem;
   const origemDaZonaContinua = disponibilidadeContinua.zona.origem;
+  const origemDoIirhReferencia = disponibilidadeContinua.iirhReferencia.origem;
+  const origemDaZonaReferencia = disponibilidadeContinua.zonaReferencia.origem;
   const detalheDaOrigem = (origem: typeof origemDoIirhContinuo) => [
     origem.fase ? `fase ${origem.fase}` : null,
     origem.identificadorDaSessao
@@ -1623,15 +1764,25 @@ export function CockpitOperacionalVivo({
   ].filter(Boolean).join(" · ");
   const zonaCalculada = apresentacaoRegulatoria.zona != null;
   const zonaApresentada = apresentacaoRegulatoria.zona;
+  const iirhReferenciaDisponivel = iirhReferencia.calculado;
+  const zonaReferenciaDisponivel = zonaReferencia.classificada;
+  const estadoAtualDoIirh = texto(
+    iirhContinuo.estado,
+    "NÃO CALCULÁVEL"
+  ).replaceAll("_", " ");
+  const estadoAtualDaZona = texto(
+    zonaContinua.estado,
+    "NÃO CLASSIFICÁVEL"
+  ).replaceAll("_", " ");
   const componentesIirhAusentes = Array.isArray(
-    iirhTirhV1.componentes_ausentes
+    iirhContinuo.registro.componentes_ausentes
   )
-    ? iirhTirhV1.componentes_ausentes.map(String)
+    ? (iirhContinuo.registro.componentes_ausentes as unknown[]).map(String)
     : [];
   const precondicoesDaZonaAusentes = Array.isArray(
-    zona.precondicoes_nao_atendidas
+    zonaContinua.registro.precondicoes_nao_atendidas
   )
-    ? zona.precondicoes_nao_atendidas.map(String)
+    ? (zonaContinua.registro.precondicoes_nao_atendidas as unknown[]).map(String)
     : [];
   const vetoresDaResultanteAusentes = Array.isArray(
     resultanteAutoritativa.vetores_ausentes
@@ -1639,7 +1790,11 @@ export function CockpitOperacionalVivo({
     ? resultanteAutoritativa.vetores_ausentes.map(String)
     : [];
   const trajetoriaCalculada = (leituraAoVivo || snapshotDeFaseCanonico)
-    && trajetoria.valor != null;
+    && texto(trajetoriaAutoritativa.estado, "").toUpperCase() === "DISPONIVEL"
+    && ["CALCULAVEL", "CALCULADO", "VALIDO", "DISPONIVEL"].includes(
+      texto(vetorEvolucaoAutoritativo.estado, "").toUpperCase()
+    )
+    && typeof vetorEvolucaoAutoritativo.magnitude === "number";
   const leituraCientificaVisivel = iirhCalculado
     || zonaCalculada
     || resultanteCalculada
@@ -2109,7 +2264,9 @@ export function CockpitOperacionalVivo({
           {!zonaCanonicaCalculada ? (
             <span>
               Zona: {texto(
-                zonaTirhV1.motivo ?? zona.motivo,
+                zonaContinua.motivo
+                ?? zonaTirhV1.motivo
+                ?? zona.motivo,
                 precondicoesDaZonaAusentes.length
                   ? precondicoesDaZonaAusentes.join(" · ")
                   : "critérios semânticos multifonte e validação profissional ainda insuficientes"
@@ -2162,28 +2319,55 @@ export function CockpitOperacionalVivo({
 
       <section id="hx-decision-level" className="hx-live-hud" aria-label="Barra operacional decisória">
         <div className="is-decision" data-regulatory-state={disponibilidadeContinua.zona.modo}>
-          <small>ZONA</small>
+          <small>ZONA · ESTADO ATUAL</small>
           <strong>{zonaCalculada
             ? rotuloDaZona(zonaApresentada)
-            : rotuloDaDisponibilidadeAutoritativa(
-                disponibilidadeContinua.zona.modo
-              )}</strong>
+            : estadoAtualDaZona}</strong>
           {zonaCalculada
             ? <span>{rotuloDaDisponibilidadeAutoritativa(
                 disponibilidadeContinua.zona.modo
               )}{detalheDaOrigem(origemDaZonaContinua)
                 ? ` · ${detalheDaOrigem(origemDaZonaContinua)}`
                 : ""}</span>
-            : <button className="hx-live-hud__detail" type="button" onClick={abrirAnalitico}>Ver motivo</button>}
+            : <>
+                <span>{texto(
+                  zonaContinua.motivo,
+                  "O Núcleo ainda não classificou a janela atual."
+                ).replaceAll("_", " ")}</span>
+                <button className="hx-live-hud__detail" type="button" onClick={abrirAnalitico}>Ver motivo</button>
+              </>}
         </div>
         <div className="is-decision" data-regulatory-state={disponibilidadeContinua.iirh.modo}>
-          <small>IIRH</small>
+          <small>IIRH · ESTADO ATUAL</small>
           <strong data-iirh-authoritative-state={iirhContinuo.estadoNormalizado || "AUSENTE"}>{iirhCalculado
             ? `${numero(iirhApresentado, 1)} ${texto(iirhContinuo.unidade, "")}`
-            : naturezaDoIirh}</strong>
-          <span>{naturezaDoIirh}{detalheDaOrigem(origemDoIirhContinuo)
+            : estadoAtualDoIirh}</strong>
+          <span>{iirhCalculado
+            ? naturezaDoIirh
+            : texto(
+                iirhContinuo.motivo,
+                "O Núcleo ainda não calculou a janela atual."
+              ).replaceAll("_", " ")}{detalheDaOrigem(origemDoIirhContinuo)
             ? ` · ${detalheDaOrigem(origemDoIirhContinuo)}`
             : ""}</span>
+        </div>
+        <div className="is-reference" data-regulatory-state={disponibilidadeContinua.zonaReferencia.modo}>
+          <small>ZONA · REFERÊNCIA CONGELADA</small>
+          <strong>{zonaReferenciaDisponivel
+            ? rotuloDaZona(zonaReferencia.codigo ?? zonaReferencia.nome)
+            : "AGUARDANDO PRIMEIRA REFERÊNCIA VÁLIDA"}</strong>
+          <span>{zonaReferenciaDisponivel
+            ? detalheDaOrigem(origemDaZonaReferencia)
+            : "Nenhuma referência autoritativa elegível foi fornecida pelo Núcleo."}</span>
+        </div>
+        <div className="is-reference" data-regulatory-state={disponibilidadeContinua.iirhReferencia.modo}>
+          <small>IIRH · REFERÊNCIA CONGELADA</small>
+          <strong>{iirhReferenciaDisponivel
+            ? `${numero(iirhReferencia.valor, 1)} ${texto(iirhReferencia.unidade, "")}`
+            : "AGUARDANDO PRIMEIRA REFERÊNCIA VÁLIDA"}</strong>
+          <span>{iirhReferenciaDisponivel
+            ? detalheDaOrigem(origemDoIirhReferencia)
+            : "Nenhuma referência autoritativa elegível foi fornecida pelo Núcleo."}</span>
         </div>
         <div>
           <small>EEG</small>
@@ -2228,12 +2412,89 @@ export function CockpitOperacionalVivo({
         </div>
       </section>
 
+      {!sessaoFinalizada ? (
+        <section className="hx-tirh-preflight" aria-label="Pré-flight operacional TIRH">
+          <header>
+            <div>
+              <small>PRÉ-FLIGHT TIRH</small>
+              <strong>{preflightTirh.inicio.estado === "READY"
+                ? "PRONTO PARA INICIAR"
+                : "INÍCIO BLOQUEADO"}</strong>
+            </div>
+            <span>
+              Cobertura científica atual: {preflightTirh.estado}. Referência
+              permanece congelada; resultados vivos surgem somente durante as
+              janelas e quando o Núcleo autorizar.
+            </span>
+          </header>
+          {preflightTirh.inicio.bloqueios.length ? (
+            <aside className="hx-tirh-preflight__blocking" role="alert">
+              <strong>Complete antes de iniciar a fase</strong>
+              <ul>{preflightTirh.inicio.bloqueios.map((item) => (
+                <li key={item.codigo}><b>{item.rotulo}:</b> {item.motivo}</li>
+              ))}</ul>
+              {preflightTirh.inicio.bloqueios.some(
+                (item) => item.codigo === "PERFIL_TAREFA"
+              ) ? <button type="button" onClick={() => setPerfilTarefaAberto(true)}>
+                Completar perfil mínimo da tarefa
+              </button> : null}
+            </aside>
+          ) : null}
+          {preflightTirh.inicio.avisos.length ? (
+            <p className="hx-tirh-preflight__warning">
+              Fontes físicas indisponíveis: {preflightTirh.inicio.avisos
+                .map((item) => item.rotulo).join(" · ")}. A sessão pode operar
+              com ausência explícita, mas os resultados dependentes permanecerão bloqueados.
+            </p>
+          ) : null}
+          {capturaRapidaPermitida && vetoresPendentesDeAcaoProfissional.length ? (
+            <aside className="hx-tirh-preflight__professional" role="status">
+              <strong>Complete enquanto a fase está em execução</strong>
+              <span>
+                {vetoresPendentesDeAcaoProfissional.map((item) => (
+                  `${item.rotulo}: ${item.motivo}`
+                )).join(" · ")}
+              </span>
+              <button type="button" onClick={() => setPerfilTarefaAberto(true)}>
+                Registrar somente o que foi observado
+              </button>
+            </aside>
+          ) : null}
+          <div className="hx-tirh-preflight__sources">
+            {preflightTirh.fontes.map((item) => (
+              <article key={item.codigo} data-state={item.estado}>
+                <b>{item.rotulo}</b><strong>{item.estado}</strong>
+                <p>{item.motivo}</p><small>RESOLUÇÃO {item.resolucao}</small>
+              </article>
+            ))}
+          </div>
+          <details>
+            <summary>
+              Cobertura progressiva dos nove vetores, Resultante e Tendência · {
+                preflightTirh.vetores.filter((item) => item.estado !== "READY").length
+              } vetor(es) ainda dependente(s) da fase
+            </summary>
+            <div className="hx-tirh-preflight__vectors">
+              {[...preflightTirh.vetores, preflightTirh.resultante, preflightTirh.tendencia]
+                .map((item) => (
+                  <article key={item.codigo} data-state={item.estado}>
+                    <b>{item.rotulo}</b><strong>{item.estado}</strong>
+                    <p>{item.motivo}</p><small>RESOLUÇÃO {item.resolucao}</small>
+                  </article>
+                ))}
+            </div>
+          </details>
+        </section>
+      ) : null}
+
       <section id="hx-evidence-professional-palette" className="hx-evidence-palette" aria-label="Paleta profissional de evidências TIRH">
         <header className="hx-evidence-palette__header">
-          <div><small>EVIDÊNCIA PROFISSIONAL + TAREFA</small><strong>Um clique durante a execução. Qualificação depois.</strong><span>O clique preserva o acontecimento e o instante. Nenhum clique cria nota, vetor ou interpretação automática.</span></div>
+          <div><small>CAPTURA PROFISSIONAL CONTEXTUAL</small><strong>Um clique durante a execução. Qualificação depois.</strong><span>Registre evidências por clique; sessão, participante, organização, fase e instante seguem automaticamente. Nenhum clique cria nota e nenhuma captura cria vetor ou interpretação.</span></div>
           <div className="hx-evidence-palette__status"><b>{pendentesEvidencia.length} pendente(s)</b><span>{qualificadasEvidencia.length} qualificada(s)</span><button type="button" onClick={() => setPaletaEvidenciaAberta((valor) => !valor)}>{paletaEvidenciaAberta ? "Recolher" : "Abrir"}</button></div>
         </header>
         {paletaEvidenciaAberta ? <>
+          <p>Use o registro integrado da sessão para ditar ou escrever. Os marcadores científicos abaixo preservam observações para qualificação profissional.</p>
+          <button type="button" onClick={() => setQualificacaoAberta(true)} disabled={!pendentesEvidencia.length}>Qualificar evidências observadas</button>
           <div className="hx-evidence-palette__objective"><span>EVENTOS OBJETIVOS</span><button type="button" onClick={() => void capturarEventoObjetivo("ERRO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Erro</button><button type="button" onClick={() => void capturarEventoObjetivo("OMISSAO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Omissão</button><button type="button" onClick={() => void capturarEventoObjetivo("FALSO_POSITIVO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Falso positivo</button><em>{capturaRapidaPermitida ? "Captura disponível na fase em execução." : "Captura bloqueada fora de uma fase em execução; qualificação continua disponível."}</em></div>
           <div className="hx-evidence-palette__quick"><span>ATALHOS</span>{atalhosEvidencia.map((item) => <button key={String(item.codigo)} type="button" title={String(item.definicao ?? "")} onClick={() => void capturarEvidenciaRapida(String(item.codigo))} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}><b>{String(item.nome ?? item.codigo)}</b><small>{String(item.codigo)}</small></button>)}</div>
           <details className="hx-evidence-palette__all"><summary>Mais evidências estruturadas</summary><div className="hx-evidence-palette__groups">{catalogoPorComponente.map((grupo) => <details key={grupo.componente}><summary>{grupo.rotulo}</summary><div>{grupo.itens.map((item) => <button key={String(item.codigo)} type="button" title={String(item.definicao ?? "")} onClick={() => void capturarEvidenciaRapida(String(item.codigo))} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}><b>{String(item.nome ?? item.codigo)}</b><small>{String(item.codigo)}</small></button>)}</div></details>)}</div></details>
@@ -2252,8 +2513,18 @@ export function CockpitOperacionalVivo({
             <p>{semanticaDasAncorasDisponivel
               ? "Use o contrato oficial: a âncora qualifica a manifestação observada, não atribui nota ao vetor. Confiança e qualidade permanecem dimensões independentes."
               : "A qualificação profissional é preservada sem produzir contribuição numérica enquanto o contrato autoral estiver indisponível."}</p>
+            {pendentesNarrativos.length ? (
+              <section className="hx-evidence-batch" aria-label="Validação narrativa em lote">
+                <header><strong>Registros narrativos</strong><span>Confirme, rejeite ou deixe pendente. A decisão não produz cálculo científico.</span></header>
+                <div>{pendentesNarrativos.map((captura) => {
+                  const id = String(captura.identificador ?? "");
+                  return <article key={id}><label><input type="checkbox" checked={capturasNarrativasSelecionadas.includes(id)} onChange={(evento) => setCapturasNarrativasSelecionadas((atual) => evento.target.checked ? [...atual, id] : atual.filter((item) => item !== id))} /><span><b>{String(captura.modalidade ?? "REGISTRO")}</b>{String(captura.conteudo ?? "")}</span><small>{String(captura.fase ?? "SEM FASE")} · {dataLegivel(captura.capturado_em)}</small></label><div className="hx-evidence-batch__adjust"><input value={ajustesNarrativos[id] ?? ""} onChange={(evento) => setAjustesNarrativos((atual) => ({ ...atual, [id]: evento.target.value }))} maxLength={1000} placeholder="Ajustar sem apagar o registro bruto" /><button type="button" onClick={() => void ajustarNarrativa(id)} disabled={!String(ajustesNarrativos[id] ?? "").trim() || evidenciaEmEnvio}>Ajustar</button></div></article>;
+                })}</div>
+                <footer><button className="is-primary" type="button" onClick={() => void validarNarrativasSelecionadas("CONFIRMAR")} disabled={!capturasNarrativasSelecionadas.length || evidenciaEmEnvio}>Confirmar selecionados</button><button type="button" disabled title="Nenhuma recomendação automática é criada sem regra autoral">Confirmar recomendados (0)</button><button type="button" onClick={() => void validarNarrativasSelecionadas("REJEITAR")} disabled={!capturasNarrativasSelecionadas.length || evidenciaEmEnvio}>Rejeitar selecionados</button><button type="button" onClick={() => setCapturasNarrativasSelecionadas(pendentesNarrativos.map((item) => String(item.identificador ?? "")))}>Selecionar todos</button><button type="button" onClick={() => setCapturasNarrativasSelecionadas([])} disabled={!capturasNarrativasSelecionadas.length}>Deixar pendentes</button></footer>
+              </section>
+            ) : null}
             <div className="hx-evidence-qualification__list">
-              {pendentesEvidencia.map((captura) => {
+              {pendentesEstruturados.map((captura) => {
                 const id = String(captura.identificador ?? "");
                 const q = qualificacoes[id] ?? {};
                 const estadoSemAncora = ESTADOS_SEM_ANCORA.includes(String(q.estado) as typeof ESTADOS_SEM_ANCORA[number]);
@@ -2291,7 +2562,81 @@ export function CockpitOperacionalVivo({
         </div>
       ) : null}
 
-      {perfilTarefaAberto ? <div className="hx-evidence-layer" role="presentation"><button className="hx-evidence-layer__backdrop" type="button" onClick={() => setPerfilTarefaAberto(false)} aria-label="Fechar perfil da tarefa"/><section className="hx-evidence-task-profile" role="dialog" aria-modal="true" aria-label="Perfil explícito da tarefa"><header><div><small>PERFIL DA TAREFA</small><strong>Somente valores que o protocolo ou a tarefa realmente definem</strong></div><button type="button" onClick={() => setPerfilTarefaAberto(false)}>Voltar ao painel operacional</button></header><p>Não estime para preencher vetor. Campo vazio permanece ausente. Os percentuais abaixo só devem ser usados quando a tarefa ou protocolo fornecer essa medida explicitamente.</p><div className="hx-evidence-task-profile__grid">{METRICAS_TAREFA_RAPIDA.map(([codigo,rotulo]) => <label key={codigo}><span>{rotulo}</span><select value={perfilTarefa[codigo] ?? ""} onChange={(evento) => setPerfilTarefa((atual) => ({...atual,[codigo]:evento.target.value}))}><option value="">Ausente</option><option value="0">0%</option><option value="25">25%</option><option value="50">50%</option><option value="75">75%</option><option value="100">100%</option></select></label>)}</div><button className="is-primary" type="button" onClick={() => void salvarPerfilDaTarefa()} disabled={evidenciaEmEnvio}>Preservar perfil explícito</button></section></div> : null}
+      {perfilTarefaAberto ? (
+        <div className="hx-evidence-layer" role="presentation">
+          <button
+            className="hx-evidence-layer__backdrop"
+            type="button"
+            onClick={() => setPerfilTarefaAberto(false)}
+            aria-label="Fechar perfil da tarefa"
+          />
+          <section
+            className="hx-evidence-task-profile"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Perfil explícito da tarefa"
+          >
+            <header>
+              <div>
+                <small>PERFIL MÍNIMO DA TAREFA</small>
+                <strong>Prepare antes dos sensores; observe o desempenho durante a fase</strong>
+              </div>
+              <button type="button" onClick={() => setPerfilTarefaAberto(false)}>
+                Voltar ao painel operacional
+              </button>
+            </header>
+            <p>
+              O identificador e as propriedades estáveis podem ser reutilizados
+              automaticamente nas fases seguintes. Desempenho, precisão e decisão
+              somente devem ser informados depois de realmente observados. Campo vazio
+              permanece ausente.
+            </p>
+            <label className="hx-evidence-task-profile__identifier">
+              <span>Identificador da tarefa ou protocolo</span>
+              <input
+                value={identificadorDaTarefa}
+                onChange={(evento) => setIdentificadorDaTarefa(evento.target.value)}
+                maxLength={160}
+                placeholder="Ex.: código oficial da tarefa ou protocolo selecionado"
+              />
+            </label>
+            <div className="hx-evidence-task-profile__grid">
+              {metricasDisponiveisNoPerfil.map(([codigo, rotulo]) => (
+                <label key={codigo}>
+                  <span>{rotulo}</span>
+                  <select
+                    value={perfilTarefa[codigo] ?? ""}
+                    onChange={(evento) => setPerfilTarefa((atual) => ({
+                      ...atual,
+                      [codigo]: evento.target.value
+                    }))}
+                  >
+                    <option value="">Ausente</option>
+                    <option value="0">0%</option>
+                    <option value="25">25%</option>
+                    <option value="50">50%</option>
+                    <option value="75">75%</option>
+                    <option value="100">100%</option>
+                  </select>
+                </label>
+              ))}
+            </div>
+            <p>
+              Para preparar antecipadamente, informe ao menos uma propriedade estável:
+              complexidade, ambiguidade, consequência do erro, coordenação, comunicação
+              ou contexto simbólico.
+            </p>
+            <button
+              className="is-primary"
+              type="button"
+              onClick={() => void salvarPerfilDaTarefa()}
+              disabled={evidenciaEmEnvio}
+            >
+              Preservar perfil explícito
+            </button>
+          </section>
+        </div>
+      ) : null}
 
       {registroAberto ? (
         <div className="hx-live-register-layer" role="presentation">
@@ -2530,6 +2875,21 @@ export function CockpitOperacionalVivo({
               </div>
             </dl>
           ) : null}
+          {inicioDeFaseBloqueado ? (
+            <div className="hx-live-start-gate" role="alert">
+              <strong>FASE NÃO INICIADA</strong>
+              <span>
+                {preflightTirh.inicio.bloqueios
+                  .map((item) => `${item.rotulo}: ${item.motivo}`)
+                  .join(" · ")}
+              </span>
+              {preflightTirh.inicio.bloqueios.some(
+                (item) => item.codigo === "PERFIL_TAREFA"
+              ) ? <button type="button" onClick={() => setPerfilTarefaAberto(true)}>
+                Informar somente o perfil mínimo
+              </button> : null}
+            </div>
+          ) : null}
         </div>
         <div className="hx-live-operation-action">
           <small>{controlesDaFase.length ? "CONTROLES DA FASE" : "COMANDO PRINCIPAL"}</small>
@@ -2573,7 +2933,11 @@ export function CockpitOperacionalVivo({
               }`}
               type="button"
               onClick={executarPrincipal}
-              disabled={ocupado || !permitirOperacao}
+              disabled={ocupado || !permitirOperacao || inicioDeFaseBloqueado}
+              aria-disabled={ocupado || !permitirOperacao || inicioDeFaseBloqueado}
+              title={inicioDeFaseBloqueado
+                ? "Complete os pré-requisitos estáticos indicados antes de iniciar."
+                : rotuloDaAcao}
             >
               {rotuloDaAcao}
             </button>
@@ -2646,7 +3010,11 @@ export function CockpitOperacionalVivo({
                           ? "NÃO CALCULÁVEL"
                           : `${(vetor.value * 100).toFixed(1)}%`}
                       </strong>
-                      {vetor.trend ? <em>Tendência: {vetor.trend}</em> : null}
+                      {vetor.value == null && vetor.reason
+                        ? <em>{vetor.reason.replaceAll("_", " ")}</em>
+                        : vetor.trend
+                          ? <em>Tendência: {vetor.trend}</em>
+                          : null}
                     </div>
                     <span className="hx-live-vector-meter" aria-hidden="true">
                       {vetor.value == null
@@ -2684,7 +3052,7 @@ export function CockpitOperacionalVivo({
               vetores={radarVetorial}
               resultante={resultanteAutoritativa}
               resultanteCalculada={resultanteCalculada}
-              trajetoria={trajetoria}
+              trajetoria={trajetoriaAutoritativa}
               trajetoriaCalculada={trajetoriaCalculada}
             />
           </HxSurface>
@@ -2846,6 +3214,9 @@ export function CockpitOperacionalVivo({
               fallback={texto(trajetoria.motivo, "Sessões comparáveis insuficientes para trajetória e VEV.")}
             />
           </section>
+          {objeto(iirhContinuo.registro.requisito_documental).estado ? <p role="status">
+            {texto(objeto(iirhContinuo.registro.requisito_documental).estado)}: {texto(objeto(iirhContinuo.registro.requisito_documental).falta)} · {texto(objeto(iirhContinuo.registro.requisito_documental).referencia)}
+          </p> : null}
           <details className="hx-live-vector-trace">
             <summary>Resultante · rastreabilidade científica</summary>
             <dl>
@@ -2873,9 +3244,15 @@ export function CockpitOperacionalVivo({
                 identificadorVetorial(definicao ?? {})
               ) ?? estadosVetoriaisPorDefinicao.get(vetor.code);
               const vetorBasal = vetoresBasaisPorCodigo.get(vetor.code);
-              const estadoVetorialExibido = configuracaoBasalCanonica
-                ? vetorBasal
-                : estadoVetorial;
+              const vivo = objeto(activeTirhSnapshot.vectors[vetor.code]);
+              const estadoVetorialExibido = leituraAoVivo && Object.keys(vivo).length
+                ? { magnitude: vivo.value, estado: vivo.status, cobertura: vivo.coverage,
+                    qualidade: vivo.quality, confianca: vivo.confidence, identificador_da_sessao: vivo.session_id,
+                    fase: vivo.phase, timestamp: vivo.observed_at, versao_da_biblioteca: vivo.scientific_version,
+                    motivo: vivo.reason, evidencias_ausentes: vivo.requirements_missing,
+                    evidencias_utilizadas: objeto(vivo.provenance).evidence, origem_matematica: objeto(vivo.provenance).rule,
+                    fontes: vivo.source } as Registro
+                : configuracaoBasalCanonica ? vetorBasal : estadoVetorial;
               const magnitudeCanonica = valorNormalizado(
                 estadoVetorialExibido?.magnitude
               );
@@ -2890,6 +3267,7 @@ export function CockpitOperacionalVivo({
                   <div><dt>Magnitude canônica</dt><dd>{magnitudeCanonica == null ? "AUSENTE" : `${numero(magnitudeCanonica * 100, 2)} / 100`}</dd></div>
                   <div><dt>Cobertura</dt><dd>{percentual(estadoVetorialExibido?.cobertura)}</dd></div>
                   <div><dt>Qualidade</dt><dd>{percentual(estadoVetorialExibido?.qualidade)}</dd></div>
+                  <div><dt>Fonte real</dt><dd>{fontesDoIndicador(estadoVetorialExibido?.fontes)}</dd></div>
                   <div><dt>Confiança</dt><dd>{percentual(estadoVetorialExibido?.confiabilidade ?? estadoVetorialExibido?.confianca)}</dd></div>
                   <div><dt>Sessão</dt><dd>{texto(estadoVetorialExibido?.identificador_da_sessao ?? configuracaoBasal.identificador_da_sessao)}</dd></div>
                   <div><dt>Fase</dt><dd>{texto(estadoVetorialExibido?.fase ?? configuracaoBasal.contexto_temporal)}</dd></div>

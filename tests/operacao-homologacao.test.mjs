@@ -27,6 +27,12 @@ test("IIRH e Zona permanecem projetados pelo mesmo componente autoritativo em to
   assert.match(client, /data-authority-contract=\{disponibilidade\.contratoAutoritativo/);
   assert.match(client, /O Portal apenas projeta o contrato autoritativo e nunca calcula ou reclassifica/);
   assert.match(client, /JANELA ATUAL/);
+  assert.match(client, /data-authoritative-role="CURRENT_STATE"/);
+  assert.match(client, /data-authoritative-role="FROZEN_REFERENCE"/);
+  assert.match(client, /\{indicador\.codigo\} · ESTADO ATUAL/);
+  assert.match(client, /\{indicador\.codigo\} · REFERÊNCIA CONGELADA/);
+  assert.match(client, /disponibilidade\.iirhReferencia/);
+  assert.match(client, /disponibilidade\.zonaReferencia/);
   assert.match(client, /Nenhuma referência autoritativa elegível foi fornecida pelo Núcleo/);
   assert.match(client, /visao === "coletivo"[\s\S]*?\? null/);
   assert.doesNotMatch(
@@ -574,7 +580,7 @@ test("Cockpit cinematográfico prioriza HUD, leitura viva e condução sem alter
   assert.match(modulo, /modulo !== "cockpit-vivo"/);
   assert.match(estilos, /Cockpit Premium cinematográfico/);
   assert.match(estilos, /grid-template-columns: repeat\(8, minmax\(0, 1fr\)\)/);
-  assert.match(design, /grid-template-columns: repeat\(8, minmax\(0, 1fr\)\)/);
+  assert.match(design, /grid-template-columns: repeat\(10, minmax\(0, 1fr\)\)/);
 });
 
 test("Cockpit abre progressivamente e preserva os nove vetores momentâneos visíveis", async () => {
@@ -922,11 +928,13 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   const vetores = cockpit.match(
     /<HxSurface as="section" className="hx-live-vector-stage">[\s\S]*?<\/HxSurface>/
   )?.[0] ?? "";
-  assert.match(hud, /<small>ZONA<\/small>/);
+  assert.match(hud, /<small>ZONA · ESTADO ATUAL<\/small>/);
+  assert.match(hud, /<small>ZONA · REFERÊNCIA CONGELADA<\/small>/);
+  assert.match(hud, /<small>IIRH · REFERÊNCIA CONGELADA<\/small>/);
   assert.match(hud, /IIRH/);
   assert.doesNotMatch(hud, /RESULTANTE/);
   assert.match(cockpit, /Dinâmica da Inteligência Regulatória Humana/);
-  assert.equal((hud.match(/<div/g) ?? []).length, 8);
+  assert.equal((hud.match(/<div/g) ?? []).length, 10);
   assert.match(cockpit, /texto\(thx\.nome/);
   assert.doesNotMatch(hud, /Sequência|maturidade_da_evidencia/);
   assert.doesNotMatch(cockpit, /hx-live-regulatory-readout--primary/);
@@ -1000,7 +1008,10 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
   );
   assert.match(cockpit, /Última leitura registrada/);
   assert.match(cockpit, /const vetorCanonicoDoContexto = leituraAoVivo/);
-  assert.match(cockpit, /valorNormalizado\(vetorCanonicoDoContexto\?\.magnitude\)/);
+  assert.match(
+    cockpit,
+    /valorNormalizado\([\s\S]{0,160}vetorCanonicoDoContexto\?\.value[\s\S]{0,100}vetorCanonicoDoContexto\?\.magnitude/
+  );
   assert.match(cockpit, /const cienciaAtualAdmissivel = leituraAoVivo[\s\S]*configuracaoBasalCanonica[\s\S]*modoHistorico/);
   assert.match(cockpit, /const iirhCanonicoCalculado = cienciaAtualAdmissivel/);
   assert.match(cockpit, /ativo: cienciaAtualAdmissivel/);
@@ -1009,6 +1020,9 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
     cockpit,
     /const trajetoriaCalculada = \(leituraAoVivo \|\| snapshotDeFaseCanonico\)/
   );
+  assert.match(cockpit, /trajetoriaAutoritativa\.estado[\s\S]{0,100}"DISPONIVEL"/);
+  assert.match(cockpit, /typeof vetorEvolucaoAutoritativo\.magnitude === "number"/);
+  assert.match(cockpit, /vetorEvolucao\.nivel_longitudinal/);
   assert.match(
     cockpit,
     /snapshotOficialDeFaseAplicavel\(\{[\s\S]*identificadorDaSessao[\s\S]*sessaoFinalizada/
