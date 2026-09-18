@@ -4112,7 +4112,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           {visao !== "coletivo" && podeConduzirOperacao ? <RegistroIntegradoDaSessao
             estado={estado as unknown as Registro} revisar={visao === "relatorio"}
           /> : null}
-          {podeConduzirOperacao && ["visao-geral", "formulacao"].includes(visao) ? <JornadaParticipante key={`${estado.organizacao.identificador}:${estado.participante.identificador}:${estado.sessao.identificador}`} organizacao={String(estado.organizacao.identificador)} participante={String(estado.participante.identificador)} sessao={String(estado.sessao.identificador)} somentePreparacao={visao !== "formulacao"} /> : null}
+          {podeConduzirOperacao && (visao === "formulacao" || (visao === "visao-geral" && ["PREPARAR_SESSAO", "DEFINIR_REFERENCIA_BASELINE"].includes(acaoPrincipal))) ? <JornadaParticipante key={`${estado.organizacao.identificador}:${estado.participante.identificador}:${estado.sessao.identificador}`} organizacao={String(estado.organizacao.identificador)} participante={String(estado.participante.identificador)} sessao={String(estado.sessao.identificador)} somentePreparacao={visao !== "formulacao"} /> : null}
           {conteudoDaVisao}
           {operacional && acaoPrincipal !== "PREPARAR_SESSAO"
             ? controleDeBaseline

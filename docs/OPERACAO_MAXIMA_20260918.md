@@ -13,3 +13,5 @@ Atalhos da anamnese não perdem mais o participante; a anamnese elegível única
 Ensaios locais usam somente SQLite temporário. As rotas descartáveis de QA não integram esta entrega. Visual conferido em desktop e largura de 390 pixels; retomada por recarga, salvar e homologar foram exercitados no navegador. Os 359 testes existentes do Portal passaram no gate único. Resultado de build, Núcleo e deployments é registrado nas evidências externas de publicação.
 
 A meta de três minutos exige medição por profissional real. Polar H10, EPOC X e microfone físico continuam dependentes da homologação física. FH/FT/FE/FN permanecem NEEDS_DR_MARCOS_VALIDATION. Não foram alterados configuração científica, GOLD, IICCA, manifestações históricas ou migrações.
+
+A busca de participantes e a próxima ação aparecem antes dos formulários extensos de cadastro e autorização. No cockpit, o resumo de preparação aparece nas ações de preparação/baseline e na visão de formulação; a sessão em andamento conserva espaço para captura e telemetria.

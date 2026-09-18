@@ -2210,6 +2210,7 @@ export function GestaoOperacional({
         </>
       ) : null}
 
+      {modulo === "clientes" ? tabelaParticipantes : null}
       {modulo === "clientes" && participanteSelecionado && organizacaoAtual?.identificador && permissoesDoUsuario.includes("conduzir_sessao") ? <JornadaParticipante key={`${organizacaoAtual.identificador}:${participanteSelecionado}`} organizacao={String(organizacaoAtual.identificador)} participante={participanteSelecionado} /> : null}
       {modulo === "clientes" ? (
         <div className="hx-management-grid hx-management-grid--participants">
@@ -2898,7 +2899,6 @@ export function GestaoOperacional({
               </aside>
             ) : null}
           </form>
-          {tabelaParticipantes}
         </div>
       ) : null}
 
