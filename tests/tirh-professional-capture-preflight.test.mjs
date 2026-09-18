@@ -113,7 +113,7 @@ test("captura profissional permanece local, contextual e fora do cálculo cient�
     "inicioDeFaseBloqueado"
   ]) assert.match(componente, new RegExp(marcador.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
-  assert.match(componente, /Referência[\s\S]*permanece congelada/);
+  assert.match(componente, /Referência[\s\S]*permanece preservada/);
 
   assert.doesNotMatch(prontidao, /IIRH\s*[+*/-]|zona\s*=/i);
   assert.doesNotMatch(componente, /objeto\(estado\.thx_individual\)\.codigo/);

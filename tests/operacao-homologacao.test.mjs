@@ -26,11 +26,12 @@ test("IIRH e Zona permanecem projetados pelo mesmo componente autoritativo em to
   );
   assert.match(client, /data-authority-contract=\{disponibilidade\.contratoAutoritativo/);
   assert.match(client, /O Portal apenas projeta o contrato autoritativo e nunca calcula ou reclassifica/);
-  assert.match(client, /JANELA ATUAL/);
+  assert.match(client, /AO VIVO/);
+  assert.match(client, /<CockpitIirhZonaTemporal/);
   assert.match(client, /data-authoritative-role="CURRENT_STATE"/);
   assert.match(client, /data-authoritative-role="FROZEN_REFERENCE"/);
-  assert.match(client, /\{indicador\.codigo\} · ESTADO ATUAL/);
-  assert.match(client, /\{indicador\.codigo\} · REFERÊNCIA CONGELADA/);
+  assert.match(client, /\{indicador\.codigo\} · \{historico \? "RESULTADO DA SESSÃO" : "ATUAL"\}/);
+  assert.match(client, /\{indicador\.codigo\} · REFERÊNCIA HISTÓRICA/);
   assert.match(client, /disponibilidade\.iirhReferencia/);
   assert.match(client, /disponibilidade\.zonaReferencia/);
   assert.match(client, /Nenhuma referência autoritativa elegível foi fornecida pelo Núcleo/);
@@ -607,7 +608,7 @@ test("Cockpit apresenta a configuração basal sem fabricar magnitude", async ()
   assert.match(operacional, /FORMALIZAÇÃO AUTORAL IMPLEMENTADA · VALIDAÇÃO COMPUTACIONAL/);
   assert.match(operacional, /texto livre não convertido/);
   assert.match(operacional, /Magnitude somente quando sustentada por regra autoral e evidência admissível/);
-  assert.match(operacional, /Nenhum registro científico congelado foi fabricado/);
+  assert.match(operacional, /Nenhum registro científico preservado foi fabricado/);
   assert.match(operacional, /vetor\.magnitude/);
   assert.match(operacional, /vetor\.motivo/);
 });
@@ -929,8 +930,8 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
     /<HxSurface as="section" className="hx-live-vector-stage">[\s\S]*?<\/HxSurface>/
   )?.[0] ?? "";
   assert.match(hud, /<small>ZONA · ESTADO ATUAL<\/small>/);
-  assert.match(hud, /<small>ZONA · REFERÊNCIA CONGELADA<\/small>/);
-  assert.match(hud, /<small>IIRH · REFERÊNCIA CONGELADA<\/small>/);
+  assert.match(hud, /<small>ZONA · REFERÊNCIA HISTÓRICA<\/small>/);
+  assert.match(hud, /<small>IIRH · REFERÊNCIA HISTÓRICA<\/small>/);
   assert.match(hud, /IIRH/);
   assert.doesNotMatch(hud, /RESULTANTE/);
   assert.match(cockpit, /Dinâmica da Inteligência Regulatória Humana/);

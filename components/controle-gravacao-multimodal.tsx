@@ -154,7 +154,7 @@ const ROTULOS_DAS_FONTES: Record<string, string> = {
   VIDEO: "Vídeo",
   EVENTOS_PROFISSIONAIS: "Eventos profissionais",
   REGISTROS_PROFISSIONAIS: "Somente registros profissionais",
-  SNAPSHOTS: "Registros congelados",
+  SNAPSHOTS: "Registros preservados",
   TELEMETRIA_TAREFA: "Telemetria de tarefa",
   REPLAY: "Reprodução histórica"
 };
@@ -993,7 +993,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
             </div>
             {snapshotBasalCanonico ? (
               <div>
-                <small>Registro canônico congelado</small>
+                <small>Registro canônico preservado</small>
                 <strong>{String(snapshotBasalCanonico.identificador ?? "—")}</strong>
                 <span>{new Date(String(snapshotBasalCanonico.timestamp ?? "")).toLocaleString("pt-BR")} · qualidade {Math.round(Number(snapshotBasalCanonico.qualidade ?? 0) * 100)}% · confiança {Math.round(Number(snapshotBasalCanonico.confianca ?? 0) * 100)}%</span>
               </div>

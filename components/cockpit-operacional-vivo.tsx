@@ -2304,7 +2304,7 @@ export function CockpitOperacionalVivo({
           ) : null}
           {Object.keys(referenciaCongeladaDaPausa).length ? (
             <span>
-              Sessão pausada: a última leitura autoritativa está congelada como referência temporal e não representa resultado atual.
+              Sessão pausada: a última leitura autoritativa está preservada como referência histórica e não representa resultado atual.
             </span>
           ) : null}
         </div>
@@ -2352,7 +2352,7 @@ export function CockpitOperacionalVivo({
             : ""}</span>
         </div>
         <div className="is-reference" data-regulatory-state={disponibilidadeContinua.zonaReferencia.modo}>
-          <small>ZONA · REFERÊNCIA CONGELADA</small>
+          <small>ZONA · REFERÊNCIA HISTÓRICA</small>
           <strong>{zonaReferenciaDisponivel
             ? rotuloDaZona(zonaReferencia.codigo ?? zonaReferencia.nome)
             : "AGUARDANDO PRIMEIRA REFERÊNCIA VÁLIDA"}</strong>
@@ -2361,7 +2361,7 @@ export function CockpitOperacionalVivo({
             : "Nenhuma referência autoritativa elegível foi fornecida pelo Núcleo."}</span>
         </div>
         <div className="is-reference" data-regulatory-state={disponibilidadeContinua.iirhReferencia.modo}>
-          <small>IIRH · REFERÊNCIA CONGELADA</small>
+          <small>IIRH · REFERÊNCIA HISTÓRICA</small>
           <strong>{iirhReferenciaDisponivel
             ? `${numero(iirhReferencia.valor, 1)} ${texto(iirhReferencia.unidade, "")}`
             : "AGUARDANDO PRIMEIRA REFERÊNCIA VÁLIDA"}</strong>
@@ -2423,7 +2423,7 @@ export function CockpitOperacionalVivo({
             </div>
             <span>
               Cobertura científica atual: {preflightTirh.estado}. Referência
-              permanece congelada; resultados vivos surgem somente durante as
+              permanece preservada; resultados vivos surgem somente durante as
               janelas e quando o Núcleo autorizar.
             </span>
           </header>
@@ -2730,10 +2730,10 @@ export function CockpitOperacionalVivo({
             <article className={["PERSISTIDO", "ELEGIVEL_PARA_PERSISTENCIA_AO_ENCERRAR_BASELINE"].includes(texto(snapshotBasal.estado)) ? "is-ready" : "is-blocked"}>
               <i>03</i>
               <div>
-                <small>Registro basal canônico congelado</small>
+                <small>Registro basal canônico preservado</small>
                 <strong>{texto(snapshotBasal.estado, "NÃO PERSISTIDO")}</strong>
                 <span>
-                  {texto(snapshotBasal.motivo, "Nenhum registro científico congelado foi fabricado.")}
+                  {texto(snapshotBasal.motivo, "Nenhum registro científico preservado foi fabricado.")}
                   {snapshotBasal.identificador ? ` · Identificador ${texto(snapshotBasal.identificador)}` : ""}
                   {snapshotBasal.timestamp ? ` · ${texto(snapshotBasal.timestamp)}` : ""}
                   {snapshotBasal.versao_da_biblioteca ? ` · Biblioteca ${texto(snapshotBasal.versao_da_biblioteca)}` : ""}
@@ -2763,9 +2763,9 @@ export function CockpitOperacionalVivo({
                     : "Nenhuma"}</dd></div>
                 <div><dt>Famílias</dt><dd>{Array.isArray(snapshotBasal.familias) ? snapshotBasal.familias.map((item) => texto(item)).join(" · ") || "Nenhuma" : "Nenhuma"}</dd></div>
                 <div><dt>IIRH</dt><dd>{iirhDoSnapshotAutoritativo.calculado ? `${numero(iirhDoSnapshotAutoritativo.valor, 1)} · qualidade ${percentual(iirhDoSnapshot.qualidade)} · confiança ${percentual(iirhDoSnapshot.confiabilidade ?? snapshotBasal.confianca)}` : `NULO · ${texto(iirhDoSnapshotAutoritativo.motivo, "motivo autoritativo não informado pelo Núcleo")}`}</dd></div>
-                <div><dt>Zona</dt><dd>{texto(zonaDoSnapshot.nome ?? zonaDoSnapshot.codigo, `NULA · ${texto(zonaDoSnapshot.motivo, "Precondições não atendidas no registro congelado")}`)}</dd></div>
+                <div><dt>Zona</dt><dd>{texto(zonaDoSnapshot.nome ?? zonaDoSnapshot.codigo, `NULA · ${texto(zonaDoSnapshot.motivo, "Precondições não atendidas no registro preservado")}`)}</dd></div>
                 <div><dt>Resultante</dt><dd>{resultanteDoSnapshot.valor == null ? `NULA/PARCIAL · ${texto(resultanteDoSnapshot.motivo ?? resultanteDoSnapshot.justificativa)}` : `${numero(resultanteDoSnapshot.valor, 2)} · ${texto(resultanteDoSnapshot.estado)}`}</dd></div>
-                <div><dt>Proveniência</dt><dd>{referenciaCientificaLegivel(snapshotBasal.proveniencia) || "Proveniência preservada no registro congelado"}</dd></div>
+                <div><dt>Proveniência</dt><dd>{referenciaCientificaLegivel(snapshotBasal.proveniencia) || "Proveniência preservada no registro preservado"}</dd></div>
                 <div><dt>Regra longitudinal</dt><dd>{texto(snapshotBasal.regra_de_comparacao_longitudinal)}</dd></div>
                 {vetoresDoSnapshot.map(([codigo, valor]) => {
                   const vetor = objeto(valor);

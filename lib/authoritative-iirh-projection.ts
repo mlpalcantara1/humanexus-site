@@ -289,6 +289,6 @@ export function rotuloDaDisponibilidadeAutoritativa(
   if (modo === "SNAPSHOT_SELECIONADO") {
     return "SNAPSHOT OFICIAL DA FASE SELECIONADA";
   }
-  if (modo === "REFERENCIA_CONGELADA") return "REFERÊNCIA CONGELADA";
+  if (modo === "REFERENCIA_CONGELADA") return "REFERÊNCIA HISTÓRICA";
   return "AGUARDANDO PRIMEIRA REFERÊNCIA VÁLIDA";
 }

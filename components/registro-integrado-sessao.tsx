@@ -9,7 +9,7 @@ type Resumo = {
   fontes_automaticas?: Record<string, Registro>; proveniencia?: Record<string, string[]>;
   revisao: number; assinatura_do_rascunho: string; salvo_em?: string; terminal: boolean; fase: string | null; identificador_da_fase: string | null;
   checklist?: Registro; profissional: string; campos: Record<string, string>; pendencias: string[]; encerrado_em?: string;
-  notas: { identificador: string; texto: string; fase: string | null; salvo_em: string }[];
+  notas: { identificador: string; texto: string; texto_original?: string; fase: string | null; salvo_em: string; capturado_no_dispositivo_em?: string; campo_destino?: string; estado_revisao?: string; modalidade?: string; profissional?: string; revisavel?: boolean }[];
   validacao?: { assinatura_do_rascunho?: string; historica?: boolean; revisao_validada: number; relatorio: string; versao: number; validado_em: string; longitudinal: string };
 };
 function obj(v: unknown): Registro { return v && typeof v === "object" ? v as Registro : {}; }
@@ -50,11 +50,14 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
   const faseVoz = useRef<{ fase: string | null; id: string | null }>({ fase: null, id: null });
   const [campoVoz, setCampoVoz] = useState("");
   const [camposAbertos, setCamposAbertos] = useState<Record<string, boolean>>({});
+  const [edicoesNotas, setEdicoesNotas] = useState<Record<string, string>>({});
+  const [destinosNotas, setDestinosNotas] = useState<Record<string, string>>({});
   const [aprovacao, setAprovacao] = useState("");
   const operacao = obj(estado.estado_operacional), detalhes = obj(obj(estado.sessao_operacional).detalhes);
-  const faseAtual = String(operacao.fase_cientifica_atual ?? resumo?.fase ?? "") || null;
+  const terminal = resumo?.terminal || ["FINALIZADA", "ENCERRADA"].includes(String(obj(estado.sessao).estado));
+  const faseAtual = terminal ? "REVISAO_POS_SESSAO" : String(operacao.fase_cientifica_atual ?? resumo?.fase ?? "") || null;
   const fases = Array.isArray(estado.fases) ? estado.fases.map(obj) : [];
-  const faseAtualId = String(fases.findLast((f) => f.fase === faseAtual)?.identificador ?? resumo?.identificador_da_fase ?? "") || null;
+  const faseAtualId = terminal ? null : String(fases.findLast((f) => f.fase === faseAtual)?.identificador ?? resumo?.identificador_da_fase ?? "") || null;
   const faseRef = useRef({ fase: faseAtual, id: faseAtualId });
   faseRef.current = { fase: faseAtual, id: faseAtualId };
   const persistir = () => {
@@ -155,10 +158,10 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
   }, [estadoDaSessao, faseAtualId]);
   // Encerra uma enunciação na transição; resultados finais conservam a fase congelada.
   useEffect(() => { if (voz.current && faseVoz.current.id !== faseAtualId) voz.current.parar(); }, [faseAtualId]);
-  const registrar = (conteudo: string, modalidade = "TEXTO", categoria = "", fase = faseRef.current, processamento?: string) => {
+  const registrar = (conteudo: string, modalidade = "TEXTO", categoria = "", fase = faseRef.current, processamento?: string, destino?: string, capturadoEm?: string) => {
     if (!conteudo.trim()) return;
     if (local.current.fila.length >= 1000) { setMensagem("Fila local cheia. Sincronize antes de registrar novas notas."); return; }
-    local.current.fila.push({ acao: "NOTA", chave: uuid(), texto: conteudo.trim(), modalidade, categoria, identificador_da_fase: fase.id, capturado_em: new Date().toISOString(), ...(processamento ? { processamento } : {}) });
+    local.current.fila.push({ acao: "NOTA", chave: uuid(), texto: conteudo.trim(), modalidade, categoria, identificador_da_fase: fase.id, fase_capturada: fase.fase, capturado_em: capturadoEm ?? new Date().toISOString(), contexto_da_captura: fase.fase === "REVISAO_POS_SESSAO" ? "REVISAO_POS_SESSAO" : "FASE_DA_SESSAO", ...(destino ? { campo_destino: destino } : {}), ...(processamento ? { processamento } : {}) });
     if (modalidade !== "FALA") { local.current.texto = ""; local.current.fase = null; local.current.faseId = null; }
     if (persistir()) { setMensagem("Nota preservada neste navegador; aguardando confirmação do servidor."); void sincronizarRef.current(); }
   };
@@ -170,7 +173,8 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
   const iniciarVoz = async () => {
     if (voz.current) { voz.current.parar(); return; }
     faseVoz.current = { ...faseRef.current };
-    const faseCongelada = { ...faseRef.current }, alvo = campoVoz || null;
+    const faseCongelada = { ...faseRef.current }, alvo = campoVoz || undefined;
+    const capturadoEm = new Date().toISOString();
     setOuvindo(true);
     try {
       voz.current = await iniciarTranscricaoLocal({
@@ -179,9 +183,7 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
         fim: () => { voz.current = null; if (ativo.current) setOuvindo(false); },
         texto: (transcrito) => {
           if (!ativo.current) return;
-          if ((revisar || resumoRef.current?.terminal) && /^(aprovar|validar|confirmar)( registro| revis[aã]o)?[.!]?$/i.test(transcrito)) setConfirmar(true);
-          else if (alvo) editar(alvo, [local.current.campos[alvo] ?? resumoRef.current?.campos[alvo] ?? "", transcrito].filter(Boolean).join("\n"));
-          else registrar(transcrito, "FALA", "", faseCongelada, "LOCAL_NO_DISPOSITIVO");
+          registrar(transcrito, "FALA", "", faseCongelada, "LOCAL_NO_DISPOSITIVO", alvo, capturadoEm);
         }
       });
       if (!ativo.current) voz.current?.cancelar();
@@ -201,6 +203,15 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
       conflitoRef.current = false; setConflito(false); persistir(); void sincronizar();
     } catch (e) { setMensagem(String(e)); }
   };
+  const revisarNota = (nota: Resumo["notas"][number], estadoNota: string) => {
+    if (!resumo || enviando.current || conflito || local.current.fila.length || Object.keys(local.current.campos).length) return;
+    local.current.fila.push({ acao: "REVISAR_NOTA", chave: uuid(), revisao: resumo.revisao, nota: nota.identificador,
+      estado: estadoNota, campo_destino: destinosNotas[nota.identificador] ?? nota.campo_destino ?? "observacoes_por_fase",
+      ...(estadoNota === "EDITADA" ? { texto_revisado: edicoesNotas[nota.identificador] ?? nota.texto } : {}) });
+    if (persistir()) void sincronizar();
+  };
+  const rotuloCampo = (campo?: string) => CAMPOS_PROFISSIONAIS_DO_RELATORIO.find(([c]) => c === campo)?.[1] ?? "Observações por fase";
+  const rotuloRevisao = (estadoNota?: string) => ({ PENDENTE_DE_REVISAO: "Pendente de revisão", INCORPORADA: "Incorporada", EDITADA: "Editada", DESCARTADA: "Descartada" }[estadoNota ?? ""] ?? "Pendente de revisão");
   const campos = { ...resumo?.campos, ...local.current.campos };
   const pendencias = CAMPOS_PROFISSIONAIS_DO_RELATORIO.filter(([c]) => !campos[c]?.trim());
   const finalValidado = (resumo?.validacao?.historica || resumo?.validacao?.assinatura_do_rascunho === resumo?.assinatura_do_rascunho) && resumo?.validacao?.revisao_validada === resumo?.revisao && !Object.keys(local.current.campos).length && !local.current.fila.length;
@@ -210,7 +221,7 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
   const listaFontes = Array.isArray(prontidao.fontes) ? prontidao.fontes.map(obj).filter((f) => f.selecionada || ["POLAR_H10", "EPOC_X", "TELEMETRIA_TAREFA"].includes(String(f.codigo ?? ""))) : [];
   const consentimentos = Array.isArray(contexto.consentimentos) ? contexto.consentimentos.map(String) : [];
   return <section className="hx-professional-consolidation hx-session-register" aria-label="Registro integrado da sessão" id={revisar ? "consolidacao-profissional" : "registro-integrado"}>
-    <header><div><small>{revisar || resumo?.terminal ? "REVISÃO PROFISSIONAL ÚNICA" : "REGISTRO DA SESSÃO"}</small><h3>{revisar || resumo?.terminal ? "Revisar, corrigir e validar" : "Observações sempre à mão"}</h3></div><strong>{faseAtual ?? "PREPARAÇÃO"}</strong></header>
+    <header><div><small>{revisar || resumo?.terminal ? "REVISÃO PROFISSIONAL ÚNICA" : "REGISTRO DA SESSÃO"}</small><h3>{revisar || resumo?.terminal ? "Revisar, corrigir e validar" : "Observações sempre à mão"}</h3></div><strong>{terminal ? "REVISÃO PÓS-SESSÃO" : faseAtual ?? "PREPARAÇÃO"}</strong></header>
     {!resumo?.terminal && <details open={!resumo?.notas.length}><summary>Checklist automático da sessão</summary><ul>
       <li>Participante: {String(obj(estado.participante).nome_documental ?? obj(estado.participante).referencia_operacional ?? participante)} · Organização: {String(obj(estado.organizacao).nome ?? org)}</li>
       <li>Modalidade: {String(obj(estado.sessao).tipo_de_sessao ?? detalhes.tipo_de_sessao ?? "não informada")}</li>
@@ -221,6 +232,7 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
       <li>Condições de início: {bloqueio || String(prontidao.estado ?? "verificando preparação canônica")}</li>
     </ul>{bloqueio && <p role="alert">{bloqueio}</p>}</details>}
     <div className="hx-session-register__capture">
+      <label>Campo de destino da voz<select value={campoVoz} onChange={(e) => setCampoVoz(e.target.value)} disabled={ouvindo}><option value="">Nova nota / comandos</option>{CAMPOS_PROFISSIONAIS_DO_RELATORIO.map(([c, r]) => <option key={c} value={c}>{r}</option>)}</select></label>
       <label>Nota profissional breve<textarea aria-label="Nota profissional breve" value={local.current.texto} rows={2} maxLength={6000} onChange={(e) => { if (!local.current.texto) { local.current.fase = faseRef.current.fase; local.current.faseId = faseRef.current.id; } local.current.texto = e.target.value; persistir(); }} /></label>
       <div><button type="button" onClick={() => void iniciarVoz()} disabled={!resumo || conflito}>{ouvindo ? "Parar microfone" : "Falar observação"}</button> <button type="button" disabled={!resumo || !local.current.texto.trim() || conflito} onClick={() => registrar(local.current.texto, "TEXTO", "", { fase: local.current.fase, id: local.current.faseId })}>Registrar nota</button></div>
       <div className="hx-session-register__markers">{MARCADORES.map((m) => <button type="button" key={m} disabled={!resumo || conflito} onClick={() => registrar(local.current.texto.trim() || `Marcador profissional: ${m.toLowerCase()}. Conteúdo descritivo não registrado.`, "MARCADOR", m, local.current.texto ? { fase: local.current.fase, id: local.current.faseId } : faseRef.current)}>{m}</button>)}</div>
@@ -229,13 +241,28 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
     </div>
     <p role="status" aria-live="polite">{salvando ? "Sincronizando… " : ""}{mensagem} {local.current.fila.length > 0 ? `(${local.current.fila.length} envio(s) pendente(s))` : ""}</p>
     {conflito && <aside role="alert"><p>Há duas versões. Seu conteúdo local permanece preservado.</p><button type="button" onClick={async () => { try { aplicar(await requisitar()); } catch (e) { setMensagem(String(e)); } }}>Carregar versão do servidor para comparar</button><details><summary>Conteúdo atual do servidor</summary><pre>{JSON.stringify(resumo?.campos, null, 2)}</pre></details><button type="button" onClick={() => void resolver()}>Aplicar minhas correções sobre a versão atual</button></aside>}
-    <details><summary>Notas preservadas ({resumo?.notas.length ?? 0})</summary><ol>{resumo?.notas.map((n) => <li key={n.identificador}><strong>{n.fase ?? "GERAL"}</strong> · {n.texto} <small>{n.salvo_em}</small></li>)}</ol></details>
+    <section aria-label="Transcrições e notas da sessão">
+      <h4>Transcrições e notas — {String(obj(estado.sessao).nome_operacional ?? sessao)}</h4>
+      {local.current.fila.filter((c) => c.acao === "NOTA").map((n) => <article key={n.chave}><p>{String(n.texto)}</p><small>{String(n.capturado_em)} · {n.contexto_da_captura === "REVISAO_POS_SESSAO" ? "Revisão pós-sessão" : String(n.fase_capturada ?? "Preparação")} · {n.campo_destino ? rotuloCampo(String(n.campo_destino)) : "Destino sugerido após sincronização"} · Pendente de revisão e sincronização</small></article>)}
+      {resumo?.notas.map((n) => <article key={n.identificador}>
+        <p>{n.texto}</p><small>{n.fase === "REVISAO_POS_SESSAO" ? "Revisão pós-sessão" : n.fase ?? "Preparação"} · {n.capturado_no_dispositivo_em || n.salvo_em} · {rotuloCampo(n.campo_destino)} · {rotuloRevisao(n.estado_revisao)}</small>
+        {n.modalidade === "FALA" && <p>Transcrição persistida. Áudio bruto não armazenado.</p>}
+        {n.revisavel !== false && <details><summary>Revisar destino e texto</summary>
+          <p>Texto original: {n.texto_original ?? n.texto}</p><small>Autoria: {n.profissional ?? "Registro profissional preservado"} · Recebido em {n.salvo_em}</small>
+          <label>Campo de destino<select value={destinosNotas[n.identificador] ?? n.campo_destino ?? "observacoes_por_fase"} onChange={(e) => setDestinosNotas((d) => ({ ...d, [n.identificador]: e.target.value }))}>{CAMPOS_PROFISSIONAIS_DO_RELATORIO.map(([c,r]) => <option key={c} value={c}>{r}</option>)}</select></label>
+          <label>Texto revisado<textarea maxLength={6000} value={edicoesNotas[n.identificador] ?? n.texto} onChange={(e) => setEdicoesNotas((d) => ({ ...d, [n.identificador]: e.target.value }))} /></label>
+          <button disabled={salvando || conflito || !!local.current.fila.length || !!Object.keys(local.current.campos).length} onClick={() => revisarNota(n, "INCORPORADA")}>Incorporar no destino</button>
+          <button disabled={salvando || conflito || !!local.current.fila.length || !!Object.keys(local.current.campos).length} onClick={() => revisarNota(n, "EDITADA")}>Salvar edição auditável</button>
+          <button disabled={salvando || conflito || !!local.current.fila.length || !!Object.keys(local.current.campos).length} onClick={() => revisarNota(n, "DESCARTADA")}>Descartar do rascunho</button>
+        </details>}
+      </article>)}
+    </section>
     {(revisar || resumo?.terminal) && resumo && <>
       <p>O rascunho reúne contexto, fases e registros existentes. A interpretação e a decisão só se tornam profissionais após sua confirmação final.</p>
       <div className="hx-session-register__summary"><strong>Síntese consolidada</strong>{CAMPOS_PROFISSIONAIS_DO_RELATORIO.filter(([c]) => campos[c]?.trim()).map(([c, label]) => <p key={c}><b>{label}: </b>{campos[c].length > 240 ? campos[c].slice(0, 240) + "…" : campos[c]}</p>)}</div>
       <details><summary>Fontes carregadas e informações faltantes</summary><ul>{Object.entries(resumo.fontes_automaticas ?? {}).map(([k, f]) => <li key={k}><b>{k.replaceAll("_", " ")}:</b> {String(f.motivo ?? f.estado)} <small>Origem: {String(f.fonte)} · {String(f.referencia ?? "sem registro elegível")}</small></li>)}</ul></details>
       <p>{pendencias.length ? `Lacunas indispensáveis: ${pendencias.map(([, r]) => r).join(" · ")}` : "Todos os campos possuem conteúdo para revisão."}</p>
-      <label>Destino da correção por voz<select value={campoVoz} onChange={(e) => setCampoVoz(e.target.value)} disabled={ouvindo}><option value="">Nova nota / comandos</option>{CAMPOS_PROFISSIONAIS_DO_RELATORIO.map(([c, r]) => <option key={c} value={c}>{r}</option>)}</select></label>
+
       <div className="hx-professional-consolidation__fields">{CAMPOS_PROFISSIONAIS_DO_RELATORIO.map(([c, r]) => <details key={c} open={camposAbertos[c] ?? !campos[c]?.trim()} onToggle={(e) => { const aberto = e.currentTarget.open; setCamposAbertos((atual) => atual[c] === aberto ? atual : { ...atual, [c]: aberto }); }}><summary>{r}{!campos[c]?.trim() ? " — completar" : " — revisar / corrigir"}</summary><label>{r}<textarea aria-label={r} value={campos[c] ?? ""} rows={3} maxLength={30000} onChange={(e) => editar(c, e.target.value)} /></label><small>Registros de origem: {(resumo.proveniencia?.[c] ?? []).filter(Boolean).join(" · ") || "Conteúdo autoral para sua revisão"}</small></details>)}</div>
       {finalValidado ? <p role="status">Versão {resumo.validacao?.versao} validada em {resumo.validacao?.validado_em}. {resumo.validacao?.historica ? "Documento histórico preservado." : "Longitudinal atualizado."} <a href={`/api/governanca-relatorios/${encodeURIComponent(resumo.validacao?.relatorio ?? "")}/pdf`} target="_blank" rel="noreferrer">Baixar PDF validado</a></p> : <>
         <label>Aprovação escrita (opcional)<input value={aprovacao} onChange={(e) => { setAprovacao(e.target.value); if (/^(aprovar|validar|confirmar)$/i.test(e.target.value.trim())) setConfirmar(true); }} placeholder="Digite aprovar ou use o botão" /></label>

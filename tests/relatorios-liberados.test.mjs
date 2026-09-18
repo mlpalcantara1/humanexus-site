@@ -49,7 +49,9 @@ test("governança interna só baixa e imprime o relatório final autenticado", a
   assert.match(detalhe, /relatorio\.relatorio_final_disponivel === true/);
   assert.match(detalhe, /PDF e impressão finais indisponíveis: complete e valide a consolidação profissional/);
   assert.match(detalhe, /ANEXO TÉCNICO-CIENTÍFICO \/ AUDITORIA/);
-  assert.match(download, /\/api\/v1\/relatorios\/\$\{encodeURIComponent\(id\)\}\/pdf/);
+  assert.match(download, /\/api\/v1\/relatorios\/\$\{encodeURIComponent\(id\)\}/);
+  assert.match(download, /produto === "anexo" \? "anexo\/" : ""/);
+  assert.match(download, /\["anexo", "devolutiva"\]\.includes\(produto\)/);
   assert.match(download, /COOKIE_SESSAO/);
   assert.match(download, /private, no-store/);
   assert.match(download, /preservarMensagemSeguraDoNucleo: true/);
