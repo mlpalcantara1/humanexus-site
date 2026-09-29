@@ -254,3 +254,41 @@ test("PDF 1.3 preserva serviço, programa e ficha concreta apresentada", async (
     "Aviso completo de teste", "Termos completos de teste"
   ]) assert.ok(texto.includes(trecho), `Trecho ausente: ${trecho}`);
 });
+test("PDF 1.4 preserva escolhas independentes de telemetria e longitudinal", async (t) => {
+  if (spawnSync("pdftotext", ["-v"]).error) {
+    t.skip("pdftotext indisponível");
+    return;
+  }
+  const gerar = await gerador();
+  const pdf = await gerar({
+    identificacao: { participante: "Participante Sintético" },
+    instrumento: {
+      codigo: "IICCA-HXP-1.4", versao: "1.4",
+      titulo: "Instrumento integrado geral de teste",
+      secoes: ["TELEMETRIA", "LONGITUDINAL"].map((codigo) => ({
+        codigo, titulo: codigo,
+        texto: `Finalidade e dados da operação ${codigo} apresentados integralmente.`,
+        natureza: "AUTORIZACAO", classificacao: "OPCIONAL",
+        consequencia: "Recusa impede novas operações facultativas.",
+        decisao_obrigatoria: true, opcoes: ["AUTORIZO", "NAO_AUTORIZO"]
+      }))
+    },
+    manifestacao: {
+      confirmado_em: "2026-09-29T12:00:00Z",
+      identificador_do_participante: "id-sintetico",
+      estado_consolidado_json: {}
+    },
+    decisoes: [
+      { codigo_da_decisao: "TELEMETRIA", decisao: "AUTORIZO", estado: "VIGENTE" },
+      { codigo_da_decisao: "LONGITUDINAL", decisao: "NAO_AUTORIZO", estado: "RECUSADO" }
+    ],
+    fluxo_simplificado: false
+  });
+  const resultado = spawnSync("pdftotext", ["-", "-"], { input: pdf });
+  assert.equal(resultado.status, 0);
+  const texto = resultado.stdout.toString();
+  for (const trecho of [
+    "IICCA-HXP-1.4", "TELEMETRIA", "LONGITUDINAL",
+    "Finalidade e dados da operação", "NAO AUTORIZO"
+  ]) assert.ok(texto.includes(trecho), `Trecho ausente: ${trecho}`);
+});

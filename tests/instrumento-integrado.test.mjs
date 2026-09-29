@@ -35,13 +35,15 @@ test("versão genérica exige atos independentes sem ativar a versão candidata"
   assert.doesNotMatch(componente, /defaultChecked|localStorage|sessionStorage/);
 });
 
-test("novos convites pedem a versão integral 1.3 sem recuar à 1.1/1.2", async () => {
+test("novos convites usam a versão integral 1.4 sem fichas manuais", async () => {
   const gestao = await fonte("components/gestao-operacional.tsx");
-  assert.match(gestao, /versao_do_instrumento: "1\.3"/);
-  assert.match(gestao, /servico_efetivo: consentimento\.servico_efetivo/);
-  assert.match(gestao, /fichas_do_programa: Object\.fromEntries/);
-  assert.match(gestao, /setFichasDoPrograma\(\{\}\)/);
-  assert.match(gestao, /Se ainda estiver em revisão, nenhuma manifestação será criada/);
+  assert.match(gestao, /versao_do_instrumento: "1\.4"/);
+  assert.match(gestao, /identificador_da_sessao: null/);
+  assert.match(gestao, /telemetria: true,[\s\S]*longitudinal: true/);
+  assert.match(gestao, /coletivo: false/);
+  assert.match(gestao, /não há ficha, fundamento ou prazo para preencher/);
+  assert.doesNotMatch(gestao, /fichas_do_programa: Object\.fromEntries/);
+  assert.doesNotMatch(gestao, /<label>Sessão<select/);
   assert.doesNotMatch(gestao, /IICCA-HXP-1\.1 · RESPOSTA ÚNICA/);
 });
 
@@ -120,7 +122,7 @@ test("troca de organização elimina contexto anterior do instrumento", async ()
   const gestao = await fonte("components/gestao-operacional.tsx");
   assert.match(
     gestao,
-    /setConsentimento\(\(estado\) => \(\{[\s\S]*identificador_do_participante: ""[\s\S]*identificador_da_sessao: ""/
+    /setConsentimento\(\(estado\) => \(\{[\s\S]*identificador_do_participante: ""/
   );
   assert.match(
     gestao,
@@ -128,8 +130,18 @@ test("troca de organização elimina contexto anterior do instrumento", async ()
   );
   assert.match(
     gestao,
-    /proximoParticipante === estado\.identificador_do_participante[\s\S]*\? estado\.identificador_da_sessao[\s\S]*: ""/
+    /identificador_do_participante: proximoParticipante/
   );
+  assert.match(gestao, /setEntregaDeConsentimento\(null\)/);
+});
+
+test("atalhos dos recursos não decidem Aviso ou Termos pelo participante", async () => {
+  const componente = await fonte("components/instrumento-integrado.tsx");
+  assert.match(componente, /Autorizar os recursos facultativos apresentados/);
+  assert.match(componente, /Não autorizar os recursos facultativos/);
+  assert.match(componente, /filter\(\(secao\) => secao\.natureza === "AUTORIZACAO"\)/);
+  assert.match(componente, /Ato distinto: \$\{secao\.titulo\}/);
+  assert.match(componente, /checked=\{decisoesIndependentes\[secao\.codigo\] === opcao\}/);
 });
 
 test("PDF contém cópia integral, resposta única, hashes e estado jurídico", async () => {
@@ -163,9 +175,8 @@ test("mídia operacional respeita as modalidades autorizadas no backend", async 
   assert.match(controle, /modalidades_de_midia_permitidas/);
   assert.match(controle, /NÃO AUTORIZADO/);
   assert.match(controle, /useState<Modo>\("NENHUM"\)/);
-  assert.match(gestao, /Política de armazenamento da mídia/);
-  assert.match(gestao, /ATE_VALIDACAO_DO_RELATORIO/);
-  assert.match(gestao, /consentimento\.politica_de_retencao/);
+  assert.match(gestao, /politica_de_retencao: "PRESERVACAO_MANUAL"/);
+  assert.doesNotMatch(gestao, /<label>Política de armazenamento da mídia/);
   assert.match(instrumento, /MÍDIA PLANEJADA/);
   assert.match(instrumento, /POLÍTICA DE ARMAZENAMENTO/);
   assert.doesNotMatch(

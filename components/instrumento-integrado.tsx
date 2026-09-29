@@ -771,7 +771,30 @@ export function InstrumentoIntegrado() {
           {!confirmado && (
             <section className="hxiicca__revisao" id="revisao">
               <h2>Revisão das escolhas independentes</h2>
-              <p>Uma escolha não autoriza outra. Respostas em branco não são autorização.</p>
+              <p>Uma escolha não autoriza outra. Respostas em branco não são autorização.
+                Os atalhos abaixo preenchem somente os recursos facultativos;
+                confira e altere cada resposta antes de confirmar. Ciência do Aviso
+                e concordância com os Termos continuam separadas.</p>
+              <div className="hxiicca__acoes-rapidas">
+                <button type="button" disabled={ocupado}
+                  onClick={() => setDecisoesIndependentes((anteriores) => ({
+                    ...anteriores,
+                    ...Object.fromEntries(secoesComEscolha
+                      .filter((secao) => secao.natureza === "AUTORIZACAO")
+                      .map((secao) => [secao.codigo, "AUTORIZO"]))
+                  }))}>
+                  Autorizar os recursos facultativos apresentados
+                </button>
+                <button type="button" disabled={ocupado}
+                  onClick={() => setDecisoesIndependentes((anteriores) => ({
+                    ...anteriores,
+                    ...Object.fromEntries(secoesComEscolha
+                      .filter((secao) => secao.natureza === "AUTORIZACAO")
+                      .map((secao) => [secao.codigo, "NAO_AUTORIZO"]))
+                  }))}>
+                  Não autorizar os recursos facultativos
+                </button>
+              </div>
               <div className="hxiicca__revisao-grid">
                 {secoesComEscolha.map((secao) => <article key={secao.codigo}>
                   <small>{secao.titulo}</small>
