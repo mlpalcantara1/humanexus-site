@@ -348,6 +348,28 @@
   background: rgba(197, 164, 102, .14);
 }
 
+.hxiicca__acoes-rapidas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .7rem;
+  margin-top: 1.2rem;
+}
+
+.hxiicca__acoes-rapidas button {
+  flex: 1 1 15rem;
+  min-height: 2.9rem;
+  padding: .7rem 1rem;
+  color: #f3ead7;
+  border: 1px solid rgba(197, 164, 102, .6);
+  background: rgba(197, 164, 102, .1);
+  text-align: center;
+}
+
+.hxiicca__acoes-rapidas button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
 .hxiicca__revisao-grid article {
   display: grid;
   align-content: start;

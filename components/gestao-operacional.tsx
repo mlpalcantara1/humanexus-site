@@ -340,34 +340,12 @@ export function GestaoOperacional({
     justificativa: ""
   });
   const [consentimento, setConsentimento] = useState({
-    identificador_do_participante: "",
-    identificador_da_sessao: "",
-    finalidade: "",
-    servico_efetivo: "",
-    programa: "",
-    validade_em_horas: "72",
-    polar: false,
-    eeg: false,
-    telemetria: false,
-    audio: false,
-    video: false,
-    replay: false,
-    relatorio: true,
-    longitudinal: false,
-    coletivo: false,
-    pesquisa: false,
-    politica_de_retencao: "NAO_ARMAZENAR"
+    identificador_do_participante: ""
   });
-  const [fichasDoPrograma, setFichasDoPrograma] = useState<
-    Record<string, Record<string, string>>
-  >({});
   useEffect(() => {
-    setFichasDoPrograma({});
     setEntregaDeConsentimento(null);
   }, [
     consentimento.identificador_do_participante,
-    consentimento.servico_efetivo,
-    consentimento.programa,
     organizacaoSelecionada
   ]);
   const [entregaDeConsentimento, setEntregaDeConsentimento] =
@@ -665,11 +643,7 @@ export function GestaoOperacional({
       );
       return {
         ...estado,
-        identificador_do_participante: proximoParticipante,
-        identificador_da_sessao:
-          proximoParticipante === estado.identificador_do_participante
-            ? estado.identificador_da_sessao
-            : ""
+        identificador_do_participante: proximoParticipante
       };
     });
     setParticipanteDoCatalogo((atual) => (
@@ -923,47 +897,39 @@ export function GestaoOperacional({
 
   async function apresentarConsentimento(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
+    if (String(dados?.organizacao?.identificador ?? "") !== organizacaoSelecionada) {
+      setErro("Aguarde a atualização da organização antes de gerar o convite.");
+      return;
+    }
+    const participante = dados?.participantes.find(
+      (item) => item.identificador === consentimento.identificador_do_participante
+        && participanteAtivo(item)
+    );
+    if (!participante) {
+      setErro("Selecione um participante ativo desta organização.");
+      return;
+    }
     const resultado = await executar("apresentar-instrumento-integrado", {
-      versao_do_instrumento: "1.3",
-      identificador_da_organizacao: String(dados?.organizacao?.identificador ?? ""),
-      identificador_do_participante:
-        consentimento.identificador_do_participante,
-      identificador_da_sessao:
-        consentimento.identificador_da_sessao || null,
-      finalidade: consentimento.finalidade,
-      servico_efetivo: consentimento.servico_efetivo,
-      programa: consentimento.programa,
-      fichas_do_programa: Object.fromEntries(
-        ([
-          ["TELEMETRIA", consentimento.telemetria],
-          ["LONGITUDINAL", consentimento.longitudinal],
-          ["INDICADOR_COLETIVO", consentimento.coletivo]
-        ] as const).filter(([, selecionado]) => selecionado)
-          .map(([codigo]) => [codigo, fichasDoPrograma[codigo] ?? {}])
-      ),
-      validade_em_horas: Number(consentimento.validade_em_horas),
+      versao_do_instrumento: "1.4",
+      identificador_da_organizacao: organizacaoSelecionada,
+      identificador_do_participante: consentimento.identificador_do_participante,
+      identificador_da_sessao: null,
+      finalidade: "Escolhas independentes para recursos facultativos HUMANEXUS, antes da atividade indicada.",
+      validade_em_horas: 72,
       recursos: {
         dados_sensiveis: true,
-        polar: consentimento.polar,
-        eeg: consentimento.eeg,
-        telemetria: consentimento.telemetria,
-        audio: consentimento.audio,
-        video: consentimento.video,
-        multimodal: false,
-        replay: consentimento.replay,
-        relatorio: consentimento.relatorio,
-        longitudinal: consentimento.longitudinal,
-        coletivo: consentimento.coletivo,
-        pesquisa: consentimento.pesquisa,
-        modalidade_de_midia: consentimento.audio && consentimento.video
-          ? "AUDIO_E_VIDEO"
-          : consentimento.audio ? "AUDIO"
-          : consentimento.video ? "VIDEO"
-          : "NENHUM",
-        politica_de_retencao:
-          consentimento.audio || consentimento.video
-            ? consentimento.politica_de_retencao
-            : "NAO_ARMAZENAR"
+        polar: true,
+        eeg: true,
+        telemetria: true,
+        audio: true,
+        video: true,
+        replay: true,
+        relatorio: true,
+        longitudinal: true,
+        coletivo: false,
+        pesquisa: false,
+        modalidade_de_midia: "AUDIO_E_VIDEO",
+        politica_de_retencao: "PRESERVACAO_MANUAL"
       }
     });
     const identificador = String(resultado?.identificador ?? "");
@@ -1028,8 +994,7 @@ export function GestaoOperacional({
       preencherParticipante(null);
       setConsentimento((estado) => ({
         ...estado,
-        identificador_do_participante: "",
-        identificador_da_sessao: ""
+        identificador_do_participante: ""
       }));
       await carregar();
     } else {
@@ -1240,8 +1205,7 @@ export function GestaoOperacional({
             setSessaoEmEdicao("");
             setConsentimento((estado) => ({
               ...estado,
-              identificador_do_participante: "",
-              identificador_da_sessao: ""
+              identificador_do_participante: ""
             }));
             atualizarContextoNaUrl({
               organizacao: identificador,
@@ -2316,8 +2280,7 @@ export function GestaoOperacional({
               preencherParticipante(resultado);
               setConsentimento((estado) => ({
                 ...estado,
-                identificador_do_participante: identificador,
-                identificador_da_sessao: ""
+                identificador_do_participante: identificador
               }));
               setSessao((estado) => ({
                 ...estado,
@@ -2665,219 +2628,40 @@ export function GestaoOperacional({
             />
           ) : null}
           <form onSubmit={(evento) => void apresentarConsentimento(evento)}>
-            <small>IICCA-HXP-1.3 · NOVA MANIFESTAÇÃO</small>
+            <small>IICCA-HXP-1.4 · INSTRUMENTO GERAL</small>
             <h2>Instrumento integrado único</h2>
             <p className="hx-module__notice">
-              A nova versão só gera convite quando estiver disponível no Núcleo.
-              Se ainda estiver em revisão, nenhuma manifestação será criada.
-              Cópias e respostas históricas permanecem preservadas.
+              Selecione o participante e gere a ligação. O texto e as finalidades
+              são institucionais: não há ficha, fundamento ou prazo para preencher
+              neste atendimento. Nenhuma autorização é pré-marcada.
             </p>
-            <label>Participante<select
-              required
+            <p className="hx-module__notice">
+              A pessoa lerá o documento integral e decidirá separadamente sobre
+              Polar, EEG, telemetria, áudio, vídeo, Replay e longitudinal. O
+              relatório profissional devido não depende desses recursos. Produto
+              coletivo exige apresentação específica quando houver produto concreto.
+            </p>
+            <label>Participante<select required
               value={consentimento.identificador_do_participante}
-              onChange={(evento) => setConsentimento({
-                ...consentimento,
-                identificador_do_participante: evento.target.value,
-                identificador_da_sessao: ""
-              })}
+              onChange={(evento) => {
+                setConsentimento((atual) => ({
+                  ...atual,
+                  identificador_do_participante: evento.target.value
+                }));
+                setEntregaDeConsentimento(null);
+              }}
             >
+              <option value="">Selecione o participante</option>
               {participantesAtivos.map((item) => (
-                <option
-                  key={String(item.identificador)}
-                  value={String(item.identificador)}
-                >
+                <option key={String(item.identificador)}
+                  value={String(item.identificador)}>
                   {rotuloDoParticipante(item)}
                 </option>
               ))}
             </select></label>
-            <label>Sessão<select
-              value={consentimento.identificador_da_sessao}
-              onChange={(evento) => setConsentimento({
-                ...consentimento,
-                identificador_da_sessao: evento.target.value
-              })}
-            >
-              <option value="">Sem sessão vinculada</option>
-              {dados.sessoes
-                .filter((item) =>
-                  item.identificador_do_participante
-                    === consentimento.identificador_do_participante
-                )
-                .map((item) => (
-                  <option
-                    key={String(item.identificador)}
-                    value={String(item.identificador)}
-                  >
-                    {texto(item.finalidade)} · {String(item.identificador)}
-                  </option>
-                ))}
-            </select></label>
-            <label>Finalidade<input
-              required
-              value={consentimento.finalidade}
-              onChange={(evento) => setConsentimento({
-                ...consentimento,
-                finalidade: evento.target.value
-              })}
-            /></label>
-            <label>Serviço efetivamente oferecido<select required
-              value={consentimento.servico_efetivo}
-              onChange={(evento) => setConsentimento({
-                ...consentimento,
-                servico_efetivo: evento.target.value
-              })}
-            >
-              <option value="">Selecione o serviço</option>
-              <option value="ATENDIMENTO_PSICOLOGICO">Atendimento psicológico</option>
-              <option value="TREINAMENTO_REGULATORIO">Treinamento regulatório</option>
-            </select></label>
-            <label>Programa ou atividade específica<input required
-              minLength={3}
-              maxLength={180}
-              value={consentimento.programa}
-              onChange={(evento) => setConsentimento({
-                ...consentimento,
-                programa: evento.target.value
-              })}
-            /></label>
-            <fieldset className="hx-integrated-resources">
-              <legend>Recursos planejados para esta atividade</legend>
-              {([
-                ["polar", "Polar H10"],
-                ["eeg", "EPOC X ou EEG homologado"],
-                ["telemetria", "Telemetria de tarefa"],
-                ["audio", "Áudio"],
-                ["video", "Imagem e vídeo"],
-                ["replay", "Reprodução histórica"],
-                ["relatorio", "Relatório individual devido (informativo)"],
-                ["longitudinal", "Acompanhamento longitudinal"],
-                ["coletivo", "Produto coletivo condicionado à ficha do programa"]
-              ] as const).map(([campo, rotulo]) => (
-                <label key={campo}>
-                  <input
-                    type="checkbox"
-                    disabled={campo === "relatorio"}
-                    checked={consentimento[campo]}
-                    onChange={(evento) => setConsentimento((atual) => {
-                      const proximo = {
-                        ...atual,
-                        [campo]: evento.target.checked
-                      };
-                      const possuiMidia = campo === "audio" || campo === "video"
-                        ? Boolean(
-                          (campo === "audio"
-                            ? evento.target.checked
-                            : proximo.audio)
-                          || (campo === "video"
-                            ? evento.target.checked
-                            : proximo.video)
-                        )
-                        : Boolean(proximo.audio || proximo.video);
-                      return {
-                        ...proximo,
-                        politica_de_retencao: possuiMidia
-                          ? atual.politica_de_retencao === "NAO_ARMAZENAR"
-                            ? "ATE_VALIDACAO_DO_RELATORIO"
-                            : atual.politica_de_retencao
-                          : "NAO_ARMAZENAR"
-                      };
-                    })}
-                  />
-                  {rotulo}
-                </label>
-              ))}
-            </fieldset>
-            {(["TELEMETRIA", "LONGITUDINAL", "INDICADOR_COLETIVO"] as const)
-              .filter((codigo) => ({
-                TELEMETRIA: consentimento.telemetria,
-                LONGITUDINAL: consentimento.longitudinal,
-                INDICADOR_COLETIVO: consentimento.coletivo
-              })[codigo])
-              .map((codigo) => (
-                <fieldset className="hx-integrated-resources" key={codigo}>
-                  <legend>Ficha concreta · {codigo.replaceAll("_", " ")}</legend>
-                  <p>Documente o programa antes do convite. A ficha será lida pelo
-                    participante, preservada na cópia e exigida pelo Núcleo.</p>
-                  <label>Regime da operação<select required
-                    value={fichasDoPrograma[codigo]?.regime ?? ""}
-                    onChange={(evento) => setFichasDoPrograma((atual) => ({
-                      ...atual,
-                      [codigo]: {
-                        ...(atual[codigo] ?? {}),
-                        regime: evento.target.value
-                      }
-                    }))}
-                  >
-                    <option value="">Selecione após classificar a finalidade</option>
-                    <option value="DEVER_PROFISSIONAL_DOCUMENTADO">Dever profissional documentado</option>
-                    <option value="CONTRATO_DOCUMENTADO">Contrato aplicável ao titular documentado</option>
-                    <option value="OBRIGACAO_LEGAL_DOCUMENTADA">Obrigação legal documentada</option>
-                    {codigo === "INDICADOR_COLETIVO" && (
-                      <option value="CONSENTIMENTO_ESPECIFICO">Consentimento específico para o produto</option>
-                    )}
-                  </select></label>
-                  {([
-                    ["finalidade", "Finalidade desta operação"],
-                    ["dados", "Dados usados"],
-                    ["fundamento", "Fundamento para estes dados e serviço"],
-                    ["destinatarios", "Destinatários autorizados"],
-                    ["criterio_de_retencao", "Critério de guarda e revisão"],
-                    ["consequencia_da_recusa", "Consequência da recusa ou revogação"],
-                    ...(codigo === "INDICADOR_COLETIVO"
-                      ? [["produto_coletivo", "Produto coletivo protegido"]] as const
-                      : [])
-                  ] as readonly (readonly [string, string])[]).map(([campo, rotulo]) => (
-                    <label key={campo}>{rotulo}<textarea required minLength={4}
-                      maxLength={600}
-                      value={fichasDoPrograma[codigo]?.[campo] ?? ""}
-                      onChange={(evento) => setFichasDoPrograma((atual) => ({
-                        ...atual,
-                        [codigo]: {
-                          ...(atual[codigo] ?? {}),
-                          [campo]: evento.target.value
-                        }
-                      }))}
-                    /></label>
-                  ))}
-                </fieldset>
-              ))}
-            {consentimento.audio || consentimento.video ? (
-              <label>Política de armazenamento da mídia<select
-                value={consentimento.politica_de_retencao}
-                onChange={(evento) => setConsentimento({
-                  ...consentimento,
-                  politica_de_retencao: evento.target.value
-                })}
-              >
-                <option value="DURANTE_A_SESSAO">Somente durante a sessão</option>
-                <option value="ATE_VALIDACAO_DO_RELATORIO">Até a validação do relatório</option>
-                <option value="PRAZO_DEFINIDO">Prazo definido na configuração da sessão</option>
-                <option value="PRESERVACAO_MANUAL">Preservação autorizada pelo profissional</option>
-                <option value="PESQUISA_AUTORIZADA">Pesquisa especificamente autorizada</option>
-              </select></label>
-            ) : (
-              <p className="hx-module__notice">
-                Sem mídia selecionada · nenhum arquivo de áudio ou vídeo será armazenado.
-              </p>
-            )}
-            <label>Validade<select
-              value={consentimento.validade_em_horas}
-              onChange={(evento) => setConsentimento({
-                ...consentimento,
-                validade_em_horas: evento.target.value
-              })}
-            >
-              <option value="24">24 horas</option>
-              <option value="72">72 horas</option>
-              <option value="168">7 dias</option>
-            </select></label>
-            <button disabled={ocupado || !podeConduzir}>
+            <button disabled={ocupado || !podeGerenciarParticipantes}>
               Gerar instrumento único
             </button>
-            <p>
-              Uma única tela, decisões granulares e uma única confirmação final.
-              Nenhuma opção é pré-marcada.
-            </p>
             {entregaDeConsentimento ? (
               <aside className="hx-module__notice">
                 <strong>Ligação exibida uma única vez</strong>
