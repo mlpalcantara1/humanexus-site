@@ -662,6 +662,7 @@ test("sessão exige nome, decisão explícita e comandos completos no Cockpit", 
 
 test("fechamento da Fase 1 preserva contexto e remove bloqueios cadastrais", async () => {
   const management = await source("components/gestao-operacional.tsx");
+  const instrumentoGeral = await source("lib/iicca-lote.ts");
   const invites = await source("components/painel-profissional.tsx");
   const session = await source("components/session-continuity.tsx");
   const renewal = await source("app/api/sessao/renovar/route.ts");
@@ -675,10 +676,11 @@ test("fechamento da Fase 1 preserva contexto e remove bloqueios cadastrais", asy
   assert.match(management, /elegibilidade_anterior/);
   assert.match(management, /elegibilidade_nova/);
   assert.match(management, /Organização de vínculo reutilizada/);
-  assert.match(management, /replay: true/);
-  assert.match(management, /relatorio: true/);
-  assert.match(management, /longitudinal: true/);
-  assert.match(management, /coletivo: false/);
+  assert.match(management, /dadosDaApresentacaoGeral\(/);
+  assert.match(instrumentoGeral, /replay: true/);
+  assert.match(instrumentoGeral, /relatorio: true/);
+  assert.match(instrumentoGeral, /longitudinal: true/);
+  assert.match(instrumentoGeral, /coletivo: false/);
 
   assert.match(invites, /selecionarParticipanteExistente/);
   assert.match(invites, /telefone: cadastrais\?\.telefone/);

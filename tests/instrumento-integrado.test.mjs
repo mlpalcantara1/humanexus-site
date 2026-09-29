@@ -37,10 +37,12 @@ test("versão genérica exige atos independentes sem ativar a versão candidata"
 
 test("novos convites usam a versão integral 1.4 sem fichas manuais", async () => {
   const gestao = await fonte("components/gestao-operacional.tsx");
-  assert.match(gestao, /versao_do_instrumento: "1\.4"/);
-  assert.match(gestao, /identificador_da_sessao: null/);
-  assert.match(gestao, /telemetria: true,[\s\S]*longitudinal: true/);
-  assert.match(gestao, /coletivo: false/);
+  const contratoGeral = await fonte("lib/iicca-lote.ts");
+  assert.match(gestao, /dadosDaApresentacaoGeral\(/);
+  assert.match(contratoGeral, /versao_do_instrumento: "1\.4"/);
+  assert.match(contratoGeral, /identificador_da_sessao: null/);
+  assert.match(contratoGeral, /telemetria: true,[\s\S]*longitudinal: true/);
+  assert.match(contratoGeral, /coletivo: false/);
   assert.match(gestao, /não há ficha, fundamento ou prazo para preencher/);
   assert.doesNotMatch(gestao, /fichas_do_programa: Object\.fromEntries/);
   assert.doesNotMatch(gestao, /<label>Sessão<select/);
@@ -171,11 +173,13 @@ test("PDF contém cópia integral, resposta única, hashes e estado jurídico", 
 test("mídia operacional respeita as modalidades autorizadas no backend", async () => {
   const controle = await fonte("components/controle-gravacao-multimodal.tsx");
   const gestao = await fonte("components/gestao-operacional.tsx");
+  const contratoGeral = await fonte("lib/iicca-lote.ts");
   const instrumento = await fonte("components/instrumento-integrado.tsx");
   assert.match(controle, /modalidades_de_midia_permitidas/);
   assert.match(controle, /NÃO AUTORIZADO/);
   assert.match(controle, /useState<Modo>\("NENHUM"\)/);
-  assert.match(gestao, /politica_de_retencao: "PRESERVACAO_MANUAL"/);
+  assert.match(gestao, /dadosDaApresentacaoGeral\(/);
+  assert.match(contratoGeral, /politica_de_retencao: "PRESERVACAO_MANUAL"/);
   assert.doesNotMatch(gestao, /<label>Política de armazenamento da mídia/);
   assert.match(instrumento, /MÍDIA PLANEJADA/);
   assert.match(instrumento, /POLÍTICA DE ARMAZENAMENTO/);

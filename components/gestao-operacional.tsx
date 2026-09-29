@@ -10,6 +10,8 @@ import { portuguesVisivel } from "@/lib/portugues-visivel";
 import { substituirUrlPreservandoContexto } from "@/lib/contexto-navegacao";
 import { JornadaParticipante } from "@/components/jornada-participante";
 import { HistoricoInstrumentoParticipante } from "@/components/historico-instrumento-participante";
+import { LoteInstrumentos } from "@/components/lote-instrumentos";
+import { dadosDaApresentacaoGeral } from "@/lib/iicca-lote";
 
 type Registro = Record<string, unknown>;
 type BaseOperacional = {
@@ -909,29 +911,10 @@ export function GestaoOperacional({
       setErro("Selecione um participante ativo desta organização.");
       return;
     }
-    const resultado = await executar("apresentar-instrumento-integrado", {
-      versao_do_instrumento: "1.4",
-      identificador_da_organizacao: organizacaoSelecionada,
-      identificador_do_participante: consentimento.identificador_do_participante,
-      identificador_da_sessao: null,
-      finalidade: "Escolhas independentes para recursos facultativos HUMANEXUS, antes da atividade indicada.",
-      validade_em_horas: 72,
-      recursos: {
-        dados_sensiveis: true,
-        polar: true,
-        eeg: true,
-        telemetria: true,
-        audio: true,
-        video: true,
-        replay: true,
-        relatorio: true,
-        longitudinal: true,
-        coletivo: false,
-        pesquisa: false,
-        modalidade_de_midia: "AUDIO_E_VIDEO",
-        politica_de_retencao: "PRESERVACAO_MANUAL"
-      }
-    });
+    const resultado = await executar("apresentar-instrumento-integrado",
+      dadosDaApresentacaoGeral(
+        organizacaoSelecionada, consentimento.identificador_do_participante
+      ));
     const identificador = String(resultado?.identificador ?? "");
     const token = String(resultado?.token_de_entrega_unica ?? "");
     if (!identificador || !token) return;
@@ -2683,6 +2666,20 @@ export function GestaoOperacional({
               </aside>
             ) : null}
           </form>
+          {organizacaoAtual?.identificador ? (
+            <LoteInstrumentos
+              key={String(organizacaoAtual.identificador)}
+              organizacao={String(organizacaoAtual.identificador)}
+              nomeDaOrganizacao={String(organizacaoAtual.nome ?? "")}
+              setorDaOrganizacao={String(
+                objeto(objeto(organizacaoAtual.perfil_operacional)
+                  .dados_institucionais).setor_de_atividade ?? ""
+              )}
+              participantes={dados?.participantes ?? []}
+              autorizado={podeGerenciarParticipantes}
+              aoConcluir={() => carregar(String(organizacaoAtual.identificador))}
+            />
+          ) : null}
         </div>
       ) : null}
 
