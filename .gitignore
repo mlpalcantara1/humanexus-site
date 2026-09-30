@@ -12,3 +12,4 @@ pnpm-lock.yaml
 package-lock.json
 public/media/*.mov
 .vercel
+.env*
