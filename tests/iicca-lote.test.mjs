@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import {
   dadosDaApresentacaoGeral, dadosDoParticipanteDoLote,
-  lerLoteCsv, nichoDaOrganizacao, referenciaDoLote
+  lerLoteCsv, nichoDaOrganizacao, referenciaDoLote, emailValidoDoLote
 } from "../lib/iicca-lote.ts";
 
 test("planilha CTA exportada em CSV lê nome, e-mail e função sem inferir aceite", async () => {
@@ -44,7 +44,29 @@ test("CSV aceita vírgulas/aspas e rejeita duplicidade ou contato ausente", () =
   assert.throws(() => lerLoteCsv(
     "nome;email\nPessoa A;a@example.invalid\nPessoa B;A@example.invalid"
   ), /e-mail repetido/);
-  assert.throws(() => lerLoteCsv("nome;email\nPessoa A;"), /inválido/);
+  assert.throws(() => lerLoteCsv("nome;email\nPessoa A;"), /referência estável/);
+});
+
+test("cadastro sem e-mail exige referência estável, não inventa contato nem conflita com outro vazio", async () => {
+  const linhas = lerLoteCsv("nome;referencia;funcao\nPessoa A;MA-1;Mecânico\nPessoa B;MA-2;Técnico");
+  assert.equal(linhas.length, 2);
+  assert.equal(linhas[0].email, "");
+  assert.equal(await referenciaDoLote(linhas[0]), "MA-1");
+  assert.equal(await referenciaDoLote(linhas[1]), "MA-2");
+  assert.equal(dadosDoParticipanteDoLote(linhas[0], "org", "Empresa", "MA-1").dados_cadastrais.email, "");
+  assert.throws(() => lerLoteCsv("nome;referencia\nPessoa A;MA-1\nPessoa B;ma-1"), /referência repetida/);
+  assert.throws(() => lerLoteCsv("nome;email;referencia\nPessoa A;invalido;MA-1"), /inválido/);
+  await assert.rejects(referenciaDoLote({ ...linhas[0], referencia: "" }), /obrigatório/);
+  assert.equal(emailValidoDoLote(""), false);
+  assert.equal(emailValidoDoLote("sem-arroba.gmail.com"), false);
+  assert.equal(emailValidoDoLote("pessoa@example.invalid"), true);
+});
+
+test("geração de links não solicita envio e mantém escolhas do participante ausentes", () => {
+  const dados = dadosDaApresentacaoGeral("org", "pessoa", false);
+  assert.equal(dados.entregar_por_email, false);
+  assert.equal(dados.identificador_da_sessao, null);
+  assert.equal("decisoes" in dados, false);
 });
 
 test("lote só usa endpoints autenticados existentes e não chama manifestação", () => {

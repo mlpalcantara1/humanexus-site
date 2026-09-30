@@ -68,8 +68,8 @@ export function lerLoteCsv(conteudo: string): LinhaDoLote[] {
     const campo = ALIASES[chave(titulo)];
     if (campo && !indices.has(campo)) indices.set(campo, indice);
   });
-  if (!indices.has("nome") || !indices.has("email")) {
-    throw new Error("O CSV precisa das colunas nome e email.");
+  if (!indices.has("nome")) {
+    throw new Error("O CSV precisa da coluna nome.");
   }
   const emails = new Set<string>();
   const referencias = new Set<string>();
@@ -83,16 +83,19 @@ export function lerLoteCsv(conteudo: string): LinhaDoLote[] {
       funcao: valor("funcao"), matricula: valor("matricula"),
       unidade: valor("unidade"), setor: valor("setor")
     };
-    if (linha.nome.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(linha.email)) {
+    if (linha.nome.length < 2 || (linha.email && !emailValidoDoLote(linha.email))) {
       throw new Error(`Linha ${linha.numero}: nome ou e-mail inválido.`);
     }
-    if (emails.has(linha.email)) {
+    if (!linha.email && !linha.referencia) {
+      throw new Error(`Linha ${linha.numero}: sem e-mail, informe uma referência estável para evitar duplicar o cadastro.`);
+    }
+    if (linha.email && emails.has(linha.email)) {
       throw new Error(`Linha ${linha.numero}: e-mail repetido neste lote.`);
     }
     if (linha.referencia && referencias.has(linha.referencia.toLowerCase())) {
       throw new Error(`Linha ${linha.numero}: referência repetida neste lote.`);
     }
-    emails.add(linha.email);
+    if (linha.email) emails.add(linha.email);
     if (linha.referencia) referencias.add(linha.referencia.toLowerCase());
     return linha;
   });
@@ -100,10 +103,15 @@ export function lerLoteCsv(conteudo: string): LinhaDoLote[] {
 
 export async function referenciaDoLote(linha: LinhaDoLote): Promise<string> {
   if (linha.referencia) return linha.referencia;
+  if (!emailValidoDoLote(linha.email)) throw new Error("Referência ou e-mail válido obrigatório.");
   const bytes = new TextEncoder().encode(linha.email);
   const resumo = await crypto.subtle.digest("SHA-256", bytes);
   return "B2B-" + Array.from(new Uint8Array(resumo)).slice(0, 16)
     .map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export function emailValidoDoLote(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export function dadosDoParticipanteDoLote(
