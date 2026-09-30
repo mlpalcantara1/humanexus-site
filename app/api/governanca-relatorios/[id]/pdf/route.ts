@@ -17,8 +17,10 @@ export async function GET(
   }
   try {
     const { id } = await params;
+    const produto = new URL(_request.url).searchParams.get("produto");
+    if (produto && !["anexo", "devolutiva"].includes(produto)) return NextResponse.json({ erro: { mensagem: "Produto inválido." } }, { status: 400 });
     const arquivo = await requisitarNucleoBinario(
-      `/api/v1/relatorios/${encodeURIComponent(id)}/pdf`,
+      `/api/v1/relatorios/${encodeURIComponent(id)}/${produto === "anexo" ? "anexo/" : ""}pdf`,
       token,
     );
     return new NextResponse(new Uint8Array(arquivo.bytes), {

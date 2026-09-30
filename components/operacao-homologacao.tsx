@@ -1,4 +1,6 @@
 "use client";
+import { DistribuicaoTemporalCanonica } from "@/components/distribuicao-temporal-canonica";
+import { CockpitIirhZonaTemporal } from "@/components/cockpit-iirh-zona-temporal";
 
 import { JornadaParticipante } from "@/components/jornada-participante";
 
@@ -50,6 +52,7 @@ import { publicarEstadoDoNucleo } from "@/lib/client-request";
 import { criarPayloadDoComandoPrincipal } from "@/lib/cockpit-operational-command";
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
 import { estadoOperacionalTerminal } from "@/lib/cockpit-terminal-eligibility";
+import { resumirFasesRegistradas } from "@/lib/rastreabilidade-fases";
 import { snapshotOficialDeFaseAplicavel } from "@/lib/cockpit-scientific-authority";
 import {
   compatibilizarVetoresDoSnapshotHistorico,
@@ -286,6 +289,7 @@ function dataLegivel(valor: unknown) {
 }
 
 function DisponibilidadeContinuaIirhZona({ estado }: { estado: Estado }) {
+  const historico = estadoOperacionalTerminal(estado.sessao.estado);
   const disponibilidade = resolverDisponibilidadeContinuaIirhZona(
     leituraCientificaDaInspecao(estado)
   );
@@ -392,7 +396,7 @@ function DisponibilidadeContinuaIirhZona({ estado }: { estado: Estado }) {
               data-iirh-authoritative-state={indicador.atributo === "iirh" ? indicador.disponibilidade.modo : undefined}
               data-zone-authoritative-state={indicador.atributo === "zona" ? indicador.disponibilidade.modo : undefined}
             >
-              <small>{indicador.codigo} · ESTADO ATUAL</small>
+              <small>{indicador.codigo} · {historico ? "RESULTADO DA SESSÃO" : "ATUAL"}</small>
               <strong>{indicador.valor}</strong>
               <span>{portuguesVisivel(indicador.motivoAtual)}</span>
               <span>{origemVisivel}</span>
@@ -411,7 +415,7 @@ function DisponibilidadeContinuaIirhZona({ estado }: { estado: Estado }) {
               data-iirh-reference-state={indicador.atributo === "iirh" ? indicador.disponibilidade.modo : undefined}
               data-zone-reference-state={indicador.atributo === "zona" ? indicador.disponibilidade.modo : undefined}
             >
-              <small>{indicador.codigo} · REFERÊNCIA CONGELADA</small>
+              <small>{indicador.codigo} · REFERÊNCIA HISTÓRICA</small>
               <strong>{indicador.valor}</strong>
               <span>{rotuloDaDisponibilidadeAutoritativa(indicador.disponibilidade.modo)}</span>
               <span>{origemVisivel}</span>
@@ -420,7 +424,7 @@ function DisponibilidadeContinuaIirhZona({ estado }: { estado: Estado }) {
         })}
       </div>
       <div className="hx-limit-consolidated">
-        <strong>JANELA ATUAL · {portuguesVisivel(faseDaJanela)} · {portuguesVisivel(estadoDaJanela)}</strong>
+        <strong>{historico ? "REPLAY HISTÓRICO" : "AO VIVO"} · {portuguesVisivel(faseDaJanela)} · {portuguesVisivel(estadoDaJanela)}</strong>
         <span>IIRH atual: {portuguesVisivel(indicadoresAtuais[0].motivoAtual)}</span>
         <span>Zona atual: {portuguesVisivel(indicadoresAtuais[1].motivoAtual)}</span>
       </div>
@@ -813,6 +817,9 @@ const ROTULOS_DOS_COMANDOS: Record<string, string> = {
   PAUSAR_POS: "Pausar PÓS",
   RETOMAR_POS: "Retomar PÓS",
   ENCERRAR_POS: "Encerrar PÓS",
+  REPETIR_PRE: "Repetir PRÉ",
+  REPETIR_TREINO: "Repetir TREINO",
+  REPETIR_POS: "Repetir PÓS",
   CONCLUIR_SESSAO: "Concluir sessão",
   RECUPERAR_ESTACAO: "Recuperar estação",
   ENCERRAR_TECNICAMENTE_POR_INCIDENTE:
@@ -1010,7 +1017,7 @@ function trilhasDoCockpit(estado: Estado): HxTrack[] {
     time: instante(item.coletado_em),
     value: Number(item.confiabilidade ?? 0) * 100,
     phase: texto(item.momento),
-    source: "Registro congelado independente do núcleo",
+    source: "Registro preservado independente do núcleo",
     quality: Number(item.confiabilidade ?? 0),
     coverage: Number(item.cobertura ?? 0),
     connection: "PRESERVADO",
@@ -1020,7 +1027,7 @@ function trilhasDoCockpit(estado: Estado): HxTrack[] {
     time: instante(item.coletado_em),
     value: Number(item.cobertura ?? 0) * 100,
     phase: texto(item.momento),
-    source: "Registro congelado independente do núcleo",
+    source: "Registro preservado independente do núcleo",
     quality: Number(item.confiabilidade ?? 0),
     coverage: Number(item.cobertura ?? 0),
     connection: "PRESERVADO",
@@ -1133,7 +1140,7 @@ function Rastreabilidade({ estado }: { estado: Estado }) {
     ["CTR individual", estado.ctr_individual?.codigo ?? estado.ctr_individual?.identificador],
     ["THX individual", estado.thx_individual?.identificador],
     ["Execução", estado.execucao?.identificador],
-    ["PRÉ / TREINO / PÓS", momentos(estado).length === 3 ? "3 registros congelados preservados" : null],
+    ["PRÉ / TREINO / PÓS", resumirFasesRegistradas(estado.fases)],
     ["Eventos", `${estado.eventos.length} preservados`],
     ["Reprodução histórica", estado.replay?.linha?.identificador],
     ["Formulação", estado.formulacoes.at(-1)?.identificador],
@@ -1450,8 +1457,8 @@ function ContextoPersistente({ estado, visao }: { estado: Estado; visao: VisaoCo
         <section className="hx-session-final">
           <strong>SESSÃO FINALIZADA</strong>
           <span>{tipoDaSessao === "BASELINE"
-            ? "Referência inicial preservada · dados congelados · reprodução histórica disponível"
-            : "PRÉ preservado · TREINO preservado · PÓS preservado · registros congelados · reprodução histórica disponível · relatório disponível"}</span>
+            ? "Referência inicial preservada · dados preservados · reprodução histórica disponível"
+            : "PRÉ preservado · TREINO preservado · PÓS preservado · registros preservados · reprodução histórica disponível · relatório disponível"}</span>
         </section>
       ) : null}
     </>
@@ -3419,6 +3426,11 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     void comandos.principal(acaoPrincipal);
   };
   const executarSecundaria = (comando: string) => {
+    if (comando.startsWith("REPETIR_")) {
+      const motivo = window.prompt("Repetir esta fase por decisão profissional? A tentativa anterior será preservada como inválida. Informe o motivo:");
+      if (!motivo?.trim()) return;
+      return void comandos.operacional(comando, motivo.trim());
+    }
     if (comando === "RECUPERAR_ESTACAO") {
       const justificativa = window.prompt(
         "Informe o motivo da recuperação segura da estação. A sessão e os dados científicos não serão alterados."
@@ -3679,7 +3691,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
 
   const visaoPreTreinoPos = (
     <section className="hx-cockpit-panel">
-      <TituloDaVisao kicker="PRÉ / TREINO / PÓS" titulo="Fases independentes, comparáveis somente sob governança." descricao="Preparação, comandos, registros congelados, fontes, eventos e comparação permanecem no contexto da sessão." />
+      <TituloDaVisao kicker="PRÉ / TREINO / PÓS" titulo="Fases independentes, comparáveis somente sob governança." descricao="Preparação, comandos, registros preservados, fontes, eventos e comparação permanecem no contexto da sessão." />
       <ReferenciaBaselineResumo estado={estado} />
       {controles}
       <PhaseComparisonChart phases={fasesComparaveis(estado)} markers={marcadores.filter((item) => item.phase === "TREINO")} />
@@ -3726,6 +3738,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       <div className="hx-report-operation"><div><strong>{texto(estado.longitudinal?.estado_da_evidencia, "EVIDÊNCIA LONGITUDINAL")}</strong><span>A trajetória descritiva existe desde a referência inicial; uma tendência madura continua submetida à elegibilidade temporal.</span></div><Botao onClick={comandos.longitudinal} disabled={ocupado !== ""}>Consolidar versão longitudinal</Botao></div>
       <MacrotrajetoriaRegulatoria longitudinal={estado.longitudinal} />
       <LongitudinalEvolutionChart points={pontosLongitudinais} />
+      {Object.entries(objeto(estado.longitudinal?.distribuicao_temporal_das_zonas_por_sessao)).map(([sessao, distribuicao]) => <DistribuicaoTemporalCanonica key={sessao} titulo={`Tempo por Zona · sessão ${sessao}`} distribuicao={objeto(distribuicao)} />)}
+      {!Object.keys(objeto(estado.longitudinal?.distribuicao_temporal_das_zonas_por_sessao)).length && <DistribuicaoTemporalCanonica titulo="Tempo por Zona longitudinal" distribuicao={{}} />}
       <EvolucaoDaAssinaturaNeuroregulatoria longitudinal={estado.longitudinal} />
       <ReferenciaBaselineResumo estado={estado} />
       <Rastreabilidade estado={estado} />
@@ -3771,6 +3785,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           {" · "}referência inicial exibida em trilha operacional própria, fora das fases científicas.
         </span>
       </div>
+      <DistribuicaoTemporalCanonica titulo="Tempo por Zona · Replay da sessão" distribuicao={objeto(estado.replay?.distribuicao_temporal_das_zonas)} />
       <section className="hx-replay hx-replay--operational">
         <div className="hx-replay__toolbar">
           <div><p>REPRODUÇÃO HISTÓRICA MULTIMODAL SINCRONIZADA</p><strong>{texto(estado.replay?.linha?.identificador, replayDisponivel ? "LINHA CANÔNICA REIDRATADA" : "LINHA NÃO GERADA")}</strong></div>
@@ -4071,7 +4086,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             onClick={() => selecionarVisao("visao-geral")}
           >
             <small>EXECUÇÃO</small>
-            <strong>Modo operacional ao vivo</strong>
+            <strong>{estadoOperacionalTerminal(estado.sessao.estado) ? "REPLAY HISTÓRICO" : "AO VIVO"}</strong>
           </button>
           <button
             className={!operacional ? "is-active" : ""}
@@ -4108,8 +4123,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <main className="hx-cockpit-view" data-cockpit-view={visao}>
           {visao === "coletivo"
             ? null
-            : <DisponibilidadeContinuaIirhZona estado={estado} />}
-          {visao !== "coletivo" && podeConduzirOperacao ? <RegistroIntegradoDaSessao
+            : <><CockpitIirhZonaTemporal leitura={leituraCientificaDaInspecao(estado)} historico={estadoOperacionalTerminal(estado.sessao.estado)} /><details><summary>Referências e rastreabilidade da leitura</summary><DisponibilidadeContinuaIirhZona estado={estado} /></details></>}
+          {visao !== "coletivo" ? <RegistroIntegradoDaSessao
             estado={estado as unknown as Registro} revisar={visao === "relatorio"}
           /> : null}
           {podeConduzirOperacao && (visao === "formulacao" || (visao === "visao-geral" && ["PREPARAR_SESSAO", "DEFINIR_REFERENCIA_BASELINE"].includes(acaoPrincipal))) ? <JornadaParticipante key={`${estado.organizacao.identificador}:${estado.participante.identificador}:${estado.sessao.identificador}`} organizacao={String(estado.organizacao.identificador)} participante={String(estado.participante.identificador)} sessao={String(estado.sessao.identificador)} somentePreparacao={visao !== "formulacao"} /> : null}

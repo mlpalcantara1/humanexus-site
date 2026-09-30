@@ -14,19 +14,21 @@ export function SiteHeader() {
           </span>
           <span className="brand-name">
             <strong>HUMANEXUS</strong>
-            <small>DESEMPENHO OPERACIONAL</small>
+            <small data-portugues-preservar="true">PERFORMANCE OPERACIONAL</small>
           </span>
         </Link>
         <nav>
           <Link href="/o-instituto">Instituto</Link>
           <Link href="/#aviacao">Aviação</Link>
           <Link href="/solucoes">Soluções</Link>
+          <Link href="https://academia.institutohumanexus.com/academia">Academia</Link>
+          <Link href="https://institutohumanexus.com/inteligencia-regulatoria-humana#livro-tirh">Livro</Link>
           <Link href="/tecnologia-humanexus">Tecnologia</Link>
           <Link href="/inteligencia-regulatoria-humana">TIRH</Link>
           <Link href="/empresas-e-organizacoes">Empresas</Link>
         </nav>
         <Link href={entradaDaArea} className="header-area">
-          Área HUMANEXUS
+          ENTRAR NA PLATAFORMA →
         </Link>
         <Link href="/contato" className="header-cta">
           Agendar <span>↗</span>
@@ -40,11 +42,13 @@ export function SiteHeader() {
             <Link href="/o-instituto">Instituto</Link>
             <Link href="/#aviacao">Aviação</Link>
             <Link href="/solucoes">Soluções</Link>
+            <Link href="https://academia.institutohumanexus.com/academia">Academia</Link>
+            <Link href="https://institutohumanexus.com/inteligencia-regulatoria-humana#livro-tirh">Livro</Link>
             <Link href="/tecnologia-humanexus">Tecnologia</Link>
             <Link href="/inteligencia-regulatoria-humana">TIRH</Link>
             <Link href="/empresas-e-organizacoes">Empresas</Link>
             <Link href="/performance-operacional">Desempenho</Link>
-            <Link href={entradaDaArea}>Área HUMANEXUS</Link>
+            <Link href={entradaDaArea}>ENTRAR NA PLATAFORMA →</Link>
             <Link href="/contato">Agendar apresentação</Link>
           </div>
         </details>

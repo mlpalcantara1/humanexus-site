@@ -27,7 +27,7 @@ export function DetalheDoRelatorioEmGovernanca({
   const finalidade = relatorio.secoes?.find(
     (item) => item.codigo === "FINALIDADE_DO_TREINAMENTO"
   )?.itens[0] ?? relatorio.objetivo;
-  const entregaFinalDisponivel = relatorio.relatorio_final_disponivel === true;
+  const entregaFinalDisponivel = relatorio.relatorio_final_disponivel === true && !(relatorio.coerencia_documental?.bloqueios.length);
   return (
     <article className="hx-released-report">
       <Link className="hx-released-report__back" href={retorno}>
@@ -50,6 +50,7 @@ export function DetalheDoRelatorioEmGovernanca({
               <a href={`/api/governanca-relatorios/${encodeURIComponent(relatorio.identificador)}/pdf`}>
                 Baixar PDF <span aria-hidden="true">↓</span>
               </a>
+              {relatorio.produtos_separados && <a href={`/api/governanca-relatorios/${encodeURIComponent(relatorio.identificador)}/pdf?produto=anexo`}>Baixar anexo científico</a>}
               <BotaoImprimirRelatorio />
             </>
           ) : (

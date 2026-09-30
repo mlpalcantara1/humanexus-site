@@ -74,6 +74,12 @@ export default function PesquisaPage() {
               title="Teoria da Inteligência Regulatória Humana"
               description="Obra que apresenta os fundamentos científicos da Teoria da Inteligência Regulatória Humana e sustenta a base conceitual do Instituto HUMANEXUS."
             />
+            <a
+              href="https://www.institutohumanexus.com/inteligencia-regulatoria-humana#livro-tirh"
+              className="mt-6 inline-flex rounded-full border border-[#D4AF37]/45 px-6 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10"
+            >
+              Conheça o livro no site institucional →
+            </a>
           </Reveal>
         </div>
       </section>

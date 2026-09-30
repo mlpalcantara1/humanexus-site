@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HumanexusApiError, humanexusApi } from "@/lib/humanexus-api";
+import { synchronizeAnswers, resolveAnswerConflict, type AnswerConflict } from "@/lib/anamnese-sync";
 
 type ConfirmacaoPersistencia = {
   request_received: boolean;
@@ -156,7 +157,7 @@ async function readQueue(token: string): Promise<Pending[]> {
     );
     return JSON.parse(new TextDecoder().decode(clear));
   } catch {
-    return [];
+    throw new Error("Não foi possível ler as respostas protegidas neste dispositivo. Mantenha esta página aberta; a fila não foi apagada.");
   }
 }
 
@@ -320,12 +321,19 @@ export function AnamneseParticipante({ token }: { token: string }) {
   const conclusionLock = useRef(false);
   const queueLock = useRef<Promise<void>>(Promise.resolve());
   const versionsRef = useRef<Record<string, number>>({});
+  const [answerConflict, setAnswerConflict] = useState<AnswerConflict<Answer> | null>(null);
+  const conflictRef = useRef<AnswerConflict<Answer> | null>(null);
+  const [resolvingConflict, setResolvingConflict] = useState(false);
 
   const withQueueLock = useCallback(<T,>(task: () => Promise<T>): Promise<T> => {
-    const operation = queueLock.current.then(task, task);
+    const coordinated = async (): Promise<T> => {
+      if (navigator.locks) return await navigator.locks.request(`hx-anamnese:${token}`, task);
+      return await task();
+    };
+    const operation = queueLock.current.then(coordinated, coordinated);
     queueLock.current = operation.then(() => undefined, () => undefined);
     return operation;
-  }, []);
+  }, [token]);
 
   const load = useCallback(async (preserveCurrentSection = false) => {
     try {
@@ -343,9 +351,12 @@ export function AnamneseParticipante({ token }: { token: string }) {
         restored[item.question_id] = normalizeAnswer(item.answer);
         controls[item.question_id] = item.control_version;
       }
+      const pending = await readQueue(token);
+      for (const item of pending) restored[item.pergunta] = item.resposta;
       const merged = preserveCurrentSection
         ? { ...restored, ...answersRef.current }
         : restored;
+      if (pending.length && !preserveCurrentSection) setSaveState("SINCRONIZACAO_PENDENTE");
       answersRef.current = merged;
       setAnswers(merged);
       setCustomNiche(data.selecao_de_ramo.nicho_customizado ?? "");
@@ -373,6 +384,7 @@ export function AnamneseParticipante({ token }: { token: string }) {
   useEffect(() => { void load(); }, [load]);
 
   const syncPending = useCallback(async (): Promise<boolean> => {
+    if (conflictRef.current) return false;
     if (!navigator.onLine) {
       setSaveState("SEM_REDE");
       setSyncMessage(
@@ -383,37 +395,47 @@ export function AnamneseParticipante({ token }: { token: string }) {
     if (syncPromise.current) return syncPromise.current;
 
     const operation = withQueueLock(async (): Promise<boolean> => {
-      const pending = await readQueue(token);
-      if (!pending.length) {
-        setSaveState("SALVO");
-        setSyncMessage("");
-        return true;
-      }
-      setSaveState("SALVANDO");
       try {
-        const remaining = [...pending];
-        for (const item of pending) {
-          const saved = await requisitarAnamnese<{ versao_de_controle: number }>(
-            `/api/humanexus/convites/${encodeURIComponent(token)}/respostas/${item.pergunta}`,
-            {
-              method: "PUT",
-              body: JSON.stringify({
+        const pending = await readQueue(token);
+        if (!pending.length) {
+          setSaveState("SALVO");
+          setSyncMessage("");
+          return true;
+        }
+        setSaveState("SALVANDO");
+        const conflict = await synchronizeAnswers<Answer>({
+          read: async () => pending,
+          write: remaining => writeQueue(token, remaining),
+          save: async item => {
+            const saved = await requisitarAnamnese<{ versao_de_controle: number }>(
+              `/api/humanexus/convites/${encodeURIComponent(token)}/respostas/${item.pergunta}`,
+              { method: "PUT", body: JSON.stringify({
                 versao_da_pergunta: item.versao,
                 resposta: item.resposta,
                 versao_de_controle: item.controle
-              })
-            }
-          );
-          versionsRef.current[item.pergunta] = saved.versao_de_controle;
-          remaining.shift();
-          await writeQueue(token, remaining);
+              }) }
+            );
+            return saved.versao_de_controle;
+          },
+          remote: async () => {
+            const data = await requisitarAnamnese<Structure>(`/api/humanexus/convites/${encodeURIComponent(token)}`);
+            return (data.respostas ?? []).map(item => ({ ...item, answer: normalizeAnswer(item.answer) }));
+          },
+          acknowledged: (question, revision) => { versionsRef.current[question] = revision; }
+        });
+        if (conflict) {
+          conflictRef.current = conflict;
+          setAnswerConflict(conflict);
+          setSaveState("CONFLITO");
+          setSyncMessage("Há duas versões desta resposta. Compare abaixo e escolha qual manter. Nenhuma resposta foi sobrescrita.");
+          return false;
         }
         await load(true);
         setSaveState("SALVO");
         setSyncMessage("");
         return true;
       } catch (erro) {
-        setSaveState("CONFLITO");
+        setSaveState(navigator.onLine ? "SINCRONIZACAO_PENDENTE" : "SEM_REDE");
         setSyncMessage(
           erro instanceof Error
             ? erro.message
@@ -504,6 +526,41 @@ export function AnamneseParticipante({ token }: { token: string }) {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [section, reviewing]);
+
+  async function resolveConflict(keepLocal: boolean) {
+    const conflict = conflictRef.current;
+    if (!conflict || resolvingConflict) return;
+    setResolvingConflict(true);
+    try {
+      await withQueueLock(async () => {
+        const queue = await readQueue(token);
+        const resolved = resolveAnswerConflict(queue, conflict, keepLocal);
+        if (!resolved) {
+          throw new Error("A resposta local mudou durante a comparação. Clique em Comparar novamente para rever as versões atuais.");
+        }
+        await writeQueue(token, resolved);
+        versionsRef.current[conflict.pending.pergunta] = conflict.remote.control_version;
+        if (!keepLocal) {
+          answersRef.current = { ...answersRef.current, [conflict.pending.pergunta]: conflict.remote.answer };
+          setAnswers(answersRef.current);
+        }
+        conflictRef.current = null;
+        setAnswerConflict(null);
+      });
+      await syncPending();
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : "Não foi possível conciliar. As respostas continuam preservadas.");
+    } finally {
+      setResolvingConflict(false);
+    }
+  }
+
+  async function compareAgain() {
+    if (resolvingConflict) return;
+    conflictRef.current = null;
+    setAnswerConflict(null);
+    await syncPending();
+  }
 
   async function selectBranch() {
     const branch = structure?.selecao_de_ramo.alternativas_oficiais.find(
@@ -726,6 +783,15 @@ export function AnamneseParticipante({ token }: { token: string }) {
       <main className="hx-anamnese-form">
         {syncMessage ? <p className="hx-anamnese-alert" role="alert" aria-live="assertive">{syncMessage}</p> : null}
         {message ? <p className="hx-anamnese-alert" role="alert" aria-live="assertive">{message}</p> : null}
+        {answerConflict ? <section className="hx-anamnese-alert" aria-label="Comparação de respostas">
+          <h2>Escolha a resposta que deseja manter</h2>
+          <p>{structure.perguntas.find(question => question.identificador === answerConflict.pending.pergunta)?.texto ?? "Resposta pendente"}</p>
+          <p><strong>Neste dispositivo:</strong> {valueText(answerConflict.pending.resposta)}</p>
+          <p><strong>Salva no servidor (versão {answerConflict.remote.control_version}):</strong> {valueText(answerConflict.remote.answer)}</p>
+          <button type="button" disabled={resolvingConflict} onClick={() => void resolveConflict(true)}>Manter resposta deste dispositivo</button>
+          <button type="button" disabled={resolvingConflict} onClick={() => void resolveConflict(false)}>Usar resposta salva no servidor</button>
+          <button type="button" disabled={resolvingConflict} onClick={() => void compareAgain()}>Comparar novamente</button>
+        </section> : null}
         {reviewing ? (
           <>
             <p className="hx-anamnese-kicker">REVISÃO ANTES DA CONCLUSÃO</p>

@@ -21,6 +21,8 @@ export type RelatorioEmGovernanca = {
   concluido_em: string | null;
   liberado_em: string | null;
   secoes?: Array<{ codigo: string; titulo: string; itens: string[] }>;
+  produtos_separados?: boolean;
+  coerencia_documental?: { versao: string; bloqueios: string[] };
   anexo_tecnico?: Array<{ codigo: string; titulo: string; itens: string[] }>;
   linhagem: {
     participante: string | null;

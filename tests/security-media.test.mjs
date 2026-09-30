@@ -88,7 +88,7 @@ test("preparação da sessão oferece mídia opcional, cobertura e baseline expl
   assert.match(rota, /gravacao\/baseline/);
   assert.match(cockpit, /pode_iniciar_pre/);
   assert.match(cockpit, /visaoTecnica[\s\S]*ControleGravacaoMultimodal/);
-  assert.match(cockpit, /Modo operacional ao vivo/);
+  assert.match(cockpit, /AO VIVO/);
   assert.match(cockpit, /Inspeção TIRH/);
 });
 
