@@ -286,8 +286,8 @@ test("Resultante parcial movimenta apenas vetores canônicos sem fabricar magnit
 
   assert.match(dinamica, /const vetoresCalculaveis = vetores\.filter/);
   assert.match(dinamica, /data-partial=\{configuracaoParcial\}/);
-  assert.match(dinamica, /CONFIGURAÇÃO VETORIAL PARCIAL EM EVOLUÇÃO/);
-  assert.match(dinamica, /movimentos representam somente os vetores canônicos calculáveis/);
+  assert.match(dinamica, /RESULTANTE ESTRUTURADA · \{estadoDaResultante\}/);
+  assert.match(dinamica, /movimentos representam os vetores canônicos disponíveis/);
   assert.match(dinamica, /magnitude == null \? null :/);
   assert.match(dinamica, /"--hx-vector-top":[\s\S]*?86 - vetor\.value \* 72/);
   assert.match(css, /top: var\(--hx-vector-top\)/);

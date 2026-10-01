@@ -256,7 +256,9 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
   const pendencias = CAMPOS_PROFISSIONAIS_DO_RELATORIO.filter(([c]) => !campos[c]?.trim());
   const finalValidado = (resumo?.validacao?.historica || resumo?.validacao?.assinatura_do_rascunho === resumo?.assinatura_do_rascunho) && resumo?.validacao?.revisao_validada === resumo?.revisao && !Object.keys(local.current.campos).length && !local.current.fila.length;
   const checklist = obj(resumo?.checklist), prontidao = obj(checklist.prontidao), contexto = obj(checklist.contexto);
-  const bloqueios = Array.isArray(prontidao.bloqueios_essenciais) ? prontidao.bloqueios_essenciais.map(String) : [];
+  const gate = obj(checklist.gate_de_inicio);
+  const configuracao = obj(checklist.configuracao);
+  const bloqueios = Array.isArray(gate.bloqueios) ? gate.bloqueios.map((b) => String(obj(b).motivo ?? "Contexto pendente")) : [];
   const bloqueio = bloqueios.join(" · ");
   const listaFontes = Array.isArray(prontidao.fontes) ? prontidao.fontes.map(obj).filter((f) => f.selecionada || ["POLAR_H10", "EPOC_X", "TELEMETRIA_TAREFA"].includes(String(f.codigo ?? ""))) : [];
   const consentimentos = Array.isArray(contexto.consentimentos) ? contexto.consentimentos.map(String) : [];
@@ -264,12 +266,13 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
     <header><div><small>{revisar || resumo?.terminal ? "REVISÃO PROFISSIONAL ÚNICA" : "REGISTRO DA SESSÃO"}</small><h3>{revisar || resumo?.terminal ? "Revisar, corrigir e validar" : "Observações sempre à mão"}</h3></div><strong>{terminal ? "REVISÃO PÓS-SESSÃO" : faseAtual ?? "PREPARAÇÃO"}</strong></header>
     {!resumo?.terminal && <details open={!resumo?.notas.length}><summary>Checklist automático da sessão</summary><ul>
       <li>Participante: {String(obj(estado.participante).nome_documental ?? obj(estado.participante).referencia_operacional ?? participante)} · Organização: {String(obj(estado.organizacao).nome ?? org)}</li>
-      <li>Modalidade: {String(obj(estado.sessao).tipo_de_sessao ?? detalhes.tipo_de_sessao ?? "não informada")}</li>
-      <li>Objetivo: {String(obj(estado.sessao).finalidade ?? detalhes.finalidade ?? "não informado")} · CTR: {String(obj(estado.ctr_individual).codigo ?? detalhes.identificador_do_ctr ?? "não selecionado")} · THX: {String(obj(estado.thx_individual).codigo ?? detalhes.identificador_do_thx ?? "não selecionado")}</li>
+      <li>Modalidade: {String(configuracao.modalidade ?? detalhes.modalidade ?? "não informada")} · Fluxo: {String(operacao.tipo_de_sessao ?? configuracao.tipo_de_sessao ?? detalhes.tipo_de_sessao ?? "não informado")}</li>
+      <li>Objetivo: {String(configuracao.finalidade ?? obj(estado.sessao).finalidade ?? detalhes.finalidade ?? "não informado")} · CTR: {String(obj(estado.ctr_individual).codigo ?? configuracao.identificador_do_ctr ?? detalhes.identificador_do_ctr ?? "não selecionado")} · THX: {String(obj(estado.thx_individual).codigo ?? configuracao.identificador_do_thx ?? detalhes.identificador_do_thx ?? "não selecionado")}</li>
       <li>Fontes: {listaFontes.length ? listaFontes.map((f) => `${String(f.codigo ?? f.tipo ?? f.nome ?? "fonte")}: ${f.selecionada ? "prevista" : "não prevista"}, ${f.disponivel ? "disponível" : "indisponível"} (${String(f.estado ?? "sem confirmação")})`).join(" · ") : "nenhum sensor ativo confirmado"}</li>
       <li>Baseline: {String(obj(obj(checklist.baseline).referencia).estado ?? obj(obj(operacao.referencia_de_baseline).baseline).estado ?? "decisão pendente na preparação")}</li>
       <li>Autorizações presentes: {consentimentos.join(" · ") || "ainda não confirmadas"}</li>
-      <li>Condições de início: {bloqueio || String(prontidao.estado ?? "verificando preparação canônica")}</li>
+      <li>Condições de início: {bloqueio || (gate.bloqueia_inicio === false ? "Contexto pronto; comando sujeito às permissões e à fase atual do Núcleo." : "verificando preparação canônica")}</li>
+      <li>Cobertura das fontes (não é autorização de início): {String(prontidao.estado ?? "não informada")}</li>
     </ul>{bloqueio && <p role="alert">{bloqueio}</p>}</details>}
     <details><summary>Recuperar cópia privada de registros</summary><p>Abra a cópia cifrada com o mesmo profissional e a mesma sessão. O rascunho atual deve estar sincronizado.</p><input type="file" accept="application/json" disabled={!resumo || salvando || !!local.current.texto.trim() || !!local.current.fila.length || !!Object.keys(local.current.campos).length} onChange={async e => {
       try {

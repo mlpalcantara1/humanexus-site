@@ -21,7 +21,7 @@ function leitura(estado='PARCIAL',valor=74.15,modo='ATUAL') {
 const render=(l,historico=false)=>renderToStaticMarkup(React.createElement(CockpitIirhZonaTemporal,{leitura:l,historico}));
 test('leitura parcial atual destaca IIRH, zona provisória, cobertura e confiança',()=>{
  const html=render(leitura());
- for(const s of ['74,15','Zona Adaptativa','provisória','11%','21.7%','AO VIVO'])assert.ok(html.includes(s),s);
+ for(const s of ['74,15','Zona Adaptativa','provisória','11%','22%','AO VIVO'])assert.ok(html.includes(s),s);
  assert.doesNotMatch(html,/congelad/i);
 });
 test('ausência e referência passada nunca aparecem como número atual',()=>{
@@ -38,4 +38,12 @@ test('IIRH atual não promove uma Zona histórica a classificação atual',()=>{
  const l=leitura();l.disponibilidade_continua_iirh_zona.estado_atual.zona.modo='REFERENCIA_CONGELADA';
  const h=render(l);assert.match(h,/74,15/);assert.match(h,/Indisponível — sem leitura atual válida/);
  assert.doesNotMatch(h,/<strong[^>]*>Zona Adaptativa/);
+});
+
+test('frações de qualidade/confiança e justificativa atual são mostradas sem multiplicação incorreta',()=>{
+ const l=leitura(); const atual=l.disponibilidade_continua_iirh_zona.estado_atual;
+ atual.iirh.registro.confianca=.4; atual.iirh.registro.qualidade=1;
+ atual.zona.registro={codigo:'ZI',estado:'PROVISORIA',motivo:'Faixa vigente 35–64,9999',fontes:['polar'],calculado_em:'2026-10-01T12:00:00Z',versao_do_calculo:'contrato-sintetico'};
+ const h=render(l);for(const s of ['40%','100%','Faixa vigente','polar','2026-10-01T12:00:00Z','contrato-sintetico','Sem intervalos de fase'])assert.ok(h.includes(s),s);
+ assert.doesNotMatch(h,/0[.,]4%/);
 });

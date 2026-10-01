@@ -1101,7 +1101,7 @@ function DinamicaDaInteligenciaRegulatoria({
         )}
         {configuracaoParcial ? (
           <span className="hx-live-regulatory-dynamics__partial-state">
-            <b>CONFIGURAÇÃO VETORIAL PARCIAL EM EVOLUÇÃO</b>
+            <b>RESULTANTE ESTRUTURADA · {estadoDaResultante}</b>
             <small>{vetoresCalculaveis} de {vetores.length} vetores canônicos com valor atual</small>
           </span>
         ) : null}
@@ -1128,7 +1128,7 @@ function DinamicaDaInteligenciaRegulatoria({
         ) : null}
       </dl>
       <p>{configuracaoParcial
-        ? "Os movimentos representam somente os vetores canônicos calculáveis. A magnitude da Resultante permanece ausente até o núcleo autorizá-la cientificamente."
+        ? "Os movimentos representam os vetores canônicos disponíveis. PLENA descreve os critérios da Resultante estruturada, não exige nove vetores nem implica magnitude escalar, direção ou sentido disponíveis. A cobertura e cada propriedade permanecem independentes."
         : "Geometria de apresentação da Resultante canônica. Nenhuma composição científica é calculada no portal; critérios e proveniência detalhados permanecem na Inspeção TIRH."}</p>
     </section>
   );
@@ -2321,7 +2321,7 @@ export function CockpitOperacionalVivo({
       <section id="hx-decision-level" className="hx-live-hud" aria-label="Barra operacional decisória">
         <div className="is-decision" data-regulatory-state={disponibilidadeContinua.zona.modo}>
           <small>ZONA · ESTADO ATUAL</small>
-          {["PROVISORIA", "SUGERIDA"].includes(String(zonaContinua.registro.estado)) && <span>Leitura provisória · cobertura {formatarPercentualCanonico(iirhContinuo.registro.cobertura)} · confiança {numero(iirhContinuo.registro.confianca, 1)}%</span>}
+          {["PROVISORIA", "SUGERIDA"].includes(String(zonaContinua.registro.estado)) && <span>Leitura provisória · cobertura {formatarPercentualCanonico(iirhContinuo.registro.cobertura)} · confiança {formatarPercentualCanonico(iirhContinuo.registro.confianca)}</span>}
           <strong>{zonaCalculada
             ? rotuloDaZona(zonaApresentada)
             : estadoAtualDaZona}</strong>
@@ -2372,7 +2372,7 @@ export function CockpitOperacionalVivo({
             : "Nenhuma referência autoritativa elegível foi fornecida pelo Núcleo."}</span>
         </div>
         <div>
-          <small>EEG</small>
+          <small>Qualidade EEG</small>
           <strong>{qualidadeEegAtual == null ? "SEM LEITURA ATUAL" : percentual(qualidadeEegAtual)}</strong>
           <span>{qualidadeEegAtual == null ? "EMOTIV Cortex · sem amostra atual" : "EEG Quality · EMOTIV Cortex · atual"}</span>
         </div>

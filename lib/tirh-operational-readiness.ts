@@ -66,7 +66,7 @@ function entradaHidratada(
 ): ItemDePreflight {
   const entrada = objeto(entradas[codigo]);
   const estadoDaEntrada = String(entrada.estado ?? "AUSENTE").toUpperCase();
-  const pronta = !["AUSENTE", "EXPIRADA", "SUBSTITUÍDA"].includes(estadoDaEntrada);
+  const pronta = !["", "AUSENTE", "EXPIRADA", "SUBSTITUÍDA", "SUBSTITUIDA"].includes(estadoDaEntrada);
   return {
     codigo: codigo.toUpperCase(),
     rotulo,
@@ -171,16 +171,25 @@ export function resolverPreflightTirh({
     resolucao: "AUTOMATICA"
   };
 
+  const gate = objeto(autoHidratacao.gate_de_inicio);
+  const bloqueiosCanonicos = Array.isArray(gate.bloqueios) ? gate.bloqueios.map((valor) => {
+    const item = objeto(valor);
+    const codigo = texto(item.codigo, "CONTEXTO");
+    return { codigo, rotulo: fontesEstruturais.find((f) => f.codigo === codigo)?.rotulo ?? codigo,
+      estado: "PENDING", motivo: texto(item.motivo, "Preparação pendente no Núcleo."),
+      resolucao: item.resolucao === "PROFISSIONAL" ? "PROFISSIONAL" : "AUTOMATICA" } satisfies ItemDePreflight;
+  }) : [];
+  const gateDisponivel = typeof gate.bloqueia_inicio === "boolean";
   return {
     estado: [...fontesDeContexto, ...itensVetoriais, itemResultante, itemTendencia]
       .every((item) => item.estado === "READY")
       ? "READY"
       : "NOT_READY",
     inicio: {
-      estado: fontesEstruturais.every((item) => item.estado === "READY")
+      estado: (gateDisponivel ? !gate.bloqueia_inicio : fontesEstruturais.every((item) => item.estado === "READY"))
         ? "READY"
         : "BLOCKED",
-      bloqueios: fontesEstruturais.filter((item) => item.estado !== "READY"),
+      bloqueios: gateDisponivel ? bloqueiosCanonicos : fontesEstruturais.filter((item) => item.estado !== "READY"),
       // Fonte física ausente limita a ciência, mas não é convertida em valor
       // nem bloqueia universalmente uma sessão autorizada sem aquela fonte.
       avisos: fontesFisicas.filter((item) => item.estado !== "READY")

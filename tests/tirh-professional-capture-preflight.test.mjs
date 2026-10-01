@@ -18,6 +18,17 @@ function hidratacaoPronta() {
   };
 }
 
+test("preflight respeita decisão e motivos atuais do Núcleo, não recalcula o gate", () => {
+  const a = hidratacaoPronta();
+  a.gate_de_inicio = {bloqueia_inicio:true,bloqueios:[{codigo:"BASELINE",motivo:"Referência de outro participante",resolucao:"PROFISSIONAL"}]};
+  const args = {autoHidratacao:a,fontes:[],vetores:[],resultante:{},tendencia:{}};
+  assert.equal(resolverPreflightTirh(args).inicio.estado,"BLOCKED");
+  assert.equal(resolverPreflightTirh(args).inicio.bloqueios[0].motivo,"Referência de outro participante");
+  a.entradas.baseline.estado="AUSENTE";
+  a.gate_de_inicio={bloqueia_inicio:false,bloqueios:[]};
+  assert.equal(resolverPreflightTirh(args).inicio.estado,"READY");
+});
+
 test("preflight só fica READY com fontes e nove vetores autoritativos", () => {
   const resultado = resolverPreflightTirh({
     autoHidratacao: hidratacaoPronta(),

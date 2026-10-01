@@ -37,7 +37,13 @@ export function CockpitIirhZonaTemporal({ leitura, historico }: { leitura: Regis
       <div><small>IIRH atual</small><strong style={{fontSize:"clamp(2.8rem,6vw,4.8rem)"}}>{valor === null ? "Indisponível" : valor.toLocaleString("pt-BR",{maximumFractionDigits:2})}</strong></div>
       <div><small>Zona atual</small><strong style={{fontSize:24}}>{!zonaDisponivel ? "Indisponível — sem leitura atual válida" : nomes[String(disponibilidade.zona.projecao.codigo)] ?? "Classificação canônica pendente"}{zonaDisponivel && provisoria ? " · provisória" : ""}</strong></div>
     </div>
-    <p>Cobertura: {valor === null || cobertura === null ? "não informada" : formatarPercentualCanonico(cobertura)} · Confiança: {valor === null || confianca === null ? "não informada" : `${confianca.toFixed(1)}%`} · Qualidade: {valor === null || qualidade === null ? "não informada" : `${qualidade.toFixed(1)}%`}</p>
+    <p>Cobertura: {valor === null || cobertura === null ? "não informada" : formatarPercentualCanonico(cobertura)} · Confiança: {valor === null || confianca === null ? "não informada" : formatarPercentualCanonico(confianca)} · Qualidade: {valor === null || qualidade === null ? "não informada" : formatarPercentualCanonico(qualidade)}</p>
+    {zonaDisponivel && <details><summary>Por que esta Zona?</summary>
+      <p>{String(zona.motivo ?? "Consulte os critérios da leitura na Inspeção TIRH.")}</p>
+      <p>Fontes: {Array.isArray(zona.fontes) ? zona.fontes.join(" · ") : "não informadas"} · Avaliação: {String(zona.calculado_em ?? disponibilidade.zona.origem.momento ?? "não informada")} · Versão: {String(zona.versao_do_calculo ?? operacional.versao ?? "não informada")}</p>
+      {Array.isArray(zona.criterios_de_completude_pendentes) && zona.criterios_de_completude_pendentes.length > 0 && <p>Completude pendente: {zona.criterios_de_completude_pendentes.map(String).join(" · ")}</p>}
+    </details>}
+    {!emissoes.length && <p>Sem intervalos de fase válidos registrados. Aquisição sem fase ativa não cria duração nem comparação PRÉ–PÓS.</p>}
     <p>Fase: {String(disponibilidade.iirh.origem.fase ?? "não informada")} · Horário: {String(disponibilidade.iirh.origem.momento ?? "não informado")} · Validade: {String(disponibilidade.iirh.modo)}</p>
     {!faixas.length && <p>Faixas visuais indisponíveis: o Núcleo não forneceu os limites canônicos neste contexto.</p>}
     <svg viewBox="0 0 900 275" role="img" aria-label="IIRH ao longo do tempo válido. Lacunas permanecem sem traço." style={{width:"100%",minHeight:220}}>
