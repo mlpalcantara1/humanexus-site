@@ -1,4 +1,5 @@
 import "server-only";
+import { cabecalhosDaRequisicaoAoNucleo } from "@/lib/core-request-headers";
 
 const CORE_API =
   process.env.HUMANEXUS_CORE_API_URL?.replace(/\/$/, "") ??
@@ -81,12 +82,11 @@ async function requisitar<T>(
       resposta = await fetch(`${CORE_API}${caminho}`, {
         ...init,
         redirect: "manual",
-        headers: {
-          "content-type": "application/json",
-          ...cabecalhoDeProtecaoDoCore(),
-          ...(token ? { authorization: `Bearer ${token}` } : {}),
-          ...init.headers
-        },
+        headers: cabecalhosDaRequisicaoAoNucleo(
+          init.headers,
+          token,
+          CORE_PROTECTION_BYPASS
+        ),
         cache: "no-store",
         signal: controlador.signal
       });

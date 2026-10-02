@@ -3,6 +3,7 @@
 import { consultarCockpitComPrazo } from "@/lib/cockpit-loading";
 import { DistribuicaoTemporalCanonica } from "@/components/distribuicao-temporal-canonica";
 import { CockpitIirhZonaTemporal } from "@/components/cockpit-iirh-zona-temporal";
+import { faseCientificaPausada } from "@/lib/paused-phase-presentation";
 
 import { JornadaParticipante } from "@/components/jornada-participante";
 
@@ -97,6 +98,7 @@ type Estado = {
   historicos_conectores: { identificador: unknown; eventos: Registro[] }[];
   fontes: Registro[];
   telemetria: Registro[];
+  diagnostico_da_telemetria?: string;
   eventos_tecnicos: Registro[];
   linhas: Registro[];
   replay: (Registro & { linha?: Registro; itens?: Registro[] }) | null;
@@ -3131,6 +3133,12 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const latencia = pontosTelemetria(estado.telemetria, "latencia_ms");
   const buffer = pontosTelemetria(estado.telemetria, "buffer");
   const ultimoPacote = telemetriaOrdenada(estado.telemetria).at(-1);
+  const telemetriaDivergente = estado.diagnostico_da_telemetria
+    === "DIVERGENCIA_ENTRE_FONTES";
+  const fonteTecnicaAoVivo = Array.isArray(estado.cockpit_operacional.fontes)
+    && estado.cockpit_operacional.fontes.some(
+      (fonte) => Boolean(objeto(fonte).ao_vivo)
+    );
   const perdas = estado.telemetria.reduce((total, item) => total + Number(item.perda_detectada ?? 0), 0);
   const foraDeOrdem = estado.telemetria.filter((item) => Boolean(item.fora_de_ordem)).length;
   const duplicados = estado.eventos_tecnicos.filter((item) => item.tipo === "DUPLICIDADE_REJEITADA").length;
@@ -3584,11 +3592,13 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     <section className="hx-telemetry">
       <div className="hx-telemetry__heading">
         <div><p>TELEMETRIA BRIDGE</p><h2>Métricas técnicas preservadas e separadas de evidência humana.</h2></div>
-        <div className="hx-health-indicator"><span className={ultimoPacote?.hash_do_dado_bruto ? "is-ok" : "is-blocked"} /><small>INTEGRIDADE</small><strong>{ultimoPacote?.hash_do_dado_bruto ? "PRESERVADA" : "SEM PACOTES"}</strong></div>
+        <div className="hx-health-indicator"><span className={ultimoPacote?.hash_do_dado_bruto ? "is-ok" : "is-blocked"} /><small>INTEGRIDADE</small><strong>{telemetriaDivergente ? "CONSULTA DIVERGENTE" : ultimoPacote?.hash_do_dado_bruto ? "PRESERVADA" : "SEM PACOTES CONFIRMADOS"}</strong></div>
       </div>
+      {telemetriaDivergente ? <p role="status">O Núcleo confirma leituras técnicas históricas, mas a consulta de pacotes não as devolveu. Não interprete esta tela como ausência de aquisição; os registros brutos permanecem preservados.</p> : null}
+      {estado.diagnostico_da_telemetria === "RECUPERADA_POR_CONSULTA_DIRETA" ? <p role="status">Pacotes históricos recuperados por consulta autenticada direta. Não são leitura atual dos sensores.</p> : null}
       <div className="hx-telemetry__grid">
         {[
-          ["FONTE", estado.fontes.length ? "ATIVA" : "INDISPONÍVEL"],
+          ["FONTE", fonteTecnicaAoVivo ? "AO VIVO" : "SEM LEITURA ATUAL"],
           ["EQUIPAMENTO", String(ultimoPacote?.tipo_de_dispositivo ?? "").includes("EMOTIV") ? "EPOC X" : String(ultimoPacote?.tipo_de_dispositivo ?? "").includes("POLAR") ? "POLAR H10" : "SEM PACOTES"],
           ["SEQUÊNCIA", texto(ultimoPacote?.sequencia)],
           ["ORIGEM", dataLegivel(ultimoPacote?.timestamp_de_origem)],
@@ -3599,7 +3609,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           ["DUPLICADOS", `${duplicados} rejeitado(s)`],
           ["FORA DE ORDEM", `${foraDeOrdem} pacote(s)`],
           ["BUFFER", texto(objeto(objeto(ultimoPacote?.dado_normalizado_json).valor).buffer)],
-          ["INTEGRIDADE", ultimoPacote?.hash_do_dado_bruto ? "PRESERVADA" : "SEM PACOTES"]
+          ["INTEGRIDADE", telemetriaDivergente ? "CONSULTA DIVERGENTE" : ultimoPacote?.hash_do_dado_bruto ? "PRESERVADA" : "SEM PACOTES CONFIRMADOS"]
         ].map(([rotulo, valor]) => (
           <div key={rotulo}><small>{rotulo}</small><strong>{valor}</strong><span>DADO TÉCNICO PRESERVADO</span></div>
         ))}
@@ -4143,7 +4153,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <main className="hx-cockpit-view" data-cockpit-view={visao}>
           {visao === "coletivo"
             ? null
-            : <><CockpitIirhZonaTemporal leitura={leituraCientificaDaInspecao(estado)} historico={estadoOperacionalTerminal(estado.sessao.estado)} /><details><summary>Referências e rastreabilidade da leitura</summary><DisponibilidadeContinuaIirhZona estado={estado} /></details></>}
+            : <><CockpitIirhZonaTemporal leitura={leituraCientificaDaInspecao(estado)} historico={estadoOperacionalTerminal(estado.sessao.estado)} pausado={faseCientificaPausada(estado)} /><details><summary>Referências e rastreabilidade da leitura</summary><DisponibilidadeContinuaIirhZona estado={estado} /></details></>}
           {visao !== "coletivo" ? <RegistroIntegradoDaSessao
             estado={estado as unknown as Registro} revisar={visao === "relatorio"}
           /> : null}

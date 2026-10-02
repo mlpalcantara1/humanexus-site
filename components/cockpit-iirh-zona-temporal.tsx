@@ -11,13 +11,21 @@ const lista = (v: unknown): Registro[] => Array.isArray(v) ? v.map(obj) : [];
 const numero = (v: unknown): number | null => typeof v === "number" && Number.isFinite(v) ? v : null;
 const nomes: Record<string,string> = NOMES_DAS_ZONAS;
 const cores: Record<string,string> = { ZO: "#146e57", ZA: "#649368", ZI: "#bc9035", ZCF: "#a95a53" };
+const formatarHorario = (valor: unknown) => {
+  const data = new Date(String(valor));
+  return Number.isNaN(data.getTime()) ? "horário indisponível" : new Intl.DateTimeFormat("pt-BR", {
+    timeStyle: "medium",
+    timeZone: "America/Manaus"
+  }).format(data);
+};
 
 /** Só renderiza números, faixas e intervalos já emitidos pelo Núcleo. */
-export function CockpitIirhZonaTemporal({ leitura, historico, agora }: { leitura: Registro; historico: boolean; agora?: number }) {
-  const [relogio, setRelogio] = useState(() => Date.now());
+export function CockpitIirhZonaTemporal({ leitura, historico, pausado = false, agora }: { leitura: Registro; historico: boolean; pausado?: boolean; agora?: number }) {
+  const [relogio, setRelogio] = useState(0);
   useEffect(() => {
     if (agora !== undefined) return;
     const atualizar = () => setRelogio(Date.now());
+    atualizar();
     const id = window.setInterval(atualizar, 1000);
     window.addEventListener("focus", atualizar);
     window.addEventListener("pageshow", atualizar);
@@ -30,6 +38,7 @@ export function CockpitIirhZonaTemporal({ leitura, historico, agora }: { leitura
     };
   }, [agora]);
   const operacional = obj(leitura.iirh_zona_operacional);
+  const pausaSemResultadoAtual = !historico && (pausado || obj(leitura.estado_da_janela_cientifica).estado === "PAUSADA_SEM_RESULTADO_ATUAL");
   const disponibilidade = resolverDisponibilidadeContinuaIirhZona(leitura);
   const iirh = disponibilidade.iirh.projecao.registro, zona = disponibilidade.zona.projecao.registro;
   const temporal = obj(leitura.distribuicao_temporal_das_zonas);
@@ -38,14 +47,14 @@ export function CockpitIirhZonaTemporal({ leitura, historico, agora }: { leitura
   const momentoAtual = agora ?? relogio;
   const origemDesatualizada = (momento: unknown) => {
     const instante = Date.parse(String(momento ?? ""));
-    return !Number.isFinite(instante) || momentoAtual - instante > 20_000;
+    return !Number.isFinite(instante) || (momentoAtual > 0 && momentoAtual - instante > 20_000);
   };
   const iirhDesatualizado = !historico && disponibilidade.iirh.atual
     && origemDesatualizada(disponibilidade.iirh.origem.momento);
   const zonaDesatualizada = !historico && disponibilidade.zona.atual
     && origemDesatualizada(disponibilidade.zona.origem.momento);
   const leituraDesatualizada = iirhDesatualizado || zonaDesatualizada;
-  const valor = (historico || disponibilidade.iirh.atual) ? disponibilidade.iirh.projecao.valor : null;
+  const valor = !pausaSemResultadoAtual && (historico || disponibilidade.iirh.atual) ? disponibilidade.iirh.projecao.valor : null;
   const cobertura = numero(iirh.cobertura), confianca = numero(iirh.confianca ?? iirh.confiabilidade);
   const qualidade = numero(iirh.qualidade);
   const intervalos = emissoes.flatMap((e) => lista(e.intervalos_validos).map((i) => ({ inicio:i.inicio, fim:i.fim, emissao:e })));
@@ -54,16 +63,17 @@ export function CockpitIirhZonaTemporal({ leitura, historico, agora }: { leitura
   const inicio = instantes.length ? Math.min(...instantes) : 0, fim = instantes.length ? Math.max(...instantes) : 1;
   const x = (v: unknown) => 48 + (Date.parse(String(v))-inicio) / Math.max(1,fim-inicio)*820;
   const y = (v: number) => 230-v*2;
-  const zonaDisponivel = (historico || disponibilidade.zona.atual) && disponibilidade.zona.projecao.classificada;
+  const zonaDisponivel = !pausaSemResultadoAtual && (historico || disponibilidade.zona.atual) && disponibilidade.zona.projecao.classificada;
   const provisoria = ["PROVISORIA","SUGERIDA"].includes(String(zona.estado));
   const tempos = obj(temporal.tempo_por_zona_segundos);
   return <section className="hx-cockpit-panel" aria-label="IIRH e Zona — linha temporal canônica">
-    <header><small>{historico ? "RESULTADO FINAL DA SESSÃO · REPLAY HISTÓRICO" : leituraDesatualizada ? "ÚLTIMA PROJEÇÃO — NÃO ATUAL" : "AO VIVO"}</small><h2>IIRH e Zona</h2></header>
-    {leituraDesatualizada && <p role="status">A última avaliação não é leitura atual. Aguarde a recuperação da consulta; os valores abaixo permanecem somente como registro identificado.</p>}
-    {valor === null && <p role="status">{historico ? "Nenhum IIRH canônico disponível neste registro histórico." : "Aguardando primeira leitura real"}</p>}
+    <header><small>{historico ? "RESULTADO FINAL DA SESSÃO · REPLAY HISTÓRICO" : pausaSemResultadoAtual ? "FASE PAUSADA — SEM RESULTADO ATUAL" : leituraDesatualizada ? "ÚLTIMA PROJEÇÃO — NÃO ATUAL" : "AO VIVO"}</small><h2>IIRH e Zona</h2></header>
+    {pausaSemResultadoAtual && <p role="status">A fase está pausada. Sinais recebidos durante a pausa não constituem resultado atual da fase; consulte a referência histórica identificada abaixo.</p>}
+    {leituraDesatualizada && !pausaSemResultadoAtual && <p role="status">A última avaliação não é leitura atual. Aguarde a recuperação da consulta; os valores abaixo permanecem somente como registro identificado.</p>}
+    {valor === null && !pausaSemResultadoAtual && <p role="status">{historico ? "Nenhum IIRH canônico disponível neste registro histórico." : "Aguardando primeira leitura real"}</p>}
     <div style={{display:"flex",gap:32,alignItems:"baseline",flexWrap:"wrap"}}>
-      <div><small>{iirhDesatualizado ? "Último IIRH registrado" : "IIRH atual"}</small><strong style={{fontSize:"clamp(2.8rem,6vw,4.8rem)"}}>{valor === null ? "Indisponível" : valor.toLocaleString("pt-BR",{maximumFractionDigits:2})}</strong></div>
-      <div><small>{zonaDesatualizada ? "Última Zona registrada" : "Zona atual"}</small><strong style={{fontSize:24}}>{!zonaDisponivel ? "Indisponível — sem leitura atual válida" : nomeDaZona(disponibilidade.zona.projecao.codigo, historico) ?? "Classificação canônica pendente"}{zonaDisponivel && provisoria ? " · provisória" : ""}</strong></div>
+      <div><small>{pausaSemResultadoAtual ? "IIRH durante pausa" : iirhDesatualizado ? "Último IIRH registrado" : "IIRH atual"}</small><strong style={{fontSize:"clamp(2.8rem,6vw,4.8rem)"}}>{valor === null ? "Indisponível" : valor.toLocaleString("pt-BR",{maximumFractionDigits:2})}</strong></div>
+      <div><small>{pausaSemResultadoAtual ? "Zona durante pausa" : zonaDesatualizada ? "Última Zona registrada" : "Zona atual"}</small><strong style={{fontSize:24}}>{!zonaDisponivel ? "Indisponível — sem leitura atual válida" : nomeDaZona(disponibilidade.zona.projecao.codigo, historico) ?? "Classificação canônica pendente"}{zonaDisponivel && provisoria ? " · provisória" : ""}</strong></div>
     </div>
     <p>Cobertura: {valor === null || cobertura === null ? "não informada" : formatarPercentualCanonico(cobertura)} · Confiança: {valor === null || confianca === null ? "não informada" : formatarPercentualCanonico(confianca)} · Qualidade: {valor === null || qualidade === null ? "não informada" : formatarPercentualCanonico(qualidade)}</p>
     {zonaDisponivel && <details><summary>Por que esta Zona?</summary>
@@ -72,19 +82,19 @@ export function CockpitIirhZonaTemporal({ leitura, historico, agora }: { leitura
       {Array.isArray(zona.criterios_de_completude_pendentes) && zona.criterios_de_completude_pendentes.length > 0 && <p>Completude pendente: {zona.criterios_de_completude_pendentes.map(String).join(" · ")}</p>}
     </details>}
     {!emissoes.length && <p>Sem intervalos de fase válidos registrados. Aquisição sem fase ativa não cria duração nem comparação PRÉ–PÓS.</p>}
-    <p>Fase: {String(disponibilidade.iirh.origem.fase ?? "não informada")} · Horário: {String(disponibilidade.iirh.origem.momento ?? "não informado")} · Validade IIRH: {iirhDesatualizado ? "DESATUALIZADA" : String(disponibilidade.iirh.modo)} · Validade Zona: {zonaDesatualizada ? "DESATUALIZADA" : String(disponibilidade.zona.modo)}</p>
+    <p>Fase: {String(disponibilidade.iirh.origem.fase ?? "não informada")} · Horário: {String(disponibilidade.iirh.origem.momento ?? "não informado")} · Validade IIRH: {pausaSemResultadoAtual ? "PAUSADA_SEM_RESULTADO_ATUAL" : iirhDesatualizado ? "DESATUALIZADA" : String(disponibilidade.iirh.modo)} · Validade Zona: {pausaSemResultadoAtual ? "PAUSADA_SEM_RESULTADO_ATUAL" : zonaDesatualizada ? "DESATUALIZADA" : String(disponibilidade.zona.modo)}</p>
     {!faixas.length && <p>Faixas visuais indisponíveis: o Núcleo não forneceu os limites canônicos neste contexto.</p>}
     <svg viewBox="0 0 900 275" role="img" aria-label="IIRH ao longo do tempo válido. Lacunas permanecem sem traço." style={{width:"100%",minHeight:220}}>
       {faixas.map(f => <g key={String(f.codigo)}><rect x={48} y={y(Number(f.maximo))} width={820} height={(Number(f.maximo)-Number(f.minimo))*2} fill={cores[String(f.codigo)] ?? "#777"} opacity={.12}/><text x={52} y={y(Number(f.maximo))+14} fontSize={10}>{nomes[String(f.codigo)]}</text></g>)}
       {[0,25,50,75,100].map(v => <g key={v}><text x={8} y={y(v)+4} fontSize={12}>{v}</text><line x1={43} x2={868} y1={y(v)} y2={y(v)} stroke="currentColor" opacity={.1}/></g>)}
       {intervalos.map((i,n) => { const e=i.emissao; const v=numero(obj(e.iirh).valor); return v === null ? null : <line key={`${String(e.identificador)}-${n}`} x1={x(i.inicio)} x2={x(i.fim)} y1={y(v)} y2={y(v)} stroke={cores[String(obj(e.zona).codigo)] ?? "currentColor"} strokeWidth={3}><title>{`${String(e.fase)} · IIRH ${v} · ${String(i.inicio)} — ${String(i.fim)}`}</title></line>; })}
       {pontos.map(e => <circle key={String(e.identificador)} cx={x(e.fim_da_janela)} cy={y(Number(obj(e.iirh).valor))} r={4} fill={cores[String(obj(e.zona).codigo)] ?? "currentColor"}><title>{`Leitura pontual · sem duração atribuída · ${String(e.fase)}`}</title></circle>)}
-      {instantes.length>0 && <><text x={48} y={258} fontSize={12}>{new Date(inicio).toLocaleTimeString("pt-BR")}</text><text x={868} y={258} textAnchor="end" fontSize={12}>{new Date(fim).toLocaleTimeString("pt-BR")}</text></>}
+      {instantes.length>0 && <><text x={48} y={258} fontSize={12}>{formatarHorario(inicio)}</text><text x={868} y={258} textAnchor="end" fontSize={12}>{formatarHorario(fim)}</text></>}
     </svg>
     <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>{Object.entries(nomes).map(([z,nome]) => <p key={z}><b>{nome}</b><br/>{numero(tempos[z]) === null ? "Sem tempo válido registrado" : `${Number(tempos[z]).toFixed(1)} s`}</p>)}</div>
     {nomes[String(temporal.zona_predominante)] && <p>Zona predominante {historico ? "da sessão" : "até esta leitura"}: <strong>{nomeDaZona(temporal.zona_predominante, historico)}</strong>{temporal.inclui_leituras_provisorias === true ? " · inclui leituras provisórias; cobertura e confiança preservadas por leitura" : ""}</p>}
     {!transicoes.length && <p>Transições: nenhuma transição válida registrada.</p>}
-    {transicoes.length>0 && <details><summary>Transições registradas ({transicoes.length})</summary><ul>{transicoes.map((t,n) => <li key={n}>{String(t.fase)} · {new Date(String(t.momento)).toLocaleTimeString("pt-BR")}: {nomeDaZona(t.de, historico) ?? String(t.de)} → {nomeDaZona(t.para, historico) ?? String(t.para)}</li>)}</ul></details>}
+    {transicoes.length>0 && <details><summary>Transições registradas ({transicoes.length})</summary><ul>{transicoes.map((t,n) => <li key={n}>{String(t.fase)} · {formatarHorario(t.momento)}: {nomeDaZona(t.de, historico) ?? String(t.de)} → {nomeDaZona(t.para, historico) ?? String(t.para)}</li>)}</ul></details>}
     {historico && <small>{NOTA_DE_EQUIVALENCIA_HISTORICA}</small>}
     <small>Somente intervalos válidos medidos. Lacunas e desconexões não acrescentam tempo. Fonte canônica: {String(temporal.versao ?? operacional.versao ?? "registro histórico")}.</small>
   </section>;

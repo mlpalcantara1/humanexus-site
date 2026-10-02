@@ -8,6 +8,7 @@ import {
 import { ErroDaRota, responderErroDaApi } from "@/lib/api-route-error";
 import { COOKIE_CSRF, COOKIE_SESSAO } from "@/lib/portal-session";
 import { exigirCsrf } from "@/lib/request-security";
+import { conciliarTelemetriaDoNucleo } from "@/lib/telemetry-batch-reconciliation";
 import { normalizarComandoOperacional } from "@/lib/cockpit-operational-command";
 import {
   CAMPOS_PROFISSIONAIS_DO_RELATORIO,
@@ -518,7 +519,7 @@ async function estado(
   const execucoes = principais.execucoes as Registro[];
   const conectores = principais.conectores as Registro[];
   const fontes = principais.fontes as Registro[];
-  const telemetria = principais.telemetria as Registro[];
+  const telemetriaDoLote = principais.telemetria as Registro[];
   const eventosTecnicos = principais.eventosTecnicos as Registro[];
   const linhas = principais.linhas as Registro[];
   const relatorios = principais.relatorios as Registro[];
@@ -547,6 +548,25 @@ async function estado(
   const gravacao = principais.gravacao as Registro;
   const configuracaoCortex = principais.configuracaoCortex as Registro;
   const cockpitOperacional = principais.cockpitOperacional as Registro;
+  const historicoTecnicoConfirmado = lista(cockpitOperacional.fontes).some(
+    (fonte) => Boolean(
+      registro(registro(fonte).ultima_leitura_registrada).timestamp
+    )
+  );
+  const telemetriaConciliada = opcoes.carregamentoInicial
+    ? { pacotes: telemetriaDoLote, diagnostico: "CARREGAMENTO_INICIAL" }
+    : await conciliarTelemetriaDoNucleo(
+        telemetriaDoLote,
+        historicoTecnicoConfirmado,
+        () => consultar<Registro[]>(
+          `/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}?limite=1200`,
+          token,
+          {},
+          organizacaoId,
+          { tentativas: 1, tempoLimiteMs: 8_000 }
+        )
+      );
+  const telemetria = telemetriaConciliada.pacotes;
   const estadoOperacional = (
     Object.keys(principais.estadoOperacional as Registro).length
       ? principais.estadoOperacional
@@ -771,6 +791,7 @@ async function estado(
     historicos_conectores: historicosConectores,
     fontes,
     telemetria,
+    diagnostico_da_telemetria: telemetriaConciliada.diagnostico,
     eventos_tecnicos: eventosTecnicos,
     linhas,
     replay,

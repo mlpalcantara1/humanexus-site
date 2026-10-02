@@ -472,24 +472,31 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
       setMensagem("Selecione uma referência inicial anterior compatível.");
       return;
     }
+    const renovacaoMetodologica = tipoReferenciaBaseline === "REALIZAR_NOVO_BASELINE"
+      && Boolean(painel?.baseline.referencia.baselines_anteriores.length);
     if (
       [
         "UTILIZAR_BASELINE_ANTERIOR",
         "DISPENSAR_BASELINE_NESTA_SESSAO"
-      ].includes(tipoReferenciaBaseline)
-      && justificativaDaReferencia.trim().length < 12
+      ].includes(tipoReferenciaBaseline) || renovacaoMetodologica
     ) {
-      setMensagem(
-        "Registre uma justificativa profissional com ao menos 12 caracteres."
-      );
-      return;
+      if (justificativaDaReferencia.trim().length < 12) {
+        setMensagem(
+          renovacaoMetodologica
+            ? "Uma nova referência exige motivo metodológico explícito com ao menos 12 caracteres. A anterior será preservada."
+            : "Registre uma justificativa profissional com ao menos 12 caracteres."
+        );
+        return;
+      }
     }
     setOcupado("referencia-baseline");
     try {
       await executar("referenciaBaseline", {
         tipo: tipoReferenciaBaseline,
         identificador_do_baseline: baselineAnterior || null,
-        justificativa: justificativaDaReferencia.trim()
+        justificativa: justificativaDaReferencia.trim(),
+        motivo_metodologico: renovacaoMetodologica
+          ? justificativaDaReferencia.trim() : null
       });
       setMensagem(
         `${ROTULOS_DA_REFERENCIA_BASELINE[
@@ -1034,7 +1041,10 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
                       }
                     }}
                   />
-                  <span>{ROTULOS_DA_REFERENCIA_BASELINE[tipo]}</span>
+                  <span>{tipo === "REALIZAR_NOVO_BASELINE"
+                    && painel?.baseline.referencia.baselines_anteriores.length
+                    ? "CRIAR NOVA VERSÃO DE BASELINE — EXCEÇÃO METODOLÓGICA"
+                    : ROTULOS_DA_REFERENCIA_BASELINE[tipo]}</span>
                 </label>
               ))}
             </div>
@@ -1055,7 +1065,10 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
                         key={String(item.identificador)}
                       >
                         {item.data
-                          ? new Date(String(item.data)).toLocaleString("pt-BR")
+                          ? new Intl.DateTimeFormat("pt-BR", {
+                            dateStyle: "short", timeStyle: "short",
+                            timeZone: "America/Manaus"
+                          }).format(new Date(String(item.data)))
                           : "Data não registrada"}
                         {" · "}{String(item.contexto ?? "Contexto preservado")}
                         {" · cobertura "}
@@ -1070,14 +1083,21 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
             {[
               "UTILIZAR_BASELINE_ANTERIOR",
               "DISPENSAR_BASELINE_NESTA_SESSAO"
-            ].includes(tipoReferenciaBaseline) ? (
+            ].includes(tipoReferenciaBaseline) || (
+              tipoReferenciaBaseline === "REALIZAR_NOVO_BASELINE"
+              && Boolean(painel?.baseline.referencia.baselines_anteriores.length)
+            ) ? (
               <label>
-                Justificativa profissional
+                {tipoReferenciaBaseline === "REALIZAR_NOVO_BASELINE"
+                  ? "Motivo metodológico da nova versão de Baseline"
+                  : "Justificativa profissional"}
                 <textarea
                   value={justificativaDaReferencia}
                   onChange={(evento) =>
                     setJustificativaDaReferencia(evento.target.value)}
-                  placeholder="Registre a compatibilidade ou o fundamento da decisão."
+                  placeholder={tipoReferenciaBaseline === "REALIZAR_NOVO_BASELINE"
+                    ? "Explique por que a referência individual anterior não pode ser apenas reutilizada."
+                    : "Registre a compatibilidade ou o fundamento da decisão."}
                 />
               </label>
             ) : null}

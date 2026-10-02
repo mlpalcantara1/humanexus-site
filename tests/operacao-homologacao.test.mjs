@@ -52,6 +52,24 @@ test("cobertura canônica é formatada uma única vez", () => {
   assert.equal(formatarPercentualCanonico(100), "100%");
 });
 
+test("gráfico temporal hidrata com relógio determinístico e fuso explícito", async () => {
+  const grafico = await source("components/cockpit-iirh-zona-temporal.tsx");
+  assert.match(grafico, /useState\(0\)/);
+  assert.match(grafico, /const atualizar = \(\) => setRelogio\(Date\.now\(\)\);\s*atualizar\(\)/);
+  assert.match(grafico, /timeZone: "America\/Manaus"/);
+  assert.doesNotMatch(grafico, /useState\(\(\) => Date\.now\(\)\)/);
+  assert.doesNotMatch(grafico, /toLocaleTimeString\("pt-BR"\)/);
+});
+
+test("referência Baseline recorrente exige motivo e não substitui a anterior", async () => {
+  const captura = await source("components/controle-gravacao-multimodal.tsx");
+  assert.match(captura, /baselines_anteriores\.length/);
+  assert.match(captura, /motivo_metodologico: renovacaoMetodologica/);
+  assert.match(captura, /CRIAR NOVA VERSÃO DE BASELINE — EXCEÇÃO METODOLÓGICA/);
+  assert.match(captura, /Uma nova referência exige motivo metodológico explícito/);
+  assert.match(captura, /UTILIZAR_BASELINE_ANTERIOR/);
+});
+
 test("operação usa sessão httpOnly e proteção CSRF sem expor token", async () => {
   const route = await source("app/api/operacao-homologacao/route.ts");
   const client = await source("components/operacao-homologacao.tsx");
@@ -1034,6 +1052,7 @@ test("Cockpit nunca apresenta leitura histórica como telemetria ao vivo", async
     /snapshotDeFaseCanonico[\s\S]*\? estadoVetorial/
   );
   assert.match(cockpit, /const projecaoOperacionalAtual = Number\.isFinite/);
+  assert.match(cockpit, /useEffect\(\(\) => \{[\s\S]*?setAgora\(Date\.now\(\)\);[\s\S]*?\}, \[cockpit\.polling_confirmado_em\]\)/);
   assert.match(
     cockpit,
     /fontesRecebidas\.map\(\(fonte\) => fonteDuranteSincronizacao/

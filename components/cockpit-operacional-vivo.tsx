@@ -1144,7 +1144,7 @@ export function CockpitOperacionalVivo({
   abrirAnalitico,
   permitirOperacao
 }: Props) {
-  const [agora, setAgora] = useState(Date.now());
+  const [agora, setAgora] = useState(0);
   const [categoria, setCategoria] = useState("EVENTO");
   const [registro, setRegistro] = useState("");
   const [registroAberto, setRegistroAberto] = useState(false);
@@ -2045,6 +2045,7 @@ export function CockpitOperacionalVivo({
 
   useEffect(() => {
     const atualizarRelogio = () => setAgora(Date.now());
+    atualizarRelogio();
     const id = window.setInterval(atualizarRelogio, 1000);
     window.addEventListener("focus", atualizarRelogio);
     window.addEventListener("pageshow", atualizarRelogio);
@@ -2056,6 +2057,13 @@ export function CockpitOperacionalVivo({
       document.removeEventListener("visibilitychange", atualizarRelogio);
     };
   }, []);
+
+  useEffect(() => {
+    // Uma resposta de polling pode chegar entre dois ticks do relógio local.
+    // Sem este ajuste, a confirmação fica no futuro relativo ao estado de
+    // `agora` e a interface informa sincronização mesmo após HTTP 200.
+    setAgora(Date.now());
+  }, [cockpit.polling_confirmado_em]);
 
   const faixas: HxPhaseRange[] = (["PRE", "TREINO", "POS"] as const).flatMap((fase) => {
     const relacionados = eventos.filter((item) => item.momento === fase);
