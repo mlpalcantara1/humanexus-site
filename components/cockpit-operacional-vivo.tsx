@@ -686,8 +686,10 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
       ) : null}
       {aoVivo && janela.estado_da_qualidade === "QUALIDADE_MUITO_DEGRADADA" ? (
         <div className="hx-live-source-advisory" role="status">
-          <strong>QUALIDADE MUITO DEGRADADA</strong>
-          <span>EEG com confiança reduzida ou não admissível. A sessão e as demais fontes continuam normalmente.</span>
+          <strong>DADOS EEG RECEBIDOS · NÃO ADMISSÍVEIS PARA INDICADORES</strong>
+          <span>{janela.qualidade_mediana == null
+            ? "Há pacotes atuais, mas falta qualidade EEG mensurável na janela."
+            : `Qualidade EEG mediana da janela: ${percentual(janela.qualidade_mediana)}; abaixo do critério de admissibilidade vigente.`} A sessão e as demais fontes continuam normalmente.</span>
         </div>
       ) : null}
       <Sparkline pontos={aoVivo || emVerificacao ? lista(fonte.series?.qualidade) : []} cor={C.green} />

@@ -37,6 +37,13 @@ test("cockpit em repouso evita recomposição integral por segundo sem perder at
   assert.match(operation, /if \(document\.visibilityState !== "visible"\) return;/);
 });
 
+test("EEG recebido com qualidade degradada não é rotulado como ausência de transmissão", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  assert.match(cockpit, /DADOS EEG RECEBIDOS · NÃO ADMISSÍVEIS PARA INDICADORES/);
+  assert.match(cockpit, /falta qualidade EEG mensurável na janela/);
+  assert.match(cockpit, /abaixo do critério de admissibilidade vigente/);
+});
+
 test("perfis oficiais possuem destinos privados exatos", async () => {
   const session = await source("lib/portal-session.ts");
   const expected = {
