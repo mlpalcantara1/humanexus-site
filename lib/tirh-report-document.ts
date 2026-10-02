@@ -17,6 +17,7 @@ import {
   projetarMicrotrajetoriaRegulatoria
 } from "./projecao-narrativa-relatorio.ts";
 import { compatibilizarVetoresDoSnapshotHistorico } from "./historical-vector-compatibility.ts";
+import { nomeDaZona, NOMES_HISTORICOS_DAS_ZONAS, VERSAO_NOMENCLATURA_DAS_ZONAS } from "./tirh-zone-nomenclature.ts";
 
 export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.0";
 
@@ -167,15 +168,11 @@ function aparar(valor: string, limite = 165) {
   return valor.length <= limite ? valor : `${valor.slice(0, limite - 1).trim()}…`;
 }
 
-function normalizarZona(valor: unknown) {
+function normalizarZona(valor: unknown, nomenclaturaNova = true) {
   const zona = texto(valor, "Não classificada").toUpperCase();
-  const mapa: Record<string, string> = {
-    ZO: "Zona Ótima",
-    ZA: "Zona Adaptativa",
-    ZI: "Zona de Instabilidade",
-    ZCF: "Zona de Comprometimento Funcional"
-  };
-  return mapa[zona] ?? texto(valor, "Não classificada");
+  const mapa: Record<string, string> = NOMES_HISTORICOS_DAS_ZONAS;
+  const historica = mapa[zona] ?? texto(valor, "Não classificada");
+  return nomenclaturaNova ? nomeDaZona(valor) ?? historica : historica;
 }
 
 function tipoPeloRegistro(relatorio: Registro): TipoDocumentoTirh {
@@ -248,6 +245,9 @@ function capa(
     ["DATA", data(sessao.finalizado_em ?? sessao.iniciado_em ?? relatorio.criado_em)],
     ["VERSÃO DOCUMENTAL", relatorio.numero_da_versao ?? "Não registrada"]
   ];
+  if (entrada.contratoDocumental !== "LEGACY_HISTORICO") {
+    metadados.push(["NOMENCLATURA", VERSAO_NOMENCLATURA_DAS_ZONAS]);
+  }
   metadados.forEach(([rotulo, valor], indice) => {
     const coluna = indice % 2;
     const linha = Math.floor(indice / 2);
@@ -430,7 +430,7 @@ function extrairTrajetoria(entrada: EntradaRelatorioHumanexus): PontoTrajetoria[
       return {
         rotulo: texto(registro.rotulo ?? registro.fase, `Ponto ${indice + 1}`),
         valor: numero(registro.valor ?? registro.iirh ?? registro.magnitude),
-        zona: normalizarZona(registro.zona)
+        zona: normalizarZona(registro.zona, entrada.contratoDocumental !== "LEGACY_HISTORICO")
       };
     });
   }
@@ -440,7 +440,7 @@ function extrairTrajetoria(entrada: EntradaRelatorioHumanexus): PontoTrajetoria[
     return explicita.map((item, indice) => ({
       rotulo: texto(item.rotulo ?? item.fase, `Ponto ${indice + 1}`),
       valor: numero(item.valor ?? item.iirh ?? item.magnitude),
-      zona: normalizarZona(item.zona)
+      zona: normalizarZona(item.zona, entrada.contratoDocumental !== "LEGACY_HISTORICO")
     }));
   }
   const momentos = Array.isArray(entrada.ciclo?.momentos) ? entrada.ciclo.momentos as Registro[] : [];
@@ -449,7 +449,7 @@ function extrairTrajetoria(entrada: EntradaRelatorioHumanexus): PontoTrajetoria[
     return {
       rotulo: texto(momento.momento, "Momento"),
       valor: numero(dados.iirh ?? momento.iirh),
-      zona: normalizarZona(dados.zona ?? momento.zona)
+      zona: normalizarZona(dados.zona ?? momento.zona, entrada.contratoDocumental !== "LEGACY_HISTORICO")
     };
   });
 }
@@ -915,7 +915,7 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   }
   y += 12;
   etiqueta(doc, "ZONA OPERACIONAL", zona.classificada
-    ? normalizarZona(zona.codigo ?? zona.nome)
+    ? normalizarZona(zona.codigo ?? zona.nome, entrada.contratoDocumental !== "LEGACY_HISTORICO")
     : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo), 83, y, 200);
   etiqueta(doc, "IIRH OPERACIONAL V1", iirhV1Autoritativo.calculado
     ? `${iirhV1Autoritativo.valor!.toFixed(1)} · ${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}`

@@ -2,12 +2,13 @@
 
 import { resolverDisponibilidadeContinuaIirhZona } from "@/lib/authoritative-iirh-projection";
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
+import { NOMES_DAS_ZONAS, NOTA_DE_EQUIVALENCIA_HISTORICA, nomeDaZona } from "@/lib/tirh-zone-nomenclature";
 
 type Registro = Record<string, unknown>;
 const obj = (v: unknown): Registro => v && typeof v === "object" && !Array.isArray(v) ? v as Registro : {};
 const lista = (v: unknown): Registro[] => Array.isArray(v) ? v.map(obj) : [];
 const numero = (v: unknown): number | null => typeof v === "number" && Number.isFinite(v) ? v : null;
-const nomes: Record<string,string> = { ZO: "Zona Ótima", ZA: "Zona Adaptativa", ZI: "Zona de Instabilidade", ZCF: "Zona de Comprometimento Funcional" };
+const nomes: Record<string,string> = NOMES_DAS_ZONAS;
 const cores: Record<string,string> = { ZO: "#146e57", ZA: "#649368", ZI: "#bc9035", ZCF: "#a95a53" };
 
 /** Só renderiza números, faixas e intervalos já emitidos pelo Núcleo. */
@@ -35,7 +36,7 @@ export function CockpitIirhZonaTemporal({ leitura, historico }: { leitura: Regis
     {valor === null && <p role="status">{historico ? "Nenhum IIRH canônico disponível neste registro histórico." : "Aguardando primeira leitura real"}</p>}
     <div style={{display:"flex",gap:32,alignItems:"baseline",flexWrap:"wrap"}}>
       <div><small>IIRH atual</small><strong style={{fontSize:"clamp(2.8rem,6vw,4.8rem)"}}>{valor === null ? "Indisponível" : valor.toLocaleString("pt-BR",{maximumFractionDigits:2})}</strong></div>
-      <div><small>Zona atual</small><strong style={{fontSize:24}}>{!zonaDisponivel ? "Indisponível — sem leitura atual válida" : nomes[String(disponibilidade.zona.projecao.codigo)] ?? "Classificação canônica pendente"}{zonaDisponivel && provisoria ? " · provisória" : ""}</strong></div>
+      <div><small>Zona atual</small><strong style={{fontSize:24}}>{!zonaDisponivel ? "Indisponível — sem leitura atual válida" : nomeDaZona(disponibilidade.zona.projecao.codigo, historico) ?? "Classificação canônica pendente"}{zonaDisponivel && provisoria ? " · provisória" : ""}</strong></div>
     </div>
     <p>Cobertura: {valor === null || cobertura === null ? "não informada" : formatarPercentualCanonico(cobertura)} · Confiança: {valor === null || confianca === null ? "não informada" : formatarPercentualCanonico(confianca)} · Qualidade: {valor === null || qualidade === null ? "não informada" : formatarPercentualCanonico(qualidade)}</p>
     {zonaDisponivel && <details><summary>Por que esta Zona?</summary>
@@ -54,9 +55,10 @@ export function CockpitIirhZonaTemporal({ leitura, historico }: { leitura: Regis
       {instantes.length>0 && <><text x={48} y={258} fontSize={12}>{new Date(inicio).toLocaleTimeString("pt-BR")}</text><text x={868} y={258} textAnchor="end" fontSize={12}>{new Date(fim).toLocaleTimeString("pt-BR")}</text></>}
     </svg>
     <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>{Object.entries(nomes).map(([z,nome]) => <p key={z}><b>{nome}</b><br/>{numero(tempos[z]) === null ? "Sem tempo válido registrado" : `${Number(tempos[z]).toFixed(1)} s`}</p>)}</div>
-    {nomes[String(temporal.zona_predominante)] && <p>Zona predominante {historico ? "da sessão" : "até esta leitura"}: <strong>{nomes[String(temporal.zona_predominante)]}</strong>{temporal.inclui_leituras_provisorias === true ? " · inclui leituras provisórias; cobertura e confiança preservadas por leitura" : ""}</p>}
+    {nomes[String(temporal.zona_predominante)] && <p>Zona predominante {historico ? "da sessão" : "até esta leitura"}: <strong>{nomeDaZona(temporal.zona_predominante, historico)}</strong>{temporal.inclui_leituras_provisorias === true ? " · inclui leituras provisórias; cobertura e confiança preservadas por leitura" : ""}</p>}
     {!transicoes.length && <p>Transições: nenhuma transição válida registrada.</p>}
-    {transicoes.length>0 && <details><summary>Transições registradas ({transicoes.length})</summary><ul>{transicoes.map((t,n) => <li key={n}>{String(t.fase)} · {new Date(String(t.momento)).toLocaleTimeString("pt-BR")}: {nomes[String(t.de)]} → {nomes[String(t.para)]}</li>)}</ul></details>}
+    {transicoes.length>0 && <details><summary>Transições registradas ({transicoes.length})</summary><ul>{transicoes.map((t,n) => <li key={n}>{String(t.fase)} · {new Date(String(t.momento)).toLocaleTimeString("pt-BR")}: {nomeDaZona(t.de, historico) ?? String(t.de)} → {nomeDaZona(t.para, historico) ?? String(t.para)}</li>)}</ul></details>}
+    {historico && <small>{NOTA_DE_EQUIVALENCIA_HISTORICA}</small>}
     <small>Somente intervalos válidos medidos. Lacunas e desconexões não acrescentam tempo. Fonte canônica: {String(temporal.versao ?? operacional.versao ?? "registro histórico")}.</small>
   </section>;
 }

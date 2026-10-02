@@ -41,6 +41,7 @@ import {
 } from "@/lib/authoritative-iirh-projection";
 import { estruturaVisivelEmPortugues, portuguesVisivel } from "@/lib/portugues-visivel";
 import { resolverPreflightTirh } from "@/lib/tirh-operational-readiness";
+import { nomeDaZona, NOTA_DE_EQUIVALENCIA_HISTORICA } from "@/lib/tirh-zone-nomenclature";
 
 type Registro = Record<string, unknown>;
 type Fonte = Registro & {
@@ -139,13 +140,6 @@ const METRICAS_ESTAVEIS_DA_TAREFA = new Set([
   "communication", "symbolic_context"
 ]);
 
-const ROTULOS_DAS_ZONAS: Record<string, string> = {
-  ZO: "Zona Ótima",
-  ZA: "Zona Adaptativa",
-  ZI: "Zona de Instabilidade",
-  ZCF: "Zona de Comprometimento Funcional"
-};
-
 function metricasDeDesempenhoVisiveis(fonte: Fonte) {
   if (fonte.ao_vivo !== true) return [];
   return metricasDeDesempenhoDaFonte(fonte);
@@ -192,8 +186,7 @@ function estadoDoIndicador(valor: unknown) {
 }
 
 function rotuloDaZona(valor: unknown) {
-  const codigo = String(valor ?? "").toUpperCase();
-  return ROTULOS_DAS_ZONAS[codigo] ?? texto(valor, "NÃO CLASSIFICÁVEL");
+  return nomeDaZona(valor) ?? texto(valor, "NÃO CLASSIFICÁVEL");
 }
 
 function fontesDoIndicador(valor: unknown) {
@@ -2356,10 +2349,10 @@ export function CockpitOperacionalVivo({
         <div className="is-reference" data-regulatory-state={disponibilidadeContinua.zonaReferencia.modo}>
           <small>ZONA · REFERÊNCIA HISTÓRICA</small>
           <strong>{zonaReferenciaDisponivel
-            ? rotuloDaZona(zonaReferencia.codigo ?? zonaReferencia.nome)
+            ? nomeDaZona(zonaReferencia.codigo ?? zonaReferencia.nome, true) ?? rotuloDaZona(zonaReferencia.codigo ?? zonaReferencia.nome)
             : "AGUARDANDO PRIMEIRA REFERÊNCIA VÁLIDA"}</strong>
           <span>{zonaReferenciaDisponivel
-            ? detalheDaOrigem(origemDaZonaReferencia)
+            ? `${detalheDaOrigem(origemDaZonaReferencia)} · ${NOTA_DE_EQUIVALENCIA_HISTORICA}`
             : "Nenhuma referência autoritativa elegível foi fornecida pelo Núcleo."}</span>
         </div>
         <div className="is-reference" data-regulatory-state={disponibilidadeContinua.iirhReferencia.modo}>
@@ -2765,7 +2758,7 @@ export function CockpitOperacionalVivo({
                     : "Nenhuma"}</dd></div>
                 <div><dt>Famílias</dt><dd>{Array.isArray(snapshotBasal.familias) ? snapshotBasal.familias.map((item) => texto(item)).join(" · ") || "Nenhuma" : "Nenhuma"}</dd></div>
                 <div><dt>IIRH</dt><dd>{iirhDoSnapshotAutoritativo.calculado ? `${numero(iirhDoSnapshotAutoritativo.valor, 1)} · qualidade ${percentual(iirhDoSnapshot.qualidade)} · confiança ${percentual(iirhDoSnapshot.confiabilidade ?? snapshotBasal.confianca)}` : `NULO · ${texto(iirhDoSnapshotAutoritativo.motivo, "motivo autoritativo não informado pelo Núcleo")}`}</dd></div>
-                <div><dt>Zona</dt><dd>{texto(zonaDoSnapshot.nome ?? zonaDoSnapshot.codigo, `NULA · ${texto(zonaDoSnapshot.motivo, "Precondições não atendidas no registro preservado")}`)}</dd></div>
+                <div><dt>Zona</dt><dd>{nomeDaZona(zonaDoSnapshot.codigo ?? zonaDoSnapshot.nome, true) ?? texto(zonaDoSnapshot.nome ?? zonaDoSnapshot.codigo, `NULA · ${texto(zonaDoSnapshot.motivo, "Precondições não atendidas no registro preservado")}`)}</dd></div>
                 <div><dt>Resultante</dt><dd>{resultanteDoSnapshot.valor == null ? `NULA/PARCIAL · ${texto(resultanteDoSnapshot.motivo ?? resultanteDoSnapshot.justificativa)}` : `${numero(resultanteDoSnapshot.valor, 2)} · ${texto(resultanteDoSnapshot.estado)}`}</dd></div>
                 <div><dt>Proveniência</dt><dd>{referenciaCientificaLegivel(snapshotBasal.proveniencia) || "Proveniência preservada no registro preservado"}</dd></div>
                 <div><dt>Regra longitudinal</dt><dd>{texto(snapshotBasal.regra_de_comparacao_longitudinal)}</dd></div>

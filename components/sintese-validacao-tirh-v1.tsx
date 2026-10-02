@@ -12,6 +12,7 @@ import {
   rotuloDaDisponibilidadeAutoritativa
 } from "@/lib/authoritative-iirh-projection";
 import { portuguesVisivel } from "@/lib/portugues-visivel";
+import { nomeDaZona } from "@/lib/tirh-zone-nomenclature";
 
 export { claimElegivelParaValidacaoTirhV1 } from "@/lib/validacao-profissional-tirh-v1";
 
@@ -20,13 +21,6 @@ type Registro = Record<string, unknown>;
 type Props = {
   estado: Registro;
   validarClaimTirhV1: (payload: Registro) => Promise<void> | void;
-};
-
-const ROTULOS_DAS_ZONAS: Record<string, string> = {
-  ZO: "Zona Ótima",
-  ZA: "Zona Adaptativa",
-  ZI: "Zona de Instabilidade",
-  ZCF: "Zona de Comprometimento Funcional"
 };
 
 function objeto(valor: unknown): Registro {
@@ -55,8 +49,7 @@ function numero(valor: unknown, casas = 0) {
 }
 
 function rotuloDaZona(valor: unknown) {
-  const codigo = String(valor ?? "").toUpperCase();
-  return ROTULOS_DAS_ZONAS[codigo] ?? texto(valor, "NÃO CLASSIFICÁVEL");
+  return nomeDaZona(valor) ?? texto(valor, "NÃO CLASSIFICÁVEL");
 }
 
 function fontesDoIndicador(valor: unknown) {

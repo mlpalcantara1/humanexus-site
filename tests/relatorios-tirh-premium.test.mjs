@@ -34,8 +34,9 @@ test("arquitetura documental contém cinco produtos TIRH independentes", async (
   assert.match(pdf, /HIPÓTESE OPERACIONAL v0\.1 — EM VALIDAÇÃO EMPÍRICA/);
   assert.match(pdf, /Rota Regulatória Dominante/);
   assert.match(pdf, /Nova Rota Adaptativa/);
-  for (const zona of ["Zona Ótima", "Zona Adaptativa", "Zona de Instabilidade", "Zona de Comprometimento Funcional"])
-    assert.match(pdf, new RegExp(zona));
+  const nomenclatura = await source("lib/tirh-zone-nomenclature.ts");
+  for (const zona of ["Regulação Ótima", "Regulação Funcional", "Sobrecarga Regulatória", "Desregulação"])
+    assert.match(nomenclatura, new RegExp(zona));
   for (const zonaAntiga of ["Zona Funcional", "Zona de Sobrecarga", "Zona de Desregulação", "Zona de Colapso"])
     assert.doesNotMatch(pdf, new RegExp(zonaAntiga));
   assert.match(pdf, /contratoDocumental === "TIRH_V1"/);
