@@ -13,6 +13,24 @@ test("site expõe Área HUMANEXUS sem substituir AGENDAR", async () => {
   assert.match(footer, /Área HUMANEXUS/);
 });
 
+test("telemetria histórica identifica a fonte real sem chamá-la de simulação", async () => {
+  const operation = await source("components/operacao-homologacao.tsx");
+  const charts = await source("components/hx-command-visualizations.tsx");
+  assert.match(operation, /fonteDoUltimoPacote = estado\.fontes\.find/);
+  assert.match(operation, /ultimoPacote\?\.identificador_da_fonte/);
+  assert.match(operation, /FONTE DO PACOTE/);
+  assert.match(charts, /TELEMETRIA TÉCNICA · NÃO É RESULTADO HUMANO/);
+  assert.doesNotMatch(charts, /SIMULAÇÃO TÉCNICA · NÃO É RESULTADO HUMANO/);
+});
+
+test("cockpit em repouso evita recomposição integral por segundo sem perder atualização ao vivo", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  assert.match(cockpit, /const relogioEmRepouso = !algumaFonteCanonicaAtual/);
+  assert.match(cockpit, /relogioEmRepouso \? 10_000 : 1_000/);
+  assert.match(cockpit, /document\.visibilityState === "visible"/);
+  assert.match(cockpit, /formatadorDataHoraManaus\.format\(data\)/);
+});
+
 test("perfis oficiais possuem destinos privados exatos", async () => {
   const session = await source("lib/portal-session.ts");
   const expected = {

@@ -281,16 +281,18 @@ function instante(valor: unknown) {
   return Number.isFinite(numero) ? numero : 0;
 }
 
+const formatadorDataHoraManaus = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short",
+  timeStyle: "medium",
+  timeZone: "America/Manaus"
+});
+
 function dataLegivel(valor: unknown) {
   if (!valor) return "Não registrado";
   const data = new Date(String(valor));
   return Number.isNaN(data.getTime())
     ? texto(valor)
-    : new Intl.DateTimeFormat("pt-BR", {
-        dateStyle: "short",
-        timeStyle: "medium",
-        timeZone: "America/Manaus"
-      }).format(data);
+    : formatadorDataHoraManaus.format(data);
 }
 
 function DisponibilidadeContinuaIirhZona({ estado }: { estado: Estado }) {
@@ -3133,6 +3135,13 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const latencia = pontosTelemetria(estado.telemetria, "latencia_ms");
   const buffer = pontosTelemetria(estado.telemetria, "buffer");
   const ultimoPacote = telemetriaOrdenada(estado.telemetria).at(-1);
+  const fonteDoUltimoPacote = estado.fontes.find(
+    (fonte) => String(fonte.identificador ?? "")
+      === String(ultimoPacote?.identificador_da_fonte ?? "")
+  );
+  const nomeDaFonteDoUltimoPacote = String(
+    fonteDoUltimoPacote?.nome ?? ""
+  ).trim();
   const telemetriaDivergente = estado.diagnostico_da_telemetria
     === "DIVERGENCIA_ENTRE_FONTES";
   const fonteTecnicaAoVivo = Array.isArray(estado.cockpit_operacional.fontes)
@@ -3599,7 +3608,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       <div className="hx-telemetry__grid">
         {[
           ["FONTE", fonteTecnicaAoVivo ? "AO VIVO" : "SEM LEITURA ATUAL"],
-          ["EQUIPAMENTO", String(ultimoPacote?.tipo_de_dispositivo ?? "").includes("EMOTIV") ? "EPOC X" : String(ultimoPacote?.tipo_de_dispositivo ?? "").includes("POLAR") ? "POLAR H10" : "SEM PACOTES"],
+          ["FONTE DO PACOTE", !ultimoPacote ? "SEM PACOTES" : nomeDaFonteDoUltimoPacote || "FONTE NÃO LOCALIZADA"],
           ["SEQUÊNCIA", texto(ultimoPacote?.sequencia)],
           ["ORIGEM", dataLegivel(ultimoPacote?.timestamp_de_origem)],
           ["RECEBIMENTO", dataLegivel(ultimoPacote?.timestamp_de_recebimento)],

@@ -297,15 +297,17 @@ function PorQueEsteResultado({
   );
 }
 
+const formatadorDataHoraManaus = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short",
+  timeStyle: "medium",
+  timeZone: "America/Manaus"
+});
+
 function dataLegivel(valor: unknown) {
   if (!valor) return "Sem registro";
   const data = new Date(String(valor));
   if (Number.isNaN(data.getTime())) return texto(valor);
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "medium",
-    timeZone: "America/Manaus"
-  }).format(data);
+  return formatadorDataHoraManaus.format(data);
 }
 
 function duracao(
@@ -2043,10 +2045,22 @@ export function CockpitOperacionalVivo({
     "22": relatoriosCadeia
   };
 
+  const faseCientificaDoRelogio = String(sessao.fase_atual ?? "").toUpperCase();
+  const estadoDaFaseDoRelogio = String(
+    objeto(estadoOperacional.estados_das_fases)[faseCientificaDoRelogio] ?? ""
+  ).toUpperCase();
+  const relogioEmRepouso = !algumaFonteCanonicaAtual && (
+    modoAguardando
+    || ["PAUSADA", "PAUSADO"].includes(estadoDaFaseDoRelogio)
+    || ["PAUSADA", "PAUSADO"].includes(String(estadoOperacional.estado_da_sessao ?? "").toUpperCase())
+  );
+
   useEffect(() => {
     const atualizarRelogio = () => setAgora(Date.now());
     atualizarRelogio();
-    const id = window.setInterval(atualizarRelogio, 1000);
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") atualizarRelogio();
+    }, relogioEmRepouso ? 10_000 : 1_000);
     window.addEventListener("focus", atualizarRelogio);
     window.addEventListener("pageshow", atualizarRelogio);
     document.addEventListener("visibilitychange", atualizarRelogio);
@@ -2056,7 +2070,7 @@ export function CockpitOperacionalVivo({
       window.removeEventListener("pageshow", atualizarRelogio);
       document.removeEventListener("visibilitychange", atualizarRelogio);
     };
-  }, []);
+  }, [relogioEmRepouso]);
 
   useEffect(() => {
     // Uma resposta de polling pode chegar entre dois ticks do relógio local.

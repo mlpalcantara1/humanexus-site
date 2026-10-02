@@ -47,24 +47,23 @@ export type HxTrack = {
 };
 
 const MONO = "ui-monospace, SFMono-Regular, Menlo, monospace";
+const formatadorHorarioManaus = new Intl.DateTimeFormat("pt-BR", {
+  hour: "2-digit", minute: "2-digit", second: "2-digit",
+  timeZone: "America/Manaus"
+});
+const formatadorDataHoraManaus = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short", timeStyle: "medium",
+  timeZone: "America/Manaus"
+});
 
 function horario(valor: number) {
   if (!Number.isFinite(valor)) return "horário não registrado";
-  return new Intl.DateTimeFormat("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZone: "America/Manaus"
-  }).format(new Date(valor));
+  return formatadorHorarioManaus.format(new Date(valor));
 }
 
 function dataHora(valor: number) {
   if (!Number.isFinite(valor)) return "Instante não registrado";
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "medium",
-    timeZone: "America/Manaus"
-  }).format(new Date(valor));
+  return formatadorDataHoraManaus.format(new Date(valor));
 }
 
 function normalizarSerie(pontos: HxDataPoint[]) {
@@ -719,7 +718,7 @@ export function TelemetryCommandChart({
     <section className="hx-command-visual hx-command-visual--telemetry">
       <header className="hx-command-visual__head">
         <div><small>SAÚDE DO BRIDGE</small><h2>Recepção, latência, sequência e integridade.</h2></div>
-        <span className="hx-chart-classification is-technical">SIMULAÇÃO TÉCNICA · NÃO É RESULTADO HUMANO</span>
+        <span className="hx-chart-classification is-technical">TELEMETRIA TÉCNICA · NÃO É RESULTADO HUMANO</span>
       </header>
       <HumanexusChart option={option} height={540} ariaLabel="Telemetria técnica com frequência, latência, buffer, distribuição e eventos" />
     </section>
