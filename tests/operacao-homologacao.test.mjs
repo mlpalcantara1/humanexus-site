@@ -1288,7 +1288,8 @@ test("retorno ao cockpit atualiza o relógio de frescor sem esperar o próximo i
     /const atualizarRelogio = \(\) => setAgora\(Date\.now\(\)\);[\s\S]*?document\.removeEventListener\("visibilitychange", atualizarRelogio\);/
   )?.[0] ?? "";
 
-  assert.match(relogio, /window\.setInterval\(atualizarRelogio, 1000\)/);
+  assert.match(relogio, /if \(document\.visibilityState === "visible"\) atualizarRelogio\(\)/);
+  assert.match(relogio, /relogioEmRepouso \? 10_000 : 1_000/);
   for (const evento of ["focus", "pageshow"]) {
     assert.match(relogio, new RegExp(`window\\.addEventListener\\("${evento}", atualizarRelogio\\)`));
     assert.match(relogio, new RegExp(`window\\.removeEventListener\\("${evento}", atualizarRelogio\\)`));
@@ -1296,7 +1297,7 @@ test("retorno ao cockpit atualiza o relógio de frescor sem esperar o próximo i
   assert.match(relogio, /document\.addEventListener\("visibilitychange", atualizarRelogio\)/);
 });
 
-test("polling vivo não para em segundo plano e retoma imediatamente no foco", async () => {
+test("polling não repete em segundo plano e retoma imediatamente no foco", async () => {
   const operacao = await source("components/operacao-homologacao.tsx");
   const ciclo = operacao.match(
     /useEffect\(\(\) => \{[\s\S]*?contextoDoPolling\.current = \{[\s\S]*?\}, \[[\s\S]*?\]\);/
@@ -1307,6 +1308,7 @@ test("polling vivo não para em segundo plano e retoma imediatamente no foco", a
     /document\.visibilityState !== "visible"[\s\S]{0,120}agendar\(500\)/
   );
   assert.match(ciclo, /visibilitychange/);
+  assert.match(ciclo, /if \(document\.visibilityState !== "visible"\) return;/);
   assert.match(ciclo, /limparTemporizador\(\);[\s\S]*agendar\(0\)/);
   assert.match(operacao, /polling_confirmado_em/);
   assert.match(operacao, /podeAplicarRespostaCanonica/);
