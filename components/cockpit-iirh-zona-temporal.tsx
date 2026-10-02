@@ -35,10 +35,16 @@ export function CockpitIirhZonaTemporal({ leitura, historico, agora }: { leitura
   const temporal = obj(leitura.distribuicao_temporal_das_zonas);
   const emissoes = lista(temporal.emissoes), transicoes = lista(temporal.transicoes);
   const faixas = lista(operacional.faixas);
-  const momentoDaLeitura = Date.parse(String(disponibilidade.iirh.origem.momento ?? ""));
   const momentoAtual = agora ?? relogio;
-  const leituraDesatualizada = !historico && Number.isFinite(momentoDaLeitura)
-    && momentoAtual - momentoDaLeitura > 20_000;
+  const origemDesatualizada = (momento: unknown) => {
+    const instante = Date.parse(String(momento ?? ""));
+    return !Number.isFinite(instante) || momentoAtual - instante > 20_000;
+  };
+  const iirhDesatualizado = !historico && disponibilidade.iirh.atual
+    && origemDesatualizada(disponibilidade.iirh.origem.momento);
+  const zonaDesatualizada = !historico && disponibilidade.zona.atual
+    && origemDesatualizada(disponibilidade.zona.origem.momento);
+  const leituraDesatualizada = iirhDesatualizado || zonaDesatualizada;
   const valor = (historico || disponibilidade.iirh.atual) ? disponibilidade.iirh.projecao.valor : null;
   const cobertura = numero(iirh.cobertura), confianca = numero(iirh.confianca ?? iirh.confiabilidade);
   const qualidade = numero(iirh.qualidade);
@@ -56,8 +62,8 @@ export function CockpitIirhZonaTemporal({ leitura, historico, agora }: { leitura
     {leituraDesatualizada && <p role="status">A última avaliação não é leitura atual. Aguarde a recuperação da consulta; os valores abaixo permanecem somente como registro identificado.</p>}
     {valor === null && <p role="status">{historico ? "Nenhum IIRH canônico disponível neste registro histórico." : "Aguardando primeira leitura real"}</p>}
     <div style={{display:"flex",gap:32,alignItems:"baseline",flexWrap:"wrap"}}>
-      <div><small>{leituraDesatualizada ? "Último IIRH registrado" : "IIRH atual"}</small><strong style={{fontSize:"clamp(2.8rem,6vw,4.8rem)"}}>{valor === null ? "Indisponível" : valor.toLocaleString("pt-BR",{maximumFractionDigits:2})}</strong></div>
-      <div><small>{leituraDesatualizada ? "Última Zona registrada" : "Zona atual"}</small><strong style={{fontSize:24}}>{!zonaDisponivel ? "Indisponível — sem leitura atual válida" : nomeDaZona(disponibilidade.zona.projecao.codigo, historico) ?? "Classificação canônica pendente"}{zonaDisponivel && provisoria ? " · provisória" : ""}</strong></div>
+      <div><small>{iirhDesatualizado ? "Último IIRH registrado" : "IIRH atual"}</small><strong style={{fontSize:"clamp(2.8rem,6vw,4.8rem)"}}>{valor === null ? "Indisponível" : valor.toLocaleString("pt-BR",{maximumFractionDigits:2})}</strong></div>
+      <div><small>{zonaDesatualizada ? "Última Zona registrada" : "Zona atual"}</small><strong style={{fontSize:24}}>{!zonaDisponivel ? "Indisponível — sem leitura atual válida" : nomeDaZona(disponibilidade.zona.projecao.codigo, historico) ?? "Classificação canônica pendente"}{zonaDisponivel && provisoria ? " · provisória" : ""}</strong></div>
     </div>
     <p>Cobertura: {valor === null || cobertura === null ? "não informada" : formatarPercentualCanonico(cobertura)} · Confiança: {valor === null || confianca === null ? "não informada" : formatarPercentualCanonico(confianca)} · Qualidade: {valor === null || qualidade === null ? "não informada" : formatarPercentualCanonico(qualidade)}</p>
     {zonaDisponivel && <details><summary>Por que esta Zona?</summary>
@@ -66,7 +72,7 @@ export function CockpitIirhZonaTemporal({ leitura, historico, agora }: { leitura
       {Array.isArray(zona.criterios_de_completude_pendentes) && zona.criterios_de_completude_pendentes.length > 0 && <p>Completude pendente: {zona.criterios_de_completude_pendentes.map(String).join(" · ")}</p>}
     </details>}
     {!emissoes.length && <p>Sem intervalos de fase válidos registrados. Aquisição sem fase ativa não cria duração nem comparação PRÉ–PÓS.</p>}
-    <p>Fase: {String(disponibilidade.iirh.origem.fase ?? "não informada")} · Horário: {String(disponibilidade.iirh.origem.momento ?? "não informado")} · Validade: {leituraDesatualizada ? "DESATUALIZADA" : String(disponibilidade.iirh.modo)}</p>
+    <p>Fase: {String(disponibilidade.iirh.origem.fase ?? "não informada")} · Horário: {String(disponibilidade.iirh.origem.momento ?? "não informado")} · Validade IIRH: {iirhDesatualizado ? "DESATUALIZADA" : String(disponibilidade.iirh.modo)} · Validade Zona: {zonaDesatualizada ? "DESATUALIZADA" : String(disponibilidade.zona.modo)}</p>
     {!faixas.length && <p>Faixas visuais indisponíveis: o Núcleo não forneceu os limites canônicos neste contexto.</p>}
     <svg viewBox="0 0 900 275" role="img" aria-label="IIRH ao longo do tempo válido. Lacunas permanecem sem traço." style={{width:"100%",minHeight:220}}>
       {faixas.map(f => <g key={String(f.codigo)}><rect x={48} y={y(Number(f.maximo))} width={820} height={(Number(f.maximo)-Number(f.minimo))*2} fill={cores[String(f.codigo)] ?? "#777"} opacity={.12}/><text x={52} y={y(Number(f.maximo))+14} fontSize={10}>{nomes[String(f.codigo)]}</text></g>)}

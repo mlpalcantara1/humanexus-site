@@ -929,8 +929,8 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   const vetores = cockpit.match(
     /<HxSurface as="section" className="hx-live-vector-stage">[\s\S]*?<\/HxSurface>/
   )?.[0] ?? "";
-  assert.match(hud, /leituraDoCockpitDesatualizada \? "ZONA · ÚLTIMO REGISTRO, NÃO ATUAL" : "ZONA · ESTADO ATUAL"/);
-  assert.match(hud, /leituraDoCockpitDesatualizada \? "IIRH · ÚLTIMO REGISTRO, NÃO ATUAL" : "IIRH · ESTADO ATUAL"/);
+  assert.match(hud, /zonaDoCockpitDesatualizada \? "ZONA · ÚLTIMO REGISTRO, NÃO ATUAL" : "ZONA · ESTADO ATUAL"/);
+  assert.match(hud, /iirhDoCockpitDesatualizado \? "IIRH · ÚLTIMO REGISTRO, NÃO ATUAL" : "IIRH · ESTADO ATUAL"/);
   assert.match(hud, /<small>ZONA · REFERÊNCIA HISTÓRICA<\/small>/);
   assert.match(hud, /<small>IIRH · REFERÊNCIA HISTÓRICA<\/small>/);
   assert.match(hud, /IIRH/);

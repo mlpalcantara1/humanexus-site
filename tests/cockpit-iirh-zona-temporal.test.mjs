@@ -16,21 +16,30 @@ function carregar(path) {
 const {CockpitIirhZonaTemporal}=carregar('components/cockpit-iirh-zona-temporal.tsx');
 function leitura(estado='PARCIAL',valor=74.15,modo='ATUAL') {
  return {disponibilidade_continua_iirh_zona:{autoridade:'NUCLEO_HUMANEXUS',portal_autorizado_a_calcular:false,zona_derivada_do_iirh:false,
- estado_atual:{iirh:{modo,registro:{estado,valor,cobertura:.11,confianca:21.7,qualidade:90}},zona:{modo,registro:{codigo:'ZA',estado:'PROVISORIA'}}}}};
+ estado_atual:{iirh:{modo,origem:{momento:'2026-10-02T05:10:00Z'},registro:{estado,valor,cobertura:.11,confianca:21.7,qualidade:90}},zona:{modo,origem:{momento:'2026-10-02T05:10:00Z'},registro:{codigo:'ZA',estado:'PROVISORIA'}}}}};
 }
-const render=(l,historico=false,agora)=>renderToStaticMarkup(React.createElement(CockpitIirhZonaTemporal,{leitura:l,historico,agora}));
+const render=(l,historico=false,agora=Date.parse('2026-10-02T05:10:05Z'))=>renderToStaticMarkup(React.createElement(CockpitIirhZonaTemporal,{leitura:l,historico,agora}));
 test('projeção antiga nunca permanece rotulada como estado atual',()=>{
  const l=leitura(); const atual=l.disponibilidade_continua_iirh_zona.estado_atual;
  atual.iirh.origem={momento:'2026-10-02T04:45:02Z'};
  atual.zona.origem={momento:'2026-10-02T04:45:02Z'};
  const antiga=render(l,false,Date.parse('2026-10-02T04:54:29Z'));
  assert.match(antiga,/ÚLTIMA PROJEÇÃO — NÃO ATUAL/);
- assert.match(antiga,/Validade: DESATUALIZADA/);
+ assert.match(antiga,/Validade IIRH: DESATUALIZADA · Validade Zona: DESATUALIZADA/);
  assert.match(antiga,/Último IIRH registrado/);
  assert.doesNotMatch(antiga,/IIRH atual/);
  const recuperada=render(l,false,Date.parse('2026-10-02T04:45:10Z'));
  assert.match(recuperada,/IIRH atual/);
- assert.match(recuperada,/Validade: ATUAL/);
+ assert.match(recuperada,/Validade IIRH: ATUAL · Validade Zona: ATUAL/);
+});
+test('Zona antiga não se torna atual porque o IIRH recebeu nova projeção',()=>{
+ const l=leitura(); const atual=l.disponibilidade_continua_iirh_zona.estado_atual;
+ atual.iirh.origem={momento:'2026-10-02T05:10:00Z'};
+ atual.zona.origem={momento:'2026-10-02T05:05:00Z'};
+ const html=render(l,false,Date.parse('2026-10-02T05:10:05Z'));
+ assert.match(html,/IIRH atual/);
+ assert.match(html,/Última Zona registrada/);
+ assert.match(html,/Validade IIRH: ATUAL · Validade Zona: DESATUALIZADA/);
 });
 test('leitura parcial atual destaca IIRH, zona provisória, cobertura e confiança',()=>{
  const html=render(leitura());
