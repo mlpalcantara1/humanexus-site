@@ -66,6 +66,13 @@ test("instrumento integral impede tradução automática que altere nome e termo
   assert.match(pagina, /google: "notranslate"/);
 });
 
+test("instrumento usa título próprio sem alterar o título da anamnese", async () => {
+  const instrumento = await fonte("app/(participant)/instrumento-integrado/[id]/page.tsx");
+  const layout = await fonte("app/(participant)/layout.tsx");
+  assert.match(instrumento, /title: "Instrumento Integrado Único \| HUMANEXUS"/);
+  assert.match(layout, /title: "Anamnese Regulatória \| HUMANEXUS"/);
+});
+
 test("somente AUTORIZO e NÃO AUTORIZO são respostas visíveis", async () => {
   const componente = await fonte("components/instrumento-integrado.tsx");
   assert.match(componente, /name="resposta-operacional-unica"/);
