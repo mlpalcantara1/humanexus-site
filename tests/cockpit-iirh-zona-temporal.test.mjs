@@ -14,6 +14,23 @@ function carregar(path) {
   return module.exports;
 }
 const {CockpitIirhZonaTemporal}=carregar('components/cockpit-iirh-zona-temporal.tsx');
+const {SinteseValidacaoTirhV1}=carregar('components/sintese-validacao-tirh-v1.tsx');
+test('síntese acompanha atualidade independente do cabeçalho sem recalcular valores',()=>{
+ const l=leitura(); l.tirh_operacional_v1={versao_cientifica:'TESTE'};
+ const estado={cockpit_operacional:{leitura_cientifica:l}};
+ const renderSintese=(flags)=>renderToStaticMarkup(React.createElement(SinteseValidacaoTirhV1,{estado,indicadoresDesatualizados:flags,validarClaimTirhV1:()=>{throw Error('não deve validar');}}));
+ const passado=renderSintese({iirh:true,zona:true});
+ assert.equal((passado.match(/ÚLTIMO REGISTRO — NÃO ATUAL/g)||[]).length,2);
+ assert.equal((passado.match(/="DESATUALIZADA"/g)||[]).length,2);
+ assert.match(passado,/74.2 \/ 100/); assert.match(passado,/Regulação Funcional/);
+ assert.match(passado,/2026-10-02T05:10:00Z/);
+ const atual=renderSintese({iirh:false,zona:false});
+ assert.match(atual,/ATUAL · PARCIAL/); assert.doesNotMatch(atual,/ÚLTIMO REGISTRO/);
+ const mista=renderSintese({iirh:false,zona:true});
+ assert.match(mista,/data-iirh-authoritative-state="ATUAL"/);
+ assert.match(mista,/data-zone-authoritative-state="DESATUALIZADA"/);
+ assert.match(renderSintese(undefined),/ATUALIDADE NÃO VERIFICADA/);
+});
 function leitura(estado='PARCIAL',valor=74.15,modo='ATUAL') {
  return {disponibilidade_continua_iirh_zona:{autoridade:'NUCLEO_HUMANEXUS',portal_autorizado_a_calcular:false,zona_derivada_do_iirh:false,
  estado_atual:{iirh:{modo,origem:{momento:'2026-10-02T05:10:00Z'},registro:{estado,valor,cobertura:.11,confianca:21.7,qualidade:90}},zona:{modo,origem:{momento:'2026-10-02T05:10:00Z'},registro:{codigo:'ZA',estado:'PROVISORIA'}}}}};

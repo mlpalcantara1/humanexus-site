@@ -3197,6 +3197,10 @@ export function CockpitOperacionalVivo({
 
       <SinteseValidacaoTirhV1
         estado={estado}
+        indicadoresDesatualizados={{
+          iirh: iirhDoCockpitDesatualizado,
+          zona: zonaDoCockpitDesatualizada
+        }}
         validarClaimTirhV1={validarClaimTirhV1}
       />
 

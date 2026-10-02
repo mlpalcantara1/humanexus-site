@@ -20,6 +20,7 @@ type Registro = Record<string, unknown>;
 
 type Props = {
   estado: Registro;
+  indicadoresDesatualizados?: { iirh: boolean; zona: boolean };
   validarClaimTirhV1: (payload: Registro) => Promise<void> | void;
 };
 
@@ -77,6 +78,7 @@ export function resolverAutoridadeSinteseTirhV1(estado: Registro) {
 
 export function SinteseValidacaoTirhV1({
   estado,
+  indicadoresDesatualizados,
   validarClaimTirhV1
 }: Props) {
   const [claimSelecionado, setClaimSelecionado] = useState("");
@@ -101,6 +103,14 @@ export function SinteseValidacaoTirhV1({
   );
   const iirhAutoritativo = disponibilidadeContinua.iirh.projecao;
   const zonaAutoritativa = disponibilidadeContinua.zona.projecao;
+  const rotuloTemporal = (indicador: "iirh" | "zona") => {
+    if (indicadoresDesatualizados?.[indicador]) return "ÚLTIMO REGISTRO — NÃO ATUAL";
+    const modo = disponibilidadeContinua[indicador].modo;
+    // A visão documental não observa o relógio vivo: nunca afirma atualidade
+    // apenas porque o snapshot salvo pelo Núcleo contém o modo ATUAL.
+    if (!indicadoresDesatualizados && modo === "ATUAL") return "PROJEÇÃO REGISTRADA — ATUALIDADE NÃO VERIFICADA";
+    return rotuloDaDisponibilidadeAutoritativa(modo);
+  };
   const claimsTirhV1 = lista(
     Array.isArray(tirhV1Persistida.claims)
       ? tirhV1Persistida.claims
@@ -195,27 +205,29 @@ export function SinteseValidacaoTirhV1({
         </article>
         <article>
           <small>IIRH operacional</small>
-          <strong data-iirh-authoritative-state={disponibilidadeContinua.iirh.modo}>{iirhAutoritativo.calculado
+          <strong data-iirh-authoritative-state={indicadoresDesatualizados?.iirh ? "DESATUALIZADA" : disponibilidadeContinua.iirh.modo}>{iirhAutoritativo.calculado
             ? `${numero(iirhAutoritativo.valor, 1)} / 100`
             : texto(iirhAutoritativo.estado, "NÃO CALCULÁVEL")}</strong>
-          <span>{rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)} · {texto(
+          <span>{rotuloTemporal("iirh")} · {texto(
             iirhAutoritativo.calculado
               ? iirhAutoritativo.estado
               : objeto(disponibilidadeContinua.janelaAtual.iirh_atual).motivo,
             "Motivo autoritativo não informado pelo Núcleo."
           )}</span>
+          <span>Origem: {texto(disponibilidadeContinua.iirh.origem.momento, "Horário não informado")}</span>
         </article>
         <article>
           <small>Zona Operacional</small>
-          <strong data-zone-authoritative-state={disponibilidadeContinua.zona.modo}>{zonaAutoritativa.classificada
+          <strong data-zone-authoritative-state={indicadoresDesatualizados?.zona ? "DESATUALIZADA" : disponibilidadeContinua.zona.modo}>{zonaAutoritativa.classificada
             ? rotuloDaZona(zonaAutoritativa.codigo)
             : texto(zonaAutoritativa.estado, "NÃO CLASSIFICÁVEL")}</strong>
-          <span>{rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo)} · {texto(
+          <span>{rotuloTemporal("zona")} · {texto(
             zonaAutoritativa.classificada
               ? zonaAutoritativa.estado
               : objeto(disponibilidadeContinua.janelaAtual.zona_atual).motivo,
             "NÃO CLASSIFICÁVEL sem síntese semântica sustentada."
           )}</span>
+          <span>Origem: {texto(disponibilidadeContinua.zona.origem.momento, "Horário não informado")}</span>
         </article>
         <article>
           <small>Afirmações científicas profissionais</small>
