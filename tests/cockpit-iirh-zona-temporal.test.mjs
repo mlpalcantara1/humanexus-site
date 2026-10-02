@@ -18,7 +18,20 @@ function leitura(estado='PARCIAL',valor=74.15,modo='ATUAL') {
  return {disponibilidade_continua_iirh_zona:{autoridade:'NUCLEO_HUMANEXUS',portal_autorizado_a_calcular:false,zona_derivada_do_iirh:false,
  estado_atual:{iirh:{modo,registro:{estado,valor,cobertura:.11,confianca:21.7,qualidade:90}},zona:{modo,registro:{codigo:'ZA',estado:'PROVISORIA'}}}}};
 }
-const render=(l,historico=false)=>renderToStaticMarkup(React.createElement(CockpitIirhZonaTemporal,{leitura:l,historico}));
+const render=(l,historico=false,agora)=>renderToStaticMarkup(React.createElement(CockpitIirhZonaTemporal,{leitura:l,historico,agora}));
+test('projeção antiga nunca permanece rotulada como estado atual',()=>{
+ const l=leitura(); const atual=l.disponibilidade_continua_iirh_zona.estado_atual;
+ atual.iirh.origem={momento:'2026-10-02T04:45:02Z'};
+ atual.zona.origem={momento:'2026-10-02T04:45:02Z'};
+ const antiga=render(l,false,Date.parse('2026-10-02T04:54:29Z'));
+ assert.match(antiga,/ÚLTIMA PROJEÇÃO — NÃO ATUAL/);
+ assert.match(antiga,/Validade: DESATUALIZADA/);
+ assert.match(antiga,/Último IIRH registrado/);
+ assert.doesNotMatch(antiga,/IIRH atual/);
+ const recuperada=render(l,false,Date.parse('2026-10-02T04:45:10Z'));
+ assert.match(recuperada,/IIRH atual/);
+ assert.match(recuperada,/Validade: ATUAL/);
+});
 test('leitura parcial atual destaca IIRH, zona provisória, cobertura e confiança',()=>{
  const html=render(leitura());
  for(const s of ['74,15','Regulação Funcional','provisória','11%','22%','AO VIVO'])assert.ok(html.includes(s),s);

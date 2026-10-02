@@ -1740,6 +1740,9 @@ export function CockpitOperacionalVivo({
   const radarCompleto = radarVetorial.length === 9
     && radarVetorial.every((item) => item.value != null);
   const radarParcial = radarVetorial.some((item) => item.value != null);
+  const leituraDoCockpitDesatualizada = !sessaoFinalizada
+    && !modoHistorico
+    && !projecaoOperacionalAtual;
   const iirhCalculado = (sessaoFinalizada || disponibilidadeContinua.iirh.atual) && iirhContinuo.calculado;
   const iirhApresentado = iirhCalculado ? iirhContinuo.valor : null;
   const naturezaDoIirh = rotuloDaDisponibilidadeAutoritativa(
@@ -2029,8 +2032,17 @@ export function CockpitOperacionalVivo({
   };
 
   useEffect(() => {
-    const id = window.setInterval(() => setAgora(Date.now()), 1000);
-    return () => window.clearInterval(id);
+    const atualizarRelogio = () => setAgora(Date.now());
+    const id = window.setInterval(atualizarRelogio, 1000);
+    window.addEventListener("focus", atualizarRelogio);
+    window.addEventListener("pageshow", atualizarRelogio);
+    document.addEventListener("visibilitychange", atualizarRelogio);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("focus", atualizarRelogio);
+      window.removeEventListener("pageshow", atualizarRelogio);
+      document.removeEventListener("visibilitychange", atualizarRelogio);
+    };
   }, []);
 
   const faixas: HxPhaseRange[] = (["PRE", "TREINO", "POS"] as const).flatMap((fase) => {
@@ -2312,14 +2324,14 @@ export function CockpitOperacionalVivo({
       </section>
 
       <section id="hx-decision-level" className="hx-live-hud" aria-label="Barra operacional decisória">
-        <div className="is-decision" data-regulatory-state={disponibilidadeContinua.zona.modo}>
-          <small>ZONA · ESTADO ATUAL</small>
+        <div className="is-decision" data-regulatory-state={leituraDoCockpitDesatualizada ? "DESATUALIZADA" : disponibilidadeContinua.zona.modo}>
+          <small>{leituraDoCockpitDesatualizada ? "ZONA · ÚLTIMO REGISTRO, NÃO ATUAL" : "ZONA · ESTADO ATUAL"}</small>
           {["PROVISORIA", "SUGERIDA"].includes(String(zonaContinua.registro.estado)) && <span>Leitura provisória · cobertura {formatarPercentualCanonico(iirhContinuo.registro.cobertura)} · confiança {formatarPercentualCanonico(iirhContinuo.registro.confianca)}</span>}
           <strong>{zonaCalculada
             ? rotuloDaZona(zonaApresentada)
             : estadoAtualDaZona}</strong>
           {zonaCalculada
-            ? <span>{rotuloDaDisponibilidadeAutoritativa(
+            ? <span>{leituraDoCockpitDesatualizada ? "Projeção desatualizada" : rotuloDaDisponibilidadeAutoritativa(
                 disponibilidadeContinua.zona.modo
               )}{detalheDaOrigem(origemDaZonaContinua)
                 ? ` · ${detalheDaOrigem(origemDaZonaContinua)}`
@@ -2332,13 +2344,13 @@ export function CockpitOperacionalVivo({
                 <button className="hx-live-hud__detail" type="button" onClick={abrirAnalitico}>Ver motivo</button>
               </>}
         </div>
-        <div className="is-decision" data-regulatory-state={disponibilidadeContinua.iirh.modo}>
-          <small>IIRH · ESTADO ATUAL</small>
+        <div className="is-decision" data-regulatory-state={leituraDoCockpitDesatualizada ? "DESATUALIZADA" : disponibilidadeContinua.iirh.modo}>
+          <small>{leituraDoCockpitDesatualizada ? "IIRH · ÚLTIMO REGISTRO, NÃO ATUAL" : "IIRH · ESTADO ATUAL"}</small>
           <strong data-iirh-authoritative-state={iirhContinuo.estadoNormalizado || "AUSENTE"}>{iirhCalculado
             ? `${numero(iirhApresentado, 1)} ${texto(iirhContinuo.unidade, "")}`
             : estadoAtualDoIirh}</strong>
           <span>{iirhCalculado
-            ? naturezaDoIirh
+            ? leituraDoCockpitDesatualizada ? "Projeção desatualizada" : naturezaDoIirh
             : texto(
                 iirhContinuo.motivo,
                 "O Núcleo ainda não calculou a janela atual."

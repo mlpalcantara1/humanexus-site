@@ -929,7 +929,8 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   const vetores = cockpit.match(
     /<HxSurface as="section" className="hx-live-vector-stage">[\s\S]*?<\/HxSurface>/
   )?.[0] ?? "";
-  assert.match(hud, /<small>ZONA · ESTADO ATUAL<\/small>/);
+  assert.match(hud, /leituraDoCockpitDesatualizada \? "ZONA · ÚLTIMO REGISTRO, NÃO ATUAL" : "ZONA · ESTADO ATUAL"/);
+  assert.match(hud, /leituraDoCockpitDesatualizada \? "IIRH · ÚLTIMO REGISTRO, NÃO ATUAL" : "IIRH · ESTADO ATUAL"/);
   assert.match(hud, /<small>ZONA · REFERÊNCIA HISTÓRICA<\/small>/);
   assert.match(hud, /<small>IIRH · REFERÊNCIA HISTÓRICA<\/small>/);
   assert.match(hud, /IIRH/);
@@ -1260,6 +1261,20 @@ test("interrupção transitória do polling não apaga a projeção basal canôn
   assert.match(contratoBasal, /configuracaoBasal\.identificador_da_sessao/);
   assert.doesNotMatch(contratoBasal, /projecaoOperacionalAtual/);
   assert.match(cockpit, /const cienciaAtualAdmissivel = leituraAoVivo[\s\S]*configuracaoBasalCanonica[\s\S]*modoHistorico/);
+});
+
+test("retorno ao cockpit atualiza o relógio de frescor sem esperar o próximo intervalo", async () => {
+  const cockpit = await source("components/cockpit-operacional-vivo.tsx");
+  const relogio = cockpit.match(
+    /const atualizarRelogio = \(\) => setAgora\(Date\.now\(\)\);[\s\S]*?document\.removeEventListener\("visibilitychange", atualizarRelogio\);/
+  )?.[0] ?? "";
+
+  assert.match(relogio, /window\.setInterval\(atualizarRelogio, 1000\)/);
+  for (const evento of ["focus", "pageshow"]) {
+    assert.match(relogio, new RegExp(`window\\.addEventListener\\("${evento}", atualizarRelogio\\)`));
+    assert.match(relogio, new RegExp(`window\\.removeEventListener\\("${evento}", atualizarRelogio\\)`));
+  }
+  assert.match(relogio, /document\.addEventListener\("visibilitychange", atualizarRelogio\)/);
 });
 
 test("polling vivo não para em segundo plano e retoma imediatamente no foco", async () => {

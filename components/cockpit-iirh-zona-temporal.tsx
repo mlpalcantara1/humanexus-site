@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { resolverDisponibilidadeContinuaIirhZona } from "@/lib/authoritative-iirh-projection";
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
 import { NOMES_DAS_ZONAS, NOTA_DE_EQUIVALENCIA_HISTORICA, nomeDaZona } from "@/lib/tirh-zone-nomenclature";
@@ -12,13 +13,32 @@ const nomes: Record<string,string> = NOMES_DAS_ZONAS;
 const cores: Record<string,string> = { ZO: "#146e57", ZA: "#649368", ZI: "#bc9035", ZCF: "#a95a53" };
 
 /** Só renderiza números, faixas e intervalos já emitidos pelo Núcleo. */
-export function CockpitIirhZonaTemporal({ leitura, historico }: { leitura: Registro; historico: boolean }) {
+export function CockpitIirhZonaTemporal({ leitura, historico, agora }: { leitura: Registro; historico: boolean; agora?: number }) {
+  const [relogio, setRelogio] = useState(() => Date.now());
+  useEffect(() => {
+    if (agora !== undefined) return;
+    const atualizar = () => setRelogio(Date.now());
+    const id = window.setInterval(atualizar, 1000);
+    window.addEventListener("focus", atualizar);
+    window.addEventListener("pageshow", atualizar);
+    document.addEventListener("visibilitychange", atualizar);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("focus", atualizar);
+      window.removeEventListener("pageshow", atualizar);
+      document.removeEventListener("visibilitychange", atualizar);
+    };
+  }, [agora]);
   const operacional = obj(leitura.iirh_zona_operacional);
   const disponibilidade = resolverDisponibilidadeContinuaIirhZona(leitura);
   const iirh = disponibilidade.iirh.projecao.registro, zona = disponibilidade.zona.projecao.registro;
   const temporal = obj(leitura.distribuicao_temporal_das_zonas);
   const emissoes = lista(temporal.emissoes), transicoes = lista(temporal.transicoes);
   const faixas = lista(operacional.faixas);
+  const momentoDaLeitura = Date.parse(String(disponibilidade.iirh.origem.momento ?? ""));
+  const momentoAtual = agora ?? relogio;
+  const leituraDesatualizada = !historico && Number.isFinite(momentoDaLeitura)
+    && momentoAtual - momentoDaLeitura > 20_000;
   const valor = (historico || disponibilidade.iirh.atual) ? disponibilidade.iirh.projecao.valor : null;
   const cobertura = numero(iirh.cobertura), confianca = numero(iirh.confianca ?? iirh.confiabilidade);
   const qualidade = numero(iirh.qualidade);
@@ -32,11 +52,12 @@ export function CockpitIirhZonaTemporal({ leitura, historico }: { leitura: Regis
   const provisoria = ["PROVISORIA","SUGERIDA"].includes(String(zona.estado));
   const tempos = obj(temporal.tempo_por_zona_segundos);
   return <section className="hx-cockpit-panel" aria-label="IIRH e Zona — linha temporal canônica">
-    <header><small>{historico ? "RESULTADO FINAL DA SESSÃO · REPLAY HISTÓRICO" : "AO VIVO"}</small><h2>IIRH e Zona</h2></header>
+    <header><small>{historico ? "RESULTADO FINAL DA SESSÃO · REPLAY HISTÓRICO" : leituraDesatualizada ? "ÚLTIMA PROJEÇÃO — NÃO ATUAL" : "AO VIVO"}</small><h2>IIRH e Zona</h2></header>
+    {leituraDesatualizada && <p role="status">A última avaliação não é leitura atual. Aguarde a recuperação da consulta; os valores abaixo permanecem somente como registro identificado.</p>}
     {valor === null && <p role="status">{historico ? "Nenhum IIRH canônico disponível neste registro histórico." : "Aguardando primeira leitura real"}</p>}
     <div style={{display:"flex",gap:32,alignItems:"baseline",flexWrap:"wrap"}}>
-      <div><small>IIRH atual</small><strong style={{fontSize:"clamp(2.8rem,6vw,4.8rem)"}}>{valor === null ? "Indisponível" : valor.toLocaleString("pt-BR",{maximumFractionDigits:2})}</strong></div>
-      <div><small>Zona atual</small><strong style={{fontSize:24}}>{!zonaDisponivel ? "Indisponível — sem leitura atual válida" : nomeDaZona(disponibilidade.zona.projecao.codigo, historico) ?? "Classificação canônica pendente"}{zonaDisponivel && provisoria ? " · provisória" : ""}</strong></div>
+      <div><small>{leituraDesatualizada ? "Último IIRH registrado" : "IIRH atual"}</small><strong style={{fontSize:"clamp(2.8rem,6vw,4.8rem)"}}>{valor === null ? "Indisponível" : valor.toLocaleString("pt-BR",{maximumFractionDigits:2})}</strong></div>
+      <div><small>{leituraDesatualizada ? "Última Zona registrada" : "Zona atual"}</small><strong style={{fontSize:24}}>{!zonaDisponivel ? "Indisponível — sem leitura atual válida" : nomeDaZona(disponibilidade.zona.projecao.codigo, historico) ?? "Classificação canônica pendente"}{zonaDisponivel && provisoria ? " · provisória" : ""}</strong></div>
     </div>
     <p>Cobertura: {valor === null || cobertura === null ? "não informada" : formatarPercentualCanonico(cobertura)} · Confiança: {valor === null || confianca === null ? "não informada" : formatarPercentualCanonico(confianca)} · Qualidade: {valor === null || qualidade === null ? "não informada" : formatarPercentualCanonico(qualidade)}</p>
     {zonaDisponivel && <details><summary>Por que esta Zona?</summary>
@@ -45,7 +66,7 @@ export function CockpitIirhZonaTemporal({ leitura, historico }: { leitura: Regis
       {Array.isArray(zona.criterios_de_completude_pendentes) && zona.criterios_de_completude_pendentes.length > 0 && <p>Completude pendente: {zona.criterios_de_completude_pendentes.map(String).join(" · ")}</p>}
     </details>}
     {!emissoes.length && <p>Sem intervalos de fase válidos registrados. Aquisição sem fase ativa não cria duração nem comparação PRÉ–PÓS.</p>}
-    <p>Fase: {String(disponibilidade.iirh.origem.fase ?? "não informada")} · Horário: {String(disponibilidade.iirh.origem.momento ?? "não informado")} · Validade: {String(disponibilidade.iirh.modo)}</p>
+    <p>Fase: {String(disponibilidade.iirh.origem.fase ?? "não informada")} · Horário: {String(disponibilidade.iirh.origem.momento ?? "não informado")} · Validade: {leituraDesatualizada ? "DESATUALIZADA" : String(disponibilidade.iirh.modo)}</p>
     {!faixas.length && <p>Faixas visuais indisponíveis: o Núcleo não forneceu os limites canônicos neste contexto.</p>}
     <svg viewBox="0 0 900 275" role="img" aria-label="IIRH ao longo do tempo válido. Lacunas permanecem sem traço." style={{width:"100%",minHeight:220}}>
       {faixas.map(f => <g key={String(f.codigo)}><rect x={48} y={y(Number(f.maximo))} width={820} height={(Number(f.maximo)-Number(f.minimo))*2} fill={cores[String(f.codigo)] ?? "#777"} opacity={.12}/><text x={52} y={y(Number(f.maximo))+14} fontSize={10}>{nomes[String(f.codigo)]}</text></g>)}
