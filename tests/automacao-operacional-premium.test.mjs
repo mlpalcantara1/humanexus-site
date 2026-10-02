@@ -85,6 +85,8 @@ test("baseline individual obrigatório permanece separado das fases e preserva r
   assert.match(cockpit, /DEFINIR_REFERENCIA_BASELINE/);
   assert.match(componente, /id="referencia-baseline"/);
   assert.match(componente, /Cada participante precisa de uma referência inicial individual/);
+  assert.match(componente, /antecede o primeiro PRÉ e é reutilizada nas sessões seguintes/);
+  assert.doesNotMatch(componente, /referência inicial é operacional, separada e opcional/);
   assert.match(componente, /filter\(\(tipo\) => tipo === "REALIZAR_NOVO_BASELINE"\s*\|\| tipo === "UTILIZAR_BASELINE_ANTERIOR"\)/);
   assert.match(rota, /estado-operacional/);
   assert.match(rota, /comandos-operacionais/);

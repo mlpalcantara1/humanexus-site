@@ -889,7 +889,7 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
               {painel?.baseline.fluxo_cientifico.map((item) => portuguesVisivel(item)).join(" → ")
                 ?? "PRE → TREINO → POS"}
             </strong>
-            <span>A referência inicial é operacional, separada e opcional.</span>
+            <span>A referência inicial individual antecede o primeiro PRÉ e é reutilizada nas sessões seguintes. Exceções históricas permanecem identificadas, sem preenchimento retroativo.</span>
           </div>
         </header>
         <div className="hx-operational-readiness__body">
