@@ -1,4 +1,6 @@
 "use client";
+
+import { consultarCockpitComPrazo } from "@/lib/cockpit-loading";
 import { DistribuicaoTemporalCanonica } from "@/components/distribuicao-temporal-canonica";
 import { CockpitIirhZonaTemporal } from "@/components/cockpit-iirh-zona-temporal";
 
@@ -2355,14 +2357,23 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       erro?: { mensagem?: string };
     };
     try {
-      resposta = await fetch(
-        `/api/operacao-homologacao${parametros.size ? `?${parametros}` : ""}`,
-        {
-          cache: "no-store",
-          signal
-        }
-      );
-      dados = await resposta.json();
+      if (!leve) {
+        const consulta = await consultarCockpitComPrazo<typeof dados>(
+          `/api/operacao-homologacao${parametros.size ? `?${parametros}` : ""}`,
+          { signal }
+        );
+        resposta = consulta.resposta;
+        dados = consulta.dados;
+      } else {
+        resposta = await fetch(
+          `/api/operacao-homologacao${parametros.size ? `?${parametros}` : ""}`,
+          {
+            cache: "no-store",
+            signal
+          }
+        );
+        dados = await resposta.json();
+      }
       publicarEstadoDoNucleo(
         resposta.ok
           ? "conectado"
@@ -3101,7 +3112,24 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       }
     />
   </>;
-  if (erro && !estado) return <p className="hx-module__error">{portuguesVisivel(erro)}</p>;
+  const recuperarConsulta = () => {
+    if (ocupado) return;
+    setOcupado("recuperar-consulta");
+    setErro("");
+    void (async () => {
+      const contexto = await carregar(contextoDoPolling.current, false, true);
+      await carregar(contexto);
+    })().catch((causa) => setErro(causa instanceof Error ? causa.message : "Consulta indisponível."))
+      .finally(() => setOcupado(""));
+  };
+  const recuperacaoDaConsulta = <section className="hx-recovery" role="alert">
+    <p className="hx-module__error">{portuguesVisivel(erro)}</p>
+    <p>Esta recuperação consulta os dados novamente; não inicia fases nem repete ações.</p>
+    <button type="button" disabled={Boolean(ocupado)} onClick={recuperarConsulta}>
+      Tentar carregar novamente
+    </button>
+  </section>;
+  if (erro && !estado) return recuperacaoDaConsulta;
   if (!estado) return modulo === "cockpit-vivo"
     ? <EstruturaInicialDoCockpit />
     : <p className="hx-module__loading">Carregando a sessão técnica preservada…</p>;
@@ -4134,7 +4162,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             : null}
         </main>
         {dialogoDaTransicaoDocumental}
-        {!operacional && erro ? <p className="hx-module__error">{portuguesVisivel(erro)}</p> : null}
+        {erro && !autenticacaoExpirada ? recuperacaoDaConsulta : null}
       </div>
     );
   }
