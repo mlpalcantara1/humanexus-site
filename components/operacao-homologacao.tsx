@@ -2136,6 +2136,25 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     useState<"pdf" | "impressao" | "">("");
   const [indisponibilidadeDoDocumentoFinal, setIndisponibilidadeDoDocumentoFinal] =
     useState<IndisponibilidadeDoDocumentoFinal | null>(null);
+  const telemetriaPreparada = useMemo(() => {
+    const pacotes = estado?.telemetria ?? [];
+    return {
+      frequencia: pontosFrequencia(pacotes),
+      latencia: pontosTelemetria(pacotes, "latencia_ms"),
+      buffer: pontosTelemetria(pacotes, "buffer"),
+      ultimoPacote: telemetriaOrdenada(pacotes).at(-1)
+    };
+  }, [estado?.telemetria]);
+  const marcadores = useMemo(
+    () => estado ? marcadoresDaSessao(estado) : [],
+    [estado?.eventos, estado?.historicos_conectores]
+  );
+  const marcadoresTecnicos = useMemo(
+    () => marcadores.filter((marcador) =>
+      ["disconnect", "reconnect"].includes(marcador.kind)
+    ),
+    [marcadores]
+  );
   const chaveDaDisponibilidadeDocumental = estado
     ? [
         estado.contextos.selecao.identificador_da_organizacao,
@@ -2691,6 +2710,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     const executar = () => {
       temporizador = null;
       if (encerrado || autenticacaoExpiradaAtual.current) return;
+      // A ponte e o Núcleo preservam a aquisição independentemente da guia.
+      // Ao voltar ao primeiro plano, o listener abaixo consulta o estado
+      // canônico atual; não mantenha gráficos e rede ativos em segundo plano.
+      if (document.visibilityState !== "visible") return;
       const contexto = { ...contextoDoPolling.current };
       if (!contexto.organizacao || !contexto.participante || !contexto.sessao) {
         setErro("O painel operacional preservou a tela, mas não iniciará a atualização periódica sem uma sessão explícita.");
@@ -3129,12 +3152,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
     ? <EstruturaInicialDoCockpit />
     : <p className="hx-module__loading">Carregando a sessão técnica preservada…</p>;
 
-  const marcadores = marcadoresDaSessao(estado);
   const faixas = faixasDasFases(estado);
-  const frequencia = pontosFrequencia(estado.telemetria);
-  const latencia = pontosTelemetria(estado.telemetria, "latencia_ms");
-  const buffer = pontosTelemetria(estado.telemetria, "buffer");
-  const ultimoPacote = telemetriaOrdenada(estado.telemetria).at(-1);
+  const { frequencia, latencia, buffer, ultimoPacote } = telemetriaPreparada;
   const fonteDoUltimoPacote = estado.fontes.find(
     (fonte) => String(fonte.identificador ?? "")
       === String(ultimoPacote?.identificador_da_fonte ?? "")
@@ -3627,7 +3646,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         frequency={frequencia}
         latency={latencia}
         buffer={buffer}
-        markers={marcadores.filter((marcador) => ["disconnect", "reconnect"].includes(marcador.kind))}
+        markers={marcadoresTecnicos}
       />
     </section>
   );
