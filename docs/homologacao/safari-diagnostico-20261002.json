@@ -1,0 +1,53 @@
+{
+  "data": "2026-10-02",
+  "fuso": "America/Manaus",
+  "escopo": "Diagnóstico somente leitura; nenhuma aquisição, fase, sessão ou implantação alterada",
+  "cli": {
+    "versao": "59.19.0",
+    "conta_confirmada": "mlpalcantara1-5540",
+    "time_consultado": "mlpalcantara1-5540s-projects",
+    "logs_portal_e_nucleo": "ACESSIVEIS",
+    "integracao_codex": "Não reconectada; nenhum novo acesso concedido"
+  },
+  "deployments_consultados": {
+    "portal": "dpl_ERAjM82N6F3SCTAAFx3bbvoZDv1b",
+    "nucleo": "dpl_7J3kHnMGggaSHcRhnkWB6H7QExgJ"
+  },
+  "safari": {
+    "versao_observada": "26.6.2 (21624.5.1.11.3)",
+    "observacao": "A aba existente carregou cockpit técnico da Alfa com histórico; recuperação sem deploy da correção local de timeout",
+    "historico_polar": {
+      "sequencia": 511,
+      "origem_local": "2026-10-02 10:36:15",
+      "recebimento_local": "2026-10-02 10:36:17",
+      "latencia_ms": 2034.64,
+      "estado": "SEM LEITURA ATUAL"
+    },
+    "fase_observada": "PRE_PAUSADA",
+    "tempo_sobrecarga_regulatoria_segundos": 883.5,
+    "consultas_observadas_no_inspetor": [
+      {"recurso": "operacao-homologacao", "duracao_segundos": 2.25},
+      {"recurso": "operacao-homologacao", "duracao_segundos": 6.01},
+      {"recurso": "registro-integrado", "duracao_segundos": 0.847},
+      {"recurso": "registro-integrado", "duracao_segundos": 1.64},
+      {"recurso": "cockpit-vivo", "duracao_segundos": 1.56}
+    ],
+    "console": "Somente aviso de preload de hero-command-center.webp observado; não demonstra ausência de falha em outra janela",
+    "limitacao": "Comandos no inspetor apresentaram atraso e controle remoto terminou em timeoutReached; não foi obtida captura completa da navegação problemática",
+    "causa_da_espera_anterior": "NAO_COMPROVADA",
+    "estabilidade": "NAO_APROVADA"
+  },
+  "logs": {
+    "portal": "GET /plataforma/cockpit-vivo status 200; metadados não contêm duração nem identificador que correlacione conclusivamente com a aba Safari",
+    "nucleo": "GET /api/v1/autenticacao/usuario-atual status 200 em 2026-10-02T18:58:23Z e outras consultas da mesma janela",
+    "erros_portal_ultimos_30_minutos": "Consulta retornou sem entradas; isto não encerra o diagnóstico"
+  },
+  "amostra_processo_safari": {
+    "arquivo": "/private/tmp/hx-safari-20261002-current.sample.txt",
+    "horario_local": "2026-10-02 15:31:46",
+    "duracao_segundos": 3,
+    "resultado": "Thread principal do processo Safari majoritariamente aguardando eventos; amostra não identifica o processo WebContent da Alfa nem prova a causa da espera"
+  },
+  "correcao_local_preservada": "Limite de leitura autenticada incluindo corpo; testes direcionados 7/7. Não implantada e não atribuída como causa confirmada do Safari.",
+  "proximo_passo": "Capturar navegação problemática de ponta a ponta com inspetor responsivo; correlacionar request-id e horários, antes de declarar Safari resolvido. Não pedir sensores."
+}

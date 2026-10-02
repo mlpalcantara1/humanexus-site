@@ -68,7 +68,7 @@ test("preparação sem hardware não é classificada como falha técnica", () =>
   );
 });
 
-test("baseline é referência opcional separada do fluxo científico", () => {
+test("baseline individual obrigatório permanece separado das fases e preserva rótulos históricos", () => {
   const componente = ler("components/controle-gravacao-multimodal.tsx");
   const cockpit = ler("components/operacao-homologacao.tsx");
   const rota = ler("app/api/operacao-homologacao/route.ts");
@@ -84,6 +84,8 @@ test("baseline é referência opcional separada do fluxo científico", () => {
   assert.match(componente, /ENCERRAR REFERÊNCIA INICIAL/);
   assert.match(cockpit, /DEFINIR_REFERENCIA_BASELINE/);
   assert.match(componente, /id="referencia-baseline"/);
+  assert.match(componente, /Cada participante precisa de uma referência inicial individual/);
+  assert.match(componente, /filter\(\(tipo\) => tipo === "REALIZAR_NOVO_BASELINE"\s*\|\| tipo === "UTILIZAR_BASELINE_ANTERIOR"\)/);
   assert.match(rota, /estado-operacional/);
   assert.match(rota, /comandos-operacionais/);
 });

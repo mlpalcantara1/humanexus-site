@@ -1,5 +1,6 @@
 import "server-only";
 import { cabecalhosDaRequisicaoAoNucleo } from "@/lib/core-request-headers";
+import { lerSessaoComPrazo } from "@/lib/session-read-deadline";
 
 const CORE_API =
   process.env.HUMANEXUS_CORE_API_URL?.replace(/\/$/, "") ??
@@ -227,12 +228,32 @@ export async function confirmarSegundoFatorNoNucleo(
   return { token: dados.token, expiraEmSegundos: dados.expira_em_segundos };
 }
 
-export function obterUsuarioDoNucleo(token: string) {
-  return requisitar<UsuarioHumanexus>(
-    "/api/v1/autenticacao/usuario-atual",
-    {},
-    token
-  );
+export async function obterUsuarioDoNucleo(token: string) {
+  const inicio = Date.now();
+  try {
+    return await lerSessaoComPrazo((signal) => requisitar<UsuarioHumanexus>(
+      "/api/v1/autenticacao/usuario-atual",
+      { signal },
+      token,
+      { tentativas: 1 }
+    ));
+  } catch (erro) {
+    if (erro instanceof Error && erro.message === "HXP_SESSION_READ_TIMEOUT") {
+      console.warn("[HXP_SESSION_READ]", JSON.stringify({
+        instante: new Date(inicio).toISOString(),
+        endpoint: "/api/v1/autenticacao/usuario-atual",
+        metodo: "GET", duracao_ms: Date.now() - inicio,
+        falha: "TIMEOUT_HEADERS_OR_BODY"
+      }));
+      // Timeout is availability failure, not invalid credentials or sign-out.
+      throw new ErroDoNucleo(
+        "A verificação da sessão demorou mais que o esperado. Tente novamente.",
+        504,
+        "SESSAO_CONSULTA_EXPIRADA"
+      );
+    }
+    throw erro;
+  }
 }
 
 export async function renovarNoNucleo(token: string): Promise<SessaoDoNucleo> {

@@ -1013,8 +1013,9 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
         ) : (
           <>
             <p>
-              Nenhuma opção é selecionada automaticamente. A decisão pertence
-              ao profissional autorizado.
+              Cada participante precisa de uma referência inicial individual.
+              A preparação reutiliza a referência finalizada existente; não inicia
+              outro Baseline automaticamente. Uma nova versão exige motivo metodológico.
             </p>
             <div className="hx-baseline-reference__options">
               {(
@@ -1022,7 +1023,8 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
                   TipoReferenciaBaseline,
                   ""
                 >[]
-              ).map((tipo) => (
+              ).filter((tipo) => tipo === "REALIZAR_NOVO_BASELINE"
+                || tipo === "UTILIZAR_BASELINE_ANTERIOR").map((tipo) => (
                 <label
                   className={tipoReferenciaBaseline === tipo
                     ? "is-selected"
