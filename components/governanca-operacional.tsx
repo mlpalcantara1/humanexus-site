@@ -62,7 +62,8 @@ const CTA_CHAVE_RENOVACAO = "cta-renovacao-20261005";
 const CTA_MOTIVO_RENOVACAO = "Prorrogação excepcional dos acessos pendentes da CTA autorizada pelo responsável institucional.";
 
 type ResultadoRenovacao = {
-  contagem: Record<string, { renovados: number; concluidos: number; revogados_cancelados: number }>;
+  contagem: Record<string, { renovados: number; concluidos: number; revogados_cancelados: number; prazo_ja_maior: number; outros: number }>;
+  executado_em: string;
   vencimento_anamnese: string;
   vencimento_instrumento: string;
   verificacao?: { persistencia_confirmada: boolean; divergencias: number };
@@ -242,7 +243,10 @@ export function GovernancaOperacional() {
           </button>
           {renovacao ? <div>
             <p>Anamneses prorrogadas: {renovacao.contagem.ANAMNESE?.renovados ?? 0}. Instrumentos prorrogados: {renovacao.contagem.INSTRUMENTO?.renovados ?? 0}.</p>
+            <p>Anamneses excluídas: {renovacao.contagem.ANAMNESE?.concluidos ?? 0} concluídas, {renovacao.contagem.ANAMNESE?.revogados_cancelados ?? 0} revogadas ou canceladas, {renovacao.contagem.ANAMNESE?.prazo_ja_maior ?? 0} com prazo já maior, {renovacao.contagem.ANAMNESE?.outros ?? 0} em outros estados.</p>
+            <p>Instrumentos excluídos: {renovacao.contagem.INSTRUMENTO?.concluidos ?? 0} concluídos, {renovacao.contagem.INSTRUMENTO?.revogados_cancelados ?? 0} revogados ou cancelados, {renovacao.contagem.INSTRUMENTO?.prazo_ja_maior ?? 0} com prazo já maior, {renovacao.contagem.INSTRUMENTO?.outros ?? 0} em outros estados.</p>
             <p>Persistência: {renovacao.verificacao?.persistencia_confirmada ? "confirmada" : "não confirmada"}. Divergências: {renovacao.verificacao?.divergencias ?? "—"}.</p>
+            <p>Execução em Manaus: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium", timeZone: "America/Manaus" }).format(new Date(renovacao.executado_em))}.</p>
             <p>Vencimento em Manaus: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Manaus" }).format(new Date(renovacao.vencimento_anamnese))} (anamnese); {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Manaus" }).format(new Date(renovacao.vencimento_instrumento))} (aceite).</p>
           </div> : null}
         </section>
