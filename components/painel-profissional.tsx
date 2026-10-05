@@ -39,6 +39,7 @@ type Convite = {
   versao_da_anamnese: string;
   criado_em: string;
   expira_em: string;
+  expirado_por_prazo?: boolean;
   estado: string;
   ultimo_acesso_em?: string;
   progresso: number;
@@ -470,14 +471,16 @@ export function PainelProfissional() {
   const visiveis = useMemo(
     () => convites.filter((item) => {
       const texto = `${item.participante} ${item.organizacao ?? ""}`.toLowerCase();
-      const pertoDeExpirar = new Date(item.expira_em).getTime() - Date.now() <= 24 * 60 * 60 * 1000;
+      const tempoRestante = new Date(item.expira_em).getTime() - Date.now();
+      const pertoDeExpirar = tempoRestante > 0 && tempoRestante <= 24 * 60 * 60 * 1000;
+      const expirado = item.expirado_por_prazo === true || item.estado === "EXPIRADO";
       const tipoAtendimento = item.tipo_atendimento
         ?? (item.tipo_de_vinculo === "PARTICULAR"
           ? "PARTICULAR"
           : "ORGANIZACIONAL");
       const grupoCorreto = tipoAtendimento === grupoConvite;
       return grupoCorreto
-        && (filtro === "TODOS" || item.estado === filtro)
+        && (filtro === "TODOS" || item.estado === filtro || (filtro === "EXPIRADO" && expirado))
         && (versaoFiltro === "TODAS" || item.versao_da_anamnese === versaoFiltro)
         && (!busca.trim() || texto.includes(busca.trim().toLowerCase()))
         && (!expiracaoProxima || pertoDeExpirar);
@@ -485,11 +488,11 @@ export function PainelProfissional() {
     [busca, convites, expiracaoProxima, filtro, grupoConvite, versaoFiltro]
   );
   const indicadores = {
-    ativos: convites.filter((item) => !["CONCLUIDO", "EXPIRADO", "REVOGADO"].includes(item.estado)).length,
-    naoAcessados: convites.filter((item) => ["CRIADO", "COMPARTILHAMENTO_INICIADO", "ENVIADO_CONFIRMADO"].includes(item.estado)).length,
+    ativos: convites.filter((item) => !["CONCLUIDO", "EXPIRADO", "REVOGADO"].includes(item.estado) && !item.expirado_por_prazo).length,
+    naoAcessados: convites.filter((item) => ["CRIADO", "COMPARTILHAMENTO_INICIADO", "ENVIADO_CONFIRMADO"].includes(item.estado) && !item.expirado_por_prazo).length,
     preenchimento: convites.filter((item) => item.estado === "EM_PREENCHIMENTO").length,
     concluidos: convites.filter((item) => item.estado === "CONCLUIDO").length,
-    expirados: convites.filter((item) => item.estado === "EXPIRADO").length,
+    expirados: convites.filter((item) => item.estado === "EXPIRADO" || item.expirado_por_prazo).length,
     revogados: convites.filter((item) => item.estado === "REVOGADO").length
   };
 
@@ -541,7 +544,7 @@ export function PainelProfissional() {
       </div>
       <section className="hx-invites__panel">
         <header><div><small>PAINEL DE CONVITES</small><h3>Acompanhamento operacional</h3></div><div className="hx-invites__filters"><button type="button" onClick={() => setGrupoConvite("ORGANIZACIONAL")}>Organizacionais</button><button type="button" onClick={() => setGrupoConvite("PARTICULAR")}>Particulares</button><input aria-label="Filtrar por participante ou organização" placeholder="Participante ou organização" value={busca} onChange={(event) => setBusca(event.target.value)} /><select value={filtro} onChange={(event) => setFiltro(event.target.value)}><option value="TODOS">Todos os estados</option>{["CRIADO", "COMPARTILHAMENTO_INICIADO", "ENVIADO_CONFIRMADO", "ACESSADO", "EM_PREENCHIMENTO", "CONCLUIDO", "EXPIRADO", "REVOGADO", "REABERTO"].map((item) => <option key={item}>{item}</option>)}</select><select value={versaoFiltro} onChange={(event) => setVersaoFiltro(event.target.value)}><option value="TODAS">Todas as versões</option>{[...new Set(convites.map((item) => item.versao_da_anamnese))].map((item) => <option key={item}>{item}</option>)}</select><label><input type="checkbox" checked={expiracaoProxima} onChange={(event) => setExpiracaoProxima(event.target.checked)} /> Expira em até 24h</label></div></header>
-        <div className="hx-invites__table"><table><thead><tr><th>Participante</th><th>Organização de vínculo</th><th>Versão</th><th>Criação / validade</th><th>Situação</th><th>Progresso</th><th>Ações</th></tr></thead><tbody>{visiveis.map((item) => <tr key={item.identificador}><td>{item.participante}</td><td>{item.tipo_atendimento === "PARTICULAR" ? "Cliente particular" : item.organizacao || "Vínculo não informado"}</td><td>{item.versao_da_anamnese}</td><td>{dataLegivel(item.criado_em)}<small>{dataLegivel(item.expira_em)}</small></td><td><span data-state={item.estado}>{item.estado.replaceAll("_", " ")}</span></td><td>{Number(item.progresso || 0).toFixed(0)}%</td><td><button onClick={() => void abrirRevisao(item.identificador_da_anamnese)}>Revisar</button><button onClick={() => void abrirAuditoria(item.identificador)}>Auditoria</button>{!["CONCLUIDO", "EXPIRADO", "REVOGADO"].includes(item.estado) ? <button onClick={() => void revogar(item.identificador)}>Revogar</button> : null}{["EXPIRADO", "REVOGADO"].includes(item.estado) ? <button onClick={() => void gerarNovoConvite(item.identificador_da_anamnese)}>Novo convite</button> : null}{item.estado === "CONCLUIDO" ? <button onClick={() => { setReabertura({ anamneseId: item.identificador_da_anamnese, participante: item.participante }); setJustificativaReabertura(""); }}>Reabrir</button> : null}</td></tr>)}</tbody></table></div>
+        <div className="hx-invites__table"><table><thead><tr><th>Participante</th><th>Organização de vínculo</th><th>Versão</th><th>Criação / validade</th><th>Situação</th><th>Progresso</th><th>Ações</th></tr></thead><tbody>{visiveis.map((item) => <tr key={item.identificador}><td>{item.participante}</td><td>{item.tipo_atendimento === "PARTICULAR" ? "Cliente particular" : item.organizacao || "Vínculo não informado"}</td><td>{item.versao_da_anamnese}</td><td>{dataLegivel(item.criado_em)}<small>{dataLegivel(item.expira_em)}</small></td><td><span data-state={item.expirado_por_prazo ? "EXPIRADO" : item.estado}>{item.expirado_por_prazo ? `VENCIDO · ${item.estado.replaceAll("_", " ")}` : item.estado.replaceAll("_", " ")}</span></td><td>{Number(item.progresso || 0).toFixed(0)}%</td><td><button onClick={() => void abrirRevisao(item.identificador_da_anamnese)}>Revisar</button><button onClick={() => void abrirAuditoria(item.identificador)}>Auditoria</button>{!["CONCLUIDO", "EXPIRADO", "REVOGADO"].includes(item.estado) ? <button onClick={() => void revogar(item.identificador)}>Revogar</button> : null}{["EXPIRADO", "REVOGADO"].includes(item.estado) ? <button onClick={() => void gerarNovoConvite(item.identificador_da_anamnese)}>Novo convite</button> : null}{item.estado === "CONCLUIDO" ? <button onClick={() => { setReabertura({ anamneseId: item.identificador_da_anamnese, participante: item.participante }); setJustificativaReabertura(""); }}>Reabrir</button> : null}</td></tr>)}</tbody></table></div>
       </section>
       {reabertura ? <section className="hx-review">
         <header><div><small>REABERTURA AUDITÁVEL</small><h3>Preservar versão concluída e criar novo preenchimento</h3></div><span>{reabertura.participante}</span></header>

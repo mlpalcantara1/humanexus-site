@@ -57,6 +57,17 @@ type EntregaDeConsentimento = Registro & {
   link_de_manifestacao: string;
 };
 
+const CTA_ORGANIZACAO_ID = "063ddfcf-11f8-4d11-9924-009661303f4a";
+const CTA_CHAVE_RENOVACAO = "cta-renovacao-20261005";
+const CTA_MOTIVO_RENOVACAO = "Prorrogação excepcional dos acessos pendentes da CTA autorizada pelo responsável institucional.";
+
+type ResultadoRenovacao = {
+  contagem: Record<string, { renovados: number; concluidos: number; revogados_cancelados: number }>;
+  vencimento_anamnese: string;
+  vencimento_instrumento: string;
+  verificacao?: { persistencia_confirmada: boolean; divergencias: number };
+};
+
 function csrf() {
   return document.cookie
     .split("; ")
@@ -76,6 +87,7 @@ export function GovernancaOperacional() {
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const [renovacao, setRenovacao] = useState<ResultadoRenovacao | null>(null);
 
   function organizacaoDoContexto() {
     return new URLSearchParams(window.location.search)
@@ -160,6 +172,46 @@ export function GovernancaOperacional() {
     });
   }
 
+  async function renovarConvitesCTA() {
+    if (organizacaoDoContexto() !== CTA_ORGANIZACAO_ID
+      || String(gestao?.organizacao?.identificador ?? "") !== CTA_ORGANIZACAO_ID) {
+      setErro("Selecione a organização CTA antes de executar a renovação.");
+      return;
+    }
+    setOcupado(true);
+    setErro("");
+    try {
+      const resposta = await fetch("/api/plataforma/renovacoes-convites", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-humanexus-csrf": csrf()
+        },
+        body: JSON.stringify({
+          identificador_da_organizacao: CTA_ORGANIZACAO_ID,
+          chave_idempotencia: CTA_CHAVE_RENOVACAO,
+          motivo: CTA_MOTIVO_RENOVACAO
+        })
+      });
+      const corpo = await resposta.json();
+      if (!resposta.ok) throw new Error(corpo?.erro?.mensagem ?? "Renovação recusada.");
+      const leitura = await fetch(
+        `/api/plataforma/renovacoes-convites?chave=${encodeURIComponent(CTA_CHAVE_RENOVACAO)}`
+      );
+      const conferido = await leitura.json() as ResultadoRenovacao & { erro?: { mensagem?: string } };
+      if (!leitura.ok || !conferido.verificacao?.persistencia_confirmada) {
+        throw new Error(conferido.erro?.mensagem ?? "Renovação registrada, mas a conferência da persistência exige revisão.");
+      }
+      setRenovacao(conferido);
+      setMensagem("Renovação auditada e persistência conferida, sem novo envio.");
+      await carregar();
+    } catch (causa) {
+      setErro(causa instanceof Error ? causa.message : "Renovação não confirmada.");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   if (!dados) return erro
     ? <PlatformErrorState automatico={false} tentarNovamente={() => void carregar().catch((causa) => setErro(causa.message))} titulo="Governança temporariamente indisponível" mensagem={erro} />
     : <p className="hx-module__loading">Carregando governança operacional…</p>;
@@ -180,6 +232,21 @@ export function GovernancaOperacional() {
         <article><small>Alertas de segurança</small><strong>{dados.seguranca.alertas.filter((item) => item.estado === "NOVO").length}</strong></article>
         <article><small>Instrumentos integrados</small><strong>{dados.instrumento_integrado.instrumentos.length}</strong></article>
       </div>
+      {String(gestao?.organizacao?.identificador ?? "") === CTA_ORGANIZACAO_ID
+        && organizacaoDoContexto() === CTA_ORGANIZACAO_ID ? (
+        <section className="hx-owner-security">
+          <header><div><small>OPERAÇÃO EXCEPCIONAL · CTA</small><h4>Renovar acessos pendentes sem trocar os links</h4></div></header>
+          <p>Anamnese e instrumento de aceite: 30 dias a partir da execução. Convites concluídos, revogados e cancelados são excluídos. Esta operação usa uma chave única; repeti-la não prorroga novamente.</p>
+          <button type="button" disabled={ocupado} onClick={() => void renovarConvitesCTA()}>
+            Renovar convites pendentes da CTA
+          </button>
+          {renovacao ? <div>
+            <p>Anamneses prorrogadas: {renovacao.contagem.ANAMNESE?.renovados ?? 0}. Instrumentos prorrogados: {renovacao.contagem.INSTRUMENTO?.renovados ?? 0}.</p>
+            <p>Persistência: {renovacao.verificacao?.persistencia_confirmada ? "confirmada" : "não confirmada"}. Divergências: {renovacao.verificacao?.divergencias ?? "—"}.</p>
+            <p>Vencimento em Manaus: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Manaus" }).format(new Date(renovacao.vencimento_anamnese))} (anamnese); {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Manaus" }).format(new Date(renovacao.vencimento_instrumento))} (aceite).</p>
+          </div> : null}
+        </section>
+      ) : null}
       <section className="hx-owner-security">
         <header>
           <div>
