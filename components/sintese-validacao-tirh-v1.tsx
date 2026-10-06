@@ -13,6 +13,7 @@ import {
 } from "@/lib/authoritative-iirh-projection";
 import { portuguesVisivel } from "@/lib/portugues-visivel";
 import { nomeDaZona } from "@/lib/tirh-zone-nomenclature";
+import { faseCientificaPausada } from "@/lib/paused-phase-presentation";
 
 export { claimElegivelParaValidacaoTirhV1 } from "@/lib/validacao-profissional-tirh-v1";
 
@@ -103,7 +104,12 @@ export function SinteseValidacaoTirhV1({
   );
   const iirhAutoritativo = disponibilidadeContinua.iirh.projecao;
   const zonaAutoritativa = disponibilidadeContinua.zona.projecao;
+  const pausado = faseCientificaPausada(estado);
+  const modoTemporal = (indicador: "iirh" | "zona") => pausado
+    ? "PAUSADA_SEM_RESULTADO_ATUAL"
+    : indicadoresDesatualizados?.[indicador] ? "DESATUALIZADA" : disponibilidadeContinua[indicador].modo;
   const rotuloTemporal = (indicador: "iirh" | "zona") => {
+    if (pausado) return "FASE PAUSADA — SEM RESULTADO ATUAL";
     if (indicadoresDesatualizados?.[indicador]) return "ÚLTIMO REGISTRO — NÃO ATUAL";
     const modo = disponibilidadeContinua[indicador].modo;
     // A visão documental não observa o relógio vivo: nunca afirma atualidade
@@ -205,7 +211,7 @@ export function SinteseValidacaoTirhV1({
         </article>
         <article>
           <small>IIRH operacional</small>
-          <strong data-iirh-authoritative-state={indicadoresDesatualizados?.iirh ? "DESATUALIZADA" : disponibilidadeContinua.iirh.modo}>{iirhAutoritativo.calculado
+          <strong data-iirh-authoritative-state={modoTemporal("iirh")}>{pausado ? "INDISPONÍVEL DURANTE PAUSA" : iirhAutoritativo.calculado
             ? `${numero(iirhAutoritativo.valor, 1)} / 100`
             : texto(iirhAutoritativo.estado, "NÃO CALCULÁVEL")}</strong>
           <span>{rotuloTemporal("iirh")} · {texto(
@@ -218,7 +224,7 @@ export function SinteseValidacaoTirhV1({
         </article>
         <article>
           <small>Zona Operacional</small>
-          <strong data-zone-authoritative-state={indicadoresDesatualizados?.zona ? "DESATUALIZADA" : disponibilidadeContinua.zona.modo}>{zonaAutoritativa.classificada
+          <strong data-zone-authoritative-state={modoTemporal("zona")}>{pausado ? "INDISPONÍVEL DURANTE PAUSA" : zonaAutoritativa.classificada
             ? rotuloDaZona(zonaAutoritativa.codigo)
             : texto(zonaAutoritativa.estado, "NÃO CLASSIFICÁVEL")}</strong>
           <span>{rotuloTemporal("zona")} · {texto(

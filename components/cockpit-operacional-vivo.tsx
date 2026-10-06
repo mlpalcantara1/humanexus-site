@@ -18,6 +18,8 @@ import {
   SinteseValidacaoTirhV1
 } from "@/components/sintese-validacao-tirh-v1";
 import { fonteDuranteSincronizacao } from "@/lib/cockpit-live-coordination";
+import { projecaoTemporalDesatualizada } from "@/lib/cockpit-projection-freshness";
+import { faseCientificaPausada } from "@/lib/paused-phase-presentation";
 import {
   estabilizarApresentacaoRegulatoria,
   type RevisaoRegulatoriaVisual
@@ -1744,22 +1746,20 @@ export function CockpitOperacionalVivo({
   const radarCompleto = radarVetorial.length === 9
     && radarVetorial.every((item) => item.value != null);
   const radarParcial = radarVetorial.some((item) => item.value != null);
-  const origemCientificaDesatualizada = (momento: unknown) => {
-    const instante = new Date(String(momento ?? "")).getTime();
-    return !Number.isFinite(instante)
-      || agora - instante > limiteDaProjecaoMs;
-  };
+  const origemCientificaDesatualizada = (momento: unknown) => projecaoTemporalDesatualizada({
+    momento, agora, pollingConfirmadoEm: cockpit.polling_confirmado_em,
+    atualizadoEm: cockpit.atualizado_em, limiteMs: limiteDaProjecaoMs
+  });
   const iirhDoCockpitDesatualizado = !sessaoFinalizada
     && !modoHistorico
-    && (!projecaoOperacionalAtual
-      || (disponibilidadeContinua.iirh.atual
-        && origemCientificaDesatualizada(disponibilidadeContinua.iirh.origem.momento)));
+    && disponibilidadeContinua.iirh.atual
+    && origemCientificaDesatualizada(disponibilidadeContinua.iirh.origem.momento);
   const zonaDoCockpitDesatualizada = !sessaoFinalizada
     && !modoHistorico
-    && (!projecaoOperacionalAtual
-      || (disponibilidadeContinua.zona.atual
-        && origemCientificaDesatualizada(disponibilidadeContinua.zona.origem.momento)));
+    && disponibilidadeContinua.zona.atual
+    && origemCientificaDesatualizada(disponibilidadeContinua.zona.origem.momento);
   const iirhCalculado = (sessaoFinalizada || disponibilidadeContinua.iirh.atual) && iirhContinuo.calculado;
+  const fasePausadaNaApresentacao = !modoHistorico && !sessaoFinalizada && faseCientificaPausada(estado);
   const iirhApresentado = iirhCalculado ? iirhContinuo.valor : null;
   const naturezaDoIirh = rotuloDaDisponibilidadeAutoritativa(
     disponibilidadeContinua.iirh.modo
@@ -2360,13 +2360,13 @@ export function CockpitOperacionalVivo({
       </section>
 
       <section id="hx-decision-level" className="hx-live-hud" aria-label="Barra operacional decisória">
-        <div className="is-decision" data-regulatory-state={zonaDoCockpitDesatualizada ? "DESATUALIZADA" : disponibilidadeContinua.zona.modo}>
-          <small>{zonaDoCockpitDesatualizada ? "ZONA · ÚLTIMO REGISTRO, NÃO ATUAL" : "ZONA · ESTADO ATUAL"}</small>
+        <div className="is-decision" data-regulatory-state={fasePausadaNaApresentacao ? "PAUSADA_SEM_RESULTADO_ATUAL" : zonaDoCockpitDesatualizada ? "DESATUALIZADA" : disponibilidadeContinua.zona.modo}>
+          <small>{fasePausadaNaApresentacao ? "ZONA · FASE PAUSADA" : zonaDoCockpitDesatualizada ? "ZONA · ÚLTIMO REGISTRO, NÃO ATUAL" : "ZONA · ESTADO ATUAL"}</small>
           {["PROVISORIA", "SUGERIDA"].includes(String(zonaContinua.registro.estado)) && <span>Leitura provisória · cobertura {formatarPercentualCanonico(iirhContinuo.registro.cobertura)} · confiança {formatarPercentualCanonico(iirhContinuo.registro.confianca)}</span>}
-          <strong>{zonaCalculada
+          <strong>{fasePausadaNaApresentacao ? "SEM RESULTADO ATUAL" : zonaCalculada
             ? rotuloDaZona(zonaApresentada)
             : estadoAtualDaZona}</strong>
-          {zonaCalculada
+          {fasePausadaNaApresentacao ? <span>Consulte a referência histórica identificada.</span> : zonaCalculada
             ? <span>{zonaDoCockpitDesatualizada ? "Projeção desatualizada" : rotuloDaDisponibilidadeAutoritativa(
                 disponibilidadeContinua.zona.modo
               )}{detalheDaOrigem(origemDaZonaContinua)
@@ -2380,12 +2380,12 @@ export function CockpitOperacionalVivo({
                 <button className="hx-live-hud__detail" type="button" onClick={abrirAnalitico}>Ver motivo</button>
               </>}
         </div>
-        <div className="is-decision" data-regulatory-state={iirhDoCockpitDesatualizado ? "DESATUALIZADA" : disponibilidadeContinua.iirh.modo}>
-          <small>{iirhDoCockpitDesatualizado ? "IIRH · ÚLTIMO REGISTRO, NÃO ATUAL" : "IIRH · ESTADO ATUAL"}</small>
-          <strong data-iirh-authoritative-state={iirhContinuo.estadoNormalizado || "AUSENTE"}>{iirhCalculado
+        <div className="is-decision" data-regulatory-state={fasePausadaNaApresentacao ? "PAUSADA_SEM_RESULTADO_ATUAL" : iirhDoCockpitDesatualizado ? "DESATUALIZADA" : disponibilidadeContinua.iirh.modo}>
+          <small>{fasePausadaNaApresentacao ? "IIRH · FASE PAUSADA" : iirhDoCockpitDesatualizado ? "IIRH · ÚLTIMO REGISTRO, NÃO ATUAL" : "IIRH · ESTADO ATUAL"}</small>
+          <strong data-iirh-authoritative-state={fasePausadaNaApresentacao ? "PAUSADA_SEM_RESULTADO_ATUAL" : iirhContinuo.estadoNormalizado || "AUSENTE"}>{fasePausadaNaApresentacao ? "SEM RESULTADO ATUAL" : iirhCalculado
             ? `${numero(iirhApresentado, 1)} ${texto(iirhContinuo.unidade, "")}`
             : estadoAtualDoIirh}</strong>
-          <span>{iirhCalculado
+          <span>{fasePausadaNaApresentacao ? "Consulte a referência histórica identificada." : iirhCalculado
             ? iirhDoCockpitDesatualizado ? "Projeção desatualizada" : naturezaDoIirh
             : texto(
                 iirhContinuo.motivo,

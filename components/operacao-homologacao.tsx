@@ -4181,7 +4181,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <main className="hx-cockpit-view" data-cockpit-view={visao}>
           {visao === "coletivo"
             ? null
-            : <><CockpitIirhZonaTemporal leitura={leituraCientificaDaInspecao(estado)} historico={estadoOperacionalTerminal(estado.sessao.estado)} pausado={faseCientificaPausada(estado)} /><details><summary>Referências e rastreabilidade da leitura</summary><DisponibilidadeContinuaIirhZona estado={estado} /></details></>}
+            : <><CockpitIirhZonaTemporal leitura={leituraCientificaDaInspecao(estado)} cockpit={objeto(estado.cockpit_operacional)} historico={estadoOperacionalTerminal(estado.sessao.estado)} pausado={faseCientificaPausada(estado)} /><details><summary>Referências e rastreabilidade da leitura</summary><DisponibilidadeContinuaIirhZona estado={estado} /></details></>}
           {visao !== "coletivo" ? <RegistroIntegradoDaSessao
             estado={estado as unknown as Registro} revisar={visao === "relatorio"}
           /> : null}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { resolverDisponibilidadeContinuaIirhZona } from "@/lib/authoritative-iirh-projection";
+import { projecaoTemporalDesatualizada } from "@/lib/cockpit-projection-freshness";
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
 import { NOMES_DAS_ZONAS, NOTA_DE_EQUIVALENCIA_HISTORICA, nomeDaZona } from "@/lib/tirh-zone-nomenclature";
 
@@ -20,7 +21,7 @@ const formatarHorario = (valor: unknown) => {
 };
 
 /** Só renderiza números, faixas e intervalos já emitidos pelo Núcleo. */
-export function CockpitIirhZonaTemporal({ leitura, historico, pausado = false, agora }: { leitura: Registro; historico: boolean; pausado?: boolean; agora?: number }) {
+export function CockpitIirhZonaTemporal({ leitura, historico, pausado = false, agora, cockpit = {} }: { leitura: Registro; historico: boolean; pausado?: boolean; agora?: number; cockpit?: Registro }) {
   const [relogio, setRelogio] = useState(0);
   useEffect(() => {
     if (agora !== undefined) return;
@@ -45,10 +46,11 @@ export function CockpitIirhZonaTemporal({ leitura, historico, pausado = false, a
   const emissoes = lista(temporal.emissoes), transicoes = lista(temporal.transicoes);
   const faixas = lista(operacional.faixas);
   const momentoAtual = agora ?? relogio;
-  const origemDesatualizada = (momento: unknown) => {
-    const instante = Date.parse(String(momento ?? ""));
-    return !Number.isFinite(instante) || (momentoAtual > 0 && momentoAtual - instante > 20_000);
-  };
+  const origemDesatualizada = (momento: unknown) => projecaoTemporalDesatualizada({
+    momento, agora: momentoAtual, pollingConfirmadoEm: cockpit.polling_confirmado_em,
+    atualizadoEm: cockpit.atualizado_em,
+    limiteMs: (Number(cockpit.limite_de_recencia_segundos ?? 15) + 5) * 1000
+  });
   const iirhDesatualizado = !historico && disponibilidade.iirh.atual
     && origemDesatualizada(disponibilidade.iirh.origem.momento);
   const zonaDesatualizada = !historico && disponibilidade.zona.atual

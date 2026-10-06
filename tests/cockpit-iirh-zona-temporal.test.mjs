@@ -15,6 +15,36 @@ function carregar(path) {
 }
 const {CockpitIirhZonaTemporal}=carregar('components/cockpit-iirh-zona-temporal.tsx');
 const {SinteseValidacaoTirhV1}=carregar('components/sintese-validacao-tirh-v1.tsx');
+const {projecaoTemporalDesatualizada}=carregar('lib/cockpit-projection-freshness.ts');
+test('resposta recebida entre ticks não oscila para desatualizada; origem vencida continua vencida',()=>{
+ const polling=Date.parse('2026-10-06T22:46:49.418Z');
+ const args={agora:polling-418,pollingConfirmadoEm:new Date(polling).toISOString(),momento:new Date(polling-1000).toISOString()};
+ assert.equal(projecaoTemporalDesatualizada(args),false);
+ assert.equal(projecaoTemporalDesatualizada({...args,agora:polling+21_000}),true);
+ assert.equal(projecaoTemporalDesatualizada({...args,momento:new Date(polling-21_000).toISOString()}),true);
+ assert.equal(projecaoTemporalDesatualizada({...args,momento:null}),true);
+});
+test('cabeçalho considera também transporte vencido sem promover snapshot antigo',()=>{
+ const l=leitura();
+ const html=renderToStaticMarkup(React.createElement(CockpitIirhZonaTemporal,{
+  leitura:l,historico:false,agora:Date.parse('2026-10-02T05:10:05Z'),
+  cockpit:{polling_confirmado_em:'2026-10-02T05:09:00Z'}
+ }));
+ assert.match(html,/Último IIRH registrado/);
+ assert.match(html,/Última Zona registrada/);
+});
+test('síntese durante pausa não apresenta projeção recebida como resultado atual',()=>{
+ const l=leitura(); l.tirh_operacional_v1={versao_cientifica:'TESTE'};
+ const original=JSON.stringify(l);
+ const html=renderToStaticMarkup(React.createElement(SinteseValidacaoTirhV1,{
+  estado:{estado_operacional:{estado_da_sessao:'PAUSADA'},cockpit_operacional:{leitura_cientifica:l}},
+  indicadoresDesatualizados:{iirh:false,zona:false},validarClaimTirhV1:()=>{}
+ }));
+ assert.equal((html.match(/FASE PAUSADA — SEM RESULTADO ATUAL/g)||[]).length,2);
+ assert.equal((html.match(/="PAUSADA_SEM_RESULTADO_ATUAL"/g)||[]).length,2);
+ assert.doesNotMatch(html,/74.2 \/ 100/);
+ assert.equal(JSON.stringify(l),original);
+});
 test('síntese acompanha atualidade independente do cabeçalho sem recalcular valores',()=>{
  const l=leitura(); l.tirh_operacional_v1={versao_cientifica:'TESTE'};
  const estado={cockpit_operacional:{leitura_cientifica:l}};
