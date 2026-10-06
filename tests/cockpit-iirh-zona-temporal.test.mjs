@@ -16,6 +16,21 @@ function carregar(path) {
 const {CockpitIirhZonaTemporal}=carregar('components/cockpit-iirh-zona-temporal.tsx');
 const {SinteseValidacaoTirhV1}=carregar('components/sintese-validacao-tirh-v1.tsx');
 const {projecaoTemporalDesatualizada}=carregar('lib/cockpit-projection-freshness.ts');
+const {faseCientificaPausada}=carregar('lib/paused-phase-presentation.ts');
+test('pausa canônica da janela prevalece sobre sessão INICIADA, sem alterar projeções',()=>{
+ const l=leitura(); l.tirh_operacional_v1={versao_cientifica:'TESTE'};
+ l.estado_da_janela_cientifica={estado:'PAUSADA_SEM_RESULTADO_ATUAL'};
+ const estado={sessao:{estado:'INICIADA',fase_atual:'PRE',estados_das_fases:{PRE:'INICIADA'}},cockpit_operacional:{leitura_cientifica:l}};
+ const original=JSON.stringify(estado);
+ assert.equal(faseCientificaPausada(estado),true);
+ const html=renderToStaticMarkup(React.createElement(SinteseValidacaoTirhV1,{estado,indicadoresDesatualizados:{iirh:false,zona:false},validarClaimTirhV1:()=>{}}));
+ assert.equal((html.match(/INDISPONÍVEL DURANTE PAUSA/g)||[]).length,2);
+ assert.doesNotMatch(html,/74.2 \/ 100/);
+ assert.equal(JSON.stringify(estado),original);
+ const retomado=structuredClone(estado);
+ retomado.cockpit_operacional.leitura_cientifica.estado_da_janela_cientifica.estado='ATIVA';
+ assert.equal(faseCientificaPausada(retomado),false);
+});
 test('resposta recebida entre ticks não oscila para desatualizada; origem vencida continua vencida',()=>{
  const polling=Date.parse('2026-10-06T22:46:49.418Z');
  const args={agora:polling-418,pollingConfirmadoEm:new Date(polling).toISOString(),momento:new Date(polling-1000).toISOString()};

@@ -10,6 +10,9 @@ export function faseCientificaPausada(estado: unknown): boolean {
   const registro = objeto(estado);
   const sessao = objeto(registro.sessao);
   const operacional = objeto(registro.estado_operacional);
+  const leitura = objeto(objeto(registro.cockpit_operacional).leitura_cientifica);
+  const janelaPausada = objeto(leitura.estado_da_janela_cientifica).estado
+    === "PAUSADA_SEM_RESULTADO_ATUAL";
   const fase = String(
     sessao.fase_atual ?? operacional.fase_cientifica_atual ?? ""
   ).toUpperCase();
@@ -19,7 +22,7 @@ export function faseCientificaPausada(estado: unknown): boolean {
   const estadoDaSessao = String(
     operacional.estado_da_sessao ?? sessao.estado ?? ""
   ).toUpperCase();
-  return estadoDaFase === "PAUSADA"
+  return janelaPausada || estadoDaFase === "PAUSADA"
     || estadoDaFase === "PAUSADO"
     || estadoDaSessao === "PAUSADA"
     || estadoDaSessao === "PAUSADO";
