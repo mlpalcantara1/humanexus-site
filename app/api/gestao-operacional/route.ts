@@ -136,6 +136,9 @@ export async function POST(request: Request) {
       metodo = "PUT";
     } else if (acao === "materializar-sugestao-pre-baseline") {
       caminho = `/api/v1/sessoes/${encodeURIComponent(String(corpo.identificador))}/sugestoes-pre-baseline`;
+    } else if (acao === "vincular-ctr-thx-operacional") {
+      if (!corpo.identificador) throw new Error("Sessão explícita é obrigatória.");
+      caminho = `/api/v1/sessoes/${encodeURIComponent(String(corpo.identificador))}/vinculo-operacional-ctr-thx`;
     } else if (acao === "decidir-recomendacao-thx") {
       caminho = `/api/v1/recomendacoes-thx/${encodeURIComponent(String(corpo.identificador))}/decidir`;
     } else if (acao === "operar-programacao") {

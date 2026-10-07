@@ -12,6 +12,7 @@ import { JornadaParticipante } from "@/components/jornada-participante";
 import { HistoricoInstrumentoParticipante } from "@/components/historico-instrumento-participante";
 import { LoteInstrumentos } from "@/components/lote-instrumentos";
 import { dadosDaApresentacaoGeral } from "@/lib/iicca-lote";
+import { prepararSelecaoOperacionalThx } from "@/lib/selecao-operacional-thx";
 
 type Registro = Record<string, unknown>;
 type BaseOperacional = {
@@ -313,6 +314,9 @@ export function GestaoOperacional({
     useState("");
   const [participanteDoCatalogo, setParticipanteDoCatalogo] = useState("");
   const [familiaThx, setFamiliaThx] = useState("");
+  const [selecaoOperacionalThx, setSelecaoOperacionalThx] = useState({
+    codigo_do_ctr: "", codigo_do_thx: "", identificador_do_profissional: ""
+  });
   const [planejamentoThx, setPlanejamentoThx] = useState({
     identificador_da_sessao: "",
     justificativa: "",
@@ -727,6 +731,28 @@ export function GestaoOperacional({
       return null;
     } finally {
       setOcupado(false);
+    }
+  }
+
+  async function registrarSelecaoOperacionalThx() {
+    try {
+      const selecao = prepararSelecaoOperacionalThx(
+        participanteDoCatalogo,
+        sessoesDoParticipante.find((item) => String(item.identificador)
+          === planejamentoThx.identificador_da_sessao),
+        dados?.vinculos_ctr_thx_validados ?? [],
+        selecaoOperacionalThx.identificador_do_profissional,
+        selecaoOperacionalThx.codigo_do_ctr,
+        selecaoOperacionalThx.codigo_do_thx,
+        planejamentoThx.justificativa
+      );
+      const resultado = await executar("vincular-ctr-thx-operacional",
+        selecao.dados, selecao.identificador_da_sessao);
+      if (resultado) setMensagem(
+        "Seleção operacional registrada. Não inicia TREINO nem valida indicadores científicos."
+      );
+    } catch (causa) {
+      setErro(causa instanceof Error ? causa.message : "Seleção recusada.");
     }
   }
 
@@ -1589,7 +1615,8 @@ export function GestaoOperacional({
         String(item.estado ?? "")
       ));
     const idsRecomendados = new Set(
-      recomendacoes.map((item) => String(
+      recomendacoes.filter((item) => objeto(item.decisao_profissional_json)
+        .estado !== "SELECAO_PROFISSIONAL_REGISTRADA").map((item) => String(
         item.identificador_do_protocolo ?? ""
       ))
     );
@@ -1597,6 +1624,8 @@ export function GestaoOperacional({
     const ctrsComEvidencia = new Set<string>();
     const thxExplicitamenteCompativeis = new Set<string>();
     for (const avaliacao of avaliacoesCtr) {
+      if (objeto(avaliacao.contexto_json).natureza
+        === "SELECAO_PROFISSIONAL_CTR_THX") continue;
       for (const codigo of listaDeTextos(
         avaliacao.criterios_atendidos_json
       )) {
@@ -1638,7 +1667,8 @@ export function GestaoOperacional({
         const classificacao: ProtocoloClassificado[
           "classificacao_operacional"
         ] = (
-          recomendacao
+          (recomendacao && objeto(recomendacao.decisao_profissional_json)
+            .estado !== "SELECAO_PROFISSIONAL_REGISTRADA")
           || idsRecomendados.has(String(protocolo.identificador))
           || protocolosSugeridos.recomendados.has(codigo)
         )
@@ -3235,6 +3265,61 @@ export function GestaoOperacional({
                 MMFTR. Nenhuma recomendação genérica foi fabricada.
               </p>
             )}
+            <details>
+              <summary>Seleção operacional explícita de CTR–THX</summary>
+              <p>
+                Use a sessão e a justificativa acima. Não é recomendação
+                automática nem validação científica. O Núcleo preserva o
+                histórico e recusa seleção após o início do TREINO.
+              </p>
+              <div className="hx-training-decision__controls">
+                <label>Responsável
+                  <select name="responsavel_selecao_operacional_thx"
+                    value={selecaoOperacionalThx.identificador_do_profissional}
+                    onChange={(evento) => setSelecaoOperacionalThx({
+                      ...selecaoOperacionalThx,
+                      identificador_do_profissional: evento.target.value
+                    })}>
+                    <option value="">Selecione</option>
+                    {Array.from(new Map([
+                      ...(dados.usuario.perfil === "ADMINISTRADOR_PROPRIETARIO"
+                        ? [dados.usuario] : []), ...dados.profissionais
+                    ].map((item) => [String(item.identificador), item])).values())
+                      .map((item) => <option key={String(item.identificador)}
+                        value={String(item.identificador)}>{texto(item.nome)}</option>)}
+                  </select>
+                </label>
+                <label>CTR documentado
+                  <select name="ctr_selecao_operacional_thx"
+                    value={selecaoOperacionalThx.codigo_do_ctr}
+                    onChange={(evento) => setSelecaoOperacionalThx({
+                      ...selecaoOperacionalThx,
+                      codigo_do_ctr: evento.target.value, codigo_do_thx: ""
+                    })}>
+                    <option value="">Selecione</option>
+                    {ctrsValidados.map((item) => <option key={String(item.codigo_do_ctr)}
+                      value={String(item.codigo_do_ctr)}>{texto(item.codigo_do_ctr)} · {texto(item.nome_do_ctr)}</option>)}
+                  </select>
+                </label>
+                <label>THX vinculado na fonte oficial
+                  <select name="thx_selecao_operacional_thx"
+                    value={selecaoOperacionalThx.codigo_do_thx}
+                    onChange={(evento) => setSelecaoOperacionalThx({
+                      ...selecaoOperacionalThx, codigo_do_thx: evento.target.value
+                    })}>
+                    <option value="">Selecione</option>
+                    {Array.from(new Map(dados.vinculos_ctr_thx_validados.filter((item) =>
+                      item.codigo_do_ctr === selecaoOperacionalThx.codigo_do_ctr
+                    ).map((item) => [String(item.codigo_do_thx), item])).values()).map((item) => <option key={String(item.codigo_do_thx)}
+                      value={String(item.codigo_do_thx)}>{texto(item.codigo_do_thx)} · {texto(item.nome_do_thx)}</option>)}
+                  </select>
+                </label>
+              </div>
+              <button type="button" disabled={ocupado || !podeConduzir}
+                onClick={() => void registrarSelecaoOperacionalThx()}>
+                Registrar seleção operacional — sem iniciar coleta
+              </button>
+            </details>
           </section>
 
           <section className="hx-regulatory-evidence">
@@ -3508,6 +3593,11 @@ export function GestaoOperacional({
                           </dl>
                         </details>
                         <div className="hx-training-card__actions">
+                          {objeto(recomendacao.decisao_profissional_json).estado
+                            === "SELECAO_PROFISSIONAL_REGISTRADA" ? (
+                            <p>Seleção operacional explícita registrada. Sem recomendação
+                              científica automática; indicadores dependem de evidências admissíveis.</p>
+                          ) : null}
                           {sugestao.codigo_do_ctr
                             && !recomendacao.identificador ? (
                             <>
@@ -3559,7 +3649,8 @@ export function GestaoOperacional({
                           ) : null}
                           {["VALIDADA", "AJUSTADA"].includes(
                             String(recomendacao.estado ?? "")
-                          ) ? (
+                          ) && objeto(recomendacao.decisao_profissional_json).estado
+                            !== "SELECAO_PROFISSIONAL_REGISTRADA" ? (
                             <button
                               type="button"
                               disabled={ocupado || !podeConduzir}
