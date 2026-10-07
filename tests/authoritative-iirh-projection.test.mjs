@@ -59,6 +59,14 @@ test("condução não usa estado da sessão como execução de treinamento ausen
   assert.match(fonte,/Nenhum treinamento selecionado/);
   assert.doesNotMatch(fonte,/INTERVENÇÃO SELECIONADA · EM APLICAÇÃO/);
 });
+test("barra decisória não promove estados contextuais quando a janela está inativa", async () => {
+  const fonte=await readFile(new URL('../components/cockpit-operacional-vivo.tsx',import.meta.url),'utf8');
+  assert.match(fonte,/disponibilidadeContinua\.iirh\.modo === "SEM_JANELA_ATUAL_ADMISSIVEL"/);
+  assert.match(fonte,/disponibilidadeContinua\.zona\.modo === "SEM_JANELA_ATUAL_ADMISSIVEL"/);
+  assert.match(fonte,/fasePausadaNaApresentacao \|\| zonaSemJanelaAtual \? "SEM RESULTADO ATUAL"/);
+  assert.match(fonte,/fasePausadaNaApresentacao \|\| iirhSemJanelaAtual \? "SEM RESULTADO ATUAL"/);
+  assert.match(fonte,/zonaCalculada && !fasePausadaNaApresentacao && \["PROVISORIA", "SUGERIDA"\]/);
+});
 
 test("zero autoritativo permanece calculado", () => {
   const projecao = resolverIirhAutoritativo({

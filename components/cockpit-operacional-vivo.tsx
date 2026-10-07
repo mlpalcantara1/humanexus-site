@@ -1758,6 +1758,8 @@ export function CockpitOperacionalVivo({
     && !modoHistorico
     && disponibilidadeContinua.zona.atual
     && origemCientificaDesatualizada(disponibilidadeContinua.zona.origem.momento);
+  const iirhSemJanelaAtual = !modoHistorico && !sessaoFinalizada && disponibilidadeContinua.iirh.modo === "SEM_JANELA_ATUAL_ADMISSIVEL";
+  const zonaSemJanelaAtual = !modoHistorico && !sessaoFinalizada && disponibilidadeContinua.zona.modo === "SEM_JANELA_ATUAL_ADMISSIVEL";
   const iirhCalculado = (sessaoFinalizada || disponibilidadeContinua.iirh.atual) && iirhContinuo.calculado;
   const fasePausadaNaApresentacao = !modoHistorico && !sessaoFinalizada && faseCientificaPausada(estado);
   const iirhApresentado = iirhCalculado ? iirhContinuo.valor : null;
@@ -2361,12 +2363,12 @@ export function CockpitOperacionalVivo({
 
       <section id="hx-decision-level" className="hx-live-hud" aria-label="Barra operacional decisória">
         <div className="is-decision" data-regulatory-state={fasePausadaNaApresentacao ? "PAUSADA_SEM_RESULTADO_ATUAL" : zonaDoCockpitDesatualizada ? "DESATUALIZADA" : disponibilidadeContinua.zona.modo}>
-          <small>{fasePausadaNaApresentacao ? "ZONA · FASE PAUSADA" : zonaDoCockpitDesatualizada ? "ZONA · ÚLTIMO REGISTRO, NÃO ATUAL" : "ZONA · ESTADO ATUAL"}</small>
-          {["PROVISORIA", "SUGERIDA"].includes(String(zonaContinua.registro.estado)) && <span>Leitura provisória · cobertura {formatarPercentualCanonico(iirhContinuo.registro.cobertura)} · confiança {formatarPercentualCanonico(iirhContinuo.registro.confianca)}</span>}
-          <strong>{fasePausadaNaApresentacao ? "SEM RESULTADO ATUAL" : zonaCalculada
+          <small>{fasePausadaNaApresentacao ? "ZONA · FASE PAUSADA" : zonaSemJanelaAtual ? "ZONA · SEM JANELA ATUAL" : zonaDoCockpitDesatualizada ? "ZONA · ÚLTIMO REGISTRO, NÃO ATUAL" : "ZONA · ESTADO ATUAL"}</small>
+          {zonaCalculada && !fasePausadaNaApresentacao && ["PROVISORIA", "SUGERIDA"].includes(String(zonaContinua.registro.estado)) && <span>Leitura provisória · cobertura {formatarPercentualCanonico(iirhContinuo.registro.cobertura)} · confiança {formatarPercentualCanonico(iirhContinuo.registro.confianca)}</span>}
+          <strong>{fasePausadaNaApresentacao || zonaSemJanelaAtual ? "SEM RESULTADO ATUAL" : zonaCalculada
             ? rotuloDaZona(zonaApresentada)
             : estadoAtualDaZona}</strong>
-          {fasePausadaNaApresentacao ? <span>Consulte a referência histórica identificada.</span> : zonaCalculada
+          {fasePausadaNaApresentacao || zonaSemJanelaAtual ? <span>Consulte a referência histórica identificada.</span> : zonaCalculada
             ? <span>{zonaDoCockpitDesatualizada ? "Projeção desatualizada" : rotuloDaDisponibilidadeAutoritativa(
                 disponibilidadeContinua.zona.modo
               )}{detalheDaOrigem(origemDaZonaContinua)
@@ -2381,11 +2383,11 @@ export function CockpitOperacionalVivo({
               </>}
         </div>
         <div className="is-decision" data-regulatory-state={fasePausadaNaApresentacao ? "PAUSADA_SEM_RESULTADO_ATUAL" : iirhDoCockpitDesatualizado ? "DESATUALIZADA" : disponibilidadeContinua.iirh.modo}>
-          <small>{fasePausadaNaApresentacao ? "IIRH · FASE PAUSADA" : iirhDoCockpitDesatualizado ? "IIRH · ÚLTIMO REGISTRO, NÃO ATUAL" : "IIRH · ESTADO ATUAL"}</small>
-          <strong data-iirh-authoritative-state={fasePausadaNaApresentacao ? "PAUSADA_SEM_RESULTADO_ATUAL" : iirhContinuo.estadoNormalizado || "AUSENTE"}>{fasePausadaNaApresentacao ? "SEM RESULTADO ATUAL" : iirhCalculado
+          <small>{fasePausadaNaApresentacao ? "IIRH · FASE PAUSADA" : iirhSemJanelaAtual ? "IIRH · SEM JANELA ATUAL" : iirhDoCockpitDesatualizado ? "IIRH · ÚLTIMO REGISTRO, NÃO ATUAL" : "IIRH · ESTADO ATUAL"}</small>
+          <strong data-iirh-authoritative-state={fasePausadaNaApresentacao ? "PAUSADA_SEM_RESULTADO_ATUAL" : iirhSemJanelaAtual ? "SEM_JANELA_ATUAL_ADMISSIVEL" : iirhContinuo.estadoNormalizado || "AUSENTE"}>{fasePausadaNaApresentacao || iirhSemJanelaAtual ? "SEM RESULTADO ATUAL" : iirhCalculado
             ? `${numero(iirhApresentado, 1)} ${texto(iirhContinuo.unidade, "")}`
             : estadoAtualDoIirh}</strong>
-          <span>{fasePausadaNaApresentacao ? "Consulte a referência histórica identificada." : iirhCalculado
+          <span>{fasePausadaNaApresentacao || iirhSemJanelaAtual ? "Consulte a referência histórica identificada." : iirhCalculado
             ? iirhDoCockpitDesatualizado ? "Projeção desatualizada" : naturezaDoIirh
             : texto(
                 iirhContinuo.motivo,
