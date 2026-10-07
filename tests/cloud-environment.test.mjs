@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const raiz = new URL("../", import.meta.url);
@@ -15,7 +16,7 @@ const databaseProduction =
 const bypassFicticio = "bypass-ficticio-com-mais-de-trinta-e-dois";
 
 function verificar(ambiente) {
-  return spawnSync(process.execPath, [script.pathname], {
+  return spawnSync(process.execPath, [fileURLToPath(script)], {
     env: {
       PATH: process.env.PATH,
       DATABASE_URL: databasePreview,

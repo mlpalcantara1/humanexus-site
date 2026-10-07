@@ -42,7 +42,9 @@ test("Cockpit integra configuração, QR, mídia protegida e Replay", async () =
   assert.match(controle, /QRCode\.toDataURL/);
   assert.match(controle, /AUDIO_E_VIDEO/);
   assert.match(controle, /PRE.*TREINO.*POS/s);
-  assert.match(controle, /A referência inicial é operacional, separada e opcional/);
+  assert.match(controle, /A referência inicial individual antecede o primeiro PRÉ e é reutilizada nas sessões seguintes/);
+  assert.match(controle, /Exceções históricas permanecem identificadas, sem preenchimento retroativo/);
+  assert.doesNotMatch(controle, /A referência inicial é operacional, separada e opcional/);
   assert.match(cockpit, /ControleGravacaoMultimodal/);
   assert.match(cockpit, /hx-replay-media/);
   assert.match(cockpit, /<video controls/);
