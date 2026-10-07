@@ -105,6 +105,7 @@ export function SinteseValidacaoTirhV1({
   const iirhAutoritativo = disponibilidadeContinua.iirh.projecao;
   const zonaAutoritativa = disponibilidadeContinua.zona.projecao;
   const pausado = faseCientificaPausada(estado);
+  const semJanelaAtual = disponibilidadeContinua.iirh.modo === "SEM_JANELA_ATUAL_ADMISSIVEL";
   const modoTemporal = (indicador: "iirh" | "zona") => pausado
     ? "PAUSADA_SEM_RESULTADO_ATUAL"
     : indicadoresDesatualizados?.[indicador] ? "DESATUALIZADA" : disponibilidadeContinua[indicador].modo;
@@ -211,7 +212,7 @@ export function SinteseValidacaoTirhV1({
         </article>
         <article>
           <small>IIRH operacional</small>
-          <strong data-iirh-authoritative-state={modoTemporal("iirh")}>{pausado ? "INDISPONÍVEL DURANTE PAUSA" : iirhAutoritativo.calculado
+          <strong data-iirh-authoritative-state={modoTemporal("iirh")}>{pausado ? "INDISPONÍVEL DURANTE PAUSA" : semJanelaAtual ? "SEM RESULTADO ATUAL" : iirhAutoritativo.calculado
             ? `${numero(iirhAutoritativo.valor, 1)} / 100`
             : texto(iirhAutoritativo.estado, "NÃO CALCULÁVEL")}</strong>
           <span>{rotuloTemporal("iirh")} · {texto(
@@ -224,7 +225,7 @@ export function SinteseValidacaoTirhV1({
         </article>
         <article>
           <small>Zona Operacional</small>
-          <strong data-zone-authoritative-state={modoTemporal("zona")}>{pausado ? "INDISPONÍVEL DURANTE PAUSA" : zonaAutoritativa.classificada
+          <strong data-zone-authoritative-state={modoTemporal("zona")}>{pausado ? "INDISPONÍVEL DURANTE PAUSA" : semJanelaAtual ? "SEM RESULTADO ATUAL" : zonaAutoritativa.classificada
             ? rotuloDaZona(zonaAutoritativa.codigo)
             : texto(zonaAutoritativa.estado, "NÃO CLASSIFICÁVEL")}</strong>
           <span>{rotuloTemporal("zona")} · {texto(

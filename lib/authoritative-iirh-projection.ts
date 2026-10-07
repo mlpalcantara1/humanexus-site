@@ -3,6 +3,7 @@ type Registro = Record<string, unknown>;
 export type ModoDaDisponibilidadeAutoritativa =
   | "ATUAL"
   | "SNAPSHOT_SELECIONADO"
+  | "SEM_JANELA_ATUAL_ADMISSIVEL"
   | "REFERENCIA_CONGELADA"
   | "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA";
 
@@ -67,6 +68,7 @@ export function resolverIirhAutoritativo(valor: unknown) {
 const MODOS_AUTORITATIVOS = new Set<ModoDaDisponibilidadeAutoritativa>([
   "ATUAL",
   "SNAPSHOT_SELECIONADO",
+  "SEM_JANELA_ATUAL_ADMISSIVEL",
   "REFERENCIA_CONGELADA",
   "AGUARDANDO_PRIMEIRA_REFERENCIA_VALIDA"
 ]);
@@ -234,14 +236,26 @@ export function resolverDisponibilidadeContinuaIirhZona(
           registro: null
         };
 
+  // Uma revisão recém-recebida não reabre a janela científica. O Núcleo
+  // conserva a projeção e a referência, mas proíbe apresentá-la como atual
+  // fora de uma janela ativa (inclusive entre PRÉ, TREINO e PÓS).
+  const semJanelaAtual = janelaAtual.resultado_atual === false
+    || objeto(leitura.estado_da_janela_cientifica).resultado_atual === false;
+  const respeitarJanela = (indicador: unknown) => {
+    const registro = objeto(indicador);
+    return semJanelaAtual && registro.modo === "ATUAL"
+      ? { ...registro, modo: "SEM_JANELA_ATUAL_ADMISSIVEL" }
+      : indicador;
+  };
+
   return {
     contrato,
     contratoAutoritativo: true,
     janelaAtual,
     estadoAtual,
     referenciaCongelada,
-    iirh: indicadorContinuo(iirhAtual, resolverIirhAutoritativo),
-    zona: indicadorContinuo(zonaAtual, resolverZonaAutoritativa),
+    iirh: indicadorContinuo(respeitarJanela(iirhAtual), resolverIirhAutoritativo),
+    zona: indicadorContinuo(respeitarJanela(zonaAtual), resolverZonaAutoritativa),
     iirhReferencia: indicadorContinuo(
       iirhReferencia,
       resolverIirhAutoritativo
@@ -286,6 +300,7 @@ export function rotuloDaDisponibilidadeAutoritativa(
   modo: ModoDaDisponibilidadeAutoritativa
 ) {
   if (modo === "ATUAL") return "ATUAL";
+  if (modo === "SEM_JANELA_ATUAL_ADMISSIVEL") return "SEM JANELA ATUAL ADMISSÍVEL";
   if (modo === "SNAPSHOT_SELECIONADO") {
     return "SNAPSHOT OFICIAL DA FASE SELECIONADA";
   }

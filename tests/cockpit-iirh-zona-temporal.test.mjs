@@ -17,6 +17,20 @@ const {CockpitIirhZonaTemporal}=carregar('components/cockpit-iirh-zona-temporal.
 const {SinteseValidacaoTirhV1}=carregar('components/sintese-validacao-tirh-v1.tsx');
 const {projecaoTemporalDesatualizada}=carregar('lib/cockpit-projection-freshness.ts');
 const {faseCientificaPausada}=carregar('lib/paused-phase-presentation.ts');
+test('fim do PRÉ sem janela ativa não apresenta revisão contextual como leitura atual',()=>{
+ const l=leitura('PARCIAL',35); l.tirh_operacional_v1={versao_cientifica:'TESTE'};
+ l.estado_da_janela_cientifica={estado:'SEM_JANELA_ATUAL_ADMISSIVEL',resultado_atual:false,fase:null};
+ l.disponibilidade_continua_iirh_zona.janela_atual={...l.estado_da_janela_cientifica};
+ const original=JSON.stringify(l);
+ const html=renderToStaticMarkup(React.createElement(SinteseValidacaoTirhV1,{
+  estado:{cockpit_operacional:{leitura_cientifica:l}},indicadoresDesatualizados:{iirh:false,zona:false},validarClaimTirhV1:()=>{}
+ }));
+ assert.equal((html.match(/SEM RESULTADO ATUAL/g)||[]).length,2);
+ assert.doesNotMatch(html,/35.0 \/ 100|ATUAL · PARCIAL|ATUAL · PROVISORIA/);
+ assert.match(render(l),/Indisponível — sem leitura atual válida/);
+ assert.doesNotMatch(render(l),/<strong[^>]*>35</);
+ assert.equal(JSON.stringify(l),original);
+});
 test('pausa canônica da janela prevalece sobre sessão INICIADA, sem alterar projeções',()=>{
  const l=leitura(); l.tirh_operacional_v1={versao_cientifica:'TESTE'};
  l.estado_da_janela_cientifica={estado:'PAUSADA_SEM_RESULTADO_ATUAL'};

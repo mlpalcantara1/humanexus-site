@@ -34,6 +34,24 @@ test("estrutura autoritativa real redigida projeta estado CALCULADO sem recálcu
   assert.equal(projecao.registro, estruturaRealRedigida);
 });
 
+test("janela explicitamente inativa prevalece sobre ATUAL sem alterar registros ou snapshots", () => {
+  const leitura=leituraContinua({modoIirh:"ATUAL",modoZona:"ATUAL"});
+  const contrato=leitura.disponibilidade_continua_iirh_zona;
+  contrato.janela_atual.resultado_atual=false;
+  const original=JSON.stringify(leitura);
+  const parado=resolverDisponibilidadeContinuaIirhZona(leitura);
+  assert.equal(parado.iirh.atual,false);
+  assert.equal(parado.zona.atual,false);
+  assert.equal(parado.iirh.modo,"SEM_JANELA_ATUAL_ADMISSIVEL");
+  assert.equal(parado.iirh.projecao.valor,42.5);
+  assert.equal(JSON.stringify(leitura),original);
+  contrato.janela_atual.resultado_atual=true;
+  assert.equal(resolverDisponibilidadeContinuaIirhZona(leitura).iirh.atual,true);
+  contrato.janela_atual.resultado_atual=false;
+  contrato.iirh.modo="SNAPSHOT_SELECIONADO";
+  assert.equal(resolverDisponibilidadeContinuaIirhZona(leitura).iirh.snapshotSelecionado,true);
+});
+
 test("zero autoritativo permanece calculado", () => {
   const projecao = resolverIirhAutoritativo({
     estado: "CALCULADO",
