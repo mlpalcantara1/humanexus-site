@@ -1,5 +1,6 @@
 "use client";
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
+import { textoDoCriterioEeg } from "@/lib/eeg-quality-policy-presentation";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
@@ -674,6 +675,7 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
   return (
     <article className="hx-live-source-card hx-live-source-card--epoc" data-source="epoc-x">
       <header><div><small>EPOC X</small><strong>Desempenho e qualidade</strong></div><FonteEstado estado={fonte.estado} /></header>
+      <p>{textoDoCriterioEeg(fonte.janela_de_qualidade)}</p>
       <div className="hx-live-source-values">
         <span><small>Qualidade EEG</small><b>{aoVivo || emVerificacao ? percentual(valores.qualidade_eeg) : "Sem leitura atual"}</b></span>
         <span><small>Qualidade de contato</small><b>{aoVivo || emVerificacao ? percentual(valores.qualidade_de_contato) : "Sem leitura atual"}</b></span>
@@ -691,7 +693,7 @@ function FonteEpoc({ fonte }: { fonte: Fonte }) {
           <strong>DADOS EEG RECEBIDOS · NÃO ADMISSÍVEIS PARA INDICADORES</strong>
           <span>{janela.qualidade_mediana == null
             ? "Há pacotes atuais, mas falta qualidade EEG mensurável na janela."
-            : `Qualidade EEG mediana da janela: ${percentual(janela.qualidade_mediana)}; abaixo do critério de admissibilidade vigente.`} A sessão e as demais fontes continuam normalmente.</span>
+            : `Qualidade EEG mediana da janela: ${percentual(janela.qualidade_mediana)}. A qualidade do pacote atual ou os demais requisitos da janela não atendem à regra indicada acima.`} A sessão e as demais fontes continuam normalmente.</span>
         </div>
       ) : null}
       <Sparkline pontos={aoVivo || emVerificacao ? lista(fonte.series?.qualidade) : []} cor={C.green} />

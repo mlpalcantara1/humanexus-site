@@ -1,4 +1,5 @@
 "use client";
+import { textoDaReavaliacaoEeg } from "@/lib/eeg-quality-policy-presentation";
 
 import { consultarCockpitComPrazo } from "@/lib/cockpit-loading";
 import { DistribuicaoTemporalCanonica } from "@/components/distribuicao-temporal-canonica";
@@ -559,6 +560,7 @@ function RelatorioCanonicoV1({
       </header>
 
       <ResultadoRegulatorioDaSessao microtrajetoria={microtrajetoria} />
+      {textoDaReavaliacaoEeg(leituraCientificaDaInspecao(estado)).map((linha) => <p key={linha}>{linha}</p>)}
 
       {!Object.keys(projecao).length ? (
         <p className="hx-module__notice">

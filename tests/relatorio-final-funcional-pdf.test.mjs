@@ -49,3 +49,17 @@ test("PDF final funcional tem conteúdo real, paginação variável e paridade d
   assert.doesNotMatch(texto.stdout, /Nenhum registro autorizado/i);
   assert.doesNotMatch(texto.stdout, /Nome completo não informado|CPF não informado/i);
 });
+
+test("PDF identifica revisão EEG histórica sem convertê-la em leitura atual", async () => {
+  const pasta = await mkdtemp(join(tmpdir(), "hxp-eeg-revisao-"));
+  const pdf = join(pasta, "revisao-eeg.pdf");
+  const geracao = spawnSync(process.execPath, ["--experimental-strip-types", "scripts/gerar-relatorio-final-funcional-fixture.mjs"], {
+    cwd: new URL("../", import.meta.url), encoding: "utf8",
+    env: { ...process.env, HXP_FINAL_PDF_OUTPUT: pdf, HXP_EEG_REPROCESS_TEST: "1" }
+  });
+  assert.equal(geracao.status, 0, geracao.stderr);
+  const texto = spawnSync("pdftotext", [pdf, "-"], { encoding: "utf8" });
+  assert.equal(texto.status, 0, texto.stderr);
+  for (const termo of ["POLITICA-OPERACIONAL-EPOC-X-1.1", "530 de 681", "517 de 680", "470 de 681", "não é leitura atual", "SEM VALIDADE CLÍNICA OU CIENTÍFICA"]) assert.ok(texto.stdout.replace(/\s+/g, " ").includes(termo), termo);
+  console.log(`PDF de teste EEG: ${pdf}`);
+});

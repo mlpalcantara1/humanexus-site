@@ -133,6 +133,13 @@ const pdf = await gerarPdfVisualHumanexus({
   contratoCientifico: { versao: "TIRH V1" },
   tirhV1: contratoLegado ? {} : tirhV1,
   cockpitOperacional: {
+    ...(process.env.HXP_EEG_REPROCESS_TEST === "1" ? { leitura_cientifica: { reprocessamento_eeg: {
+      politica: "POLITICA-OPERACIONAL-EPOC-X-1.1", limiar: .08,
+      pacotes: { EQ: { elegiveis: 530, recebidos: 681 }, POW: { elegiveis: 517, recebidos: 680 } },
+      janelas_elegiveis: 470, janelas_avaliadas: 681,
+      inicio: "2026-10-07T21:32:56Z", fim: "2026-10-07T21:46:00Z", reprocessado_em: "2026-10-08T00:00:00Z",
+      efeito: "Fixture documental: Resultante indisponível por evidências insuficientes; nenhum valor é uma medição real."
+    } } } : {}),
     ...(contratoLegado ? {
       leitura_cientifica: {
         origem_temporal: "SNAPSHOT_FASE_PERSISTIDO",

@@ -1,4 +1,5 @@
 import PDFDocument from "pdfkit";
+import { textoDaReavaliacaoEeg } from "./eeg-quality-policy-presentation.ts";
 
 import { decisoesProfissionaisPreservadasTirhV1 } from "./validacao-profissional-tirh-v1.ts";
 import {
@@ -1393,6 +1394,11 @@ export async function gerarPdfVisualHumanexus(entrada: EntradaRelatorioHumanexus
   else if (tipo === "EXECUTIVO") renderExecutivo(doc, entrada);
   else if (tipo === "TECNICO") renderTecnico(doc, entrada);
   else renderFormulacao(doc, entrada);
+  const revisaoEeg = textoDaReavaliacaoEeg(objeto(entrada.cockpitOperacional).leitura_cientifica);
+  if (revisaoEeg.length) {
+    let y = novaPagina(doc, "REAVALIAÇÃO HISTÓRICA EEG", "Regra, origem e limites", "Revisão derivada identificada; não representa aquisição atual nem substitui os registros originais.");
+    for (const item of revisaoEeg) y = paragrafo(doc, item, y + 12, { x: 83, width: 455 });
+  }
   fecharDocumento(doc, tipo, entrada);
   doc.end();
   return finalizado;
