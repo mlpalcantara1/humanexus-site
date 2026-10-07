@@ -13,7 +13,7 @@ const numero = (v: unknown): number | null => typeof v === "number" && Number.is
 const nomes: Record<string,string> = NOMES_DAS_ZONAS;
 const cores: Record<string,string> = { ZO: "#146e57", ZA: "#649368", ZI: "#bc9035", ZCF: "#a95a53" };
 const formatarHorario = (valor: unknown) => {
-  const data = new Date(String(valor));
+  const data = typeof valor === "number" ? new Date(valor) : new Date(String(valor));
   return Number.isNaN(data.getTime()) ? "horário indisponível" : new Intl.DateTimeFormat("pt-BR", {
     timeStyle: "medium",
     timeZone: "America/Manaus"

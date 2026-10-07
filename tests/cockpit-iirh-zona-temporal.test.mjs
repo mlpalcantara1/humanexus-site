@@ -33,6 +33,14 @@ test('fim do PRÉ sem janela ativa não apresenta revisão contextual como leitu
  assert.doesNotMatch(render(l),/AO VIVO|Aguardando primeira leitura real/);
  assert.equal(JSON.stringify(l),original);
 });
+test('eixo temporal usa os instantes numéricos dos intervalos reais sem perder horários',()=>{
+ const l=leitura();
+ l.distribuicao_temporal_das_zonas={emissoes:[{identificador:'real-1',fase:'PRE',iirh:{valor:50},zona:{codigo:'ZI'},intervalos_validos:[{inicio:'2026-10-07T10:51:29Z',fim:'2026-10-07T10:52:12Z'}]}]};
+ const html=render(l);
+ assert.match(html,/06:51:29/);
+ assert.match(html,/06:52:12/);
+ assert.doesNotMatch(html,/horário indisponível/);
+});
 test('pausa canônica da janela prevalece sobre sessão INICIADA, sem alterar projeções',()=>{
  const l=leitura(); l.tirh_operacional_v1={versao_cientifica:'TESTE'};
  l.estado_da_janela_cientifica={estado:'PAUSADA_SEM_RESULTADO_ATUAL'};
