@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { resolverDisponibilidadeContinuaIirhZona } from "@/lib/authoritative-iirh-projection";
 import { projecaoTemporalDesatualizada } from "@/lib/cockpit-projection-freshness";
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
+import { formatarDuracaoCanonica } from "@/lib/duracao-canonica";
 import { NOMES_DAS_ZONAS, NOTA_DE_EQUIVALENCIA_HISTORICA, nomeDaZona } from "@/lib/tirh-zone-nomenclature";
 
 type Registro = Record<string, unknown>;
@@ -94,7 +95,7 @@ export function CockpitIirhZonaTemporal({ leitura, historico, pausado = false, a
       {pontos.map(e => <circle key={String(e.identificador)} cx={x(e.fim_da_janela)} cy={y(Number(obj(e.iirh).valor))} r={4} fill={cores[String(obj(e.zona).codigo)] ?? "currentColor"}><title>{`Leitura pontual · sem duração atribuída · ${String(e.fase)}`}</title></circle>)}
       {instantes.length>0 && <><text x={48} y={258} fontSize={12}>{formatarHorario(inicio)}</text><text x={868} y={258} textAnchor="end" fontSize={12}>{formatarHorario(fim)}</text></>}
     </svg>
-    <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>{Object.entries(nomes).map(([z,nome]) => <p key={z}><b>{nome}</b><br/>{numero(tempos[z]) === null ? "Sem tempo válido registrado" : `${Number(tempos[z]).toFixed(1)} s`}</p>)}</div>
+    <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>{Object.entries(nomes).map(([z,nome]) => <p key={z}><b>{nome}</b><br/>{formatarDuracaoCanonica(tempos[z]) ?? "Sem tempo válido registrado"}</p>)}</div>
     {nomes[String(temporal.zona_predominante)] && <p>Zona predominante {historico ? "da sessão" : "até esta leitura"}: <strong>{nomeDaZona(temporal.zona_predominante, historico)}</strong>{temporal.inclui_leituras_provisorias === true ? " · inclui leituras provisórias; cobertura e confiança preservadas por leitura" : ""}</p>}
     {!transicoes.length && <p>Transições: nenhuma transição válida registrada.</p>}
     {transicoes.length>0 && <details><summary>Transições registradas ({transicoes.length})</summary><ul>{transicoes.map((t,n) => <li key={n}>{String(t.fase)} · {formatarHorario(t.momento)}: {nomeDaZona(t.de, historico) ?? String(t.de)} → {nomeDaZona(t.para, historico) ?? String(t.para)}</li>)}</ul></details>}

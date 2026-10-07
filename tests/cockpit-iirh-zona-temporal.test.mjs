@@ -14,9 +14,33 @@ function carregar(path) {
   return module.exports;
 }
 const {CockpitIirhZonaTemporal}=carregar('components/cockpit-iirh-zona-temporal.tsx');
+const {DistribuicaoTemporalCanonica}=carregar('components/distribuicao-temporal-canonica.tsx');
+const {formatarDuracaoCanonica}=carregar('lib/duracao-canonica.ts');
 const {SinteseValidacaoTirhV1}=carregar('components/sintese-validacao-tirh-v1.tsx');
 const {projecaoTemporalDesatualizada}=carregar('lib/cockpit-projection-freshness.ts');
 const {faseCientificaPausada}=carregar('lib/paused-phase-presentation.ts');
+test('duração canônica converte cada 60 segundos em minuto sem alterar a entrada',()=>{
+ for (const [entrada,esperado] of [[0,'0 min 0 s'],[14.9,'0 min 14 s 900 ms'],[463.7,'7 min 43 s 700 ms'],[541.1,'9 min 1 s 100 ms'],[59.999,'0 min 59 s 999 ms'],[59.9996,'1 min 0 s'],[60,'1 min 0 s'],[120,'2 min 0 s'],[3600,'60 min 0 s']]) {
+  assert.equal(formatarDuracaoCanonica(entrada),esperado);
+ }
+ for (const entrada of [undefined,null,'60',-1,NaN,Infinity,Number.MAX_VALUE]) assert.equal(formatarDuracaoCanonica(entrada),null);
+});
+test('cockpit e replay/longitudinal exibem a mesma duração, sem criar tempo ou zero para ausência',()=>{
+ const l=leitura();
+ const distribuicao={tempo_por_zona_segundos:{ZO:14.9,ZA:463.7,ZI:541.1,ZCF:0},emissoes:[]};
+ l.distribuicao_temporal_das_zonas=distribuicao;
+ const original=JSON.stringify(l);
+ const cockpit=render(l);
+ const historico=renderToStaticMarkup(React.createElement(DistribuicaoTemporalCanonica,{distribuicao,titulo:'Tempo por Zona'}));
+ for (const html of [cockpit,historico]) {
+  for (const valor of ['0 min 14 s 900 ms','7 min 43 s 700 ms','9 min 1 s 100 ms','0 min 0 s']) assert.ok(html.includes(valor));
+  assert.doesNotMatch(html,/463\.7 s|541\.1 s/);
+ }
+ assert.equal(JSON.stringify(l),original);
+ const ausente=renderToStaticMarkup(React.createElement(DistribuicaoTemporalCanonica,{distribuicao:{},titulo:'Tempo por Zona'}));
+ assert.match(ausente,/Tempo indisponível/);
+ assert.doesNotMatch(ausente,/0 min 0 s/);
+});
 test('legendas e horários SVG têm contraste explícito no painel escuro',()=>{
  const css=readFileSync(new URL('../app/operational.css',import.meta.url),'utf8');
  assert.match(css,/\.hx-iirh-temporal svg\{color:#b9c8c5\}/);

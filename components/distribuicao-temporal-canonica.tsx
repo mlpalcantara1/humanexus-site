@@ -1,4 +1,5 @@
 import { NOMES_DAS_ZONAS, NOTA_DE_EQUIVALENCIA_HISTORICA, nomeDaZona } from '@/lib/tirh-zone-nomenclature';
+import { formatarDuracaoCanonica } from '@/lib/duracao-canonica';
 type Registro = Record<string, unknown>;
 const obj = (v: unknown): Registro => v && typeof v === 'object' ? v as Registro : {};
 const nomes: Record<string, string> = NOMES_DAS_ZONAS;
@@ -8,7 +9,10 @@ export function DistribuicaoTemporalCanonica({ distribuicao, titulo }: { distrib
   return <section className="hx-cockpit-panel" aria-label={titulo}>
     <h3>{titulo}</h3>
     {!emissoes.length && <p>Sem linha temporal válida preservada. Snapshots pontuais não definem predominância.</p>}
-    <dl>{Object.entries(nomes).map(([z, nome]) => <div key={z}><dt>{nome}</dt><dd>{typeof tempos[z] === 'number' && Number.isFinite(tempos[z]) ? `${tempos[z]} s válidos` : 'Tempo indisponível'}</dd></div>)}</dl>
+    <dl>{Object.entries(nomes).map(([z, nome]) => {
+      const duracao = formatarDuracaoCanonica(tempos[z]);
+      return <div key={z}><dt>{nome}</dt><dd>{duracao === null ? 'Tempo indisponível' : `${duracao} válidos`}</dd></div>;
+    })}</dl>
     {nomes[String(distribuicao.zona_predominante)] && <p>Zona predominante no tempo válido: {nomeDaZona(distribuicao.zona_predominante)}{distribuicao.inclui_leituras_provisorias === true ? ' · inclui leituras provisórias; não representa resultado integral definitivo' : ''}</p>}
     {distribuicao.empate === true && <p>Empate no tempo válido; sem predominância única.</p>}
     <small>Fonte: {String(distribuicao.versao ?? 'não disponível')} · lacunas sem duração atribuída.</small>
