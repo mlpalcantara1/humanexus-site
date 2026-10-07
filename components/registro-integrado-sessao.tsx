@@ -261,6 +261,7 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
   const decidirSugestoes = (itens: Sugestao[], decisao: "ACEITAR" | "RECUSAR" | "CORRIGIR") => {
     if (!resumo?.terminal || enviando.current || conflito || local.current.fila.length || Object.keys(local.current.campos).length) return;
     const decisoes = itens.map(s => ({ campo: s.campo, assinatura: s.assinatura, decisao,
+      ...(resumo.campos[s.campo]?.trim() ? { substituir_rascunho_preservado: true } : {}),
       ...(decisao === "CORRIGIR" ? { texto_corrigido: edicoesSugestoes[s.campo] ?? s.texto } : {}) }));
     if (!decisoes.length) return;
     local.current.fila.push({ acao: "REVISAR_SUGESTOES", chave: uuid(), revisao: resumo.revisao,
@@ -354,24 +355,27 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
       <section className="hx-assisted-review" aria-label="Revisão assistida das sugestões">
         <header><div><small>RASCUNHO PARA SUA CONFERÊNCIA</small><h4>Leia e escolha: aceitar, negar ou corrigir</h4></div><span>Até 6 decisões · texto livre só quando necessário</span></header>
         <p>As sugestões descrevem fontes preservadas e limites; não inventam melhora, diagnóstico ou sinais. Aceitar salva o rascunho, não aprova o relatório nem inicia aquisição.</p>
+        <p>Se houver texto anterior, usar a sugestão atual é uma escolha explícita: o texto anterior permanece no histórico. Você pode mantê-lo sem clicar ou corrigir a proposta.</p>
         {!resumo.terminal ? <p role="status">Prévia disponível; as decisões finais serão habilitadas após o encerramento da sessão.</p> : null}
         <div className="hx-assisted-review__cards">{(resumo.sugestoes_de_revisao ?? []).map(s => {
           const preservado = !!campos[s.campo]?.trim();
-          const desabilitado = !resumo.terminal || preservado || salvando || conflito || !!local.current.fila.length || !!Object.keys(local.current.campos).length;
+          const igual = campos[s.campo] === s.texto;
+          const desabilitado = !resumo.terminal || igual || salvando || conflito || !!local.current.fila.length || !!Object.keys(local.current.campos).length;
           return <article key={s.campo} aria-label={`Sugestão: ${rotuloCampo(s.campo)}`}>
             <strong>{rotuloCampo(s.campo)}</strong>
-            <p>{preservado ? campos[s.campo] : s.texto}</p>
-            <small>{preservado ? "Conteúdo profissional preservado · corrija abaixo se necessário" : `${s.versao} · ${s.referencias.length} referência(s) · não salvo`}</small>
+            <p>{s.texto}</p>
+            <small>{igual ? "Sugestão já preservada no rascunho" : `Sugestão atual · ${s.referencias.length} registro(s) de origem · ainda não adotada`}</small>
+            {preservado && !igual ? <details><summary>Comparar com o texto anterior preservado</summary><p>{campos[s.campo]}</p></details> : null}
             <details><summary>Referências de origem</summary><p>{s.referencias.join(" · ") || "Metadados da sessão; sem evidência instrumental elegível."}</p></details>
-            {!preservado ? <div>
-              <button type="button" disabled={desabilitado} onClick={() => decidirSugestoes([s], "ACEITAR")}>Aceitar e salvar</button>
+            {!igual ? <div>
+              <button type="button" disabled={desabilitado} onClick={() => decidirSugestoes([s], "ACEITAR")}>{preservado ? "Usar sugestão atual e preservar texto anterior" : "Aceitar e salvar"}</button>
               <button type="button" disabled={desabilitado} onClick={() => decidirSugestoes([s], "RECUSAR")}>Negar e registrar não adoção</button>
               <button type="button" disabled={desabilitado} onClick={() => setSugestoesEmEdicao(d => ({ ...d, [s.campo]: !d[s.campo] }))}>Corrigir</button>
               {sugestoesEmEdicao[s.campo] ? <label>Correção da sugestão<textarea aria-label={`Correção: ${rotuloCampo(s.campo)}`} value={edicoesSugestoes[s.campo] ?? s.texto} rows={4} maxLength={30000} onChange={e => setEdicoesSugestoes(d => ({ ...d, [s.campo]: e.target.value }))} /><button type="button" disabled={desabilitado || !(edicoesSugestoes[s.campo] ?? s.texto).trim()} onClick={() => decidirSugestoes([s], "CORRIGIR")}>Salvar correção</button></label> : null}
             </div> : null}
           </article>;
         })}</div>
-        <button type="button" disabled={!resumo.terminal || salvando || conflito || !!local.current.fila.length || !!Object.keys(local.current.campos).length || !(resumo.sugestoes_de_revisao ?? []).some(s => !campos[s.campo]?.trim()) || Object.values(sugestoesEmEdicao).some(Boolean)} onClick={() => decidirSugestoes((resumo.sugestoes_de_revisao ?? []).filter(s => !campos[s.campo]?.trim()), "ACEITAR")}>Li as sugestões restantes — aceitar e salvar rascunho</button>
+        <button type="button" disabled={!resumo.terminal || salvando || conflito || !!local.current.fila.length || !!Object.keys(local.current.campos).length || !(resumo.sugestoes_de_revisao ?? []).some(s => campos[s.campo] !== s.texto) || Object.values(sugestoesEmEdicao).some(Boolean)} onClick={() => decidirSugestoes((resumo.sugestoes_de_revisao ?? []).filter(s => campos[s.campo] !== s.texto), "ACEITAR")}>Li as sugestões atuais — usar no rascunho e preservar textos anteriores</button>
       </section>
       <details><summary>Síntese completa e campos técnicos preenchidos</summary><div className="hx-session-register__summary">{CAMPOS_PROFISSIONAIS_DO_RELATORIO.filter(([c]) => campos[c]?.trim()).map(([c, label]) => <p key={c}><b>{label}: </b>{campos[c]}</p>)}</div></details>
       <details><summary>Fontes carregadas e informações faltantes</summary><ul>{Object.entries(resumo.fontes_automaticas ?? {}).map(([k, f]) => <li key={k}><b>{k.replaceAll("_", " ")}:</b> {String(f.motivo ?? f.estado)} <small>Origem: {String(f.fonte)} · {String(f.referencia ?? "sem registro elegível")}</small></li>)}</ul></details>

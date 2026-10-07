@@ -17,7 +17,10 @@ test("decidir rascunho não é validação final nem comando de sensores", () =>
 test("correção é opcional, pré-preenchida e conteúdo anterior não recebe sugestão automaticamente", () => {
   assert.match(fonte, /edicoesSugestoes\[s.campo\] \?\? s.texto/);
   assert.match(fonte, /const preservado = !!campos\[s.campo\]\?\.trim\(\)/);
-  assert.match(fonte, /const desabilitado = !resumo.terminal \|\| preservado/);
+  assert.match(fonte, /const desabilitado = !resumo.terminal \|\| igual/);
+  assert.match(fonte, /Usar sugestão atual e preservar texto anterior/);
+  assert.match(fonte, /Comparar com o texto anterior preservado/);
+  assert.match(fonte, /substituir_rascunho_preservado: true/);
   assert.match(fonte, /Correções manuais opcionais e detalhes técnicos/);
 });
 test("recuperação de conflito não reaplica decisões com fontes antigas", () => {
