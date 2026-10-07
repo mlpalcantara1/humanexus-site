@@ -52,6 +52,14 @@ test("janela explicitamente inativa prevalece sobre ATUAL sem alterar registros 
   assert.equal(resolverDisponibilidadeContinuaIirhZona(leitura).iirh.snapshotSelecionado,true);
 });
 
+test("condução não usa estado da sessão como execução de treinamento ausente", async () => {
+  const fonte=await readFile(new URL('../components/cockpit-operacional-vivo.tsx',import.meta.url),'utf8');
+  assert.doesNotMatch(fonte,/texto\(execucao\.estado, texto\(contextoSessao\.estado\)\)/);
+  assert.match(fonte,/texto\(execucao\.estado, "NÃO INICIADA"\)/);
+  assert.match(fonte,/Nenhum treinamento selecionado/);
+  assert.doesNotMatch(fonte,/INTERVENÇÃO SELECIONADA · EM APLICAÇÃO/);
+});
+
 test("zero autoritativo permanece calculado", () => {
   const projecao = resolverIirhAutoritativo({
     estado: "CALCULADO",

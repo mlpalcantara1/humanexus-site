@@ -3559,10 +3559,10 @@ export function CockpitOperacionalVivo({
 
       <section id="hx-intervention-level" className="hx-live-conduction" aria-label="Condução profissional da sessão">
         <div className="hx-live-intervention">
-          <header><small>{sessaoBaseline ? "CONDUÇÃO DA REFERÊNCIA INICIAL" : "INTERVENÇÃO SELECIONADA · EM APLICAÇÃO"}</small><strong>{sessaoBaseline ? "Referência regulatória independente" : texto(thx.nome, "Treinamento selecionado")}</strong></header>
+          <header><small>{sessaoBaseline ? "CONDUÇÃO DA REFERÊNCIA INICIAL" : "INTERVENÇÃO DA SESSÃO"}</small><strong>{sessaoBaseline ? "Referência regulatória independente" : texto(thx.nome, "Nenhum treinamento selecionado")}</strong></header>
           <div>
-            <span><small>CRITÉRIO REGULATÓRIO</small><b>{sessaoBaseline ? "Modalidade independente" : texto(ctr.nome, "Critério preservado no contexto")}</b></span>
-            <span><small>ESTADO DA APLICAÇÃO</small><b>{texto(execucao.estado, texto(contextoSessao.estado))}</b></span>
+            <span><small>CRITÉRIO REGULATÓRIO</small><b>{sessaoBaseline ? "Modalidade independente" : texto(ctr.nome, "Não selecionado")}</b></span>
+            <span><small>ESTADO DA APLICAÇÃO</small><b>{texto(execucao.estado, "NÃO INICIADA")}</b></span>
             <span><small>RESPOSTA OBSERVADA</small><b>{texto(resumoDaResposta, "AGUARDANDO REGISTRO PROFISSIONAL")}</b></span>
           </div>
           <div className="hx-live-intervention__register-actions" aria-label="Ações rápidas do registro profissional">

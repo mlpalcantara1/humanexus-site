@@ -41,6 +41,7 @@ export function CockpitIirhZonaTemporal({ leitura, historico, pausado = false, a
   const operacional = obj(leitura.iirh_zona_operacional);
   const pausaSemResultadoAtual = !historico && (pausado || obj(leitura.estado_da_janela_cientifica).estado === "PAUSADA_SEM_RESULTADO_ATUAL");
   const disponibilidade = resolverDisponibilidadeContinuaIirhZona(leitura);
+  const semJanelaAtual = !historico && [disponibilidade.iirh.modo, disponibilidade.zona.modo].includes("SEM_JANELA_ATUAL_ADMISSIVEL");
   const iirh = disponibilidade.iirh.projecao.registro, zona = disponibilidade.zona.projecao.registro;
   const temporal = obj(leitura.distribuicao_temporal_das_zonas);
   const emissoes = lista(temporal.emissoes), transicoes = lista(temporal.transicoes);
@@ -68,13 +69,13 @@ export function CockpitIirhZonaTemporal({ leitura, historico, pausado = false, a
   const zonaDisponivel = !pausaSemResultadoAtual && (historico || disponibilidade.zona.atual) && disponibilidade.zona.projecao.classificada;
   const provisoria = ["PROVISORIA","SUGERIDA"].includes(String(zona.estado));
   const tempos = obj(temporal.tempo_por_zona_segundos);
-  return <section className="hx-cockpit-panel" aria-label="IIRH e Zona — linha temporal canônica">
-    <header><small>{historico ? "RESULTADO FINAL DA SESSÃO · REPLAY HISTÓRICO" : pausaSemResultadoAtual ? "FASE PAUSADA — SEM RESULTADO ATUAL" : leituraDesatualizada ? "ÚLTIMA PROJEÇÃO — NÃO ATUAL" : "AO VIVO"}</small><h2>IIRH e Zona</h2></header>
+  return <section className="hx-cockpit-panel hx-iirh-temporal" aria-label="IIRH e Zona — linha temporal canônica">
+    <header><small>{historico ? "RESULTADO FINAL DA SESSÃO · REPLAY HISTÓRICO" : pausaSemResultadoAtual ? "FASE PAUSADA — SEM RESULTADO ATUAL" : semJanelaAtual ? "SEM JANELA ATUAL ADMISSÍVEL" : leituraDesatualizada ? "ÚLTIMA PROJEÇÃO — NÃO ATUAL" : "AO VIVO"}</small><h2>IIRH e Zona</h2></header>
     {pausaSemResultadoAtual && <p role="status">A fase está pausada. Sinais recebidos durante a pausa não constituem resultado atual da fase; consulte a referência histórica identificada abaixo.</p>}
     {leituraDesatualizada && !pausaSemResultadoAtual && <p role="status">A última avaliação não é leitura atual. Aguarde a recuperação da consulta; os valores abaixo permanecem somente como registro identificado.</p>}
-    {valor === null && !pausaSemResultadoAtual && <p role="status">{historico ? "Nenhum IIRH canônico disponível neste registro histórico." : "Aguardando primeira leitura real"}</p>}
+    {valor === null && !pausaSemResultadoAtual && <p role="status">{historico ? "Nenhum IIRH canônico disponível neste registro histórico." : semJanelaAtual ? "Sem resultado atual admissível. Os registros anteriores permanecem no histórico, com seus horários e fontes." : "Aguardando primeira leitura real"}</p>}
     <div style={{display:"flex",gap:32,alignItems:"baseline",flexWrap:"wrap"}}>
-      <div><small>{pausaSemResultadoAtual ? "IIRH durante pausa" : iirhDesatualizado ? "Último IIRH registrado" : "IIRH atual"}</small><strong style={{fontSize:"clamp(2.8rem,6vw,4.8rem)"}}>{valor === null ? "Indisponível" : valor.toLocaleString("pt-BR",{maximumFractionDigits:2})}</strong></div>
+      <div><small>{pausaSemResultadoAtual ? "IIRH durante pausa" : iirhDesatualizado ? "Último IIRH registrado" : "IIRH atual"}</small><strong className="hx-iirh-temporal__value">{valor === null ? "Indisponível" : valor.toLocaleString("pt-BR",{maximumFractionDigits:2})}</strong></div>
       <div><small>{pausaSemResultadoAtual ? "Zona durante pausa" : zonaDesatualizada ? "Última Zona registrada" : "Zona atual"}</small><strong style={{fontSize:24}}>{!zonaDisponivel ? "Indisponível — sem leitura atual válida" : nomeDaZona(disponibilidade.zona.projecao.codigo, historico) ?? "Classificação canônica pendente"}{zonaDisponivel && provisoria ? " · provisória" : ""}</strong></div>
     </div>
     <p>Cobertura: {valor === null || cobertura === null ? "não informada" : formatarPercentualCanonico(cobertura)} · Confiança: {valor === null || confianca === null ? "não informada" : formatarPercentualCanonico(confianca)} · Qualidade: {valor === null || qualidade === null ? "não informada" : formatarPercentualCanonico(qualidade)}</p>

@@ -29,6 +29,8 @@ test('fim do PRÉ sem janela ativa não apresenta revisão contextual como leitu
  assert.doesNotMatch(html,/35.0 \/ 100|ATUAL · PARCIAL|ATUAL · PROVISORIA/);
  assert.match(render(l),/Indisponível — sem leitura atual válida/);
  assert.doesNotMatch(render(l),/<strong[^>]*>35</);
+ assert.match(render(l),/SEM JANELA ATUAL ADMISSÍVEL/);
+ assert.doesNotMatch(render(l),/AO VIVO|Aguardando primeira leitura real/);
  assert.equal(JSON.stringify(l),original);
 });
 test('pausa canônica da janela prevalece sobre sessão INICIADA, sem alterar projeções',()=>{
