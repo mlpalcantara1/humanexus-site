@@ -7,6 +7,7 @@ import {
   resolverDisponibilidadeContinuaIirhZona,
   resolverIirhAutoritativo
 } from "../lib/authoritative-iirh-projection.ts";
+import { LINGUAGEM_DE_PREVISIBILIDADE_CONDICIONAL } from "../lib/projecao-narrativa-relatorio.ts";
 
 const estruturaRealRedigida = {
   estado: "CALCULADO",
@@ -66,6 +67,21 @@ test("barra decisória não promove estados contextuais quando a janela está in
   assert.match(fonte,/fasePausadaNaApresentacao \|\| zonaSemJanelaAtual \? "SEM RESULTADO ATUAL"/);
   assert.match(fonte,/fasePausadaNaApresentacao \|\| iirhSemJanelaAtual \? "SEM RESULTADO ATUAL"/);
   assert.match(fonte,/zonaCalculada && !fasePausadaNaApresentacao && \["PROVISORIA", "SUGERIDA"\]/);
+});
+
+test("inspeção de evidências não chama projeção histórica de leitura atual", async () => {
+  const fonte = await readFile(new URL('../components/operacao-homologacao.tsx', import.meta.url), 'utf8');
+  const trecho = fonte.slice(fonte.indexOf('function EvidenciasDoCockpit'), fonte.indexOf('function EvidenciasDoCockpit') + 7200);
+  assert.match(trecho, /leituraAtualAdmissivel = disponibilidade\.iirh\.atual && iirhAutoritativo\.calculado/);
+  assert.match(trecho, /Não constituem leitura atual; horários, fontes e limitações permanecem no histórico/);
+  assert.match(trecho, /<span>\{leituraAtualAdmissivel/);
+  assert.doesNotMatch(trecho, /admissível\(is\) sustentam a leitura canônica atual/);
+});
+
+test("linguagem compartilhada do relatório não afirma tendência sem evidências", () => {
+  assert.match(LINGUAGEM_DE_PREVISIBILIDADE_CONDICIONAL, /Somente evidências admissíveis e demanda comparável/);
+  assert.match(LINGUAGEM_DE_PREVISIBILIDADE_CONDICIONAL, /Sem evidência suficiente, nenhuma tendência ou resposta adaptativa é afirmada/);
+  assert.doesNotMatch(LINGUAGEM_DE_PREVISIBILIDADE_CONDICIONAL, /os registros indicam uma tendência/);
 });
 
 test("zero autoritativo permanece calculado", () => {

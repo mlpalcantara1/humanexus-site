@@ -4,7 +4,7 @@ export const MENSAGEM_UNICA_DE_INDISPONIBILIDADE =
   "Este aspecto ainda não possui consolidação profissional suficiente para integrar o resultado.";
 
 export const LINGUAGEM_DE_PREVISIBILIDADE_CONDICIONAL =
-  "Diante de demanda comparável, os registros indicam uma tendência contextual de organização regulatória, os recursos disponíveis e as condições em que uma resposta adaptativa foi ou não mobilizada. Esta leitura não prevê comportamento específico nem resultado futuro.";
+  "Somente evidências admissíveis e demanda comparável permitem descrever a organização regulatória, os recursos disponíveis e a resposta observada no contexto. Sem evidência suficiente, nenhuma tendência ou resposta adaptativa é afirmada. Esta leitura não prevê comportamento específico nem resultado futuro.";
 
 export const MENSAGEM_DE_CONFIABILIDADE_PENDENTE =
   "AGUARDANDO CONSOLIDAÇÃO PROFISSIONAL DA CONFIABILIDADE OPERACIONAL.";

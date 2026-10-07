@@ -1612,9 +1612,9 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
   );
   const evidenciasDoMotor = objeto(cadeiaCientifica.evidencias);
   const evidenciasAceitas = lista(evidenciasDoMotor.aceitas);
-  const iirhAutoritativo = resolverDisponibilidadeContinuaIirhZona(
-    leituraCientifica
-  ).iirh.projecao;
+  const disponibilidade = resolverDisponibilidadeContinuaIirhZona(leituraCientifica);
+  const iirhAutoritativo = disponibilidade.iirh.projecao;
+  const leituraAtualAdmissivel = disponibilidade.iirh.atual && iirhAutoritativo.calculado;
   return (
     <section className="hx-cockpit-panel">
       <TituloDaVisao
@@ -1641,7 +1641,9 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
       <div className="hx-limit-consolidated">
         <strong>EVIDÊNCIA RECONHECIDA PELO MOTOR REGULATÓRIO</strong>
         <span>{evidenciasAceitas.length
-          ? `${evidenciasAceitas.length} evidência(s) admissível(is) sustentam a leitura canônica atual.`
+          ? leituraAtualAdmissivel
+            ? `${evidenciasAceitas.length} evidência(s) reconhecida(s) pelo motor; leitura atual disponível conforme os critérios de cada indicador.`
+            : `${evidenciasAceitas.length} evidência(s) preservada(s) na projeção do motor. Não constituem leitura atual; horários, fontes e limitações permanecem no histórico.`
           : texto(
               objeto(configuracaoBasal.anamnese).estado,
               "Não há evidência admissível suficiente para uma leitura científica."
@@ -1661,9 +1663,11 @@ function EvidenciasDoCockpit({ estado }: { estado: Estado }) {
       </details>
       <div className="hx-limit-consolidated">
         <strong>LIMITAÇÃO CONSOLIDADA</strong>
-        <span>{iirhAutoritativo.calculado
+        <span>{leituraAtualAdmissivel
           ? "O IIRH e os vetores presentes foram calculados pelo núcleo com as evidências admissíveis. Ausências, Zona e trajetória conservam seus próprios limites científicos."
-          : texto(
+          : !disponibilidade.iirh.atual
+            ? "Sem leitura atual admissível. Resultados preservados não demonstram sinais atuais nem tornam todas as evidências elegíveis para os vetores."
+            : texto(
               iirhAutoritativo.motivo,
               "O Núcleo não informou motivo científico adicional; nenhuma ausência foi convertida em zero."
             )}</span>
