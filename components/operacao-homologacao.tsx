@@ -1,5 +1,6 @@
 "use client";
 import { textoDaReavaliacaoEeg } from "@/lib/eeg-quality-policy-presentation";
+import { resumoOperacionalDoRelatorio } from "@/lib/resumo-operacional-relatorio";
 
 import { consultarCockpitComPrazo } from "@/lib/cockpit-loading";
 import { DistribuicaoTemporalCanonica } from "@/components/distribuicao-temporal-canonica";
@@ -561,6 +562,12 @@ function RelatorioCanonicoV1({
 
       <ResultadoRegulatorioDaSessao microtrajetoria={microtrajetoria} />
       {textoDaReavaliacaoEeg(leituraCientificaDaInspecao(estado)).map((linha) => <p key={linha}>{linha}</p>)}
+      {resumoOperacionalDoRelatorio({ cockpit: estado.cockpit_operacional, ciclo: estado.ciclo, gravacao: estado.gravacao, protocolo: estado.thx_individual, ctr: estado.ctr_individual, longitudinal: estado.longitudinal }).map(secao => (
+        <section className="hx-report-canonical__section" key={secao.titulo}>
+          <h3>{secao.titulo}</h3>
+          {secao.itens.map(item => <p key={item}>{item}</p>)}
+        </section>
+      ))}
 
       {!Object.keys(projecao).length ? (
         <p className="hx-module__notice">

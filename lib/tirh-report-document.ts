@@ -1,5 +1,6 @@
 import PDFDocument from "pdfkit";
 import { textoDaReavaliacaoEeg } from "./eeg-quality-policy-presentation.ts";
+import { resumoOperacionalDoRelatorio } from "./resumo-operacional-relatorio.ts";
 
 import { decisoesProfissionaisPreservadasTirhV1 } from "./validacao-profissional-tirh-v1.ts";
 import {
@@ -52,6 +53,8 @@ export type EntradaRelatorioHumanexus = {
   sessao: Registro;
   execucao: Registro | null;
   protocoloThx?: Registro | null;
+  ctr?: Registro | null;
+  longitudinal?: Registro;
   ciclo: Registro | null;
   telemetria: Registro[];
   eventos: Registro[];
@@ -1394,6 +1397,19 @@ export async function gerarPdfVisualHumanexus(entrada: EntradaRelatorioHumanexus
   else if (tipo === "EXECUTIVO") renderExecutivo(doc, entrada);
   else if (tipo === "TECNICO") renderTecnico(doc, entrada);
   else renderFormulacao(doc, entrada);
+  if (tipo === "OPERACIONAL_TIRH" || tipo === "CIENTIFICO_TIRH") {
+    let y = novaPagina(doc, "LEITURA OPERACIONAL", "Fases, sinais e referência individual", "Resultados registrados e limites da comparação. Ausências não são completadas.");
+    for (const secao of resumoOperacionalDoRelatorio({ cockpit: entrada.cockpitOperacional, ciclo: entrada.ciclo, gravacao: entrada.gravacao, protocolo: entrada.protocoloThx, ctr: entrada.ctr, longitudinal: entrada.longitudinal })) {
+      if (y > 590) y = novaPagina(doc, "LEITURA OPERACIONAL", "Continuação dos resultados registrados");
+      y = tituloSecao(doc, secao.titulo, y + 12, "");
+      for (const item of secao.itens) {
+        doc.font("Helvetica").fontSize(8.2);
+        const altura = doc.heightOfString(item, { width: 455, lineGap: 2 }) + 18;
+        if (y + altura > 700) y = novaPagina(doc, "LEITURA OPERACIONAL", secao.titulo);
+        y = paragrafo(doc, item, y + 8, { x: 83, width: 455, tamanho: 8.2 });
+      }
+    }
+  }
   const revisaoEeg = textoDaReavaliacaoEeg(objeto(entrada.cockpitOperacional).leitura_cientifica);
   if (revisaoEeg.length) {
     let y = novaPagina(doc, "REAVALIAÇÃO HISTÓRICA EEG", "Regra, origem e limites", "Revisão derivada identificada; não representa aquisição atual nem substitui os registros originais.");
