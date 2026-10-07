@@ -7,7 +7,10 @@ import { CAMPOS_PROFISSIONAIS_DO_RELATORIO } from "@/lib/humanexus-report-author
 import { aceitarResposta, chaveDoRegistro, MARCADORES, novoRascunho, recuperarRascunho, type RascunhoLocal, type ComandoDeRegistro } from "@/lib/registro-integrado";
 
 type Registro = Record<string, unknown>;
+type Sugestao = { campo: string; texto: string; assinatura: string; referencias: string[]; versao: string; ja_possui_autoria: boolean };
 type Resumo = {
+  sugestoes_de_revisao?: Sugestao[];
+  decisoes_das_sugestoes?: Record<string, { decisao: string; salvo_em: string; profissional: string }>;
   fontes_automaticas?: Record<string, Registro>; proveniencia?: Record<string, string[]>;
   revisao: number; assinatura_do_rascunho: string; salvo_em?: string; terminal: boolean; fase: string | null; identificador_da_fase: string | null;
   checklist?: Registro; profissional: string; campos: Record<string, string>; pendencias: string[]; encerrado_em?: string;
@@ -68,6 +71,8 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
   const [edicoesNotas, setEdicoesNotas] = useState<Record<string, string>>({});
   const [destinosNotas, setDestinosNotas] = useState<Record<string, string>>({});
   const [aprovacao, setAprovacao] = useState("");
+  const [edicoesSugestoes, setEdicoesSugestoes] = useState<Record<string, string>>({});
+  const [sugestoesEmEdicao, setSugestoesEmEdicao] = useState<Record<string, boolean>>({});
   const operacao = obj(estado.estado_operacional), detalhes = obj(obj(estado.sessao_operacional).detalhes);
   const terminal = resumo?.terminal || ["FINALIZADA", "ENCERRADA"].includes(String(obj(estado.sessao).estado));
   const faseAtual = terminal ? "REVISAO_POS_SESSAO" : String(operacao.fase_cientifica_atual ?? resumo?.fase ?? "") || null;
@@ -123,7 +128,7 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
         } else if (!Object.keys(local.current.campos).length || r.revisao === local.current.revisaoBase + 1) local.current.revisaoBase = r.revisao;
         aplicar(r); persistir();
         if (cmd.acao === "VALIDAR") window.dispatchEvent(new CustomEvent("humanexus:registro-validado", { detail: { sessao, participante, org } }));
-        setMensagem(cmd.acao === "VALIDAR" ? "Versão validada, relatório e longitudinal preservados." : "Salvo no servidor. Rascunho recuperável.");
+        setMensagem(cmd.acao === "VALIDAR" ? "Versão validada, relatório e longitudinal preservados." : cmd.acao === "REVISAR_SUGESTOES" ? "Decisão sobre o rascunho salva. A aprovação final e o relatório ainda dependem da sua confirmação." : "Salvo no servidor. Rascunho recuperável.");
       }
     } catch (e) { if (ativo.current) setMensagem(e instanceof Error ? e.message : "Não foi possível salvar. Texto preservado para reenvio."); }
     finally { enviando.current = false; if (ativo.current) setSalvando(false); }
@@ -172,7 +177,7 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
     const logout = () => {
       persistir(); ativo.current = false; pronto.current = false; sair();
       local.current = novoRascunho(); resumoRef.current = null; setResumo(null);
-      setEdicoesNotas({}); setDestinosNotas({}); setRecuperaveis([]); atualizarUi(v => v + 1);
+      setEdicoesNotas({}); setDestinosNotas({}); setEdicoesSugestoes({}); setSugestoesEmEdicao({}); setRecuperaveis([]); atualizarUi(v => v + 1);
       setEstadoVoz(""); setTextoObtidoVoz(undefined); setDiagnosticoVoz(undefined);
     };
     const canalAuth = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel("humanexus-auth");
@@ -237,7 +242,9 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
     try {
       const r = await requisitar(); aplicar(r);
       // Apenas revisões editáveis podem ser reconciliadas; notas e confirmação são reenviadas com sua chave original.
-      local.current.fila = local.current.fila.filter((c) => c.acao !== "SALVAR" && c.acao !== "VALIDAR");
+      local.current.fila = local.current.fila.filter((c) => c.acao !== "SALVAR" && c.acao !== "VALIDAR" && c.acao !== "REVISAR_SUGESTOES");
+      // Uma decisão ligada às fontes anteriores não é reaplicada sem nova conferência.
+      setConfirmar(false);
       local.current.revisaoBase = r.revisao;
       conflitoRef.current = false; setConflito(false); persistir(); void sincronizar();
     } catch (e) { setMensagem(String(e)); }
@@ -251,6 +258,16 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
   };
   const rotuloCampo = (campo?: string) => CAMPOS_PROFISSIONAIS_DO_RELATORIO.find(([c]) => c === campo)?.[1] ?? "Observações por fase";
   const rotuloRevisao = (estadoNota?: string) => ({ PENDENTE_DE_REVISAO: "Pendente de revisão", INCORPORADA: "Incorporada", EDITADA: "Editada", DESCARTADA: "Descartada" }[estadoNota ?? ""] ?? "Pendente de revisão");
+  const decidirSugestoes = (itens: Sugestao[], decisao: "ACEITAR" | "RECUSAR" | "CORRIGIR") => {
+    if (!resumo?.terminal || enviando.current || conflito || local.current.fila.length || Object.keys(local.current.campos).length) return;
+    const decisoes = itens.map(s => ({ campo: s.campo, assinatura: s.assinatura, decisao,
+      ...(decisao === "CORRIGIR" ? { texto_corrigido: edicoesSugestoes[s.campo] ?? s.texto } : {}) }));
+    if (!decisoes.length) return;
+    local.current.fila.push({ acao: "REVISAR_SUGESTOES", chave: uuid(), revisao: resumo.revisao,
+      assinatura_do_rascunho: resumo.assinatura_do_rascunho, decisoes });
+    setConfirmar(false);
+    if (persistir()) void sincronizar();
+  };
   const campos = { ...resumo?.campos, ...local.current.campos };
   const ultimaVoz = resumo?.notas.findLast(n => n.modalidade === "FALA");
   const pendencias = CAMPOS_PROFISSIONAIS_DO_RELATORIO.filter(([c]) => !campos[c]?.trim());
@@ -334,11 +351,33 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
     </section>
     {(revisar || resumo?.terminal) && resumo && <>
       <p>O rascunho reúne contexto, fases e registros existentes. A interpretação e a decisão só se tornam profissionais após sua confirmação final.</p>
-      <div className="hx-session-register__summary"><strong>Síntese consolidada</strong>{CAMPOS_PROFISSIONAIS_DO_RELATORIO.filter(([c]) => campos[c]?.trim()).map(([c, label]) => <p key={c}><b>{label}: </b>{campos[c].length > 240 ? campos[c].slice(0, 240) + "…" : campos[c]}</p>)}</div>
+      <section className="hx-assisted-review" aria-label="Revisão assistida das sugestões">
+        <header><div><small>RASCUNHO PARA SUA CONFERÊNCIA</small><h4>Leia e escolha: aceitar, negar ou corrigir</h4></div><span>Até 6 decisões · texto livre só quando necessário</span></header>
+        <p>As sugestões descrevem fontes preservadas e limites; não inventam melhora, diagnóstico ou sinais. Aceitar salva o rascunho, não aprova o relatório nem inicia aquisição.</p>
+        {!resumo.terminal ? <p role="status">Prévia disponível; as decisões finais serão habilitadas após o encerramento da sessão.</p> : null}
+        <div className="hx-assisted-review__cards">{(resumo.sugestoes_de_revisao ?? []).map(s => {
+          const preservado = !!campos[s.campo]?.trim();
+          const desabilitado = !resumo.terminal || preservado || salvando || conflito || !!local.current.fila.length || !!Object.keys(local.current.campos).length;
+          return <article key={s.campo} aria-label={`Sugestão: ${rotuloCampo(s.campo)}`}>
+            <strong>{rotuloCampo(s.campo)}</strong>
+            <p>{preservado ? campos[s.campo] : s.texto}</p>
+            <small>{preservado ? "Conteúdo profissional preservado · corrija abaixo se necessário" : `${s.versao} · ${s.referencias.length} referência(s) · não salvo`}</small>
+            <details><summary>Referências de origem</summary><p>{s.referencias.join(" · ") || "Metadados da sessão; sem evidência instrumental elegível."}</p></details>
+            {!preservado ? <div>
+              <button type="button" disabled={desabilitado} onClick={() => decidirSugestoes([s], "ACEITAR")}>Aceitar e salvar</button>
+              <button type="button" disabled={desabilitado} onClick={() => decidirSugestoes([s], "RECUSAR")}>Negar e registrar não adoção</button>
+              <button type="button" disabled={desabilitado} onClick={() => setSugestoesEmEdicao(d => ({ ...d, [s.campo]: !d[s.campo] }))}>Corrigir</button>
+              {sugestoesEmEdicao[s.campo] ? <label>Correção da sugestão<textarea aria-label={`Correção: ${rotuloCampo(s.campo)}`} value={edicoesSugestoes[s.campo] ?? s.texto} rows={4} maxLength={30000} onChange={e => setEdicoesSugestoes(d => ({ ...d, [s.campo]: e.target.value }))} /><button type="button" disabled={desabilitado || !(edicoesSugestoes[s.campo] ?? s.texto).trim()} onClick={() => decidirSugestoes([s], "CORRIGIR")}>Salvar correção</button></label> : null}
+            </div> : null}
+          </article>;
+        })}</div>
+        <button type="button" disabled={!resumo.terminal || salvando || conflito || !!local.current.fila.length || !!Object.keys(local.current.campos).length || !(resumo.sugestoes_de_revisao ?? []).some(s => !campos[s.campo]?.trim()) || Object.values(sugestoesEmEdicao).some(Boolean)} onClick={() => decidirSugestoes((resumo.sugestoes_de_revisao ?? []).filter(s => !campos[s.campo]?.trim()), "ACEITAR")}>Li as sugestões restantes — aceitar e salvar rascunho</button>
+      </section>
+      <details><summary>Síntese completa e campos técnicos preenchidos</summary><div className="hx-session-register__summary">{CAMPOS_PROFISSIONAIS_DO_RELATORIO.filter(([c]) => campos[c]?.trim()).map(([c, label]) => <p key={c}><b>{label}: </b>{campos[c]}</p>)}</div></details>
       <details><summary>Fontes carregadas e informações faltantes</summary><ul>{Object.entries(resumo.fontes_automaticas ?? {}).map(([k, f]) => <li key={k}><b>{k.replaceAll("_", " ")}:</b> {String(f.motivo ?? f.estado)} <small>Origem: {String(f.fonte)} · {String(f.referencia ?? "sem registro elegível")}</small></li>)}</ul></details>
       <p>{pendencias.length ? `Lacunas indispensáveis: ${pendencias.map(([, r]) => r).join(" · ")}` : "Todos os campos possuem conteúdo para revisão."}</p>
 
-      <div className="hx-professional-consolidation__fields">{CAMPOS_PROFISSIONAIS_DO_RELATORIO.map(([c, r]) => <details key={c} open={camposAbertos[c] ?? !campos[c]?.trim()} onToggle={(e) => { const aberto = e.currentTarget.open; setCamposAbertos((atual) => atual[c] === aberto ? atual : { ...atual, [c]: aberto }); }}><summary>{r}{!campos[c]?.trim() ? " — completar" : " — revisar / corrigir"}</summary><label>{r}<textarea aria-label={r} value={campos[c] ?? ""} rows={3} maxLength={30000} onChange={(e) => editar(c, e.target.value)} /></label><small>Registros de origem: {(resumo.proveniencia?.[c] ?? []).filter(Boolean).join(" · ") || "Conteúdo autoral para sua revisão"}</small></details>)}</div>
+      <details><summary>Correções manuais opcionais e detalhes técnicos</summary><div className="hx-professional-consolidation__fields">{CAMPOS_PROFISSIONAIS_DO_RELATORIO.map(([c, r]) => <details key={c} open={camposAbertos[c] ?? false} onToggle={(e) => { const aberto = e.currentTarget.open; setCamposAbertos((atual) => atual[c] === aberto ? atual : { ...atual, [c]: aberto }); }}><summary>{r}{!campos[c]?.trim() ? " — aguardando decisão" : " — revisar / corrigir"}</summary><label>{r}<textarea aria-label={r} value={campos[c] ?? ""} rows={3} maxLength={30000} onChange={(e) => editar(c, e.target.value)} /></label><small>Registros de origem: {(resumo.proveniencia?.[c] ?? []).filter(Boolean).join(" · ") || "Conteúdo autoral para sua revisão"}</small></details>)}</div></details>
       {finalValidado ? <p role="status">Versão {resumo.validacao?.versao} validada em {resumo.validacao?.validado_em}. {resumo.validacao?.historica ? "Documento histórico preservado." : "Longitudinal atualizado."} <a href={`/api/governanca-relatorios/${encodeURIComponent(resumo.validacao?.relatorio ?? "")}/pdf`} target="_blank" rel="noreferrer">Baixar PDF validado</a></p> : <>
         <label>Aprovação escrita (opcional)<input value={aprovacao} onChange={(e) => { setAprovacao(e.target.value); if (/^(aprovar|validar|confirmar)$/i.test(e.target.value.trim())) setConfirmar(true); }} placeholder="Digite aprovar ou use o botão" /></label>
         <button type="button" disabled={ouvindo || !resumo.terminal || pendencias.length > 0 || salvando || conflito || local.current.fila.length > 0 || Object.keys(local.current.campos).length > 0 || !!local.current.texto.trim()} onClick={() => setConfirmar(true)}>Aprovar revisão profissional</button>

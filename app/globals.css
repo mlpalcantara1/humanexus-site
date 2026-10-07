@@ -4367,3 +4367,11 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 .hx-session-register summary { cursor:pointer; line-height:1.6; }
 .hx-session-register [role=dialog], .hx-session-register aside { border:1px solid #b9a265; padding:1rem; margin-block:1rem; }
 .hx-session-register a { color:#d6bd79; text-decoration:underline; }
+.hx-assisted-review { padding:1rem; margin-block:1rem; border:1px solid #766442; border-radius:.6rem; background:#081111; }
+.hx-assisted-review header { display:flex; flex-wrap:wrap; gap:1rem; align-items:center; justify-content:space-between; }
+.hx-assisted-review h4 { margin:.4rem 0; font-size:1.2rem; }
+.hx-assisted-review__cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.hx-assisted-review__cards article { padding:1rem; border:1px solid #38443e; border-radius:.5rem; min-width:0; }
+.hx-assisted-review__cards p { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; }
+.hx-assisted-review__cards small { display:block; color:#b4bfb8; }
+@media(max-width:760px) { .hx-assisted-review__cards { grid-template-columns:1fr; } }
