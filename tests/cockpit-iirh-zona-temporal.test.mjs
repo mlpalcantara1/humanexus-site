@@ -17,6 +17,11 @@ const {CockpitIirhZonaTemporal}=carregar('components/cockpit-iirh-zona-temporal.
 const {SinteseValidacaoTirhV1}=carregar('components/sintese-validacao-tirh-v1.tsx');
 const {projecaoTemporalDesatualizada}=carregar('lib/cockpit-projection-freshness.ts');
 const {faseCientificaPausada}=carregar('lib/paused-phase-presentation.ts');
+test('legendas e horários SVG têm contraste explícito no painel escuro',()=>{
+ const css=readFileSync(new URL('../app/operational.css',import.meta.url),'utf8');
+ assert.match(css,/\.hx-iirh-temporal svg\{color:#b9c8c5\}/);
+ assert.match(css,/\.hx-iirh-temporal svg text\{fill:currentColor\}/);
+});
 test('fim do PRÉ sem janela ativa não apresenta revisão contextual como leitura atual',()=>{
  const l=leitura('PARCIAL',35); l.tirh_operacional_v1={versao_cientifica:'TESTE'};
  l.estado_da_janela_cientifica={estado:'SEM_JANELA_ATUAL_ADMISSIVEL',resultado_atual:false,fase:null};

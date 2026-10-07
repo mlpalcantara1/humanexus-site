@@ -258,6 +258,9 @@
 .hx-iirh-temporal>header h2{margin:5px 0 14px;font-size:20px;line-height:1.2;font-weight:500}
 .hx-iirh-temporal>header small{font-size:10px;letter-spacing:.12em;color:#c9aa63}
 .hx-iirh-temporal__value{display:block;font-size:clamp(1.6rem,3vw,2.3rem);line-height:1.2;font-weight:500;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.hx-iirh-temporal svg{color:#b9c8c5}
+.hx-iirh-temporal svg text{fill:currentColor}
+.hx-iirh-temporal>div>div>small,.hx-iirh-temporal>div>div>strong{display:block}
 @media(max-width:640px){.hx-iirh-temporal{padding:14px}.hx-iirh-temporal>header h2{font-size:18px}}
 .hx-cockpit-view-title{display:grid;grid-template-columns:minmax(260px,1fr) minmax(240px,.8fr);column-gap:30px;padding:22px 24px;border-bottom:1px solid rgba(178,194,194,.12)}
 .hx-cockpit-view-title p{grid-column:1;margin:0;color:#c9aa63;letter-spacing:.17em;font:700 8px Arial,sans-serif}
