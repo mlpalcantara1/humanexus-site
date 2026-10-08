@@ -568,12 +568,12 @@ function RelatorioCanonicoV1({
       </section>
       <section className="hx-report-canonical__section">
         <h3>Rota dominante e custo para sustentar o funcionamento</h3>
-        {(itensDeSecoesAutorizadas(relatorio, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS").length
-          ? itensDeSecoesAutorizadas(relatorio, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS")
+        {(itensDeSecoesAutorizadas(relatorio, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS", "ARR_DECLARATIVA_DA_ANAMNESE").length
+          ? itensDeSecoesAutorizadas(relatorio, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS", "ARR_DECLARATIVA_DA_ANAMNESE")
           : ["Rota dominante: não recebida como análise admissível desta sessão. A zona predominante não identifica, por si só, uma rota regulatória."]).map(item => <p key={item}>{item}</p>)}
-        <p>Custo autonômico: não há escore quantitativo de custo recebido neste contrato. FC, RR e RMSSD descrevem a resposta fisiológica; isoladamente, não quantificam o custo para manter o equilíbrio.</p>
-        <p>Custo cognitivo: não há escore quantitativo de custo recebido neste contrato. Sua leitura exige relacionar demanda, desempenho e evidências admissíveis; qualidade EEG não equivale a custo cognitivo.</p>
-        {itensDeSecoesAutorizadas(relatorio, "CUSTO_REGULATORIO").map(item => <p key={item}>{item}</p>)}
+        <p>Custo autonômico — Polar H10: mobilização e recuperação autonômicas, observadas na frequência cardíaca, nos intervalos RR e na variabilidade cardíaca.</p>
+        <p>Custo cognitivo — ondas EEG do EPOC X: mobilização neurocognitiva e variação de Theta, Alpha, Beta baixa, Beta alta e Gamma em relação à referência individual.</p>
+        {itensDeSecoesAutorizadas(relatorio, "CUSTO_REGULATORIO", "MEDIDAS_DE_CUSTO_POR_FASE").map(item => <p key={item}>{item}</p>)}
       </section>
       {textoDaReavaliacaoEeg(leituraCientificaDaInspecao(estado)).map((linha) => <p key={linha}>{linha}</p>)}
       {resumoOperacionalDoRelatorio({ cockpit: estado.cockpit_operacional, ciclo: estado.ciclo, gravacao: estado.gravacao, protocolo: estado.thx_individual, ctr: estado.ctr_individual, longitudinal: estado.longitudinal }).map(secao => (
@@ -659,7 +659,7 @@ function RelatorioCanonicoV1({
         <h3>Estado estrutural da Resultante: {texto(resultante.estado, "NÃO MATERIALIZADA")}</h3>
         <p>Magnitude escalar: <strong>NÃO APLICÁVEL NA TIRH V1</strong>. {texto(resultante.motivo, "A Resultante descreve a organização vetorial sustentada neste recorte.")}</p>
         <p>IIRH: {iirhCalculavel ? `${iirhAutoritativo.valor} / 100 · ${rotuloIirh}` : texto(iirhAutoritativo.motivo, rotuloIirh)}. Zona: {zonaAutoritativa.classificada ? `${nomeDaZona(zonaAutoritativa.codigo ?? zonaAutoritativa.nome) ?? texto(zonaAutoritativa.codigo ?? zonaAutoritativa.nome)} · ${rotuloZona}` : texto(zonaAutoritativa.motivo, rotuloZona)}. Trajetória: {estado.leitura_regulatoria.trajetorias.length ? "registro longitudinal localizado" : "não inferível a partir de um único ponto"}.</p>
-        <p>Direção: {texto(resultante.direcao, "NÃO INFORMADA PELO NÚCLEO")} · Sentido: {texto(resultante.sentido, "NÃO INFORMADO PELO NÚCLEO")} · Tendência: {texto(resultante.tendencia, "NÃO INFORMADA PELO NÚCLEO")}.</p>
+        <p>Direção: {texto(resultante.direcao_funcional ?? resultante.direcao, "NÃO INFORMADA PELO NÚCLEO")} · Sentido: {texto(resultante.sentido_contextual ?? resultante.sentido, "NÃO INFORMADO PELO NÚCLEO")} · Tendência: {texto(resultante.tendencia, "NÃO INFORMADA PELO NÚCLEO")}.</p>
         <p>O próximo registro válido e comparável pode ampliar a leitura temporal sem reclassificar retroativamente esta sessão.</p>
       </section>
 

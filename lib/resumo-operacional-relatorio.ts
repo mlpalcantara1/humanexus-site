@@ -31,6 +31,7 @@ export function respostaAosEstimulosNoRelatorio(entrada: {
   const campos = [
     ["reaction_time_ms", "Tempo de reação", " ms"],
     ["decision_time_ms", "Tempo de decisão", " ms"],
+    ["correct_answers", "Acertos registrados", ""],
     ["errors", "Erros registrados", ""],
     ["omissions", "Omissões registradas", ""],
     ["false_positives", "Falsos positivos registrados", ""],
@@ -44,7 +45,7 @@ export function respostaAosEstimulosNoRelatorio(entrada: {
       const nome = fase === "PRE" ? "PRÉ" : fase === "POS" ? "PÓS" : fase;
       return `${nome}: ${campos.map(([codigo, rotulo, unidade]) => `${rotulo}: ${num(medidas[codigo]) === null ? "não medido neste recorte" : valor(medidas[codigo]) + unidade}`).join("; ")}.`;
     }),
-    "Acertos: contagem de respostas corretas não recebida neste contrato. Acurácia percentual não é quantidade de acertos.",
+    "Acertos são contagens explícitas de respostas corretas. Acurácia percentual não é quantidade de acertos.",
     "Sem tentativas de tarefa com estímulo e resposta, os sensores fisiológicos não informam tempo de reação, acertos, erros ou omissões. Ausência de medida não significa desempenho zero."
   ] };
 }
