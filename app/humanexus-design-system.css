@@ -2313,3 +2313,12 @@
 .hx-preserved-condition small { color:#cdb274; }
 .hx-preserved-condition p { line-height:1.6; margin:8px 0; }
 .hx-preserved-condition summary { cursor:pointer; color:#cdb274; }
+
+/* ARR: uma leitura autoral, sem repetir a rota em outro painel. */
+.hx-regulatory-routes__grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:16px 0 0; }
+.hx-regulatory-routes__grid > div { padding:12px 14px; border:1px solid rgba(150,170,190,.18); border-radius:12px; min-width:0; }
+.hx-regulatory-routes__grid dt { font-size:12px; color:#a5b7c7; margin-bottom:7px; }
+.hx-regulatory-routes__grid dd { margin:0; font-size:15px; color:#edf3f7; overflow-wrap:anywhere; }
+.hx-regulatory-routes__grid small { display:block; margin-top:8px; color:#a5b7c7; line-height:1.5; }
+.hx-regulatory-routes__missing { border-color:rgba(225,177,78,.55)!important; background:rgba(225,177,78,.06); }
+@media(max-width:700px) { .hx-regulatory-routes__grid { grid-template-columns:1fr; } }

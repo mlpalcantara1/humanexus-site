@@ -1108,13 +1108,10 @@ function DinamicaDaInteligenciaRegulatoria({
         ) : null}
       </div>
       <dl>
-        <div><dt>Resultante</dt><dd>{resultanteCalculada && typeof resultante.valor === "number"
-          ? `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`
-          : resultanteDisponivel
-            ? texto(resultante.estado, "PARCIAL")
-            : texto(resultante.estado, "NÃO CALCULÁVEL")}</dd></div>
-        <div><dt>Direção</dt><dd>{texto(resultante.direcao_funcional ?? resultante.vetor_dominante, "NÃO DETERMINÁVEL")}</dd></div>
-        <div><dt>Sentido</dt><dd>{texto(resultante.sentido_contextual, "NÃO DETERMINÁVEL")}</dd></div>
+        <div><dt>Resultante</dt><dd>{texto(resultante.estado, "NÃO CALCULÁVEL")}</dd></div>
+        <div><dt>Magnitude</dt><dd>{magnitude == null ? "Ainda sem magnitude global estabelecida" : `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`}</dd></div>
+        <div><dt>Direção funcional</dt><dd>{texto(resultante.direcao_funcional ?? resultante.vetor_dominante, "NÃO DETERMINÁVEL")}</dd></div>
+        <div><dt>Sentido regulatório</dt><dd>{texto(resultante.sentido_contextual, "NÃO DETERMINÁVEL")}</dd></div>
         <div><dt>Tendência</dt><dd>{trajetoriaCalculada
           ? [
               texto(vetorEvolucao.nivel_longitudinal, ""),
@@ -1129,8 +1126,8 @@ function DinamicaDaInteligenciaRegulatoria({
         ) : null}
       </dl>
       <p>{configuracaoParcial
-        ? "Os movimentos representam os vetores canônicos disponíveis. PLENA descreve os critérios da Resultante estruturada, não exige nove vetores nem implica magnitude escalar, direção ou sentido disponíveis. A cobertura e cada propriedade permanecem independentes."
-        : "Geometria de apresentação da Resultante canônica. Nenhuma composição científica é calculada no portal; critérios e proveniência detalhados permanecem na Inspeção TIRH."}</p>
+        ? "A intensidade de cada Vetor ganha significado pela direção funcional, pelo sentido adaptativo e pela interação com as demais forças. A Resultante expressa essa organização; sua magnitude global só aparece quando estiver estabelecida."
+        : "A Resultante reúne as forças que organizam a resposta à exigência. Observe a intensidade, a direção funcional e o sentido regulatório; propriedades ainda não sustentadas pela evidência permanecem explicitamente indisponíveis."}</p>
     </section>
   );
 }
@@ -1849,7 +1846,6 @@ export function CockpitOperacionalVivo({
   const custoPreservado = secoesPreservadas.find((item) => item.codigo === "MEDIDAS_DE_CUSTO_POR_FASE");
   const fasePreservada = String(estadoDaJanelaCientifica.fase ?? faseCientificaAtual);
   const medidasPreservadasDaFase = (Array.isArray(objeto(custoPreservado).itens) ? (objeto(custoPreservado).itens as unknown[]).filter((item): item is string => typeof item === "string") : []).filter((item) => item.startsWith(`${fasePreservada} —`));
-  const rotaDeclarada = lista(arrCadeia.campos).find((item) => item.codigo === "ARR-01" && item.disponivel === true);
   const candidatasDeRota = lista(rotaDominanteCadeia.candidatas);
 
   const cicloCadeia = objeto(cadeiaCientifica.pre_treino_pos);
@@ -2450,10 +2446,22 @@ export function CockpitOperacionalVivo({
           {medidasPreservadasDaFase.map((item) => <p key={item}>{item}</p>)}
         </section>
       ) : null}
-      <section className="hx-preserved-condition" aria-label="Rota regulatória dominante">
-        <header><small>ROTA REGULATÓRIA DOMINANTE</small><strong>{rotaDeclarada ? texto(rotaDeclarada.valor) : "Ainda não estabelecida nesta sessão"}</strong></header>
-        {rotaDeclarada ? <p>Rota declarada pelo participante na anamnese. Sua confirmação na sessão depende da resposta observada.</p> : null}
-        {candidatasDeRota.length ? <details><summary>Rotas candidatas a confirmar ({candidatasDeRota.length})</summary>{candidatasDeRota.map((item, index) => <p key={`${texto(item.codigo_candidato)}-${index}`}>{texto(item.nome_candidato)} · confirmação profissional pendente</p>)}</details> : <p>A rota dominante exige evidências de como o participante sustentou, perdeu e recuperou a organização diante da demanda.</p>}
+      <section className="hx-preserved-condition hx-regulatory-routes" aria-label="ARR · Análise das Rotas Regulatórias">
+        <header><small>ARR · ANÁLISE DAS ROTAS REGULATÓRIAS</small><strong>O que a rota resolve, quanto custa e o que precisa mudar</strong></header>
+        <p>A anamnese apresenta a experiência do participante. A resposta à tarefa e a recuperação durante a sessão permitem examinar como essa rota se manifesta.</p>
+        <dl className="hx-regulatory-routes__grid">
+          {lista(arrCadeia.campos).map((campo) => (
+            <div key={texto(campo.codigo)} className={campo.disponivel === true ? "" : "hx-regulatory-routes__missing"}>
+              <dt>{texto(campo.rotulo)}</dt>
+              <dd>{campo.disponivel === true ? texto(campo.valor) : "Ainda sem resposta registrada"}</dd>
+              {campo.codigo === "ARR-01" ? <small>Rota declarada; confirmação pela resposta observada.</small> : null}
+              {campo.codigo === "ARR-03" ? <small>Custo percebido ao manter a rota ao longo do tempo; examine também a mobilização do Polar H10 e do EPOC X.</small> : null}
+              {campo.codigo === "ARR-06" ? <small>NRA · direção adaptativa que o participante pretende desenvolver.</small> : null}
+            </div>
+          ))}
+        </dl>
+        {!lista(arrCadeia.campos).length ? <p>As rotas serão apresentadas a partir da anamnese e das evidências da sessão.</p> : null}
+        {candidatasDeRota.length ? <details><summary>Rotas candidatas a confirmar ({candidatasDeRota.length})</summary>{candidatasDeRota.map((item, index) => <p key={`${texto(item.codigo_candidato)}-${index}`}>{texto(item.nome_candidato)} · confirmação profissional pendente</p>)}</details> : null}
       </section>
 
       {!sessaoFinalizada ? (
@@ -3019,9 +3027,10 @@ export function CockpitOperacionalVivo({
               eyebrow={configuracaoBasalCanonica
                 ? "VETORES BASAIS CANÔNICOS · MATRIZ VETORIAL"
                 : "VETORES VIVOS · MATRIZ VETORIAL"}
-              title="Nove vetores momentâneos oficiais"
-              aside={<span>Estado atual · atualização canônica</span>}
+              title="Forças que organizam a resposta à exigência"
+              aside={<span>Nove Vetores Regulatórios momentâneos</span>}
             />
+            <details className="hx-live-authorial-details"><summary>Explorar a configuração dos Vetores no gráfico</summary>
             <div className="hx-live-vector-tabs" role="tablist" aria-label="Visões do gráfico vetorial">
               {(["HUMANO", "TAREFA", "SINTESE"] as const).map((visao) => (
                 <button
@@ -3043,6 +3052,7 @@ export function CockpitOperacionalVivo({
                 vectors={vetoresDaVisaoAtual}
               />
             </div>
+            </details>
             <div className="hx-live-vector-list" aria-label="Estado individual dos nove vetores momentâneos oficiais">
               {radarVetorial.map((vetor) => {
                 return (
@@ -3073,7 +3083,7 @@ export function CockpitOperacionalVivo({
         ) : <HxSurface as="section" className="hx-live-vector-stage"><h3>Vetores</h3><p>Definições canônicas indisponíveis. Nenhum vetor substituto foi criado.</p></HxSurface>}
 
         <section className="hx-live-intelligence-instruments" aria-label="Instrumentos de Inteligência Regulatória Humana">
-          <section className="hx-live-primary-physiology" aria-label="Superfícies fisiológicas principais">
+          {!(modoHistorico && medidasPreservadasDaFase.length > 0) ? <section className="hx-live-primary-physiology" aria-label="Superfícies fisiológicas principais">
             <AtividadeDasBandasEeg
               fonte={eeg}
               marcadores={marcadores}
@@ -3086,11 +3096,13 @@ export function CockpitOperacionalVivo({
             />
           </section>
 
+          : null}
+
           <HxSurface as="section" className="hx-live-intelligence-instrument">
             <HxSectionHeader
               eyebrow="RESULTANTE · IIRH · TENDÊNCIA"
               title="Dinâmica da Inteligência Regulatória Humana"
-              aside={<span>Somente propriedades calculadas pelo núcleo</span>}
+              aside={<span>Intensidade · direção funcional · sentido regulatório</span>}
             />
             <DinamicaDaInteligenciaRegulatoria
               vetores={radarVetorial}
