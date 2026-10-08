@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {chaveDoRegistro, aceitarResposta, recuperarRascunho, novoRascunho} from '../lib/registro-integrado.ts';
+import {chaveDoRegistro, aceitarResposta, recuperarRascunho, novoRascunho, preservarValidacaoRecusada} from '../lib/registro-integrado.ts';
 import {reamostrar16k} from '../lib/voz-local.ts';
 test('diário isola organização, participante, sessão e profissional',()=>{
  const base=['o','p','s','u'];const chaves=new Set([chaveDoRegistro(...base)]);
@@ -14,3 +14,24 @@ test('retomada preserva fila idempotente, fase congelada e correções',()=>{
  assert.deepEqual(recuperarRascunho(null),novoRascunho());assert.throws(()=>recuperarRascunho('{'));
 });
 test('áudio reamostrado conserva duração e amplitude sem persistência',()=>{const pcm=new Float32Array(48000).fill(.25);const r=reamostrar16k(pcm,48000);assert.equal(r.length,16000);assert.equal(r[0],.25);assert.equal(r[15999],.25);assert.equal(reamostrar16k(r,16000),r)});
+test('validação recusada por conteúdo libera correção sem descartar a tentativa nem aprovar automaticamente',()=>{
+ for(const status of [400,422]){
+  const r=novoRascunho();const c={acao:'VALIDAR',chave:'original',revisao:4};
+  r.fila=[c,{acao:'NOTA',chave:'nota-preservada'}];r.campos.contexto_e_objetivo='texto corrigido';r.revisaoBase=4;
+  assert.equal(preservarValidacaoRecusada(r,status,'conteúdo recusado','horário'),true);
+  assert.deepEqual(r.fila,[{acao:'NOTA',chave:'nota-preservada'}]);
+  assert.equal(r.campos.contexto_e_objetivo,'texto corrigido');assert.equal(r.revisaoBase,4);
+  assert.deepEqual(r.validacoesRecusadas,[{comando:c,status,motivo:'conteúdo recusado',em:'horário'}]);
+  assert.deepEqual(recuperarRascunho(JSON.stringify(r)),r);
+ }
+});
+test('transporte, autenticação, conflito e demais comandos preservam a fila idempotente',()=>{
+ for(const status of [0,401,403,409,429,500,502,504]){
+  const r=novoRascunho();r.fila=[{acao:'VALIDAR',chave:'mesma-chave'}];const antes=JSON.stringify(r);
+  assert.equal(preservarValidacaoRecusada(r,status,'erro','horário'),false);assert.equal(JSON.stringify(r),antes);
+ }
+ for(const acao of ['SALVAR','NOTA','REVISAR_NOTA','REVISAR_SUGESTOES']){
+  const r=novoRascunho();r.fila=[{acao,chave:'preservada'}];
+  assert.equal(preservarValidacaoRecusada(r,400,'erro','horário'),false);assert.equal(r.fila.length,1);
+ }
+});

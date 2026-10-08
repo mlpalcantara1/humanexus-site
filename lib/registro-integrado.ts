@@ -2,6 +2,7 @@ export type ComandoDeRegistro = Record<string, unknown> & { acao: string; chave:
 export type RascunhoLocal = {
   texto: string; fase: string | null; faseId: string | null;
   fila: ComandoDeRegistro[]; campos: Record<string, string>; revisaoBase: number;
+  validacoesRecusadas?: { comando: ComandoDeRegistro; status: number; motivo: string; em: string }[];
 };
 export function novoRascunho(): RascunhoLocal {
   return { texto: "", fase: null, faseId: null, fila: [], campos: {}, revisaoBase: 0 };
@@ -11,6 +12,15 @@ export function chaveDoRegistro(org: string, participante: string, sessao: strin
 }
 export function aceitarResposta(revisaoAtual: number, resposta: { revisao: number }) {
   return Number.isInteger(resposta.revisao) && resposta.revisao >= revisaoAtual;
+}
+// Uma recusa definitiva de conteúdo não pode bloquear as correções nem ser
+// reaprovada silenciosamente. Falhas de transporte conservam a chave idempotente.
+export function preservarValidacaoRecusada(rascunho: RascunhoLocal, status: number, motivo: string, em: string) {
+  const comando = rascunho.fila[0];
+  if (comando?.acao !== "VALIDAR" || ![400, 422].includes(status)) return false;
+  rascunho.validacoesRecusadas = [...(rascunho.validacoesRecusadas ?? []), { comando, status, motivo, em }];
+  rascunho.fila.shift();
+  return true;
 }
 export const MARCADORES = ["Observação", "Intervenção", "Resposta", "Ponto de atenção", "Limitação", "Recomendação", "Próximo passo", "Devolutiva"];
 export function recuperarRascunho(serializado: string | null): RascunhoLocal {

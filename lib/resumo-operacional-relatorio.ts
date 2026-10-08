@@ -58,7 +58,8 @@ export function resumoOperacionalDoRelatorio(entrada: {
       ...[ ["theta", "Theta"], ["alpha", "Alfa"], ["beta_baixa", "Beta baixa"], ["beta_alta", "Beta alta"], ["gamma", "Gama"] ].map(([codigo,nome]) => {
         const banda = bandas.find(b => b.codigo === codigo || b.nome === codigo) ?? {};
         const unidade = banda.unidade === "potencia_espectral_nativa_cortex" ? "(potência espectral nativa Cortex)" : text(banda.unidade,"unidade não informada");
-        return `${nome}: ${valor(banda.valor_agregado)} ${num(banda.valor_agregado) === null ? "" : unidade} · ${horario(atividade.timestamp)}. Potência recebida; não equivale, isoladamente, a conclusão ou vetor.`;
+        if (num(banda.valor_agregado) === null) return `${nome}: indisponível · sem valor de potência registrado neste recorte.`;
+        return `${nome}: ${valor(banda.valor_agregado)} ${unidade} · ${horario(atividade.timestamp)}. Potência recebida; não equivale, isoladamente, a conclusão ou vetor.`;
       }),
       `Qualidade EEG: ${num(eegValores.qualidade_eeg) === null ? "indisponível" : valor(eegValores.qualidade_eeg)+"%"}; contato: ${num(eegValores.qualidade_de_contato) === null ? "indisponível" : valor(eegValores.qualidade_de_contato)+"%"}; amostragem: ${num(eegValores.qualidade_da_taxa_de_amostragem) === null ? "indisponível" : valor(eegValores.qualidade_da_taxa_de_amostragem)+"%"}. Medidas distintas; contato não substitui validade EEG.`,
       fontesHistoricas.length ? "Recorte histórico reavaliado, com qualidade, fase, horário e associação verificados; não é uma leitura atual nem a média de toda a sessão." : "A disponibilidade e a elegibilidade dos indicadores são independentes da presença de valores de bandas."

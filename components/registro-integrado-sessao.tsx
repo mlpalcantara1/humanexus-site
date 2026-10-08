@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { iniciarTranscricaoLocal, liberarMotorDeVoz, type TranscritorLocal, type DiagnosticoVozLocal } from "@/lib/voz-local";
 import { ResultadoVozLocal } from "@/components/resultado-voz-local";
 import { CAMPOS_PROFISSIONAIS_DO_RELATORIO } from "@/lib/humanexus-report-authority";
-import { aceitarResposta, chaveDoRegistro, MARCADORES, novoRascunho, recuperarRascunho, type RascunhoLocal, type ComandoDeRegistro } from "@/lib/registro-integrado";
+import { aceitarResposta, chaveDoRegistro, MARCADORES, novoRascunho, recuperarRascunho, preservarValidacaoRecusada, type RascunhoLocal, type ComandoDeRegistro } from "@/lib/registro-integrado";
 
 type Registro = Record<string, unknown>;
 type Sugestao = { campo: string; texto: string; assinatura: string; referencias: string[]; versao: string; ja_possui_autoria: boolean };
@@ -102,7 +102,7 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
     const d = await r.json();
     if (!r.ok) {
       if (r.status === 409) { conflitoRef.current = true; if (ativo.current) setConflito(true); }
-      throw new Error(d.erro?.mensagem ?? "Falha de comunicação. O rascunho permanece neste navegador.");
+      throw Object.assign(new Error(d.erro?.mensagem ?? "Falha de comunicação. O rascunho permanece neste navegador."), { status: r.status });
     }
     if (d.identificador_da_sessao !== sessao || d.identificador_do_participante !== participante || d.identificador_da_organizacao !== org || d.profissional !== usuario) throw new Error("Resposta fora do contexto atual; nenhum texto foi aplicado.");
     return d as Resumo;
@@ -130,7 +130,14 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
         if (cmd.acao === "VALIDAR") window.dispatchEvent(new CustomEvent("humanexus:registro-validado", { detail: { sessao, participante, org } }));
         setMensagem(cmd.acao === "VALIDAR" ? "Versão validada, relatório e longitudinal preservados." : cmd.acao === "REVISAR_SUGESTOES" ? "Decisão sobre o rascunho salva. A aprovação final e o relatório ainda dependem da sua confirmação." : "Salvo no servidor. Rascunho recuperável.");
       }
-    } catch (e) { if (ativo.current) setMensagem(e instanceof Error ? e.message : "Não foi possível salvar. Texto preservado para reenvio."); }
+    } catch (e) {
+      if (ativo.current) {
+        const motivo = e instanceof Error ? e.message : "Não foi possível salvar. Texto preservado para reenvio.";
+        const recusada = preservarValidacaoRecusada(local.current, Number(obj(e).status), motivo, new Date().toISOString());
+        if (recusada) { setConfirmar(false); persistir(); }
+        setMensagem(recusada ? `${motivo} Corrija o rascunho e confirme novamente. A tentativa recusada permanece preservada; não houve aprovação.` : motivo);
+      }
+    }
     finally { enviando.current = false; if (ativo.current) setSalvando(false); }
   };
   const sincronizarRef = useRef(sincronizar); sincronizarRef.current = sincronizar;

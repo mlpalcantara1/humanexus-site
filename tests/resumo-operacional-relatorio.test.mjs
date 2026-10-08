@@ -22,4 +22,5 @@ test("sem dados não apresenta zeros, ganho ou recomendação fabricada", () => 
   assert.ok(texto.includes("Theta: indisponível"));
   assert.ok(texto.includes("Comparação desde a primeira sessão indisponível"));
   assert.ok(!texto.includes("RMSSD: 0"));
+  assert.ok(!texto.includes("Potência recebida"));
 });
