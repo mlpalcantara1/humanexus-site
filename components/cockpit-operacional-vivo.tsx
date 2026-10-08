@@ -3176,6 +3176,7 @@ export function CockpitOperacionalVivo({
         </details>
       </div>
 
+      <details className="hx-live-authorial-details"><summary>Macrocampos e confirmação profissional</summary>
       <SinteseValidacaoTirhV1
         estado={estado}
         indicadoresDesatualizados={{
@@ -3184,6 +3185,7 @@ export function CockpitOperacionalVivo({
         }}
         validarClaimTirhV1={validarClaimTirhV1}
       />
+      </details>
 
       <section
         id="hx-inspection-level"
@@ -3538,6 +3540,7 @@ export function CockpitOperacionalVivo({
         </details>
       ) : null}
 
+      <details className="hx-live-authorial-details"><summary>Intervenção e histórico de registros</summary>
       <section id="hx-intervention-level" className="hx-live-conduction" aria-label="Condução profissional da sessão">
         <div className="hx-live-intervention">
           <header><small>{sessaoBaseline ? "CONDUÇÃO DA REFERÊNCIA INICIAL" : "INTERVENÇÃO DA SESSÃO"}</small><strong>{sessaoBaseline ? "Referência regulatória independente" : texto(thx.nome, "Nenhum treinamento selecionado")}</strong></header>
@@ -3578,6 +3581,8 @@ export function CockpitOperacionalVivo({
           </ol>
         </div>
       </section>
+
+      </details>
 
       {erro ? <p className="hx-module__error">{portuguesVisivel(erro)}</p> : null}
     </section>
