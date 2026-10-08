@@ -884,7 +884,7 @@ export async function GET(request: Request) {
             incluirFormulacoesNoEscopo:
               url.searchParams.get("visao") === "formulacao",
             incluirLeituraDocumental:
-              url.searchParams.get("visao") === "relatorio"
+              ["relatorio", "visao-geral", "rotas-regulatorias", "resultante"].includes(url.searchParams.get("visao") ?? "visao-geral")
           });
     if (atualizacaoLeveSolicitada && medirLatencia) {
       const resultadoLeve = resultado as Awaited<
