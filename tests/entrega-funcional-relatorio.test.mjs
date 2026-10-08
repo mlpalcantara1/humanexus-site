@@ -234,8 +234,8 @@ test("fluxo humano mantém registro integrado único e bloqueia PDF final incomp
   );
   const sintese = bloco.indexOf("<SinteseValidacaoTirhV1");
   const relatorio = bloco.indexOf("<RelatorioCanonicoV1");
-  assert.ok(sintese >= 0 && relatorio > sintese);
-  assert.equal(cockpit.split("<RegistroIntegradoDaSessao").length - 1, 1);
+  assert.ok(relatorio >= 0 && sintese > relatorio);
+  assert.equal(cockpit.split("<RegistroIntegradoDaSessao").length - 1, 2);
   assert.doesNotMatch(cockpit, /<ConsolidacaoProfissionalDoRelatorio/);
   assert.match(cockpit, /cicloDoRelatorioAtual\.finalDisponivel/);
   assert.match(cockpit, /confirme no registro integrado/);

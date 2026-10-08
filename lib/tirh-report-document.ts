@@ -15,6 +15,7 @@ import {
 } from "./authoritative-iirh-projection.ts";
 import { portuguesVisivel } from "./portugues-visivel.ts";
 import {
+  itensDeSecoesAutorizadas,
   MENSAGEM_UNICA_DE_INDISPONIBILIDADE,
   projetarMicrotrajetoriaRegulatoria
 } from "./projecao-narrativa-relatorio.ts";
@@ -1283,6 +1284,17 @@ function renderOperacionalFinalConsolidado(
     ? leituraPratica.resultados
     : [MENSAGEM_UNICA_DE_INDISPONIBILIDADE]);
   bloco("02", "Como chegou", leituraPratica.comoChegou);
+  bloco("02A", "Resposta aos estímulos e desempenho", itensDeSecoesAutorizadas(entrada.relatorio, "RESPOSTA_AOS_ESTIMULOS").length
+    ? itensDeSecoesAutorizadas(entrada.relatorio, "RESPOSTA_AOS_ESTIMULOS")
+    : ["Tempo de reação, tempo de decisão, acertos, erros e omissões: medidas não recebidas neste documento. Ausência não significa zero; sinais fisiológicos isolados não permitem derivar essas respostas."]);
+  bloco("02B", "Rota dominante", itensDeSecoesAutorizadas(entrada.relatorio, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS").length
+    ? itensDeSecoesAutorizadas(entrada.relatorio, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS")
+    : ["Rota dominante não recebida como análise admissível desta sessão. Zona predominante não equivale a rota dominante."]);
+  bloco("02C", "Custo autonômico e cognitivo", [
+    "Custo autonômico: não há escore quantitativo de custo recebido neste contrato. FC, RR e RMSSD descrevem resposta fisiológica; isoladamente, não quantificam o custo para manter o equilíbrio.",
+    "Custo cognitivo: não há escore quantitativo de custo recebido neste contrato. Demanda e desempenho precisam de evidências admissíveis; qualidade EEG não equivale a custo cognitivo.",
+    ...itensDeSecoesAutorizadas(entrada.relatorio, "CUSTO_REGULATORIO")
+  ]);
   bloco("03", "Pontos fortes e capacidades observadas", leituraPratica.pontosFortes);
   bloco("04", "Pontos de atenção", leituraPratica.pontosDeAtencao);
   bloco("05", "Resposta ao treinamento", leituraPratica.respostaAoTreinamento);

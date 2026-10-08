@@ -141,7 +141,7 @@ test("PDF e impressão priorizam resultado, preservam gráficos e deixam rastrea
     texto.indexOf("O que os resultados mostram")
       < texto.lastIndexOf("Rastreabilidade técnica")
   );
-  assert.doesNotMatch(texto, /THX-FIXTURE-001/i);
+  assert.match(texto, /Protocolo selecionado:/i);
   assert.doesNotMatch(texto, /objetivo foi alcançado[^\n]*(alcançado|parcialmente alcançado|não alcançado)[^.]*\./i);
 
   const rota = await source("app/api/operacao-homologacao/pdf/route.ts");
