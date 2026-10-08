@@ -565,8 +565,9 @@
 }
 
 .hx-app--executive .hx-live-hud {
-  position: sticky;
-  top: 137px;
+  /* A barra cresce com a evidência e deve rolar sem cobrir comandos de fase. */
+  position: relative;
+  top: auto;
   z-index: 17;
   gap: 1px;
   border-color: rgba(168, 132, 67, 0.23);
