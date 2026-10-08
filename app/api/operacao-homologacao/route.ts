@@ -266,6 +266,7 @@ async function estado(
   selecao: SelecaoDeContexto = {},
   opcoes: {
     incluirFormulacoesNoEscopo?: boolean;
+    incluirLeituraDocumental?: boolean;
     carregamentoInicial?: boolean;
     prepararComando?: boolean;
   } = {}
@@ -353,6 +354,7 @@ async function estado(
     ? `?fase=${encodeURIComponent(faseCientifica)}`
     : "";
   const consultasPrincipaisCompletas: ConsultaEmLote[] = [
+    ...(opcoes.incluirLeituraDocumental ? [{ chave: "registroIntegrado", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/registro-integrado?participante=${encodeURIComponent(participanteId)}`, opcional: true, padrao: {} }] : []),
     { chave: "fases", caminho: `/api/v1/sessoes/${encodeURIComponent(sessaoId)}/fases` },
     { chave: "ctrs", caminho: "/api/v1/ctrs" },
     { chave: "catalogoCtr", caminho: "/api/v1/ctr/catalogo" },
@@ -713,6 +715,7 @@ async function estado(
     sessao,
     estado_operacional: estadoOperacional,
     cockpit_operacional: cockpitOperacional,
+    leitura_documental: registro(registro(principais.registroIntegrado).leitura_documental),
     tirh_v1: tirhV1,
     contrato_cientifico: registro(
       estadoOperacional.contrato_cientifico
@@ -879,7 +882,9 @@ export async function GET(request: Request) {
             carregamentoInicial:
               url.searchParams.get("inicial") === "1",
             incluirFormulacoesNoEscopo:
-              url.searchParams.get("visao") === "formulacao"
+              url.searchParams.get("visao") === "formulacao",
+            incluirLeituraDocumental:
+              url.searchParams.get("visao") === "relatorio"
           });
     if (atualizacaoLeveSolicitada && medirLatencia) {
       const resultadoLeve = resultado as Awaited<

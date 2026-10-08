@@ -124,6 +124,7 @@ type Estado = {
   rastreabilidade: Registro | null;
   populacao_coletiva: Registro;
   relatorios: Registro[];
+  leitura_documental?: Registro;
   formulacoes: Registro[];
   longitudinal: Registro;
   tirh_v1: Registro;
@@ -444,6 +445,7 @@ function RelatorioCanonicoV1({
   estado: Estado;
   relatorio?: Registro;
 }) {
+  const fontesDocumentais = relatorio ?? estado.leitura_documental;
   const projecao = projecaoCanonicaTirhV1(estado);
   const vetoresProjetados = vetoresMomentaneosDaProjecaoV1(estado);
   const vev = vetorLongitudinalDaProjecaoV1(estado);
@@ -568,12 +570,12 @@ function RelatorioCanonicoV1({
       </section>
       <section className="hx-report-canonical__section">
         <h3>Rota dominante e custo para sustentar o funcionamento</h3>
-        {(itensDeSecoesAutorizadas(relatorio, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS", "ARR_DECLARATIVA_DA_ANAMNESE").length
-          ? itensDeSecoesAutorizadas(relatorio, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS", "ARR_DECLARATIVA_DA_ANAMNESE")
+        {(itensDeSecoesAutorizadas(fontesDocumentais, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS", "ARR_DECLARATIVA_DA_ANAMNESE").length
+          ? itensDeSecoesAutorizadas(fontesDocumentais, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS", "ARR_DECLARATIVA_DA_ANAMNESE")
           : ["Rota dominante: não recebida como análise admissível desta sessão. A zona predominante não identifica, por si só, uma rota regulatória."]).map(item => <p key={item}>{item}</p>)}
         <p>Custo autonômico — Polar H10: mobilização e recuperação autonômicas, observadas na frequência cardíaca, nos intervalos RR e na variabilidade cardíaca.</p>
         <p>Custo cognitivo — ondas EEG do EPOC X: mobilização neurocognitiva e variação de Theta, Alpha, Beta baixa, Beta alta e Gamma em relação à referência individual.</p>
-        {itensDeSecoesAutorizadas(relatorio, "CUSTO_REGULATORIO", "MEDIDAS_DE_CUSTO_POR_FASE").map(item => <p key={item}>{item}</p>)}
+        {itensDeSecoesAutorizadas(fontesDocumentais, "CUSTO_REGULATORIO", "MEDIDAS_DE_CUSTO_POR_FASE").map(item => <p key={item}>{item}</p>)}
       </section>
       {textoDaReavaliacaoEeg(leituraCientificaDaInspecao(estado)).map((linha) => <p key={linha}>{linha}</p>)}
       {resumoOperacionalDoRelatorio({ cockpit: estado.cockpit_operacional, ciclo: estado.ciclo, gravacao: estado.gravacao, protocolo: estado.thx_individual, ctr: estado.ctr_individual, longitudinal: estado.longitudinal }).map(secao => (
