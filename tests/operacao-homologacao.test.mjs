@@ -612,7 +612,7 @@ test("Cockpit abre progressivamente e preserva os nove vetores momentâneos vis�
   assert.match(rota, /carregamentoInicial/);
   assert.match(operacional, /VETORES VIVOS · MATRIZ VETORIAL/);
   assert.match(operacional, /AGUARDANDO EVIDÊNCIA/);
-  assert.match(operacional, /INTERVENÇÃO SELECIONADA/);
+  assert.match(operacional, /INTERVENÇÃO DA SESSÃO/);
   assert.match(operacional, /RESPOSTA OBSERVADA/);
   assert.match(
     operacional,
