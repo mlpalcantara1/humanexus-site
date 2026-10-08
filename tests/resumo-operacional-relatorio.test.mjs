@@ -1,6 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resumoOperacionalDoRelatorio } from "../lib/resumo-operacional-relatorio.ts";
+import { resumoOperacionalDoRelatorio, respostaAosEstimulosNoRelatorio } from "../lib/resumo-operacional-relatorio.ts";
+
+test("desempenho separa fases, recusa outro participante e não transforma ausência em zero", () => {
+  const base = { estado_de_validade: "VALIDO", origem: "task_profile", identificador_da_sessao: "S", identificador_do_participante: "P", identificador_da_organizacao: "O", criado_em: "2026-10-08" };
+  const entrada = { sessao: "S", participante: "P", organizacao: "O", evidencias: [
+    { ...base, valor_json: { fase: "TREINO", task: { reaction_time_ms: 420, errors: 0, omissions: 2, accuracy: 90 } } },
+    { ...base, identificador_do_participante: "OUTRO", valor_json: { fase: "POS", task: { errors: 99 } } },
+    { ...base, estado_de_validade: "INVALIDO", valor_json: { fase: "PRE", task: { errors: 77 } } }
+  ] };
+  const antes = structuredClone(entrada);
+  const resultado = respostaAosEstimulosNoRelatorio(entrada);
+  assert.match(resultado.itens[1], /Tempo de reação: 420 ms.*Erros registrados: 0.*Omissões registradas: 2.*Acurácia: 90%/);
+  assert.match(resultado.itens[0], /Erros registrados: não medido/);
+  assert.match(resultado.itens[2], /Erros registrados: não medido/);
+  assert.doesNotMatch(JSON.stringify(resultado), /99|77/);
+  assert.deepEqual(entrada, antes);
+});
 
 test("relatório apresenta grandezas nativas, tempos e ausências sem inventar o PÓS", () => {
   const entrada = { cockpit: { leitura_cientifica: {

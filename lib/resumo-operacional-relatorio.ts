@@ -12,6 +12,43 @@ const horario = (v: unknown) => typeof v === "string" && Number.isFinite(Date.pa
   ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium", timeZone: "America/Manaus" }).format(new Date(v)) : "horário não registrado";
 export type SecaoOperacional = { titulo: string; itens: string[] };
 
+const jsonObj = (v: unknown): Registro => {
+  if (typeof v !== "string") return obj(v);
+  try { return obj(JSON.parse(v)); } catch { return {}; }
+};
+
+/** Exibe medidas de tarefa já admissíveis; não conta pacotes como respostas. */
+export function respostaAosEstimulosNoRelatorio(entrada: {
+  evidencias?: unknown; sessao?: unknown; participante?: unknown; organizacao?: unknown;
+}): SecaoOperacional {
+  const evidencias = rows(entrada.evidencias).filter(e =>
+    e.estado_de_validade === "VALIDO"
+    && e.identificador_da_sessao === entrada.sessao
+    && e.identificador_do_participante === entrada.participante
+    && e.identificador_da_organizacao === entrada.organizacao
+    && e.origem === "task_profile"
+  );
+  const campos = [
+    ["reaction_time_ms", "Tempo de reação", " ms"],
+    ["decision_time_ms", "Tempo de decisão", " ms"],
+    ["errors", "Erros registrados", ""],
+    ["omissions", "Omissões registradas", ""],
+    ["false_positives", "Falsos positivos registrados", ""],
+    ["accuracy", "Acurácia", "%"],
+  ];
+  return { titulo: "Resposta aos estímulos e desempenho", itens: [
+    ...["PRE", "TREINO", "POS"].map(fase => {
+      const registros = evidencias.filter(e => jsonObj(e.valor_json).fase === fase)
+        .sort((a, b) => String(a.criado_em).localeCompare(String(b.criado_em)));
+      const medidas = Object.assign({}, ...registros.map(e => obj(jsonObj(e.valor_json).task))) as Registro;
+      const nome = fase === "PRE" ? "PRÉ" : fase === "POS" ? "PÓS" : fase;
+      return `${nome}: ${campos.map(([codigo, rotulo, unidade]) => `${rotulo}: ${num(medidas[codigo]) === null ? "não medido neste recorte" : valor(medidas[codigo]) + unidade}`).join("; ")}.`;
+    }),
+    "Acertos: contagem de respostas corretas não recebida neste contrato. Acurácia percentual não é quantidade de acertos.",
+    "Sem tentativas de tarefa com estímulo e resposta, os sensores fisiológicos não informam tempo de reação, acertos, erros ou omissões. Ausência de medida não significa desempenho zero."
+  ] };
+}
+
 /** Apresentação da autoridade existente. Não recalcula escores, duração ou recomendações. */
 export function resumoOperacionalDoRelatorio(entrada: {
   cockpit?: unknown; ciclo?: unknown; gravacao?: unknown; protocolo?: unknown;

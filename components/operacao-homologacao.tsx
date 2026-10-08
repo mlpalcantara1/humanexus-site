@@ -1,6 +1,6 @@
 "use client";
 import { textoDaReavaliacaoEeg } from "@/lib/eeg-quality-policy-presentation";
-import { resumoOperacionalDoRelatorio } from "@/lib/resumo-operacional-relatorio";
+import { resumoOperacionalDoRelatorio, respostaAosEstimulosNoRelatorio } from "@/lib/resumo-operacional-relatorio";
 
 import { consultarCockpitComPrazo } from "@/lib/cockpit-loading";
 import { DistribuicaoTemporalCanonica } from "@/components/distribuicao-temporal-canonica";
@@ -44,6 +44,7 @@ import {
   tituloHumanoDoRelatorio
 } from "@/lib/humanexus-report-authority";
 import {
+  itensDeSecoesAutorizadas,
   MENSAGEM_UNICA_DE_INDISPONIBILIDADE,
   projetarMacrotrajetoriaRegulatoria,
   projetarMicrotrajetoriaRegulatoria
@@ -561,6 +562,19 @@ function RelatorioCanonicoV1({
       </header>
 
       <ResultadoRegulatorioDaSessao microtrajetoria={microtrajetoria} />
+      <section className="hx-report-canonical__section">
+        <h3>Resposta aos estímulos e desempenho</h3>
+        {respostaAosEstimulosNoRelatorio({ evidencias: estado.leitura_regulatoria.evidencias, sessao: estado.sessao.identificador, participante: estado.participante.identificador, organizacao: estado.organizacao.identificador }).itens.map(item => <p key={item}>{item}</p>)}
+      </section>
+      <section className="hx-report-canonical__section">
+        <h3>Rota dominante e custo para sustentar o funcionamento</h3>
+        {(itensDeSecoesAutorizadas(relatorio, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS").length
+          ? itensDeSecoesAutorizadas(relatorio, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS")
+          : ["Rota dominante: não recebida como análise admissível desta sessão. A zona predominante não identifica, por si só, uma rota regulatória."]).map(item => <p key={item}>{item}</p>)}
+        <p>Custo autonômico: não há escore quantitativo de custo recebido neste contrato. FC, RR e RMSSD descrevem a resposta fisiológica; isoladamente, não quantificam o custo para manter o equilíbrio.</p>
+        <p>Custo cognitivo: não há escore quantitativo de custo recebido neste contrato. Sua leitura exige relacionar demanda, desempenho e evidências admissíveis; qualidade EEG não equivale a custo cognitivo.</p>
+        {itensDeSecoesAutorizadas(relatorio, "CUSTO_REGULATORIO").map(item => <p key={item}>{item}</p>)}
+      </section>
       {textoDaReavaliacaoEeg(leituraCientificaDaInspecao(estado)).map((linha) => <p key={linha}>{linha}</p>)}
       {resumoOperacionalDoRelatorio({ cockpit: estado.cockpit_operacional, ciclo: estado.ciclo, gravacao: estado.gravacao, protocolo: estado.thx_individual, ctr: estado.ctr_individual, longitudinal: estado.longitudinal }).map(secao => (
         <section className="hx-report-canonical__section" key={secao.titulo}>
@@ -3932,6 +3946,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         </section>
       ) : (
         <>
+          <RelatorioCanonicoV1 estado={estado} relatorio={relatorioAtual} />
+          <RegistroIntegradoDaSessao estado={estado as unknown as Registro} revisar />
           <ReferenciaBaselineResumo estado={estado} />
           <section className="hx-report-operation">
             <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{tituloDoRelatorioAtual}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(relatorioAtual?.criado_em)} · ${cicloDoRelatorioAtual.estado.replaceAll("_", " ")}` : "A geração materializa apenas o rascunho técnico; a autoria profissional vem depois."}</span></div>
@@ -3990,14 +4006,13 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
               {portuguesVisivel(confirmacao)}
             </p>
           ) : null}
-          <SinteseValidacaoTirhV1
+          <details><summary>Decisões científicas e rastreabilidade</summary><SinteseValidacaoTirhV1
             estado={estado as unknown as Registro}
             validarClaimTirhV1={(payload) => {
               void enviar("validar-claim-tirh-v1", { payload });
             }}
           />
-          <RelatorioCanonicoV1 estado={estado} relatorio={relatorioAtual} />
-          <Rastreabilidade estado={estado} />
+          <Rastreabilidade estado={estado} /></details>
         </>
       )}
     </section>
@@ -4195,8 +4210,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           {visao === "coletivo"
             ? null
             : <><CockpitIirhZonaTemporal leitura={leituraCientificaDaInspecao(estado)} cockpit={objeto(estado.cockpit_operacional)} historico={estadoOperacionalTerminal(estado.sessao.estado)} pausado={faseCientificaPausada(estado)} /><details><summary>Referências e rastreabilidade da leitura</summary><DisponibilidadeContinuaIirhZona estado={estado} /></details></>}
-          {visao !== "coletivo" ? <RegistroIntegradoDaSessao
-            estado={estado as unknown as Registro} revisar={visao === "relatorio"}
+          {visao !== "coletivo" && visao !== "relatorio" ? <RegistroIntegradoDaSessao
+            estado={estado as unknown as Registro} revisar={false}
           /> : null}
           {podeConduzirOperacao && (visao === "formulacao" || (visao === "visao-geral" && ["PREPARAR_SESSAO", "DEFINIR_REFERENCIA_BASELINE"].includes(acaoPrincipal))) ? <JornadaParticipante key={`${estado.organizacao.identificador}:${estado.participante.identificador}:${estado.sessao.identificador}`} organizacao={String(estado.organizacao.identificador)} participante={String(estado.participante.identificador)} sessao={String(estado.sessao.identificador)} somentePreparacao={visao !== "formulacao"} /> : null}
           {conteudoDaVisao}

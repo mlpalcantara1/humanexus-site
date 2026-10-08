@@ -23,14 +23,15 @@ test("visão geral e relatório montam o mesmo componente uma única vez por vis
   );
 });
 
-test("fluxo humano da visão relatório preserva Síntese, Validação e Relatório nessa ordem", () => {
+test("relatório apresenta o participante antes da revisão e rastreabilidade", () => {
   const blocoRelatorio = operacao.match(
     /const visaoRelatorio = \([\s\S]*?const visaoColetiva = \(/
   )?.[0] ?? "";
   const sintese = blocoRelatorio.indexOf("<SinteseValidacaoTirhV1");
   const relatorio = blocoRelatorio.indexOf("<RelatorioCanonicoV1");
   assert.ok(sintese >= 0);
-  assert.ok(relatorio > sintese);
+  const revisao = blocoRelatorio.indexOf("<RegistroIntegradoDaSessao");
+  assert.ok(relatorio >= 0 && revisao > relatorio && sintese > revisao);
   assert.match(blocoRelatorio, /validarClaimTirhV1=\{\(payload\) =>[\s\S]*validar-claim-tirh-v1/);
 });
 
