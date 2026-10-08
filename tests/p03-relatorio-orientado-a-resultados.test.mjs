@@ -75,8 +75,8 @@ test("relatório Web preserva indicadores oficiais e move gráficos para o conte
     "PRÉ / TREINO / PÓS",
     "HX-OBS"
   ]) assert.match(bloco, new RegExp(termo));
-  assert.match(bloco, /Direção: \{texto\(resultante\.direcao/);
-  assert.match(bloco, /Sentido: \{texto\(resultante\.sentido/);
+  assert.match(bloco, /Direção funcional: \{texto\(resultante\.direcao_funcional/);
+  assert.match(bloco, /Sentido contextual: \{texto\(resultante\.sentido_contextual/);
   assert.match(bloco, /Tendência: \{texto\(resultante\.tendencia/);
   assert.match(bloco, /<PhaseComparisonChart[\s\S]+phases=\{fases\}/);
   assert.match(bloco, /<CockpitSignalStack/);

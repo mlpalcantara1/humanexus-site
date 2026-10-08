@@ -3,6 +3,7 @@ import { textoDaReavaliacaoEeg } from "./eeg-quality-policy-presentation.ts";
 import { resumoOperacionalDoRelatorio } from "./resumo-operacional-relatorio.ts";
 
 import { decisoesProfissionaisPreservadasTirhV1 } from "./validacao-profissional-tirh-v1.ts";
+import { LEITURA_DOS_MACROCAMPOS, NOMES_DOS_MACROCAMPOS, SIGNIFICADOS_FUNCIONAIS_DOS_VETORES, EXPLICACAO_DA_RESULTANTE } from "./tirh-linguagem-funcional.ts";
 import {
   projetarEstadoFuncionalDoRelatorio,
   resolverIdentidadeDocumental
@@ -16,6 +17,7 @@ import {
 import { portuguesVisivel } from "./portugues-visivel.ts";
 import {
   itensDeSecoesAutorizadas,
+  valoresNarrativos,
   MENSAGEM_UNICA_DE_INDISPONIBILIDADE,
   projetarMicrotrajetoriaRegulatoria
 } from "./projecao-narrativa-relatorio.ts";
@@ -1295,6 +1297,10 @@ function renderOperacionalFinalConsolidado(
     "Custo cognitivo — ondas EEG do EPOC X: mobilização neurocognitiva e variação de Theta, Alpha, Beta baixa, Beta alta e Gamma em relação à referência individual.",
     ...itensDeSecoesAutorizadas(entrada.relatorio, "CUSTO_REGULATORIO", "MEDIDAS_DE_CUSTO_POR_FASE")
   ]);
+  bloco("02D", "Organização Regulatória nos quatro Macrocampos", Object.entries(NOMES_DOS_MACROCAMPOS).map(([codigo, nome]) => {
+    const medidas = vetores.filter(vetor => vetor.macrocampo === nome && vetor.magnitude != null);
+    return `${nome}: ${LEITURA_DOS_MACROCAMPOS[codigo]} ` + (medidas.length ? medidas.map(vetor => `${vetor.nome}: ${vetor.magnitude?.toFixed(1)}`).join("; ") + "." : "As evidências desta sessão ainda não permitem descrever este Campo com medidas vetoriais.");
+  }));
   bloco("03", "Pontos fortes e capacidades observadas", leituraPratica.pontosFortes);
   bloco("04", "Pontos de atenção", leituraPratica.pontosDeAtencao);
   bloco("05", "Resposta ao treinamento", leituraPratica.respostaAoTreinamento);
@@ -1310,7 +1316,7 @@ function renderOperacionalFinalConsolidado(
   );
 
   bloco("12", "Indicadores oficiais integrados à leitura", [
-    `Resultante estrutural: ${texto(resultante.estado, "não materializada")}. Magnitude escalar: não aplicável na TIRH V1.`,
+    `Resultante Regulatória: ${texto(resultante.estado, "evidências insuficientes")}. ${EXPLICACAO_DA_RESULTANTE}`,
     `IIRH: ${iirhAutoritativo.calculado ? `${iirhAutoritativo.valor} / 100 · ${rotuloIirh}` : texto(iirhAutoritativo.motivo, rotuloIirh).replace(/\.+$/, "")}. Zona: ${zona.classificada ? `${texto(zona.codigo ?? zona.nome)} · ${rotuloZona}` : texto(zona.motivo, rotuloZona).replace(/\.+$/, "")}.`,
     trajetoria.length
       ? `Trajetória: ${trajetoria.map((item) => `${item.rotulo} — ${item.valor == null ? "ausente" : item.valor} — ${item.zona}`).join(" · ")}.`
@@ -1343,10 +1349,10 @@ function renderOperacionalFinalConsolidado(
 
   bloco("15", "Nove Vetores momentâneos", [
     `${vetoresCalculados.length}/9 Vetores momentâneos possuem valor oficial neste recorte. ${9 - vetoresCalculados.length} permanecem sem valor; nenhuma ausência foi convertida em zero.`,
-    ...vetoresCalculados.map((vetor) => (
+    ...vetores.map((vetor) => (
     `${vetor.codigo} · ${vetor.nome} · ${vetor.macrocampo}: `
-    + `valor ${vetor.magnitude?.toFixed(1)}; `
-    + `confiança ${vetor.confianca == null ? "não registrada" : `${Math.round(vetor.confianca * 100)}%`}.`
+    + `${SIGNIFICADOS_FUNCIONAIS_DOS_VETORES[vetor.codigo]} `
+    + (vetor.magnitude == null ? "Sem medida nesta sessão." : `Magnitude ${vetor.magnitude.toFixed(1)}; confiança ${vetor.confianca == null ? "não registrada" : `${Math.round(vetor.confianca * 100)}%`}.`)
   ))]);
 
   bloco("16", "VEV longitudinal", [
@@ -1414,7 +1420,7 @@ export async function gerarPdfVisualHumanexus(entrada: EntradaRelatorioHumanexus
     for (const secao of resumoOperacionalDoRelatorio({ cockpit: entrada.cockpitOperacional, ciclo: entrada.ciclo, gravacao: entrada.gravacao, protocolo: entrada.protocoloThx, ctr: entrada.ctr, longitudinal: entrada.longitudinal })) {
       if (y > 590) y = novaPagina(doc, "LEITURA OPERACIONAL", "Continuação dos resultados registrados");
       y = tituloSecao(doc, secao.titulo, y + 12, "");
-      for (const item of secao.itens) {
+      for (const item of valoresNarrativos(secao.itens)) {
         doc.font("Helvetica").fontSize(8.2);
         const altura = doc.heightOfString(item, { width: 455, lineGap: 2 }) + 18;
         if (y + altura > 700) y = novaPagina(doc, "LEITURA OPERACIONAL", secao.titulo);

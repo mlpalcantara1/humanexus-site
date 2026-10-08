@@ -79,7 +79,7 @@ test("linguagem é condicional, nenhuma conclusão determinística é produzida 
   const pdf = await source("lib/tirh-report-document.ts");
   for (const termo of [
     "previsibilidade",
-    "não prevê comportamento específico",
+    "não determina o funcionamento em outras situações",
     "Pontos fortes e capacidades observadas",
     "Pontos de atenção",
     "O que isso significa na prática",
@@ -107,7 +107,7 @@ test("IIRH e Zona do documento não são combinados com estado contínuo incompa
   assert.doesNotMatch(cockpit, /iirhAutoritativo\.valor[^\n]+AGUARDANDO PRIMEIRA REFERÊNCIA VÁLIDA/);
 });
 
-test("gráficos vazios são omitidos e Vetores ausentes são resumidos sem lista técnica", async () => {
+test("gráficos vazios são omitidos e os nove Vetores mostram significado e ausência de medida", async () => {
   const cockpit = await source("components/operacao-homologacao.tsx");
   const pdf = await source("lib/tirh-report-document.ts");
   assert.match(cockpit, /fasesComComparacao\.length >= 2 \|\| trilhasDoRelatorio\.length > 0/);
@@ -119,7 +119,8 @@ test("gráficos vazios são omitidos e Vetores ausentes são resumidos sem lista
   assert.match(pdf, /vetoresCalculados\.length >= 3/);
   assert.match(pdf, /pontosDaTrajetoria >= 2/);
   assert.match(pdf, /9 - vetoresCalculados\.length/);
-  assert.doesNotMatch(pdf, /vetores\.map\(\(vetor\) => \(\s*`\$\{vetor\.codigo\}.*ausente/s);
+  assert.match(pdf, /SIGNIFICADOS_FUNCIONAIS_DOS_VETORES\[vetor\.codigo\]/);
+  assert.match(pdf, /vetor\.magnitude == null \? "Sem medida nesta sessão\."/);
 });
 
 test("longitudinal só apresenta evolução quando há comparabilidade declarada", () => {

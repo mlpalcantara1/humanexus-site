@@ -1,10 +1,10 @@
 type Registro = Record<string, unknown>;
 
 export const MENSAGEM_UNICA_DE_INDISPONIBILIDADE =
-  "Este aspecto ainda não possui consolidação profissional suficiente para integrar o resultado.";
+  "A leitura deste aspecto ainda aguarda interpretação profissional.";
 
 export const LINGUAGEM_DE_PREVISIBILIDADE_CONDICIONAL =
-  "Somente evidências admissíveis e demanda comparável permitem descrever a organização regulatória, os recursos disponíveis e a resposta observada no contexto. Sem evidência suficiente, nenhuma tendência ou resposta adaptativa é afirmada. Esta leitura não prevê comportamento específico nem resultado futuro.";
+  "Esta leitura descreve os recursos mobilizados, a resposta à exigência e a recuperação nas condições observadas. Mudanças entre momentos precisam ser relacionadas à tarefa, ao contexto e à qualidade das medidas. Aspectos não observados permanecem sem conclusão; o resultado de uma sessão não determina o funcionamento em outras situações.";
 
 export const MENSAGEM_DE_CONFIABILIDADE_PENDENTE =
   "AGUARDANDO CONSOLIDAÇÃO PROFISSIONAL DA CONFIABILIDADE OPERACIONAL.";

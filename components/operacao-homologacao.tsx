@@ -1,5 +1,6 @@
 "use client";
 import { textoDaReavaliacaoEeg } from "@/lib/eeg-quality-policy-presentation";
+import { LEITURA_DOS_MACROCAMPOS, SIGNIFICADOS_FUNCIONAIS_DOS_VETORES, EXPLICACAO_DA_RESULTANTE } from "@/lib/tirh-linguagem-funcional";
 import { resumoOperacionalDoRelatorio, respostaAosEstimulosNoRelatorio } from "@/lib/resumo-operacional-relatorio";
 
 import { consultarCockpitComPrazo } from "@/lib/cockpit-loading";
@@ -496,7 +497,7 @@ function RelatorioCanonicoV1({
   };
   const vetores = Object.entries(nomesVetoriais).map(([codigo, [nome, significado]]) => {
     const registro = vetoresProjetados.find((item) => codigoDoVetor(item) === codigo);
-    return { codigo, nome, significado, registro };
+    return { codigo, nome, significado: SIGNIFICADOS_FUNCIONAIS_DOS_VETORES[codigo] ?? significado, registro };
   });
   const vetoresCalculaveis = vetores.filter(({ registro }) => {
     if (!registro) return false;
@@ -624,24 +625,32 @@ function RelatorioCanonicoV1({
       </section>
 
       <section className="hx-report-canonical__section">
+        <h3>Organização Regulatória nos quatro Macrocampos</h3>
+        <div className="hx-report-vector-grid">
+          {estado.ciencia.macrocampos.map(campo => {
+            const codigo = codigoDoMacrocampo(campo);
+            const definicoes = estado.ciencia.vetores.filter(vetor => texto(valorDoRegistro(vetor, "macrofield_code", "codigo_do_macrocampo"), "") === codigo);
+            const medidas = definicoes.map(definicao => vetores.find(vetor => vetor.codigo === codigoDoVetor(definicao))).filter(vetor => vetor && typeof (vetor.registro?.magnitude ?? vetor.registro?.valor ?? vetor.registro?.value) === "number");
+            return <article key={codigo}><strong>{nomeDoMacrocampo(campo)}</strong><p>{LEITURA_DOS_MACROCAMPOS[codigo]}</p>{medidas.length ? medidas.map(vetor => <p key={vetor!.codigo}>{vetor!.nome}: {String(vetor!.registro?.magnitude ?? vetor!.registro?.valor ?? vetor!.registro?.value)}.</p>) : <p>As evidências desta sessão ainda não permitem descrever este Campo com medidas vetoriais.</p>}</article>;
+          })}
+        </div>
+      </section>
+
+      <section className="hx-report-canonical__section">
         <small>04 · NOVE VETORES MOMENTÂNEOS</small>
         <h3>{vetoresCalculaveis.length}/9 calculáveis</h3>
         <p>{vetoresCalculaveis.length === 9
           ? "Os nove valores oficiais estão disponíveis neste recorte."
           : `${9 - vetoresCalculaveis.length} vetor(es) permanecem sem valor oficial neste recorte. A ausência não foi convertida em zero.`}</p>
         <div className="hx-report-vector-grid">
-          {vetores.filter(({ registro }) => {
-            if (!registro) return false;
-            return [registro.magnitude, registro.valor, registro.value]
-              .some((valor) => typeof valor === "number");
-          }).map(({ codigo, nome, significado, registro }) => {
+          {vetores.map(({ codigo, nome, significado, registro }) => {
             const valor = registro?.magnitude ?? registro?.valor ?? registro?.value;
             const confianca = registro?.confianca ?? registro?.confiabilidade;
             const fontes = lista(registro?.fontes).map(String);
             return <article key={codigo} className={registro ? "" : "is-missing"}>
               <small>{codigo}</small><strong>{nome}</strong>
               <p>{significado}</p>
-              <span>Valor: {typeof valor === "number" ? valor : "INDISPONÍVEL"}</span>
+              <span>Magnitude: {typeof valor === "number" ? valor : "Sem medida nesta sessão"}</span>
               {typeof confianca === "number" ? <span>Confiança: {formatarPercentualCanonico(confianca)}</span> : null}
               {fontes.length ? <span>Fonte: {fontes.join(" · ")}</span> : null}
               {texto(registro?.leitura_profissional, "") ? <em>{texto(registro?.leitura_profissional, "")}</em> : null}
@@ -658,10 +667,11 @@ function RelatorioCanonicoV1({
 
       <section className="hx-report-canonical__section">
         <small>06 · RESULTANTE, IIRH, ZONA E TRAJETÓRIA</small>
-        <h3>Estado estrutural da Resultante: {texto(resultante.estado, "NÃO MATERIALIZADA")}</h3>
-        <p>Magnitude escalar: <strong>NÃO APLICÁVEL NA TIRH V1</strong>. {texto(resultante.motivo, "A Resultante descreve a organização vetorial sustentada neste recorte.")}</p>
+        <h3>Resultante Regulatória: {texto(resultante.estado, "EVIDÊNCIAS INSUFICIENTES")}</h3>
+        <p>{EXPLICACAO_DA_RESULTANTE}</p>
+        <details><summary>Definição científica da Resultante</summary><p>Magnitude escalar: <strong>NÃO APLICÁVEL NA TIRH V1</strong>. {texto(resultante.motivo, "A Resultante descreve a organização vetorial sustentada neste recorte.")}</p></details>
         <p>IIRH: {iirhCalculavel ? `${iirhAutoritativo.valor} / 100 · ${rotuloIirh}` : texto(iirhAutoritativo.motivo, rotuloIirh)}. Zona: {zonaAutoritativa.classificada ? `${nomeDaZona(zonaAutoritativa.codigo ?? zonaAutoritativa.nome) ?? texto(zonaAutoritativa.codigo ?? zonaAutoritativa.nome)} · ${rotuloZona}` : texto(zonaAutoritativa.motivo, rotuloZona)}. Trajetória: {estado.leitura_regulatoria.trajetorias.length ? "registro longitudinal localizado" : "não inferível a partir de um único ponto"}.</p>
-        <p>Direção: {texto(resultante.direcao_funcional ?? resultante.direcao, "NÃO INFORMADA PELO NÚCLEO")} · Sentido: {texto(resultante.sentido_contextual ?? resultante.sentido, "NÃO INFORMADO PELO NÚCLEO")} · Tendência: {texto(resultante.tendencia, "NÃO INFORMADA PELO NÚCLEO")}.</p>
+        <p>Direção funcional: {texto(resultante.direcao_funcional ?? resultante.direcao, "não determinada pelas evidências disponíveis")} · Sentido contextual: {texto(resultante.sentido_contextual ?? resultante.sentido, "não determinado pelas evidências disponíveis")} · Tendência: {texto(resultante.tendencia, "sem sequência comparável suficiente")}.</p>
         <p>O próximo registro válido e comparável pode ampliar a leitura temporal sem reclassificar retroativamente esta sessão.</p>
       </section>
 
@@ -1825,12 +1835,12 @@ function MatrizVetorial({
       <TituloDaVisao
         kicker="MATRIZ VETORIAL VIVA"
         titulo="Forças regulatórias organizadas nos quatro campos oficiais."
-        descricao="Ausência de evidência não é zero; nenhuma propriedade humana é preenchida pela Telemetria Bridge."
+        descricao="Recursos mobilizados, exigência da tarefa, contexto e resposta do organismo compõem a organização regulatória do participante."
       />
       <div className="hx-fields-strip">
         {macrocampos.map((campo) => {
           const codigo = codigoDoMacrocampo(campo);
-          return <article key={codigo}><small>{codigo}</small><strong>{nomeDoMacrocampo(campo)}</strong><span>{vetores.filter((vetor) => texto(valorDoRegistro(vetor, "macrofield_code", "codigo_do_macrocampo"), "") === codigo).length} vetor(es)</span></article>;
+          return <article key={codigo}><small>{codigo}</small><strong>{nomeDoMacrocampo(campo)}</strong><p>{LEITURA_DOS_MACROCAMPOS[codigo]}</p><span>{vetores.filter((vetor) => texto(valorDoRegistro(vetor, "macrofield_code", "codigo_do_macrocampo"), "") === codigo).length} vetor(es)</span></article>;
         })}
       </div>
       <div className="hx-vector-table" role="table" aria-label="Matriz Vetorial Viva">
@@ -1858,7 +1868,7 @@ function MatrizVetorial({
       {definicaoSelecionada ? (
         <aside className="hx-vector-inspector" aria-label={`Detalhe do vetor ${codigoDoVetor(definicaoSelecionada)}`}>
           <header><div><small>DETALHE DO VETOR</small><h3>{codigoDoVetor(definicaoSelecionada)} · {nomeDoVetor(definicaoSelecionada)}</h3></div><span>{estadoSelecionado ? "ESTADO DISPONÍVEL" : "SEM EVIDÊNCIA ADMISSÍVEL"}</span></header>
-          <p>{texto(valorDoRegistro(definicaoSelecionada, "description", "descricao"))}</p>
+          <p>{SIGNIFICADOS_FUNCIONAIS_DOS_VETORES[codigoDoVetor(definicaoSelecionada)] ?? texto(valorDoRegistro(definicaoSelecionada, "description", "descricao"))}</p>
           <dl>
             <div><dt>Campo</dt><dd>{texto(valorDoRegistro(definicaoSelecionada, "macrofield_code", "codigo_do_macrocampo"))}</dd></div>
             <div><dt>Magnitude</dt><dd>{valorVetorial(valorDoRegistro(estadoSelecionado ?? {}, "magnitude", "magnitude_json"), "NÃO CALCULÁVEL")}</dd></div>
@@ -1899,8 +1909,8 @@ function ResultanteRegulatoria({ estado, resumida = false }: { estado: Estado; r
     <section className="hx-cockpit-panel hx-resultant">
       <TituloDaVisao
         kicker="RESULTANTE REGULATÓRIA"
-        titulo={resultado ? "Composição vetorial rastreável." : "Aguardando evidência operacional"}
-        descricao="A Resultante é a síntese funcional da configuração vetorial; não é IIRH nem Zona."
+        titulo={resultado ? "Organização Regulatória diante da exigência." : "Evidências insuficientes para a Resultante"}
+        descricao={EXPLICACAO_DA_RESULTANTE}
       />
       <div className="hx-resultant__core">
         <div><small>Estado estrutural</small><strong>{resultado ? texto(valorDoRegistro(resultado, "estado", "estado_processamento")) : "EVIDÊNCIA INSUFICIENTE"}</strong></div>
