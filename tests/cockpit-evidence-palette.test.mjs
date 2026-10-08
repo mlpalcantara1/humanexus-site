@@ -7,14 +7,18 @@ const rota = fs.readFileSync(new URL("../app/api/operacao-homologacao/route.ts",
 const estilos = fs.readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
 test("captura um clique sem nota automatica", () => {
-  assert.match(cockpit, /Um clique durante a execu/);
-  assert.match(cockpit, /Nenhum clique cria nota/);
+  assert.match(cockpit, /Observe e registre durante a sessão/);
+  assert.match(cockpit, /acao: "EVENTO_TAREFA"/);
   assert.match(cockpit, /capturarEventoObjetivo\("ERRO"\)/);
+  assert.match(cockpit, /capturarEventoObjetivo\("ACERTO"\)/);
+  assert.match(cockpit, /capturarEventoObjetivo\("OMISSAO"\)/);
+  assert.match(cockpit, /OBS-REC-001/);
+  assert.match(cockpit, /if \(!await registrarEvidenciaProfissional/);
 });
 
 test("qualificacao explicita usa contrato oficial", () => {
-  assert.match(cockpit, /Âncora oficial/);
-  assert.match(cockpit, /a âncora qualifica a manifestação observada, não atribui nota ao vetor/);
+  assert.match(cockpit, /Manifestação observada/);
+  assert.match(cockpit, /Não é necessário escrever para confirmar as manifestações graduadas/);
   assert.match(cockpit, /Confiança/);
   assert.match(cockpit, /Qualidade/);
   assert.match(cockpit, /NAO_APLICAVEL/);
@@ -32,9 +36,9 @@ test("qualificacao explicita usa contrato oficial", () => {
 test("OBS-SYM-002 preserva significado categorial sem numerizacao", () => {
   assert.match(cockpit, /REGISTRO_CATEGORIAL_SEM_CONTRIBUICAO_NUMERICA/);
   assert.match(cockpit, /Significado atribuído/);
-  assert.match(cockpit, /Resposta estruturada do participante/);
-  assert.match(cockpit, /Síntese profissional contextual/);
-  assert.match(cockpit, /sem polaridade automática/);
+  assert.match(cockpit, /Significado expresso pelo participante/);
+  assert.match(cockpit, /Relação observada com o funcionamento/);
+  assert.match(cockpit, /sem atribuir valor numérico ao Vetor Simbólico/);
   assert.match(cockpit, /categoria_qualitativa/);
   assert.match(cockpit, /resposta_estruturada_do_participante/);
   assert.match(cockpit, /sintese_profissional_contextual/);

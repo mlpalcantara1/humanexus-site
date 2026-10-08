@@ -447,6 +447,7 @@ function RelatorioCanonicoV1({
   relatorio?: Registro;
 }) {
   const fontesDocumentais = relatorio ?? estado.leitura_documental;
+  const medidasDeCusto = itensDeSecoesAutorizadas(fontesDocumentais, "CUSTO_REGULATORIO", "MEDIDAS_DE_CUSTO_POR_FASE");
   const projecao = projecaoCanonicaTirhV1(estado);
   const vetoresProjetados = vetoresMomentaneosDaProjecaoV1(estado);
   const vev = vetorLongitudinalDaProjecaoV1(estado);
@@ -574,9 +575,8 @@ function RelatorioCanonicoV1({
         {(itensDeSecoesAutorizadas(fontesDocumentais, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS", "ARR_DECLARATIVA_DA_ANAMNESE").length
           ? itensDeSecoesAutorizadas(fontesDocumentais, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS", "ARR_DECLARATIVA_DA_ANAMNESE")
           : ["Rota dominante: não recebida como análise admissível desta sessão. A zona predominante não identifica, por si só, uma rota regulatória."]).map(item => <p key={item}>{item}</p>)}
-        <p>Custo autonômico — Polar H10: mobilização e recuperação autonômicas, observadas na frequência cardíaca, nos intervalos RR e na variabilidade cardíaca.</p>
-        <p>Custo cognitivo — ondas EEG do EPOC X: mobilização neurocognitiva e variação de Theta, Alpha, Beta baixa, Beta alta e Gamma em relação à referência individual.</p>
-        {itensDeSecoesAutorizadas(fontesDocumentais, "CUSTO_REGULATORIO", "MEDIDAS_DE_CUSTO_POR_FASE").map(item => <p key={item}>{item}</p>)}
+        {!medidasDeCusto.some(item => item.startsWith("Custo autonômico — fonte:")) ? <><p>Custo autonômico — Polar H10: mobilização e recuperação autonômicas, observadas na frequência cardíaca, nos intervalos RR e na variabilidade cardíaca.</p><p>Custo cognitivo — ondas EEG do EPOC X: mobilização neurocognitiva e variação de Theta, Alpha, Beta baixa, Beta alta e Gamma em relação à referência individual.</p></> : null}
+        {medidasDeCusto.map(item => <p key={item}>{item}</p>)}
       </section>
       {textoDaReavaliacaoEeg(leituraCientificaDaInspecao(estado)).map((linha) => <p key={linha}>{linha}</p>)}
       {resumoOperacionalDoRelatorio({ cockpit: estado.cockpit_operacional, ciclo: estado.ciclo, gravacao: estado.gravacao, protocolo: estado.thx_individual, ctr: estado.ctr_individual, longitudinal: estado.longitudinal }).map(secao => (
@@ -4150,8 +4150,10 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       registrar={(categoria, textoDoRegistro) => {
         void comandos.registro(categoria, textoDoRegistro);
       }}
-      registrarEvidenciaProfissional={(payload) => {
-        void comandos.evidenciaProfissional(payload);
+      registrarEvidenciaProfissional={async (payload) => {
+        const confirmado = await comandos.evidenciaProfissional(payload);
+        if (!confirmado) throw new Error("O registro não foi confirmado. Confira a pendência da sessão.");
+        return true;
       }}
       validarClaimTirhV1={(payload) => {
         void enviar("validar-claim-tirh-v1", { payload });
@@ -4203,7 +4205,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         ) : (
           <>
             {visao === "coletivo" ? seletorContextoColetivo : seletorContexto}
-            {visao === "coletivo" ? null : <ContextoPersistente estado={estado} visao={visao} />}
+            {visao === "coletivo" ? null : <details className="hx-context-details"><summary>Contexto da sessão e finalidade</summary><ContextoPersistente estado={estado} visao={visao} /></details>}
             <AvisoTecnico estado={estado} />
             <NavegacaoInterna visao={visao} selecionar={selecionarVisao} />
           </>
@@ -4219,12 +4221,12 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           </aside>
         ) : null}
         <main className="hx-cockpit-view" data-cockpit-view={visao}>
-          {visao === "coletivo"
+          {visao === "coletivo" || operacional
             ? null
             : <><CockpitIirhZonaTemporal leitura={leituraCientificaDaInspecao(estado)} cockpit={objeto(estado.cockpit_operacional)} historico={estadoOperacionalTerminal(estado.sessao.estado)} pausado={faseCientificaPausada(estado)} /><details><summary>Referências e rastreabilidade da leitura</summary><DisponibilidadeContinuaIirhZona estado={estado} /></details></>}
-          {visao !== "coletivo" && visao !== "relatorio" ? <RegistroIntegradoDaSessao
+          {visao !== "coletivo" && visao !== "relatorio" ? <details className="hx-optional-register"><summary>Nota ou voz — registro complementar opcional</summary><RegistroIntegradoDaSessao
             estado={estado as unknown as Registro} revisar={false}
-          /> : null}
+          /></details> : null}
           {podeConduzirOperacao && (visao === "formulacao" || (visao === "visao-geral" && ["PREPARAR_SESSAO", "DEFINIR_REFERENCIA_BASELINE"].includes(acaoPrincipal))) ? <JornadaParticipante key={`${estado.organizacao.identificador}:${estado.participante.identificador}:${estado.sessao.identificador}`} organizacao={String(estado.organizacao.identificador)} participante={String(estado.participante.identificador)} sessao={String(estado.sessao.identificador)} somentePreparacao={visao !== "formulacao"} /> : null}
           {conteudoDaVisao}
           {operacional && acaoPrincipal !== "PREPARAR_SESSAO"

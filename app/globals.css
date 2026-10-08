@@ -4375,3 +4375,33 @@ button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
 .hx-assisted-review__cards p { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; }
 .hx-assisted-review__cards small { display:block; color:#b4bfb8; }
 @media(max-width:760px) { .hx-assisted-review__cards { grid-template-columns:1fr; } }
+
+/* Condução TIRH: prioridade à condição, à ação e às pendências. */
+.hx-pending-attention {
+  border: 2px solid #e3bd66 !important;
+  background: rgba(227, 189, 102, .12) !important;
+  box-shadow: 0 0 0 3px rgba(227, 189, 102, .09), 0 0 18px rgba(227, 189, 102, .16);
+  padding: 10px;
+}
+.hx-pending-attention::before { content: "● PENDENTE "; color: #f6d890; font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+.hx-context-details > summary, .hx-optional-register > summary, .hx-session-register__optional > summary { cursor: pointer; padding: 12px; color: #cdb274; }
+.hx-evidence-palette__objective button, .hx-evidence-palette__quick button { min-height: 48px; }
+.hx-evidence-palette__objective { flex-wrap: wrap; }
+.hx-live-context-strip { display: none; } /* Contexto disponível no seletor; evita segunda cópia. */
+.hx-live-hud { position: sticky; top: 124px; z-index: 45; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-auto-rows: minmax(68px, auto); align-self: start; }
+.hx-live-hud > div { min-height: 68px; }
+.hx-live-hud > div.is-reference { display: none; }
+.hx-live-hud span { white-space: normal; }
+.hx-app--executive .hx-app__header { min-height: 72px; height: auto; padding-top: 10px; padding-bottom: 10px; }
+.hx-app--executive .hx-app__brand strong { font-size: 17px; }
+.hx-app--executive .hx-app__header-meta { gap: 10px; }
+.hx-live-hud__record strong { font-size: 12px; }
+@media (max-width: 1100px) {
+  .hx-live-hud { top: 124px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .hx-live-hud { top: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .hx-live-hud > div { min-height: 54px; padding: 6px; }
+  .hx-live-hud strong { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .hx-pending-attention { animation: none; } }

@@ -76,7 +76,7 @@ type Props = {
   executarPrincipal: () => void;
   executarSecundaria: (comando: string) => void;
   registrar: (categoria: string, texto: string) => Promise<void> | void;
-  registrarEvidenciaProfissional: (payload: Registro) => Promise<void> | void;
+  registrarEvidenciaProfissional: (payload: Registro) => Promise<boolean>;
   validarClaimTirhV1: (payload: Registro) => Promise<void> | void;
   abrirAnalitico: () => void;
   permitirOperacao: boolean;
@@ -1229,17 +1229,17 @@ export function CockpitOperacionalVivo({
     if (evidenciaEmEnvio || !capturaRapidaPermitida) return;
     setEvidenciaEmEnvio(true);
     try {
-      await registrarEvidenciaProfissional({ acao: "CAPTURAR", codigo_evidencia: codigoEvidencia });
-      setEstadoDaEvidencia(`CAPTURA ${codigoEvidencia} PRESERVADA · QUALIFICAR DEPOIS`);
-    } finally { setEvidenciaEmEnvio(false); }
+      if (!await registrarEvidenciaProfissional({ acao: "CAPTURAR", codigo_evidencia: codigoEvidencia })) { setEstadoDaEvidencia("Registro não confirmado. Confira a pendência antes de tentar novamente."); return; }
+      setEstadoDaEvidencia(`Observação registrada. Confirme sua manifestação por seleção, durante a sessão.`);
+    } catch (causa) { setEstadoDaEvidencia(causa instanceof Error ? causa.message : "Registro não confirmado."); } finally { setEvidenciaEmEnvio(false); }
   };
   const capturarEventoObjetivo = async (codigoEvento: string) => {
     if (evidenciaEmEnvio || !capturaRapidaPermitida) return;
     setEvidenciaEmEnvio(true);
     try {
-      await registrarEvidenciaProfissional({ acao: "EVENTO_TAREFA", codigo_evento: codigoEvento });
+      if (!await registrarEvidenciaProfissional({ acao: "EVENTO_TAREFA", codigo_evento: codigoEvento })) { setEstadoDaEvidencia("Registro não confirmado. Confira a pendência antes de tentar novamente."); return; }
       setEstadoDaEvidencia(`${codigoEvento} PRESERVADO NO INSTANTE ATUAL`);
-    } finally { setEvidenciaEmEnvio(false); }
+    } catch (causa) { setEstadoDaEvidencia(causa instanceof Error ? causa.message : "Registro não confirmado."); } finally { setEvidenciaEmEnvio(false); }
   };
   const validarNarrativasSelecionadas = async (
     decisao: "CONFIRMAR" | "REJEITAR"
@@ -1258,6 +1258,8 @@ export function CockpitOperacionalVivo({
         }`
       );
       setCapturasNarrativasSelecionadas([]);
+    } catch (causa) {
+      setEstadoDaEvidencia(causa instanceof Error ? causa.message : "Registro não confirmado.");
     } finally {
       setEvidenciaEmEnvio(false);
     }
@@ -1276,6 +1278,8 @@ export function CockpitOperacionalVivo({
       setEstadoDaEvidencia(
         "REGISTRO AJUSTADO · CONTEÚDO BRUTO PRESERVADO · AINDA PENDENTE"
       );
+    } catch (causa) {
+      setEstadoDaEvidencia(causa instanceof Error ? causa.message : "Registro não confirmado.");
     } finally {
       setEvidenciaEmEnvio(false);
     }
@@ -1322,7 +1326,7 @@ export function CockpitOperacionalVivo({
       });
       setEstadoDaEvidencia(`${String(captura.codigo_evidencia ?? "EVIDÊNCIA")} QUALIFICADA · CONTEXTO CIENTÍFICO ATUALIZADO`);
       setQualificacoes((atual) => { const proximo = { ...atual }; delete proximo[id]; return proximo; });
-    } finally { setEvidenciaEmEnvio(false); }
+    } catch (causa) { setEstadoDaEvidencia(causa instanceof Error ? causa.message : "Registro não confirmado."); } finally { setEvidenciaEmEnvio(false); }
   };
   const salvarPerfilDaTarefa = async () => {
     const metricas = Object.fromEntries(Object.entries(perfilTarefa).filter(([, valor]) => valor !== "").map(([codigo, valor]) => [codigo, Number(valor)]));
@@ -1341,7 +1345,7 @@ export function CockpitOperacionalVivo({
       });
       setEstadoDaEvidencia("PERFIL DA TAREFA PRESERVADO · SEM DEFAULT");
       setPerfilTarefa({}); setPerfilTarefaAberto(false);
-    } finally { setEvidenciaEmEnvio(false); }
+    } catch (causa) { setEstadoDaEvidencia(causa instanceof Error ? causa.message : "Registro não confirmado."); } finally { setEvidenciaEmEnvio(false); }
   };
   const tipoDaSessao = String(
     objeto(contextoSessao.detalhes_operacionais).tipo_de_sessao
@@ -2398,24 +2402,6 @@ export function CockpitOperacionalVivo({
             ? ` · ${detalheDaOrigem(origemDoIirhContinuo)}`
             : ""}</span>
         </div>
-        <div className="is-reference" data-regulatory-state={disponibilidadeContinua.zonaReferencia.modo}>
-          <small>ZONA · REFERÊNCIA HISTÓRICA</small>
-          <strong>{zonaReferenciaDisponivel
-            ? nomeDaZona(zonaReferencia.codigo ?? zonaReferencia.nome, true) ?? rotuloDaZona(zonaReferencia.codigo ?? zonaReferencia.nome)
-            : "AGUARDANDO PRIMEIRA REFERÊNCIA VÁLIDA"}</strong>
-          <span>{zonaReferenciaDisponivel
-            ? `${detalheDaOrigem(origemDaZonaReferencia)} · ${NOTA_DE_EQUIVALENCIA_HISTORICA}`
-            : "Nenhuma referência autoritativa elegível foi fornecida pelo Núcleo."}</span>
-        </div>
-        <div className="is-reference" data-regulatory-state={disponibilidadeContinua.iirhReferencia.modo}>
-          <small>IIRH · REFERÊNCIA HISTÓRICA</small>
-          <strong>{iirhReferenciaDisponivel
-            ? `${numero(iirhReferencia.valor, 1)} ${texto(iirhReferencia.unidade, "")}`
-            : "AGUARDANDO PRIMEIRA REFERÊNCIA VÁLIDA"}</strong>
-          <span>{iirhReferenciaDisponivel
-            ? detalheDaOrigem(origemDoIirhReferencia)
-            : "Nenhuma referência autoritativa elegível foi fornecida pelo Núcleo."}</span>
-        </div>
         <div>
           <small>Qualidade EEG</small>
           <strong>{qualidadeEegAtual == null ? "SEM LEITURA ATUAL" : percentual(qualidadeEegAtual)}</strong>
@@ -2431,11 +2417,6 @@ export function CockpitOperacionalVivo({
           <strong>{!polarAoVivo ? "SEM LEITURA ATUAL" : rmssdAtual == null ? "NÃO CALCULÁVEL" : `${numero(rmssdAtual, 1)} ms`}</strong>
           <span>{!polarAoVivo ? "Polar H10 · sem amostra atual" : "Janela canônica · atual"}</span>
         </div>
-        <div>
-          <small>RR</small>
-          <strong>{intervaloRrMedioAtual == null ? "SEM LEITURA ATUAL" : `${numero(intervaloRrMedioAtual, 1)} ms`}</strong>
-          <span>{intervaloRrMedioAtual == null ? "Polar H10 · sem amostra atual" : "Intervalo RR médio · Polar H10"}</span>
-        </div>
         <div><small>TEMPO</small><strong>{duracao(
           inicioDoCronometro,
           fimDoCronometro,
@@ -2444,23 +2425,19 @@ export function CockpitOperacionalVivo({
           registroTemporalCanonico.duracao_calculada_em,
           registroTemporalCanonico.cronometro_em_execucao
           )}</strong><span>{tempoCanonicoDoCockpit.rotulo}</span></div>
-        <div className="is-action">
-          <button
-            className="hx-live-hud__record"
-            type="button"
-            onClick={() => abrirRegistroProfissional()}
-            aria-haspopup="dialog"
-            aria-expanded={registroAberto}
-          >
-            <small>REGISTRO PROFISSIONAL</small>
-            <strong>ABRIR REGISTRO</strong>
-            <span>{estadoDoRascunho || "Observação, evento ou intervenção"}</span>
+        <div className={`is-action ${pendentesEvidencia.length ? "hx-pending-attention" : ""}`}>
+          <button className="hx-live-hud__record" type="button" onClick={() => {
+            setPaletaEvidenciaAberta(true);
+            document.getElementById("hx-evidence-professional-palette")?.scrollIntoView({ block: "center", behavior: "auto" });
+          }}>
+            <small>OBSERVAÇÕES POR CLIQUE</small><strong>REGISTRAR</strong>
+            <span>{pendentesEvidencia.length ? `${pendentesEvidencia.length} observação(ões) a confirmar` : "Acerto · erro · omissão · recuperação"}</span>
           </button>
         </div>
       </section>
 
       {!sessaoFinalizada ? (
-        <section className="hx-tirh-preflight" aria-label="Pré-flight operacional TIRH">
+        <section className={`hx-tirh-preflight ${preflightTirh.inicio.bloqueios.length ? "hx-pending-attention" : ""}`} aria-label="Pré-flight operacional TIRH">
           <header>
             <div>
               <small>PRÉ-FLIGHT TIRH</small>
@@ -2536,16 +2513,16 @@ export function CockpitOperacionalVivo({
 
       <section id="hx-evidence-professional-palette" className="hx-evidence-palette" aria-label="Paleta profissional de evidências TIRH">
         <header className="hx-evidence-palette__header">
-          <div><small>CAPTURA PROFISSIONAL CONTEXTUAL</small><strong>Um clique durante a execução. Qualificação depois.</strong><span>Registre evidências por clique; sessão, participante, organização, fase e instante seguem automaticamente. Nenhum clique cria nota e nenhuma captura cria vetor ou interpretação.</span></div>
-          <div className="hx-evidence-palette__status"><b>{pendentesEvidencia.length} pendente(s)</b><span>{qualificadasEvidencia.length} qualificada(s)</span><button type="button" onClick={() => setPaletaEvidenciaAberta((valor) => !valor)}>{paletaEvidenciaAberta ? "Recolher" : "Abrir"}</button></div>
+          <div><small>CAPTURA PROFISSIONAL CONTEXTUAL</small><strong>Observe e registre durante a sessão.</strong><span>Acerto, erro e omissão registram ocorrências da tarefa. Recuperação e demais manifestações regulatórias são observações profissionais; confirme sua manifestação por seleção.</span></div>
+          <div className={`hx-evidence-palette__status ${pendentesEvidencia.length ? "hx-pending-attention" : ""}`}><b>{pendentesEvidencia.length} pendente(s)</b><span>{qualificadasEvidencia.length} qualificada(s)</span><button type="button" onClick={() => setPaletaEvidenciaAberta((valor) => !valor)}>{paletaEvidenciaAberta ? "Recolher" : "Abrir"}</button></div>
         </header>
         {paletaEvidenciaAberta ? <>
-          <p>Use o registro integrado da sessão para ditar ou escrever. Os marcadores científicos abaixo preservam observações para qualificação profissional.</p>
-          <button type="button" onClick={() => setQualificacaoAberta(true)} disabled={!pendentesEvidencia.length}>Qualificar evidências observadas</button>
-          <div className="hx-evidence-palette__objective"><span>EVENTOS OBJETIVOS</span><button type="button" onClick={() => void capturarEventoObjetivo("ERRO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Erro</button><button type="button" onClick={() => void capturarEventoObjetivo("OMISSAO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Omissão</button><button type="button" onClick={() => void capturarEventoObjetivo("FALSO_POSITIVO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Falso positivo</button><em>{capturaRapidaPermitida ? "Captura disponível na fase em execução." : "Captura bloqueada fora de uma fase em execução; qualificação continua disponível."}</em></div>
-          <div className="hx-evidence-palette__quick"><span>ATALHOS</span>{atalhosEvidencia.map((item) => <button key={String(item.codigo)} type="button" title={String(item.definicao ?? "")} onClick={() => void capturarEvidenciaRapida(String(item.codigo))} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}><b>{String(item.nome ?? item.codigo)}</b><small>{String(item.codigo)}</small></button>)}</div>
+          <p>Use os botões no momento observado. A fase e o horário acompanham o registro automaticamente.</p>
+
+          <div className="hx-evidence-palette__objective"><span>EVENTOS OBJETIVOS</span><button type="button" onClick={() => void capturarEventoObjetivo("ACERTO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Acerto</button><button type="button" onClick={() => void capturarEventoObjetivo("ERRO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Erro</button><button type="button" onClick={() => void capturarEventoObjetivo("OMISSAO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Omissão</button><button type="button" onClick={() => void capturarEventoObjetivo("FALSO_POSITIVO")} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}>Falso positivo</button><em>{capturaRapidaPermitida ? "Captura disponível na fase em execução." : "Captura bloqueada fora de uma fase em execução; qualificação continua disponível."}</em></div>
+          <div className="hx-evidence-palette__quick"><span>MANIFESTAÇÕES REGULATÓRIAS</span>{atalhosEvidencia.map((item) => <button key={String(item.codigo)} type="button" title={String(item.definicao ?? "")} onClick={() => void capturarEvidenciaRapida(String(item.codigo))} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}><b>{String(item.codigo) === "OBS-REC-001" ? "Recuperação" : String(item.nome ?? item.codigo)}</b><small>{String(item.codigo)}</small></button>)}</div>
           <details className="hx-evidence-palette__all"><summary>Mais evidências estruturadas</summary><div className="hx-evidence-palette__groups">{catalogoPorComponente.map((grupo) => <details key={grupo.componente}><summary>{grupo.rotulo}</summary><div>{grupo.itens.map((item) => <button key={String(item.codigo)} type="button" title={String(item.definicao ?? "")} onClick={() => void capturarEvidenciaRapida(String(item.codigo))} disabled={!capturaRapidaPermitida || evidenciaEmEnvio}><b>{String(item.nome ?? item.codigo)}</b><small>{String(item.codigo)}</small></button>)}</div></details>)}</div></details>
-          <div className="hx-evidence-palette__actions"><button className={pendentesEvidencia.length ? "is-attention" : ""} type="button" onClick={() => setQualificacaoAberta(true)} disabled={!pendentesEvidencia.length}>Qualificar {pendentesEvidencia.length} pendência(s)</button><button type="button" onClick={() => setPerfilTarefaAberto(true)}>Perfil explícito da tarefa</button><button type="button" onClick={() => abrirRegistroProfissional()}>Registro narrativo</button><span>{estadoDaEvidencia || "Observações qualificadas preservam o contexto científico; somente regras autorais completas autorizam contribuição numérica."}</span></div>
+          <div className="hx-evidence-palette__actions"><button className={pendentesEvidencia.length ? "is-attention" : ""} type="button" onClick={() => setQualificacaoAberta(true)} disabled={!pendentesEvidencia.length}>Confirmar {pendentesEvidencia.length} observação(ões) por seleção</button><button type="button" onClick={() => setPerfilTarefaAberto(true)}>Exigências da tarefa</button><button type="button" onClick={() => abrirRegistroProfissional()}>Nota ou voz (opcional)</button><span role="status" aria-live="polite">{estadoDaEvidencia || "Registros confirmados alimentam a leitura regulatória conforme os critérios da TIRH."}</span></div>
         </> : null}
       </section>
 
@@ -2558,7 +2535,7 @@ export function CockpitOperacionalVivo({
               <button type="button" onClick={() => setQualificacaoAberta(false)}>Voltar ao painel operacional</button>
             </header>
             <p>{semanticaDasAncorasDisponivel
-              ? "Use o contrato oficial: a âncora qualifica a manifestação observada, não atribui nota ao vetor. Confiança e qualidade permanecem dimensões independentes."
+              ? "Selecione como a manifestação ocorreu, se houve oportunidade de observá-la e a qualidade da observação. Não é necessário escrever para confirmar as manifestações graduadas."
               : "A qualificação profissional é preservada sem produzir contribuição numérica enquanto o contrato autoral estiver indisponível."}</p>
             {pendentesNarrativos.length ? (
               <section className="hx-evidence-batch" aria-label="Validação narrativa em lote">
@@ -2588,16 +2565,16 @@ export function CockpitOperacionalVivo({
                     <header><span>{String(captura.fase ?? "FASE")}</span><strong>{String(captura.nome ?? captura.codigo_evidencia ?? "Evidência")}</strong><small>{String(captura.codigo_evidencia ?? "")}</small></header>
                     <p>{String(captura.definicao ?? "")}</p>
                     <div className="hx-evidence-qualification__fields">
-                      <label>Estado<select value={String(q.estado ?? "")} onChange={(evento) => atualizarQualificacao(id, "estado", evento.target.value)}><option value="">Selecionar</option><option value="VALIDA">Válida</option><option value="PARCIAL">Parcial</option><option value="NAO_APLICAVEL">Não aplicável</option><option value="NAO_OBSERVADA">Não observada</option><option value="SEM_OPORTUNIDADE_VALIDA">Sem oportunidade válida</option><option value="EVIDENCIA_INSUFICIENTE">Evidência insuficiente</option><option value="AUSENTE">Ausente</option></select></label>
+                      <label className={!q.estado ? "hx-pending-attention" : ""}>Estado<select value={String(q.estado ?? "")} onChange={(evento) => atualizarQualificacao(id, "estado", evento.target.value)}><option value="">Selecionar</option><option value="VALIDA">Válida</option><option value="PARCIAL">Parcial</option><option value="NAO_APLICAVEL">Não aplicável</option><option value="NAO_OBSERVADA">Não observada</option><option value="SEM_OPORTUNIDADE_VALIDA">Sem oportunidade válida</option><option value="EVIDENCIA_INSUFICIENTE">Evidência insuficiente</option><option value="AUSENTE">Ausente</option></select></label>
                       <label>Oportunidade válida<select value={q.oportunidade_valida === true ? "SIM" : ""} onChange={(evento) => atualizarQualificacao(id, "oportunidade_valida", evento.target.value === "SIM")} disabled={!semanticaDasAncorasDisponivel || estadoSemAncora}><option value="">Confirmar</option><option value="SIM">Sim, confirmada</option></select></label>
                       {registroCategorial
-                        ? <label>Significado atribuído<select value={String(q.categoria_qualitativa ?? "")} onChange={(evento) => atualizarQualificacao(id, "categoria_qualitativa", evento.target.value)} disabled={estadoSemAncora}><option value="">Selecionar categoria</option>{categoriasPermitidas.map((categoria) => <option key={categoria} value={categoria}>{ROTULOS_CATEGORIAS_SIMBOLICAS[categoria] ?? categoria.replaceAll("_", " ")}</option>)}</select></label>
-                        : <label>Âncora oficial<select value={String(q.ancora ?? "")} onChange={(evento) => atualizarQualificacao(id, "ancora", evento.target.value)} disabled={!semanticaDasAncorasDisponivel || estadoSemAncora}><option value="">Selecionar</option><option value="0">0 · Não manifestado</option><option value="1">1 · Incipiente</option><option value="2">2 · Parcial</option><option value="3">3 · Consistente</option><option value="4">4 · Robusta</option></select></label>}
-                      <label>Confiança<select value={String(q.confianca ?? "")} onChange={(evento) => atualizarQualificacao(id, "confianca", evento.target.value)}><option value="">Selecionar</option><option value="baixa">Baixa</option><option value="moderada">Moderada</option><option value="alta">Alta</option></select></label>
-                      <label>Qualidade<select value={String(q.qualidade ?? "")} onChange={(evento) => atualizarQualificacao(id, "qualidade", evento.target.value)}><option value="">Selecionar</option><option value="insuficiente">Insuficiente</option><option value="limitada">Limitada</option><option value="adequada">Adequada</option><option value="elevada">Elevada</option></select></label>
+                        ? <label>Significado atribuído<select value={String(q.categoria_qualitativa ?? "")} onChange={(evento) => { atualizarQualificacao(id, "categoria_qualitativa", evento.target.value); atualizarQualificacao(id, "resposta_estruturada_do_participante", evento.target.value ? `Significado expresso pelo participante: ${ROTULOS_CATEGORIAS_SIMBOLICAS[evento.target.value] ?? evento.target.value}.` : ""); }} disabled={estadoSemAncora}><option value="">Selecionar categoria</option>{categoriasPermitidas.map((categoria) => <option key={categoria} value={categoria}>{ROTULOS_CATEGORIAS_SIMBOLICAS[categoria] ?? categoria.replaceAll("_", " ")}</option>)}</select></label>
+                        : <label className={!estadoSemAncora && (q.ancora == null || q.ancora === "") ? "hx-pending-attention" : ""}>Manifestação observada<select value={String(q.ancora ?? "")} onChange={(evento) => atualizarQualificacao(id, "ancora", evento.target.value)} disabled={!semanticaDasAncorasDisponivel || estadoSemAncora}><option value="">Selecionar</option><option value="0">0 · Não manifestado</option><option value="1">1 · Incipiente</option><option value="2">2 · Parcial</option><option value="3">3 · Consistente</option><option value="4">4 · Robusta</option></select></label>}
+                      <label className={!q.confianca ? "hx-pending-attention" : ""}>Confiança<select value={String(q.confianca ?? "")} onChange={(evento) => atualizarQualificacao(id, "confianca", evento.target.value)}><option value="">Selecionar</option><option value="baixa">Baixa</option><option value="moderada">Moderada</option><option value="alta">Alta</option></select></label>
+                      <label className={!q.qualidade ? "hx-pending-attention" : ""}>Qualidade<select value={String(q.qualidade ?? "")} onChange={(evento) => atualizarQualificacao(id, "qualidade", evento.target.value)}><option value="">Selecionar</option><option value="insuficiente">Insuficiente</option><option value="limitada">Limitada</option><option value="adequada">Adequada</option><option value="elevada">Elevada</option></select></label>
                       {registroCategorial && !estadoSemAncora ? <>
-                        <label className="is-wide">Resposta estruturada do participante<textarea value={String(q.resposta_estruturada_do_participante ?? "")} onChange={(evento) => atualizarQualificacao(id, "resposta_estruturada_do_participante", evento.target.value)} placeholder="Registre o significado atribuído pelo participante." /></label>
-                        <label className="is-wide">Síntese profissional contextual<textarea value={String(q.sintese_profissional_contextual ?? "")} onChange={(evento) => atualizarQualificacao(id, "sintese_profissional_contextual", evento.target.value)} placeholder="Interprete no contexto da ação e da trajetória, sem polaridade automática." /></label>
+                        <p className="is-wide">Marque o significado somente quando expresso pelo participante. A seleção registra essa declaração, sem atribuir valor numérico ao Vetor Simbólico.</p>
+                        <label className={`is-wide ${!q.sintese_profissional_contextual ? "hx-pending-attention" : ""}`}>Relação observada com o funcionamento<select value={String(q.sintese_profissional_contextual ?? "")} onChange={(evento) => atualizarQualificacao(id, "sintese_profissional_contextual", evento.target.value)}><option value="">Selecionar o que foi observado</option>{["O significado expresso participou da organização da ação nesta situação.", "O significado expresso acompanhou dificuldade de reorganização nesta situação.", "O significado expresso acompanhou recuperação da organização nesta situação.", "O significado foi expresso; sua relação com o funcionamento não pôde ser determinada nesta observação."].map(texto => <option key={texto} value={texto}>{texto}</option>)}</select></label>
                       </> : null}
                     </div>
                     <button className="is-primary" type="button" onClick={() => void qualificarCaptura(captura)} disabled={evidenciaEmEnvio}>Qualificar e preservar</button>
@@ -2621,7 +2598,7 @@ export function CockpitOperacionalVivo({
             className="hx-evidence-task-profile"
             role="dialog"
             aria-modal="true"
-            aria-label="Perfil explícito da tarefa"
+            aria-label="Exigências da tarefa"
           >
             <header>
               <div>
@@ -2640,12 +2617,12 @@ export function CockpitOperacionalVivo({
             </p>
             <label className="hx-evidence-task-profile__identifier">
               <span>Identificador da tarefa ou protocolo</span>
-              <input
-                value={identificadorDaTarefa}
-                onChange={(evento) => setIdentificadorDaTarefa(evento.target.value)}
-                maxLength={160}
-                placeholder="Ex.: código oficial da tarefa ou protocolo selecionado"
-              />
+              <select value={identificadorDaTarefa} onChange={(evento) => setIdentificadorDaTarefa(evento.target.value)}>
+                <option value="">Selecionar a tarefa já vinculada</option>
+                {identificadorDaTarefaHidratado ? <option value={identificadorDaTarefaHidratado}>{identificadorDaTarefaHidratado}</option> : null}
+                {thx.codigo && String(thx.codigo) !== identificadorDaTarefaHidratado ? <option value={String(thx.codigo)}>{texto(thx.nome)} · {String(thx.codigo)}</option> : null}
+              </select>
+              <details><summary>Outra tarefa — configuração opcional</summary><input value={identificadorDaTarefa} onChange={(evento) => setIdentificadorDaTarefa(evento.target.value)} maxLength={160} aria-label="Outro identificador de tarefa" /></details>
             </label>
             <div className="hx-evidence-task-profile__grid">
               {metricasDisponiveisNoPerfil.map(([codigo, rotulo]) => (
