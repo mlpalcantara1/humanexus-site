@@ -1847,7 +1847,8 @@ export function CockpitOperacionalVivo({
   const rotaDominanteCadeia = objeto(cadeiaCientifica.rota_dominante);
   const secoesPreservadas = lista(objeto(estado.leitura_documental).secoes);
   const custoPreservado = secoesPreservadas.find((item) => item.codigo === "MEDIDAS_DE_CUSTO_POR_FASE");
-  const medidasPreservadasDaFase = (Array.isArray(objeto(custoPreservado).itens) ? (objeto(custoPreservado).itens as unknown[]).filter((item): item is string => typeof item === "string") : []).filter((item) => item.startsWith(`${faseCientificaAtual} —`));
+  const fasePreservada = String(estadoDaJanelaCientifica.fase ?? faseCientificaAtual);
+  const medidasPreservadasDaFase = (Array.isArray(objeto(custoPreservado).itens) ? (objeto(custoPreservado).itens as unknown[]).filter((item): item is string => typeof item === "string") : []).filter((item) => item.startsWith(`${fasePreservada} —`));
   const rotaDeclarada = lista(arrCadeia.campos).find((item) => item.codigo === "ARR-01" && item.disponivel === true);
   const candidatasDeRota = lista(rotaDominanteCadeia.candidatas);
 
@@ -2444,7 +2445,7 @@ export function CockpitOperacionalVivo({
 
       {modoHistorico && medidasPreservadasDaFase.length > 0 ? (
         <section className="hx-preserved-condition" aria-label="Medidas fisiológicas preservadas da fase">
-          <header><small>CONDIÇÃO REGISTRADA · {faseCientificaAtual === "POS" ? "PÓS" : faseCientificaAtual}</small><strong>Mobilização autonômica e neurocognitiva</strong></header>
+          <header><small>CONDIÇÃO REGISTRADA · {fasePreservada === "POS" ? "PÓS" : fasePreservada}</small><strong>Mobilização autonômica e neurocognitiva</strong></header>
           <p>Medidas reais preservadas, com seus horários. Não representam aquisição ao vivo.</p>
           {medidasPreservadasDaFase.map((item) => <p key={item}>{item}</p>)}
         </section>
