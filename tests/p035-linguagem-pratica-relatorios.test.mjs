@@ -44,21 +44,21 @@ test("resolvedor recupera a linguagem prática sem fabricar interpretação", ()
   `);
   assert.equal(execucao.status, 0, execucao.stderr);
   const leitura = JSON.parse(execucao.stdout);
-  assert.match(leitura.resultados[0], /^Os resultados mostram:/);
-  assert.match(leitura.comoChegou[0], /^Durante a condição observada:/);
-  assert.match(leitura.pontosFortes[0], /^Capacidades e recursos observados:/);
-  assert.match(leitura.pontosDeAtencao[0], /^Pontos de atenção registrados:/);
+  assert.match(leitura.resultados[0], /A sessão documenta reorganização/);
+  assert.match(leitura.comoChegou[0], /Chegou com estabilidade reduzida/);
+  assert.match(leitura.pontosFortes[0], /Recuperação e capacidade/);
+  assert.match(leitura.pontosDeAtencao[0], /Sustentação da resposta/);
   assert.ok(leitura.respostaAoTreinamento.some((item) => item.startsWith("Resposta observada:")));
   assert.ok(leitura.respostaAoTreinamento.some((item) => item.startsWith("PRÉ —")));
   assert.ok(leitura.respostaAoTreinamento.some((item) => item.startsWith("TREINO —")));
   assert.ok(leitura.respostaAoTreinamento.some((item) => item.startsWith("PÓS —")));
-  assert.match(leitura.significadoPratico[0], /^Na prática, a leitura profissional indica:/);
-  assert.match(leitura.desenvolvimento[0], /^O que ainda precisa ser desenvolvido ou confirmado:/);
-  assert.match(leitura.recomendacoes[0], /^O próximo passo recomendado é:/);
+  assert.match(leitura.significadoPratico[0], /A mudança observada é contextual/);
+  assert.match(leitura.desenvolvimento[0], /Manutenção da resposta em sessões comparáveis/);
+  assert.match(leitura.recomendacoes[0], /Repetir a atividade/);
   assert.deepEqual(leitura.devolutivaAoParticipante, [
     "Você conseguiu reorganizar a resposta após a intervenção nesta sessão."
   ]);
-  assert.match(leitura.limitesDaLeitura.at(-1), /não prevê comportamento específico nem resultado futuro/i);
+  assert.match(leitura.limitesDaLeitura.at(-1), /o resultado de uma sessão não determina o funcionamento em outras situações/i);
 });
 
 test("texto técnico é retirado do corpo e seções sem conteúdo são omitidas", () => {

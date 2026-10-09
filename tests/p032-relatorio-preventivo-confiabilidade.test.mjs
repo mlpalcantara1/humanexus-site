@@ -92,7 +92,7 @@ test("linguagem é condicional, nenhuma conclusão determinística é produzida 
     /o operador certamente fará|a plataforma prevê que ocorrerá|o acidente será evitado|o comportamento futuro está comprovado/i
   );
   assert.match(resolver, /LINGUAGEM_TECNICA_INTERNA/);
-  assert.match(pdf, /Nenhum indicador isolado produz conclusão profissional/);
+  assert.match(pdf, /Nenhum indicador isolado equivale a vetor, Resultante, Zona ou decisão profissional/);
 });
 
 test("IIRH e Zona do documento não são combinados com estado contínuo incompatível", async () => {
@@ -115,8 +115,8 @@ test("gráficos vazios são omitidos e os nove Vetores mostram significado e aus
   assert.match(cockpit, /trilha\.id === "quality"[\s\S]+typeof registro\?\.confiabilidade === "number"/);
   assert.match(cockpit, /trilha\.id === "coverage"[\s\S]+typeof registro\?\.cobertura === "number"/);
   assert.doesNotMatch(cockpit, /vetoresCalculaveis\.length >= 3[\s\S]+hx-report-regulatory-charts/);
-  assert.match(pdf, /if \(possuiGraficoOficial\)/);
-  assert.match(pdf, /vetoresCalculados\.length >= 3/);
+  assert.match(pdf, /if \(possuiTrajetoriaLegivel\)/);
+  assert.doesNotMatch(pdf, /const possuiRadarVetorialLegivel = false/);
   assert.match(pdf, /pontosDaTrajetoria >= 2/);
   assert.match(pdf, /9 - vetoresCalculados\.length/);
   assert.match(pdf, /SIGNIFICADOS_FUNCIONAIS_DOS_VETORES\[vetor\.codigo\]/);

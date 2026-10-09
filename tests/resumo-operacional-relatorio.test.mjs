@@ -11,9 +11,8 @@ test("desempenho separa fases, recusa outro participante e não transforma ausê
   ] };
   const antes = structuredClone(entrada);
   const resultado = respostaAosEstimulosNoRelatorio(entrada);
-  assert.match(resultado.itens[1], /Tempo de reação: 420 ms.*Erros registrados: 0.*Omissões registradas: 2.*Acurácia: 90%/);
-  assert.match(resultado.itens[0], /Erros registrados: não medido/);
-  assert.match(resultado.itens[2], /Erros registrados: não medido/);
+  assert.match(resultado.itens[0], /Tempo de reação: 420 ms.*Erros registrados: 0.*Omissões registradas: 2.*Acurácia: 90%/);
+  assert.match(resultado.itens[1], /PRÉ, PÓS: desempenho não medido/);
   assert.doesNotMatch(JSON.stringify(resultado), /99|77/);
   assert.deepEqual(entrada, antes);
 });
@@ -39,4 +38,16 @@ test("sem dados não apresenta zeros, ganho ou recomendação fabricada", () => 
   assert.ok(texto.includes("Comparação desde a primeira sessão indisponível"));
   assert.ok(!texto.includes("RMSSD: 0"));
   assert.ok(!texto.includes("Potência recebida"));
+});
+
+
+test("custos por fase não ganham uma segunda seção com os mesmos sensores", () => {
+  const secoes = resumoOperacionalDoRelatorio({incluirFisiologia:false});
+  assert.ok(!secoes.some(s => /EEG —|Polar e HRV/.test(s.titulo)));
+  assert.ok(secoes.some(s => s.titulo.includes("IIRH e Zonas")));
+});
+test("ausência de desempenho é comunicada uma vez para as fases sem medida", () => {
+  const resultado = respostaAosEstimulosNoRelatorio({});
+  assert.equal(resultado.itens.length,2);
+  assert.equal((resultado.itens.join(" ").match(/desempenho não medido/g) ?? []).length,1);
 });

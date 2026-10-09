@@ -1277,14 +1277,13 @@ function renderOperacionalFinalConsolidado(
 
   const vetoresCalculados = vetores.filter((vetor) => vetor.magnitude != null);
   const pontosDaTrajetoria = trajetoria.filter((item) => item.valor != null).length;
-  const possuiRadarVetorialLegivel = vetoresCalculados.length >= 3;
   const possuiTrajetoriaLegivel = pontosDaTrajetoria >= 2;
-  const possuiGraficoOficial = possuiRadarVetorialLegivel || possuiTrajetoriaLegivel;
 
   const leituraPratica = microtrajetoria.leituraPratica;
   bloco("01", "O que os resultados mostram", leituraPratica.resultados.length
     ? leituraPratica.resultados
     : [MENSAGEM_UNICA_DE_INDISPONIBILIDADE]);
+  bloco("01A", "Capacidade trabalhada", microtrajetoria.etapas.find(etapa => etapa.codigo === "OBJETIVO_DA_SESSAO")?.itens ?? []);
   bloco("02", "Como chegou", leituraPratica.comoChegou);
   bloco("02A", "Resposta aos estímulos e desempenho", itensDeSecoesAutorizadas(entrada.relatorio, "RESPOSTA_AOS_ESTIMULOS").length
     ? itensDeSecoesAutorizadas(entrada.relatorio, "RESPOSTA_AOS_ESTIMULOS")
@@ -1292,15 +1291,12 @@ function renderOperacionalFinalConsolidado(
   bloco("02B", "Rota dominante", itensDeSecoesAutorizadas(entrada.relatorio, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS", "ARR_DECLARATIVA_DA_ANAMNESE").length
     ? itensDeSecoesAutorizadas(entrada.relatorio, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS", "ARR_DECLARATIVA_DA_ANAMNESE")
     : ["Rota dominante não recebida como análise admissível desta sessão. Zona predominante não equivale a rota dominante."]);
-  bloco("02C", "Custo autonômico e cognitivo", [
+  const medidasDeCusto = itensDeSecoesAutorizadas(entrada.relatorio, "CUSTO_REGULATORIO", "MEDIDAS_DE_CUSTO_POR_FASE");
+  bloco("02C", "Custo autonômico e cognitivo", medidasDeCusto.length ? medidasDeCusto : [
     "Custo autonômico — Polar H10: mobilização e recuperação autonômicas, observadas na frequência cardíaca, nos intervalos RR e na variabilidade cardíaca.",
-    "Custo cognitivo — ondas EEG do EPOC X: mobilização neurocognitiva e variação de Theta, Alpha, Beta baixa, Beta alta e Gamma em relação à referência individual.",
-    ...itensDeSecoesAutorizadas(entrada.relatorio, "CUSTO_REGULATORIO", "MEDIDAS_DE_CUSTO_POR_FASE")
+    "Custo cognitivo — ondas EEG do EPOC X: mobilização neurocognitiva e variação de Theta, Alpha, Beta baixa, Beta alta e Gamma em relação à referência individual."
   ]);
-  bloco("02D", "Organização Regulatória nos quatro Macrocampos", Object.entries(NOMES_DOS_MACROCAMPOS).map(([codigo, nome]) => {
-    const medidas = vetores.filter(vetor => vetor.macrocampo === nome && vetor.magnitude != null);
-    return `${nome}: ${LEITURA_DOS_MACROCAMPOS[codigo]} ` + (medidas.length ? medidas.map(vetor => `${vetor.nome}: ${vetor.magnitude?.toFixed(1)}`).join("; ") + "." : "As evidências desta sessão ainda não permitem descrever este Campo com medidas vetoriais.");
-  }));
+  bloco("02D", "Organização Regulatória nos quatro Macrocampos", Object.entries(NOMES_DOS_MACROCAMPOS).map(([codigo, nome]) => `${nome}: ${LEITURA_DOS_MACROCAMPOS[codigo]}`));
   bloco("03", "Pontos fortes e capacidades observadas", leituraPratica.pontosFortes);
   bloco("04", "Pontos de atenção", leituraPratica.pontosDeAtencao);
   bloco("05", "Resposta ao treinamento", leituraPratica.respostaAoTreinamento);
@@ -1320,31 +1316,14 @@ function renderOperacionalFinalConsolidado(
     `IIRH: ${iirhAutoritativo.calculado ? `${iirhAutoritativo.valor} / 100 · ${rotuloIirh}` : texto(iirhAutoritativo.motivo, rotuloIirh).replace(/\.+$/, "")}. Zona: ${zona.classificada ? `${texto(zona.codigo ?? zona.nome)} · ${rotuloZona}` : texto(zona.motivo, rotuloZona).replace(/\.+$/, "")}.`,
     trajetoria.length
       ? `Trajetória: ${trajetoria.map((item) => `${item.rotulo} — ${item.valor == null ? "ausente" : item.valor} — ${item.zona}`).join(" · ")}.`
-      : "Trajetória não inferível: ainda não há pontos válidos e comparáveis suficientes.",
-    "Nenhum indicador isolado produz conclusão profissional."
+      : "Trajetória não inferível: ainda não há pontos válidos e comparáveis suficientes."
   ]);
 
-  if (possuiGraficoOficial) {
-    const alturaDosGraficos = (possuiRadarVetorialLegivel ? 350 : 0)
-      + (possuiTrajetoriaLegivel ? 220 : 0);
-    if (y + alturaDosGraficos > 690) novaContinuacao();
-    y = tituloSecao(doc, "Gráficos regulatórios da sessão", y, "13");
-    doc.fillColor(CORES.suave).font("Helvetica").fontSize(7.8).text(
-      "Somente pontos oficiais disponíveis são desenhados. Ausências não fecham o radar, não completam a série e não são convertidas em zero.",
-      83,
-      y,
-      { width: 455, lineGap: 2 }
-    );
-    if (possuiRadarVetorialLegivel) {
-      desenharRadarVetorial(doc, vetores, 42, y + 38, 112);
-      tabelaVetores(doc, vetores, 305, y + 26, 248);
-      y += 315;
-    }
-    if (possuiTrajetoriaLegivel) {
-      y = tituloSecao(doc, "Evolução oficialmente preservada", y, "14");
-      desenharTrajetoria(doc, trajetoria, 92, y + 8, 420, 155);
-      y += 205;
-    }
+  if (possuiTrajetoriaLegivel) {
+    if (y + 240 > 690) novaContinuacao();
+    y = tituloSecao(doc, "Evolução oficialmente preservada", y, "14");
+    desenharTrajetoria(doc, trajetoria, 92, y + 8, 420, 155);
+    y += 205;
   }
 
   bloco("15", "Nove Vetores momentâneos", [
@@ -1360,7 +1339,7 @@ function renderOperacionalFinalConsolidado(
     "O VEV permanece separado dos nove Vetores momentâneos e exige uma referência inicial mais quatro sessões válidas e comparáveis."
   ]);
 
-  bloco("17", "EEG e indicadores autonômicos recebidos", leiturasFisiologicasRecebidas);
+  if (!medidasDeCusto.length) bloco("17", "EEG e indicadores autonômicos recebidos", leiturasFisiologicasRecebidas);
 
   bloco("18", "Registro profissional e medidas complementares", [
     "As observações e decisões profissionais usadas nesta leitura permanecem vinculadas ao documento validado.",
@@ -1369,11 +1348,9 @@ function renderOperacionalFinalConsolidado(
   ]);
 
   bloco("19", "Rastreabilidade técnica", [
-    `Participante: ${identidade.nomeCompleto} · CPF ${identidade.cpf} · organização ${identidade.organizacao}. Sessão: ${texto(entrada.sessao.nome_operacional, "sessão registrada")} · ${data(entrada.sessao.finalizado_em ?? entrada.sessao.criado_em)}.`,
-    `Documento: ${texto(entrada.relatorio.codigo_publico, texto(entrada.relatorio.identificador))} · versão ${texto(entrada.relatorio.numero_da_versao, "não registrada")} · responsável ${texto(entrada.usuario.nome, "profissional registrado")} · ciência ${texto(projecao.versao_cientifica, "TIRH V1")} · estado ${cicloDocumental.estado.replaceAll("_", " ")}.`,
-    texto(consolidacao.limitacoes, "")
-      ? `Momentos documentais: ${momentos.length} · decisões profissionais preservadas: ${decisoes.length}. Limitações registradas: ${texto(consolidacao.limitacoes, "")}. Fontes, integridade, autoria e estados permanecem vinculados ao documento.`
-      : `Momentos documentais: ${momentos.length} · decisões profissionais preservadas: ${decisoes.length}. Fontes, integridade, autoria, limites e estados permanecem vinculados ao documento.`
+    `Documento: ${texto(entrada.relatorio.codigo_publico, texto(entrada.relatorio.identificador))} · versão ${texto(entrada.relatorio.numero_da_versao, "não registrada")} · ciência ${texto(projecao.versao_cientifica, "TIRH V1")}.`,
+    `Momentos documentais: ${momentos.length} · decisões profissionais preservadas: ${decisoes.length}.`
+
   ]);
 }
 
@@ -1417,7 +1394,7 @@ export async function gerarPdfVisualHumanexus(entrada: EntradaRelatorioHumanexus
   else renderFormulacao(doc, entrada);
   if (tipo === "OPERACIONAL_TIRH" || tipo === "CIENTIFICO_TIRH") {
     let y = novaPagina(doc, "LEITURA OPERACIONAL", "Fases, sinais e referência individual", "Resultados registrados e limites da comparação. Ausências não são completadas.");
-    for (const secao of resumoOperacionalDoRelatorio({ cockpit: entrada.cockpitOperacional, ciclo: entrada.ciclo, gravacao: entrada.gravacao, protocolo: entrada.protocoloThx, ctr: entrada.ctr, longitudinal: entrada.longitudinal })) {
+    for (const secao of resumoOperacionalDoRelatorio({ cockpit: entrada.cockpitOperacional, ciclo: entrada.ciclo, gravacao: entrada.gravacao, protocolo: entrada.protocoloThx, ctr: entrada.ctr, longitudinal: entrada.longitudinal, incluirFisiologia: itensDeSecoesAutorizadas(entrada.relatorio, "MEDIDAS_DE_CUSTO_POR_FASE", "CUSTO_REGULATORIO").length === 0 })) {
       if (y > 590) y = novaPagina(doc, "LEITURA OPERACIONAL", "Continuação dos resultados registrados");
       y = tituloSecao(doc, secao.titulo, y + 12, "");
       for (const item of valoresNarrativos(secao.itens)) {

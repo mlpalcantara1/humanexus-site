@@ -20,6 +20,8 @@ export { claimElegivelParaValidacaoTirhV1 } from "@/lib/validacao-profissional-t
 type Registro = Record<string, unknown>;
 
 type Props = {
+  somenteValidacao?: boolean;
+  ocultarIndicadores?: boolean;
   estado: Registro;
   indicadoresDesatualizados?: { iirh: boolean; zona: boolean };
   validarClaimTirhV1: (payload: Registro) => Promise<void> | void;
@@ -78,6 +80,8 @@ export function resolverAutoridadeSinteseTirhV1(estado: Registro) {
 }
 
 export function SinteseValidacaoTirhV1({
+  somenteValidacao = false,
+  ocultarIndicadores = false,
   estado,
   indicadoresDesatualizados,
   validarClaimTirhV1
@@ -191,6 +195,7 @@ export function SinteseValidacaoTirhV1({
       aria-label="Síntese TIRH operacional autoral V1"
       data-tirh-post-session-flow="synthesis-validation"
     >
+      {!somenteValidacao ? <>
       <header>
         <div>
           <small>TIRH OPERACIONAL AUTORAL V1</small>
@@ -201,7 +206,7 @@ export function SinteseValidacaoTirhV1({
           "TIRH-OPERACIONAL-AUTORAL-1.0.0"
         )}</span>
       </header>
-      <div className="hx-tirh-v1-summary__primary">
+      {!ocultarIndicadores ? <div className="hx-tirh-v1-summary__primary">
         <article>
           <small>Resultante Regulatória</small>
           <strong>{texto(resultanteTirhV1.estado, "NÃO CALCULÁVEL")}</strong>
@@ -241,7 +246,7 @@ export function SinteseValidacaoTirhV1({
           <strong>{claimsPendentesTirhV1.length} ELEGÍVEL(IS)</strong>
           <span>Fatos objetivos e aritmética não são submetidos a revalidação profissional.</span>
         </article>
-      </div>
+      </div> : null}
       <div className="hx-tirh-v1-summary__macrofields">
         {Object.entries(macrocamposTirhV1).map(([codigo, campo]) => {
           const registroDoCampo = objeto(campo);
@@ -256,6 +261,7 @@ export function SinteseValidacaoTirhV1({
           );
         })}
       </div>
+      </> : null}
       <details
         className="hx-tirh-v1-validation"
         open={claimsPendentesTirhV1.length > 0 || decisoesProfissionaisPreservadas.length > 0}

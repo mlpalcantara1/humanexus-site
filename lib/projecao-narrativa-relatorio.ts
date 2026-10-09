@@ -167,8 +167,8 @@ export type LeituraPraticaDaSessao = {
   limitesDaLeitura: string[];
 };
 
-function comIntroducao(introducao: string, valores: unknown[], limite = 2) {
-  return primeiros(valores, limite).map((item) => `${introducao}: ${item}`);
+function comIntroducao(_introducao: string, valores: unknown[], limite = 2) {
+  return primeiros(valores, limite);
 }
 
 function porCodigo(etapas: EtapaNarrativa[], ...codigos: string[]) {
@@ -349,12 +349,6 @@ export function projetarMicrotrajetoriaRegulatoria({
       3
     ),
     respostaAoTreinamento: valoresNarrativos(
-      ...objetivo.map((item) => `Objetivo registrado: ${item}`),
-      ...primeiros([
-        treinamento,
-        consolidacao.intervencao,
-        ...itensDeSecoesAutorizadas(relatorio, "CTR_THX_THX_AER")
-      ], 2).map((item) => `Intervenção realizada: ${item}`),
       ...resposta.map((item) => `Resposta observada: ${item}`),
       ...respostaPorFase
     ).slice(0, 8),

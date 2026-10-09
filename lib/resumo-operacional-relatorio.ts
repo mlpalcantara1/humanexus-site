@@ -37,23 +37,27 @@ export function respostaAosEstimulosNoRelatorio(entrada: {
     ["false_positives", "Falsos positivos registrados", ""],
     ["accuracy", "Acurácia", "%"],
   ];
-  return { titulo: "Resposta aos estímulos e desempenho", itens: [
-    ...["PRE", "TREINO", "POS"].map(fase => {
-      const registros = evidencias.filter(e => jsonObj(e.valor_json).fase === fase)
-        .sort((a, b) => String(a.criado_em).localeCompare(String(b.criado_em)));
-      const medidas = Object.assign({}, ...registros.map(e => obj(jsonObj(e.valor_json).task))) as Registro;
-      const nome = fase === "PRE" ? "PRÉ" : fase === "POS" ? "PÓS" : fase;
-      return `${nome}: ${campos.map(([codigo, rotulo, unidade]) => `${rotulo}: ${num(medidas[codigo]) === null ? "não medido neste recorte" : valor(medidas[codigo]) + unidade}`).join("; ")}.`;
-    }),
-    "Acertos são contagens explícitas de respostas corretas. Acurácia percentual não é quantidade de acertos.",
-    "Sem tentativas de tarefa com estímulo e resposta, os sensores fisiológicos não informam tempo de reação, acertos, erros ou omissões. Ausência de medida não significa desempenho zero."
-  ] };
+  const fases = ["PRE", "TREINO", "POS"].map(fase => {
+    const registros = evidencias.filter(e => jsonObj(e.valor_json).fase === fase)
+      .sort((a, b) => String(a.criado_em).localeCompare(String(b.criado_em)));
+    const medidas = Object.assign({}, ...registros.map(e => obj(jsonObj(e.valor_json).task))) as Registro;
+    const nome = fase === "PRE" ? "PRÉ" : fase === "POS" ? "PÓS" : fase;
+    return { nome, medidas, disponiveis: campos.filter(([codigo]) => num(medidas[codigo]) !== null) };
+  });
+  const semMedidas = fases.filter(fase => !fase.disponiveis.length);
+  const itens = fases.filter(fase => fase.disponiveis.length).map(({nome, medidas, disponiveis}) =>
+    `${nome}: ${disponiveis.map(([codigo, rotulo, unidade]) => `${rotulo}: ${valor(medidas[codigo])}${unidade}`).join("; ")}.`
+    + (disponiveis.length < campos.length ? ` Ainda sem medida: ${campos.filter(([codigo]) => num(medidas[codigo]) === null).map(([,rotulo]) => rotulo).join(", ")}.` : ""));
+  if (semMedidas.length) itens.push(`${semMedidas.map(f => f.nome).join(", ")}: desempenho não medido neste recorte (${campos.map(([,rotulo]) => rotulo).join(", ")}).`);
+  itens.push("Acertos são contagens de respostas corretas; acurácia é percentual. Tempo de reação exige estímulo e resposta temporizados. Ausência de medida não significa zero.");
+  return { titulo: "Resposta aos estímulos e desempenho", itens };
+
 }
 
 /** Apresentação da autoridade existente. Não recalcula escores, duração ou recomendações. */
 export function resumoOperacionalDoRelatorio(entrada: {
   cockpit?: unknown; ciclo?: unknown; gravacao?: unknown; protocolo?: unknown;
-  ctr?: unknown; longitudinal?: unknown;
+  ctr?: unknown; longitudinal?: unknown; incluirFisiologia?: boolean; incluirProtocolo?: boolean;
 }): SecaoOperacional[] {
   const cockpit = obj(entrada.cockpit), leitura = obj(cockpit.leitura_cientifica);
   const temporal = obj(leitura.distribuicao_temporal_das_zonas);
@@ -84,7 +88,7 @@ export function resumoOperacionalDoRelatorio(entrada: {
   const protocolo = obj(entrada.protocolo), ctr = obj(entrada.ctr);
   const baseline = obj(obj(entrada.gravacao).baseline), referencia = obj(baseline.referencia), registro = obj(baseline.registro);
   const longitudinal = projetarMacrotrajetoriaRegulatoria(entrada.longitudinal);
-  return [
+  const secoes = [
     { titulo: "Antes, durante e depois — IIRH e Zonas", itens: antesDuranteDepois },
     { titulo: "Zona Regulatória dominante e tempos", itens: [
       `Zona predominante da sessão: ${nomeDaZona(temporal.zona_predominante) ?? "indisponível"}. ${temporal.inclui_leituras_provisorias === true ? "Inclui classificações provisórias." : ""}`,
@@ -108,7 +112,7 @@ export function resumoOperacionalDoRelatorio(entrada: {
     ] },
     { titulo: "CTR, THX ou THX AER", itens: [
       `CTR vinculado: ${text(ctr.codigo ?? ctr.identificador)} · ${text(ctr.nome)}.`,
-      `Protocolo selecionado: ${text(protocolo.codigo)} · ${text(protocolo.nome)}. Seleção não comprova execução ou efeito. As indicações de treinamento e intervenções registradas permanecem na leitura profissional deste relatório; não são inventadas a partir do nome do protocolo.`
+      ...(entrada.incluirProtocolo === false ? [] : [`Protocolo selecionado: ${text(protocolo.codigo)} · ${text(protocolo.nome)}. Seleção não comprova execução ou efeito. As indicações de treinamento e intervenções registradas permanecem na leitura profissional deste relatório; não são inventadas a partir do nome do protocolo.`])
     ] },
     { titulo: "Baseline individual e comparação longitudinal", itens: [
       `Referência inicial: ${text(referencia.estado)}; registro ${text(registro.identificador)}; ${horario(registro.finalizado_em)}.`,
@@ -117,4 +121,7 @@ export function resumoOperacionalDoRelatorio(entrada: {
       ...(!longitudinal.length ? ["Comparação desde a primeira sessão indisponível neste documento: não foi recebida uma evolução longitudinal admissível. Não se afirma melhora ou piora sem referência e sessões comparáveis."] : [])
     ] }
   ];
+  return entrada.incluirFisiologia === false
+    ? secoes.filter(secao => !["EEG — bandas e qualidade", "Polar e HRV — registro fisiológico"].includes(secao.titulo))
+    : secoes;
 }

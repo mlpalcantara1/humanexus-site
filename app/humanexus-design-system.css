@@ -2299,7 +2299,7 @@
 
 /* Barra vital compacta: prevalece sobre os estilos anteriores do modo executivo. */
 .hx-app--executive .hx-app__header { min-height:72px; padding-block:10px; }
-.hx-app--executive .hx-live-hud { position:sticky; top:124px; z-index:45; grid-template-columns:repeat(7,minmax(0,1fr)); grid-auto-rows:minmax(74px,auto); background:#071014; }
+.hx-app--executive .hx-live-hud { position:sticky; top:124px; z-index:45; grid-template-columns:repeat(5,minmax(0,1fr)); grid-auto-rows:minmax(74px,auto); background:#071014; }
 .hx-app--executive .hx-live-hud > div { min-height:74px; }
 .hx-app--executive .hx-live-hud strong { font-size:14px; white-space:normal; line-height:1.2; }
 .hx-app--executive .hx-live-hud span { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
@@ -2322,3 +2322,9 @@
 .hx-regulatory-routes__grid small { display:block; margin-top:8px; color:#a5b7c7; line-height:1.5; }
 .hx-regulatory-routes__missing { border-color:rgba(225,177,78,.55)!important; background:rgba(225,177,78,.06); }
 @media(max-width:700px) { .hx-regulatory-routes__grid { grid-template-columns:1fr; } }
+
+/* Uma hierarquia compacta para leitura, operação e aprofundamento. */
+.hx-preserved-condition { border-radius:14px; }
+.hx-app--executive .hx-live-hud { border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.28); }
+.hx-app--executive .hx-live-hud > div { padding:10px 12px; }
+.hx-report-canonical__section { scroll-margin-top:140px; }

@@ -1156,7 +1156,7 @@ export function CockpitOperacionalVivo({
   const [registroAberto, setRegistroAberto] = useState(false);
   const [registroEmEnvio, setRegistroEmEnvio] = useState(false);
   const [estadoDoRascunho, setEstadoDoRascunho] = useState("");
-  const [paletaEvidenciaAberta, setPaletaEvidenciaAberta] = useState(true);
+  const [paletaEvidenciaAberta, setPaletaEvidenciaAberta] = useState(false);
   const [qualificacaoAberta, setQualificacaoAberta] = useState(false);
   const [perfilTarefaAberto, setPerfilTarefaAberto] = useState(false);
   const [evidenciaEmEnvio, setEvidenciaEmEnvio] = useState(false);
@@ -2301,80 +2301,20 @@ export function CockpitOperacionalVivo({
             "JANELA EM FORMAÇÃO"
           ).replaceAll("_", " ")}</strong>
           <span>
+            {modoHistorico ? "Leitura preservada; não é apresentada como valor atual. " : ""}
             Fase {texto(estadoDaJanelaCientifica.fase, "ainda não iniciada")}
             {" · "}{numero(estadoDaJanelaCientifica.quantidade_de_vetores_calculados)} de 9 vetores momentâneos calculáveis pelo Núcleo.
           </span>
-          {requisitosDaJanela.length ? (
-            <span>
-              Requisitos ainda não atendidos: {requisitosDaJanela
-                .slice(0, 9)
-                .map((item) => `${texto(item.vetor)} — ${texto(item.motivo, "evidência canônica insuficiente").replaceAll("_", " ")}`)
-                .join("; ")}.
-            </span>
-          ) : null}
-          {!iirhCanonicoCalculado ? (
-            <span>
-              IIRH: {componentesIirhAusentes.length
-                ? `componentes funcionais ausentes — ${componentesIirhAusentes.map((item) => texto(item)).join(" · ")}`
-                : texto(iirhAutoritativo.motivo, "motivo autoritativo não informado pelo Núcleo")}
-              .
-            </span>
-          ) : null}
-          {!zonaCanonicaCalculada ? (
-            <span>
-              Zona: {texto(
-                zonaContinua.motivo
-                ?? zonaTirhV1.motivo
-                ?? zona.motivo,
-                precondicoesDaZonaAusentes.length
-                  ? precondicoesDaZonaAusentes.join(" · ")
-                  : "critérios semânticos multifonte e validação profissional ainda insuficientes"
-              )}.
-            </span>
-          ) : null}
-          {!resultanteCalculada ? (
-            <span>
-              Resultante, direção e sentido: {vetoresDaResultanteAusentes.length
-                ? `vetores ausentes — ${vetoresDaResultanteAusentes.map((item) => texto(item)).join(" · ")}`
-                : texto(resultanteAutoritativa.motivo ?? resultanteAutoritativa.justificativa, "configuração multivetorial insuficiente")}
-              .
-            </span>
-          ) : null}
-          {resultanteCalculada
-          && !texto(
-            resultanteAutoritativa.direcao_funcional
-            ?? resultanteAutoritativa.vetor_dominante,
-            ""
-          ) ? (
-            <span>
-              Direção: as interdependências explícitas admissíveis ainda não sustentam uma direção funcional única.
-            </span>
-          ) : null}
-          {resultanteCalculada
-          && !texto(resultanteAutoritativa.sentido_contextual, "") ? (
-            <span>
-              Sentido: as interdependências explícitas admissíveis ainda não sustentam um sentido contextual único.
-            </span>
-          ) : null}
-          {Object.keys(referenciaHistoricaAnterior).length ? (
-            <span>
-              A última leitura assinada da fase anterior permanece disponível somente como referência histórica identificada; não é apresentada como valor atual.
-            </span>
-          ) : null}
-          {Object.keys(referenciaCongeladaDaPausa).length ? (
-            <span>
-              Sessão pausada: a última leitura autoritativa está preservada como referência histórica e não representa resultado atual.
-            </span>
-          ) : null}
+
         </div>
       ) : null}
 
-      <section className="hx-live-context-strip" aria-label="Contexto autorizado da sessão">
+      <details className="hx-live-authorial-details"><summary>Contexto da sessão</summary><section className="hx-live-context-strip" aria-label="Contexto autorizado da sessão">
         <div><small>ORGANIZAÇÃO</small><strong>{texto(organizacao.nome)}</strong></div>
         <div><small>PROFISSIONAL</small><strong>{texto(profissional.nome)}</strong></div>
         <div><small>TIPO DA SESSÃO</small><strong>{sessaoBaseline ? "REFERÊNCIA INICIAL" : "PRÉ → TREINO → PÓS"}</strong></div>
         <div><small>{sessaoBaseline ? "FLUXO" : "CTR"}</small><strong>{sessaoBaseline ? "INDEPENDENTE" : texto(ctr.codigo)}</strong></div>
-      </section>
+      </section></details>
 
       <section id="hx-decision-level" className="hx-live-hud" aria-label="Barra operacional decisória">
         <div className="is-decision" data-regulatory-state={fasePausadaNaApresentacao ? "PAUSADA_SEM_RESULTADO_ATUAL" : zonaDoCockpitDesatualizada ? "DESATUALIZADA" : disponibilidadeContinua.zona.modo}>
@@ -2411,21 +2351,7 @@ export function CockpitOperacionalVivo({
             ? ` · ${detalheDaOrigem(origemDoIirhContinuo)}`
             : ""}</span>
         </div>
-        <div>
-          <small>Qualidade EEG</small>
-          <strong>{qualidadeEegAtual == null ? "SEM LEITURA ATUAL" : percentual(qualidadeEegAtual)}</strong>
-          <span>{qualidadeEegAtual == null ? "EMOTIV Cortex · sem amostra atual" : "EEG Quality · EMOTIV Cortex · atual"}</span>
-        </div>
-        <div>
-          <small>FC</small>
-          <strong>{frequenciaCardiacaAtual == null ? "SEM LEITURA ATUAL" : `${numero(frequenciaCardiacaAtual)} bpm`}</strong>
-          <span>{frequenciaCardiacaAtual == null ? "Polar H10 · sem amostra atual" : "Polar H10 · atual"}</span>
-        </div>
-        <div>
-          <small>RMSSD</small>
-          <strong>{!polarAoVivo ? "SEM LEITURA ATUAL" : rmssdAtual == null ? "NÃO CALCULÁVEL" : `${numero(rmssdAtual, 1)} ms`}</strong>
-          <span>{!polarAoVivo ? "Polar H10 · sem amostra atual" : "Janela canônica · atual"}</span>
-        </div>
+        <div><small>FONTES FÍSICAS</small><strong>{modoHistorico ? "Sessão preservada" : polarAoVivo || eegAoVivo ? "Aquisição em curso" : "Aguardando sensores"}</strong><span>Polar {polarAoVivo ? "ativo" : "sem transmissão"} · EPOC X {eegAoVivo ? "ativo" : "sem transmissão"}</span></div>
         <div><small>TEMPO</small><strong>{duracao(
           inicioDoCronometro,
           fimDoCronometro,
@@ -2906,7 +2832,7 @@ export function CockpitOperacionalVivo({
             ))}
           </div>
           {mostrarLeaseDaEstacao ? (
-            <dl className="hx-live-station-lease" aria-label="Vínculo da estação física">
+            <details><summary>Conexão da estação</summary><dl className="hx-live-station-lease" aria-label="Vínculo da estação física">
               <div>
                 <dt>ESTAÇÃO VINCULADA</dt>
                 <dd>{texto(leaseDaEstacao.identificador_da_estacao, "Aguardando estação")}</dd>
@@ -2931,7 +2857,7 @@ export function CockpitOperacionalVivo({
                 <dt>VÍNCULO EXCLUSIVO</dt>
                 <dd>{leaseDaEstacao.lease_stale === true ? "DESATUALIZADO" : texto(leaseDaEstacao.estado, "NÃO ATIVO")}</dd>
               </div>
-            </dl>
+            </dl></details>
           ) : null}
           {inicioDeFaseBloqueado ? (
             <div className="hx-live-start-gate" role="alert">
@@ -3216,6 +3142,7 @@ export function CockpitOperacionalVivo({
 
       <details className={`hx-live-authorial-details ${confirmacoesProfissionaisPendentes ? "hx-pending-attention" : ""}`}><summary>Macrocampos e confirmação profissional{confirmacoesProfissionaisPendentes ? ` · ${confirmacoesProfissionaisPendentes} decisão(ões) pendente(s)` : ""}</summary>
       <SinteseValidacaoTirhV1
+        ocultarIndicadores
         estado={estado}
         indicadoresDesatualizados={{
           iirh: iirhDoCockpitDesatualizado,

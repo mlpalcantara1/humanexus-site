@@ -579,7 +579,7 @@ function RelatorioCanonicoV1({
         {medidasDeCusto.map(item => <p key={item}>{item}</p>)}
       </section>
       {textoDaReavaliacaoEeg(leituraCientificaDaInspecao(estado)).map((linha) => <p key={linha}>{linha}</p>)}
-      {resumoOperacionalDoRelatorio({ cockpit: estado.cockpit_operacional, ciclo: estado.ciclo, gravacao: estado.gravacao, protocolo: estado.thx_individual, ctr: estado.ctr_individual, longitudinal: estado.longitudinal }).map(secao => (
+      {resumoOperacionalDoRelatorio({ cockpit: estado.cockpit_operacional, ciclo: estado.ciclo, gravacao: estado.gravacao, protocolo: estado.thx_individual, ctr: estado.ctr_individual, longitudinal: estado.longitudinal, incluirProtocolo: false, incluirFisiologia: medidasDeCusto.length === 0 }).map(secao => (
         <section className="hx-report-canonical__section" key={secao.titulo}>
           <h3>{secao.titulo}</h3>
           {secao.itens.map(item => <p key={item}>{item}</p>)}
@@ -594,44 +594,13 @@ function RelatorioCanonicoV1({
       ) : null}
 
       <section className="hx-report-canonical__section">
-        <small>INDICADORES OFICIAIS DA SESSÃO</small>
-        <h3>O que os indicadores oficiais mostram neste recorte</h3>
-        <p>Resultante estrutural: <strong>{texto(resultante.estado, "NÃO MATERIALIZADA")}</strong>. {texto(resultante.motivo, "Não há informação adicional para este recorte.")}</p>
-        <p>IIRH: <strong>{iirhCalculavel ? `${iirhAutoritativo.valor} / 100 · ${rotuloIirh}` : texto(iirhAutoritativo.motivo, rotuloIirh)}</strong>. Zona: <strong>{zonaAutoritativa.classificada ? `${nomeDaZona(zonaAutoritativa.codigo ?? zonaAutoritativa.nome) ?? texto(zonaAutoritativa.codigo ?? zonaAutoritativa.nome)} · ${rotuloZona}` : texto(zonaAutoritativa.motivo, rotuloZona)}</strong>.</p>
-        <p>{iirhCalculavel
-          ? "O valor exibido é o valor oficial recebido do Núcleo para esta sessão."
-          : texto(
-              iirhAutoritativo.motivo,
-              "O Núcleo não informou motivo adicional para este recorte."
-            )}</p>
-      </section>
-
-      <section className="hx-report-canonical__section hx-report-phase-professional">
-        <small>RESPOSTA PRÉ / TREINO / PÓS</small>
-        <h3>Observações profissionais preservadas em cada momento</h3>
-        <div className="hx-report-phase-table">
-          {(["PRE", "TREINO", "POS"] as const).map((fase) => {
-            const observacoes = objeto(consolidacao.observacoes_por_fase);
-            const conteudo = texto(
-              observacoes[fase] ?? observacoes[fase === "POS" ? "PÓS" : fase],
-              "Sem observação profissional consolidada para este momento."
-            );
-            return <article key={fase}>
-              <strong>{fase === "PRE" ? "PRÉ" : fase === "POS" ? "PÓS" : "TREINO"}</strong>
-              <span>{conteudo}</span>
-            </article>;
-          })}
-        </div>
-      </section>
-
-      <section className="hx-report-canonical__section">
         <h3>Organização Regulatória nos quatro Macrocampos</h3>
         <div className="hx-report-vector-grid">
           {estado.ciencia.macrocampos.map(campo => {
             const codigo = codigoDoMacrocampo(campo);
             const definicoes = estado.ciencia.vetores.filter(vetor => texto(valorDoRegistro(vetor, "macrofield_code", "codigo_do_macrocampo"), "") === codigo);
             const medidas = definicoes.map(definicao => vetores.find(vetor => vetor.codigo === codigoDoVetor(definicao))).filter(vetor => vetor && typeof (vetor.registro?.magnitude ?? vetor.registro?.valor ?? vetor.registro?.value) === "number");
-            return <article key={codigo}><strong>{nomeDoMacrocampo(campo)}</strong><p>{LEITURA_DOS_MACROCAMPOS[codigo]}</p>{medidas.length ? medidas.map(vetor => <p key={vetor!.codigo}>{vetor!.nome}: {String(vetor!.registro?.magnitude ?? vetor!.registro?.valor ?? vetor!.registro?.value)}.</p>) : <p>As evidências desta sessão ainda não permitem descrever este Campo com medidas vetoriais.</p>}</article>;
+            return <article key={codigo}><strong>{nomeDoMacrocampo(campo)}</strong><p>{LEITURA_DOS_MACROCAMPOS[codigo]}</p>{!medidas.length ? <p>As evidências desta sessão ainda não permitem descrever este Campo com medidas vetoriais.</p> : null}</article>;
           })}
         </div>
       </section>
@@ -704,13 +673,7 @@ function RelatorioCanonicoV1({
         <p>HX-OBS qualificados: {lista(objeto(estado.evidencias_profissionais).qualificadas).length}. TCR: {texto(cadeia.tcr, "NÃO MATERIALIZADA")}. ICR: {texto(cadeia.icr, "NÃO CALCULÁVEL")}</p>
       </section>
 
-      <section className="hx-report-canonical__section">
-        <small>RASTREABILIDADE TÉCNICA</small>
-        <h3>Estado documental: {cicloDocumental.estado.replaceAll("_", " ")}</h3>
-        <p>Decisões sobre afirmações científicas permanecem separadas da consolidação e não autorizam, por si, a finalização do documento.</p>
-        <p>Documento: {texto(relatorio?.codigo_publico, "ainda sem código público")} · versão {texto(relatorio?.numero_da_versao, "rascunho")} · sessão {texto(estado.sessao.identificador)}.</p>
-        {!cicloDocumental.completa ? <p><strong>Campos que impedem o relatório final:</strong> {cicloDocumental.rotulosAusentes.join(" · ")}.</p> : null}
-      </section>
+
     </section>
   );
 }
@@ -3960,7 +3923,6 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
         <>
           <RelatorioCanonicoV1 estado={estado} relatorio={relatorioAtual} />
           <RegistroIntegradoDaSessao estado={estado as unknown as Registro} revisar />
-          <ReferenciaBaselineResumo estado={estado} />
           <section className="hx-report-operation">
             <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{tituloDoRelatorioAtual}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(relatorioAtual?.criado_em)} · ${cicloDoRelatorioAtual.estado.replaceAll("_", " ")}` : "A geração materializa apenas o rascunho técnico; a autoria profissional vem depois."}</span></div>
             <div>
@@ -4019,6 +3981,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             </p>
           ) : null}
           <details><summary>Decisões científicas e rastreabilidade</summary><SinteseValidacaoTirhV1
+            somenteValidacao
             estado={estado as unknown as Registro}
             validarClaimTirhV1={(payload) => {
               void enviar("validar-claim-tirh-v1", { payload });
@@ -4221,7 +4184,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           </aside>
         ) : null}
         <main className="hx-cockpit-view" data-cockpit-view={visao}>
-          {visao === "coletivo" || operacional
+          {visao === "coletivo" || visao === "relatorio" || operacional
             ? null
             : <><CockpitIirhZonaTemporal leitura={leituraCientificaDaInspecao(estado)} cockpit={objeto(estado.cockpit_operacional)} historico={estadoOperacionalTerminal(estado.sessao.estado)} pausado={faseCientificaPausada(estado)} /><details><summary>Referências e rastreabilidade da leitura</summary><DisponibilidadeContinuaIirhZona estado={estado} /></details></>}
           {visao !== "coletivo" && visao !== "relatorio" ? <details className="hx-optional-register"><summary>Nota ou voz — registro complementar opcional</summary><RegistroIntegradoDaSessao

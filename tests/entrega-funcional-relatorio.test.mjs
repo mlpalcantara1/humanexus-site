@@ -254,8 +254,8 @@ test("relatório humano comunica resultados práticos, indicadores, registro e d
     "RESULTADOS E DEVOLUTIVA DA SESSÃO",
     "HX-OBS, TCR e ICR",
     "DEVOLUTIVA AO PARTICIPANTE",
-    "RASTREABILIDADE TÉCNICA",
-    "Campos que impedem o relatório final"
+    "Decisões científicas e rastreabilidade",
+    "Campos profissionais pendentes"
   ]) assert.match(relatorioHumano, new RegExp(termo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.doesNotMatch(relatorioHumano, /Magnitude escalar da Resultante:\s*\{?[^\n]*\|\|\s*0/);
 });
