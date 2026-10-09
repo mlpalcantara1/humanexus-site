@@ -2351,7 +2351,9 @@
 .hx-app--executive .hx-live-hud strong { color:#edf5fc; font-size:18px; font-family:Arial,Helvetica,sans-serif; font-weight:500; font-variant-numeric:tabular-nums; }
 .hx-app--executive .hx-live-hud small { color:#a3b6c8; font-size:10px; letter-spacing:.09em; }
 .hx-app--executive .hx-live-hud__record { border-radius:14px; background:#162b3a; border:1px solid #51758d; }
-.hx-app--executive .hx-live-command-center { grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:16px; align-items:start; }
+.hx-app--executive .hx-live-command-center { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:16px; align-items:start; }
+.hx-app--executive .hx-live-command-center > .hx-live-vector-stage { order:1; }
+.hx-app--executive .hx-live-command-center > .hx-live-intelligence-instruments { order:2; }
 .hx-app--executive .hx-live-vector-stage { display:flex; flex-direction:column; border-radius:22px; border:1px solid var(--hx-instrument-line); background:radial-gradient(ellipse at 50% 35%,#152836 0,#0c151e 65%); padding:20px; }
 .hx-live-vector-display { width:100%; min-width:0; }
 .hx-app--executive .hx-live-vector-stage .hx-vector-radar-live,
