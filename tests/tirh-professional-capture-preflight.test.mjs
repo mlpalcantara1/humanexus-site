@@ -117,7 +117,7 @@ test("captura profissional permanece local, contextual e fora do cálculo cient�
     "INÍCIO BLOQUEADO",
     "Completar perfil mínimo da tarefa",
     "Informar somente o perfil mínimo",
-    "Complete enquanto a fase está em execução",
+    "Registre as respostas que observar",
     "Registrar somente o que foi observado",
     "identificador_da_tarefa: identificadorDaTarefa.trim()",
     "metricasDisponiveisNoPerfil",

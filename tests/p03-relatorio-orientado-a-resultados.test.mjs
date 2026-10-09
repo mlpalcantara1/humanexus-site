@@ -72,7 +72,7 @@ test("relatório Web preserva indicadores oficiais e move gráficos para o conte
     "Resultante",
     "NOVE VETORES MOMENTÂNEOS",
     "VEV LONGITUDINAL",
-    "PRÉ / TREINO / PÓS",
+    "Fases, intervenção e sinais efetivamente disponíveis",
     "HX-OBS"
   ]) assert.match(bloco, new RegExp(termo));
   assert.match(bloco, /Direção funcional: \{texto\(resultante\.direcao_funcional/);
@@ -85,9 +85,9 @@ test("relatório Web preserva indicadores oficiais e move gráficos para o conte
   assert.match(cockpit, /Polar ou sensor cardíaco humano não conectado/);
   assert.match(cockpit, /Nenhuma série humana de variabilidade foi recebida/);
   assert.doesNotMatch(bloco, /\?\?\s*0|\|\|\s*0/);
-  assert.match(bloco, /RASTREABILIDADE TÉCNICA/);
+  assert.match(cockpit, /RASTREABILIDADE DA SESSÃO/);
   assert.ok(
-    bloco.indexOf("ResultadoRegulatorioDaSessao") < bloco.indexOf("RASTREABILIDADE TÉCNICA")
+    bloco.indexOf("ResultadoRegulatorioDaSessao") < bloco.indexOf("GRÁFICOS DA SESSÃO")
   );
 });
 
@@ -133,7 +133,7 @@ test("PDF e impressão priorizam resultado, preservam gráficos e deixam rastrea
     "Recomendações",
     "Devolutiva ao participante",
     "Limites da leitura",
-    "Gráficos regulatórios da sessão",
+    "Configuração dos Vetores Regulatórios",
     "Nove Vetores momentâneos",
     "Rastreabilidade técnica"
   ]) assert.match(texto, new RegExp(termo, "i"));

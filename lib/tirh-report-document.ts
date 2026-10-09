@@ -766,6 +766,45 @@ function linhaTecnica(doc: PDFKit.PDFDocument, valores: number[], x: number, y: 
   doc.lineWidth(1.25).strokeColor(cor).stroke();
 }
 
+function desenharSinaisRegistrados(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHumanexus) {
+  const fontes = lista(objeto(entrada.cockpitOperacional).fontes).map(objeto);
+  const polar = fontes.find(fonte => fonte.codigo === "POLAR_H10") ?? {};
+  const eeg = fontes.find(fonte => fonte.codigo === "EMOTIV_EPOC_X") ?? {};
+  const seriesPolar = objeto(polar.series_preservadas ?? polar.series);
+  const bandas = lista(objeto(eeg.atividade_de_bandas_eeg_preservada ?? eeg.atividade_de_bandas_eeg).bandas).map(objeto);
+  const trilhas = [
+    ...bandas.map(banda => ({ nome: `EEG · ${texto(banda.nome ?? banda.codigo)} · µV²/Hz`, pontos: lista(banda.serie_global).map(objeto), cor: CORES.azul })),
+    ...[["hr", "Polar H10 · Frequência cardíaca · bpm"], ["rr", "Polar H10 · Intervalo RR · ms"], ["rmssd", "Polar H10 · RMSSD · ms"]].map(([codigo, nome]) => ({ nome, pontos: lista(seriesPolar[codigo]).map(objeto), cor: CORES.verde }))
+  ].map(trilha => ({ ...trilha, pontos: trilha.pontos.filter(ponto => numero(ponto.valor) != null && Number.isFinite(Date.parse(String(ponto.timestamp)))).sort((a, b) => Date.parse(String(a.timestamp)) - Date.parse(String(b.timestamp))) }));
+  if (!trilhas.some(item => item.pontos.length)) return;
+  let y = novaPagina(doc, "SINAIS DA SESSÃO", "Gráficos regulatórios da sessão", "Trajetória registrada de EEG e Polar. Potência EEG recebida, sem reconstrução de EEG bruto. Lacunas não interpoladas; gráficos não certificam admissibilidade de cada amostra.");
+  for (const trilha of trilhas.filter(item => item.pontos.length)) {
+    if (y + 185 > 720) y = novaPagina(doc, "SINAIS DA SESSÃO", "Trajetória registrada — continuação");
+    y = tituloSecao(doc, trilha.nome, y + 10, "");
+    const pontos = trilha.pontos;
+    const tempos = pontos.map(ponto => Date.parse(String(ponto.timestamp)));
+    const valores = pontos.map(ponto => Number(ponto.valor));
+    const inicio = tempos[0], fim = tempos.at(-1)!;
+    const minimo = Math.min(...valores), maximo = Math.max(...valores);
+    const x = 83, largura = 455, altura = 100;
+    doc.rect(x, y + 8, largura, altura).lineWidth(.4).strokeColor(CORES.linha).stroke();
+    pontos.forEach((ponto, indice) => {
+      const px = x + (tempos[indice] - inicio) / Math.max(1, fim - inicio) * largura;
+      const py = y + 8 + altura - (valores[indice] - minimo) / Math.max(1, maximo - minimo) * altura;
+      // Linha apenas entre amostras contíguas; pausas e lacunas permanecem abertas.
+      if (indice && tempos[indice] - tempos[indice - 1] <= 5_000 && ponto.momento === pontos[indice - 1].momento) {
+        const anteriorX = x + (tempos[indice - 1] - inicio) / Math.max(1, fim - inicio) * largura;
+        const anteriorY = y + 8 + altura - (valores[indice - 1] - minimo) / Math.max(1, maximo - minimo) * altura;
+        doc.moveTo(anteriorX, anteriorY).lineTo(px, py).lineWidth(.8).strokeColor(trilha.cor).stroke();
+      }
+      doc.circle(px, py, 1).fillColor(trilha.cor).fill();
+    });
+    y = paragrafo(doc, `${new Date(inicio).toISOString()} a ${new Date(fim).toISOString()} · ${pontos.length} registros · mínimo ${minimo.toFixed(2)} · máximo ${maximo.toFixed(2)}`, y + 118, { x: 83, width: 455, tamanho: 7 });
+    y += 20;
+  }
+  if (!trilhas.some(item => item.pontos.length)) paragrafo(doc, "Séries fisiológicas não recebidas neste documento. Nenhum gráfico foi fabricado.", y + 20, { x: 83, width: 455 });
+}
+
 function fecharDocumento(doc: PDFKit.PDFDocument, tipo: TipoDocumentoTirh, entrada: EntradaRelatorioHumanexus) {
   const intervalo = doc.bufferedPageRange();
   for (let pagina = intervalo.start; pagina < intervalo.start + intervalo.count; pagina += 1) {
@@ -1412,6 +1451,7 @@ export async function gerarPdfVisualHumanexus(entrada: EntradaRelatorioHumanexus
       }
     }
   }
+  if (tipo === "OPERACIONAL_TIRH" || tipo === "CIENTIFICO_TIRH") desenharSinaisRegistrados(doc, entrada);
   const revisaoEeg = textoDaReavaliacaoEeg(objeto(entrada.cockpitOperacional).leitura_cientifica);
   if (revisaoEeg.length) {
     let y = novaPagina(doc, "REAVALIAÇÃO HISTÓRICA EEG", "Regra, origem e limites", "Revisão derivada identificada; não representa aquisição atual nem substitui os registros originais.");

@@ -41,7 +41,7 @@ test("EEG recebido com qualidade degradada não é rotulado como ausência de tr
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
   assert.match(cockpit, /DADOS EEG RECEBIDOS · NÃO ADMISSÍVEIS PARA INDICADORES/);
   assert.match(cockpit, /falta qualidade EEG mensurável na janela/);
-  assert.match(cockpit, /abaixo do critério de admissibilidade vigente/);
+  assert.match(cockpit, /textoDoCriterioEeg/);
 });
 
 test("perfis oficiais possuem destinos privados exatos", async () => {

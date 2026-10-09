@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -88,6 +88,7 @@ const tirhV1 = {
   }
 };
 
+const sinaisDeTeste = process.env.HXP_TEST_SIGNAL_FILE ? JSON.parse(await readFile(process.env.HXP_TEST_SIGNAL_FILE, "utf8")) : {};
 const pdf = await gerarPdfVisualHumanexus({
   contratoDocumental,
   tipoDocumento: "OPERACIONAL_TIRH",
@@ -133,6 +134,7 @@ const pdf = await gerarPdfVisualHumanexus({
   contratoCientifico: { versao: "TIRH V1" },
   tirhV1: contratoLegado ? {} : tirhV1,
   cockpitOperacional: {
+    fontes: sinaisDeTeste.fontes ?? [],
     ...(process.env.HXP_EEG_REPROCESS_TEST === "1" ? { leitura_cientifica: { reprocessamento_eeg: {
       politica: "POLITICA-OPERACIONAL-EPOC-X-1.1", limiar: .08,
       pacotes: { EQ: { elegiveis: 530, recebidos: 681 }, POW: { elegiveis: 517, recebidos: 680 } },

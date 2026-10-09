@@ -604,6 +604,9 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
   const baselineAtual = painel?.baseline.registro;
   const snapshotBasalCanonico = painel?.baseline.snapshot_canonico ?? null;
   const coberturaBasalCanonica = snapshotBasalCanonico?.cobertura;
+  const coberturaObservada = baselineAtual?.cobertura_observada as Registro | undefined;
+  const fontesObservadas = Array.isArray(coberturaObservada?.fontes_disponiveis)
+    ? coberturaObservada.fontes_disponiveis.map(String) : [];
   const fontesBasaisCanonicas = Array.isArray(snapshotBasalCanonico?.fontes)
     ? snapshotBasalCanonico.fontes.map((item) => {
       const codigo = typeof item === "string"
@@ -974,13 +977,13 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
               </strong>
             </div>
             <div>
-              <small>Cobertura</small>
+              <small>Cobertura científica</small>
               <strong>
                 {formatarPercentualCanonico(
-                  coberturaBasalCanonica ?? baselineAtual.cobertura ?? 0
+                  coberturaBasalCanonica
                 )}
               </strong>
-              {snapshotBasalCanonico ? <span>Registro basal imutável</span> : null}
+              {snapshotBasalCanonico ? <span>Registro basal imutável</span> : <span>Sem medida consolidada de cobertura científica</span>}
             </div>
             <div>
               <small>Duração</small>
@@ -991,7 +994,9 @@ export function ControleGravacaoMultimodal({ sessao }: { sessao: string }) {
             <div>
               <small>Fontes reais</small>
               <strong>
-                {fontesBasaisCanonicas.length
+                {fontesObservadas.length
+                  ? fontesObservadas.map(codigo => ROTULOS_DAS_FONTES[codigo] ?? codigo).join(" · ")
+                  : fontesBasaisCanonicas.length
                   ? fontesBasaisCanonicas.join(" · ")
                   : Array.isArray(baselineAtual.fontes_disponiveis_json)
                   ? baselineAtual.fontes_disponiveis_json.join(" · ")

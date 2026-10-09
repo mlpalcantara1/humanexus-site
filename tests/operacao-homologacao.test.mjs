@@ -305,7 +305,7 @@ test("Resultante parcial movimenta apenas vetores canônicos sem fabricar magnit
   assert.match(dinamica, /const vetoresCalculaveis = vetores\.filter/);
   assert.match(dinamica, /data-partial=\{configuracaoParcial\}/);
   assert.match(dinamica, /RESULTANTE ESTRUTURADA · \{estadoDaResultante\}/);
-  assert.match(dinamica, /movimentos representam os vetores canônicos disponíveis/);
+  assert.match(dinamica, /sua magnitude global só aparece quando estiver estabelecida/);
   assert.match(dinamica, /magnitude == null \? null :/);
   assert.match(dinamica, /"--hx-vector-top":[\s\S]*?86 - vetor\.value \* 72/);
   assert.match(css, /top: var\(--hx-vector-top\)/);
@@ -456,8 +456,8 @@ test("Inspeção TIRH compartilha a projeção científica canônica do Cockpit"
 
 test("Resultante, IIRH, Zona e Trajetória permanecem ontologicamente separados", async () => {
   const client = await source("components/operacao-homologacao.tsx");
-  assert.match(client, /A Resultante.*não é IIRH nem Zona/s);
-  assert.match(client, /Aguardando evidência operacional/);
+  assert.match(client, /const resultante = objeto/);
+  assert.match(client, /Evidências insuficientes para a Resultante/);
   assert.match(client, /TRAJETÓRIA NÃO INFERÍVEL/);
   assert.match(client, /um ponto isolado não gera trajetória/i);
   assert.doesNotMatch(client, /iirh\s*=\s*resultante|zona\s*=\s*resultante/i);
@@ -523,12 +523,10 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
     /<section id="hx-decision-level" className="hx-live-hud"[\s\S]*?<\/section>/
   )?.[0] ?? "";
   assert.ok(hud.indexOf("ZONA") < hud.indexOf("IIRH"));
-  assert.ok(hud.indexOf("IIRH") < hud.indexOf("EEG"));
-  assert.ok(hud.indexOf("EEG") < hud.indexOf("FC"));
-  assert.ok(hud.indexOf("FC") < hud.indexOf("RMSSD"));
-  assert.ok(hud.indexOf("RMSSD") < hud.indexOf("RR"));
-  assert.ok(hud.indexOf("RR") < hud.indexOf("TEMPO"));
-  assert.ok(hud.indexOf("TEMPO") < hud.indexOf("REGISTRO PROFISSIONAL"));
+  const ordem = ["ZONA", "IIRH", "FONTES FÍSICAS", "TEMPO", "OBSERVAÇÕES POR CLIQUE"];
+  for (let indice = 1; indice < ordem.length; indice++) {
+    assert.ok(hud.indexOf(ordem[indice - 1]) < hud.indexOf(ordem[indice]));
+  }
   for (const item of [
     "MODO OPERACIONAL AO VIVO",
     "Inspeção TIRH",
@@ -538,12 +536,9 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
   for (const item of [
     "ZONA",
     "IIRH",
-    "EEG",
-    "FC",
-    "RMSSD",
-    "RR",
+    "FONTES FÍSICAS",
     "TEMPO",
-    "REGISTRO PROFISSIONAL"
+    "OBSERVAÇÕES POR CLIQUE"
   ]) assert.match(hud, new RegExp(item));
   for (const item of [
     "<small>FASE</small>",
@@ -561,7 +556,7 @@ test("Cockpit Vivo separa operação e análise com HUD e comando canônicos", a
   }
   assert.match(operacional, /acaoPrincipal/);
   assert.match(operacional, /hx-live-operation-focus/);
-  assert.match(operacional, /FLUXO OPERACIONAL/);
+  assert.match(operacional, /CONDUÇÃO DA SESSÃO/);
   assert.match(operacional, /Ações operacionais complementares/);
   assert.match(operacional, /acoesSecundariasVisiveis\.map/);
   assert.match(client, /proxima_acao_principal/);
@@ -693,7 +688,7 @@ test("registro profissional permanente na barra herda o contexto e Replay segue 
   assert.match(operacional, /A ausência de mídia|NÃO É FALHA/);
   assert.match(operacional, /REPRODUÇÃO HISTÓRICA EM SINCRONIZAÇÃO/);
   assert.match(operacional, /className="hx-live-hud__record"/);
-  assert.match(operacional, /aria-haspopup="dialog"/);
+  assert.match(operacional, /aria-controls="hx-evidence-professional-palette"/);
   assert.match(operacional, /role="dialog"/);
   assert.match(operacional, /Registrar evento/);
   assert.match(operacional, /Registrar intervenção/);
@@ -766,12 +761,9 @@ test("Cockpit de Inteligência Regulatória concentra decisão e preserva uma fo
   for (const item of [
     "ZONA",
     "IIRH",
-    "EEG",
-    "FC",
-    "RMSSD",
-    "RR",
+    "FONTES FÍSICAS",
     "TEMPO",
-    "REGISTRO PROFISSIONAL"
+    "OBSERVAÇÕES POR CLIQUE"
   ]) assert.match(hud, new RegExp(item));
   for (const item of ["<small>FASE</small>", "<small>THX</small>", "CONTACT QUALITY", "SAMPLE RATE QUALITY"]) {
     assert.doesNotMatch(hud, new RegExp(item));
@@ -779,7 +771,7 @@ test("Cockpit de Inteligência Regulatória concentra decisão e preserva uma fo
   assert.doesNotMatch(hud, /RESULTANTE/);
 
   for (const instrumento of [
-    "Nove vetores momentâneos oficiais",
+    "Nove Vetores Regulatórios momentâneos",
     "Neurodinâmica em tempo real",
     "Regulação cardiovascular em tempo real",
     "Dinâmica da Inteligência Regulatória Humana",
@@ -794,7 +786,7 @@ test("Cockpit de Inteligência Regulatória concentra decisão e preserva uma fo
   assert.doesNotMatch(operacional, /aria-label="Métrica neuroregulatória"/);
   assert.doesNotMatch(operacional, /aria-label="Sinal autonômico"/);
   assert.doesNotMatch(operacional, /aria-label="Camada da resposta à intervenção"/);
-  assert.match(operacional, /Nenhuma composição científica é calculada no portal/);
+  assert.match(operacional, /resolverAutoridadeSinteseTirhV1/);
   assert.match(operacional, /qualidade EEG não é usada como substituta/);
   assert.match(operacional, /Análise Neurodinâmica Individual · contexto, comparação e limites/);
   assert.match(operacional, /ANI-TIRH não altera IIRH, Zona, Resultante nem decisão operacional/);
@@ -947,19 +939,19 @@ test("Cockpit operacional permanece limpo e envia governança científica à ins
   const vetores = cockpit.match(
     /<HxSurface as="section" className="hx-live-vector-stage">[\s\S]*?<\/HxSurface>/
   )?.[0] ?? "";
-  assert.match(hud, /zonaDoCockpitDesatualizada \? "ZONA · ÚLTIMO REGISTRO, NÃO ATUAL" : "ZONA · ESTADO ATUAL"/);
-  assert.match(hud, /iirhDoCockpitDesatualizado \? "IIRH · ÚLTIMO REGISTRO, NÃO ATUAL" : "IIRH · ESTADO ATUAL"/);
-  assert.match(hud, /<small>ZONA · REFERÊNCIA HISTÓRICA<\/small>/);
-  assert.match(hud, /<small>IIRH · REFERÊNCIA HISTÓRICA<\/small>/);
+  assert.match(hud, /zonaDoCockpitDesatualizada \? "ZONA · ÚLTIMO REGISTRO, NÃO ATUAL"/);
+  assert.match(hud, /iirhDoCockpitDesatualizado \? "IIRH · ÚLTIMO REGISTRO, NÃO ATUAL"/);
+  assert.match(hud, /ZONA · REGISTRO PRESERVADO/);
+  assert.match(hud, /IIRH · REGISTRO PRESERVADO/);
   assert.match(hud, /IIRH/);
   assert.doesNotMatch(hud, /RESULTANTE/);
   assert.match(cockpit, /Dinâmica da Inteligência Regulatória Humana/);
-  assert.equal((hud.match(/<div/g) ?? []).length, 10);
+  assert.equal((hud.match(/<div/g) ?? []).length, 5);
   assert.match(cockpit, /texto\(thx\.nome/);
   assert.doesNotMatch(hud, /Sequência|maturidade_da_evidencia/);
   assert.doesNotMatch(cockpit, /hx-live-regulatory-readout--primary/);
-  assert.match(vetores, /Nove vetores momentâneos oficiais/);
-  assert.match(vetores, /Estado atual/);
+  assert.match(vetores, /Nove Vetores Regulatórios momentâneos/);
+  assert.match(vetores, /visaoVetorial/);
   assert.doesNotMatch(vetores, /Por que este resultado/);
   for (const metadado of [
     "maturidade_da_evidencia",
@@ -1544,7 +1536,7 @@ test("Cockpit prioriza os nove vetores momentâneos sem expor parâmetros de est
   const estabilizacao = await source("lib/cockpit-regulatory-visual-stability.ts");
 
   assert.match(cockpit, /VETORES BASAIS CANÔNICOS/);
-  assert.match(cockpit, /Estado atual/);
+  assert.match(cockpit, /ESTADO ATUAL/);
   assert.match(cockpit, /ZONA OPERACIONAL/);
   assert.match(cockpit, /Ver motivo/);
   assert.doesNotMatch(cockpit, /Apresentação \{JANELA_VISUAL_REGULATORIA_MS/);

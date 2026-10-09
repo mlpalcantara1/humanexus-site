@@ -58,8 +58,10 @@ type Fonte = Registro & {
   metricas?: Registro;
   metricas_de_desempenho?: Registro[];
   atividade_de_bandas_eeg?: Registro;
+  atividade_de_bandas_eeg_preservada?: Registro;
   janela_de_qualidade?: Registro;
   series?: Record<string, Registro[]>;
+  series_preservadas?: Record<string, Registro[]>;
   ultima_leitura_registrada?: Registro;
   projecao_em_verificacao?: boolean;
   polling_em_verificacao?: boolean;
@@ -533,8 +535,8 @@ function Sparkline({ pontos, cor }: { pontos: Registro[]; cor: string }) {
 function pontosDaSerie(fonte: Fonte, serie: string, origem: string): HxDataPoint[] {
   const projecaoVisivel = fonte.ao_vivo === true
     || fonte.projecao_em_verificacao === true;
-  if (!projecaoVisivel) return [];
-  return lista(fonte.series?.[serie]).flatMap((item) => {
+  const pontos = fonte.series_preservadas?.[serie] ?? (projecaoVisivel ? fonte.series?.[serie] : []);
+  return lista(pontos).flatMap((item) => {
     const tempo = new Date(String(item.timestamp ?? "")).getTime();
     const valor = Number(item.valor);
     if (!Number.isFinite(tempo) || !Number.isFinite(valor)) return [];
@@ -764,9 +766,10 @@ function pontosDaBanda(
   banda: Registro,
   escopo: "GLOBAL" | "SENSOR",
   sensor: string,
-  aoVivo: boolean
+  aoVivo: boolean,
+  preservarRegistro = false
 ): HxDataPoint[] {
-  if (!aoVivo) return [];
+  if (!aoVivo && !preservarRegistro) return [];
   const serie = escopo === "GLOBAL"
     ? lista(banda.serie_global)
     : lista(objeto(banda.series_por_sensor)[sensor]);
@@ -784,7 +787,7 @@ function pontosDaBanda(
         ? "EMOTIV Cortex pow · agregação HUMANEXUS"
         : `EMOTIV Cortex pow · sensor ${sensor}`,
       quality: Number.isFinite(quality) ? quality : null,
-      connection: "ATUAL",
+      connection: aoVivo ? "TRAJETÓRIA DA CAPTURA" : "REGISTRO PRESERVADO — NÃO ATUAL",
       gap: item.gap === true
     } satisfies HxDataPoint];
   });
@@ -801,6 +804,7 @@ function AtividadeDasBandasEeg({
 }) {
   const aoVivo = fonte.ao_vivo === true;
   const atividade = objeto(fonte.atividade_de_bandas_eeg);
+  const atividadePreservada = objeto(fonte.atividade_de_bandas_eeg_preservada);
   const aniTirh = objeto(atividade.analise_neurodinamica_individual);
   const bandas = lista(atividade.bandas);
   const sensores = Array.from(new Set(
@@ -822,17 +826,18 @@ function AtividadeDasBandasEeg({
   const valores = objeto(fonte.valores);
   const timestampAtual = atividade.timestamp;
   const trilhas = useMemo<HxTrack[]>(() => BANDAS_EEG_VISIVEIS.map((definicao) => {
-    const banda = bandas.find((item) => String(item.codigo) === definicao.codigo) ?? {};
+    const bandasDoGrafico = lista(atividadePreservada.bandas);
+    const banda = bandasDoGrafico.find((item) => String(item.codigo) === definicao.codigo) ?? bandas.find((item) => String(item.codigo) === definicao.codigo) ?? {};
     return {
       id: `eeg-pow-${definicao.codigo}-${escopo}-${sensorAtivo || "sem-sensor"}`,
       name: definicao.nome,
       unit: texto(banda.unidade, "unidade nativa Cortex"),
       color: definicao.cor,
-      points: pontosDaBanda(banda, escopo, sensorAtivo, aoVivo),
+      points: pontosDaBanda(banda, escopo, sensorAtivo, aoVivo, bandasDoGrafico.length > 0),
       emptyReason: "Sem leitura atual",
       technical: true
     };
-  }), [aoVivo, bandas, escopo, sensorAtivo]);
+  }), [aoVivo, bandas, atividadePreservada, escopo, sensorAtivo]);
   const possuiSerieAtual = trilhas.some((trilha) => trilha.points.length > 0);
 
   return (
@@ -958,7 +963,7 @@ function AtividadeDasBandasEeg({
         <div className="hx-live-eeg-chart" aria-label="Gráfico temporal vivo das cinco bandas EEG">
           <header>
             <small>GRÁFICO TEMPORAL · CINCO BANDAS</small>
-            <span>Buffer visual limitado · lacunas não interpoladas</span>
+            <span>{aoVivo ? "Aquisição atual e trajetória registrada" : "Trajetória registrada · sem leitura atual"} · lacunas não interpoladas</span>
           </header>
           {possuiSerieAtual ? (
             <CockpitSignalStack
@@ -1002,16 +1007,14 @@ function DinamicaAutonomicaPolar({
   const frequenciaCardiaca = numeroFinito(valores.hr_bpm);
   const intervaloRrMedio = numeroFinito(valores.rr_ms);
   const rmssd = numeroFinito(valores.rmssd_tecnico_ms);
-  const trilhasAtuais = aoVivo
-    ? trilhas([fonte]).filter((trilha) => ["polar-hr", "polar-rr", "polar-rmssd"].includes(trilha.id))
-    : [];
+  const trilhasAtuais = trilhas([fonte]).filter((trilha) => ["polar-hr", "polar-rr", "polar-rmssd"].includes(trilha.id) && trilha.points.length > 0);
 
   return (
     <HxSurface as="section" className="hx-live-intelligence-instrument hx-live-autonomic-dynamics">
       <HxSectionHeader
         eyebrow="DINÂMICA AUTONÔMICA — POLAR H10"
         title="Regulação cardiovascular em tempo real"
-        aside={<span>{aoVivo ? `Pacote atual · ${dataLegivel(metricas.ultimo_pacote)}` : "Sem pacote atual"}</span>}
+        aside={<span>{aoVivo ? `Pacote atual · ${dataLegivel(metricas.ultimo_pacote)}` : "Sem leitura atual · trajetória registrada preservada"}</span>}
       />
       <div className="hx-live-autonomic-values" aria-label="Valores atuais da dinâmica autonômica Polar H10">
         <span>
@@ -2265,7 +2268,7 @@ export function CockpitOperacionalVivo({
             {texto(participante.nome ?? participante.referencia_externa, "Participante")} · {
               sessaoBaseline
                 ? "Referência inicial"
-                : texto(execucao.estado, "Sessão em preparação")
+                : texto(estadoOperacional.estado_da_sessao ?? contextoSessao.estado, "Sessão em preparação")
             }
           </p>
         </div>
@@ -2302,7 +2305,7 @@ export function CockpitOperacionalVivo({
           ).replaceAll("_", " ")}</strong>
           <span>
             {modoHistorico ? "Leitura preservada; não é apresentada como valor atual. " : ""}
-            Fase {texto(estadoDaJanelaCientifica.fase, "ainda não iniciada")}
+            {sessaoFinalizada ? "Sessão encerrada · registro preservado" : `Fase ${texto(estadoDaJanelaCientifica.fase, "sem janela atual")}`}
             {" · "}{numero(estadoDaJanelaCientifica.quantidade_de_vetores_calculados)} de 9 vetores momentâneos calculáveis pelo Núcleo.
           </span>
 
@@ -2361,7 +2364,7 @@ export function CockpitOperacionalVivo({
           registroTemporalCanonico.cronometro_em_execucao
           )}</strong><span>{tempoCanonicoDoCockpit.rotulo}</span></div>
         <div className={`is-action ${pendentesEvidencia.length ? "hx-pending-attention" : ""}`}>
-          <button className="hx-live-hud__record" type="button" onClick={() => {
+          <button className="hx-live-hud__record" type="button" aria-controls="hx-evidence-professional-palette" aria-expanded={paletaEvidenciaAberta} onClick={() => {
             setPaletaEvidenciaAberta(true);
             document.getElementById("hx-evidence-professional-palette")?.scrollIntoView({ block: "center", behavior: "auto" });
           }}>
@@ -2537,15 +2540,13 @@ export function CockpitOperacionalVivo({
         <section className={`hx-tirh-preflight ${preflightTirh.inicio.bloqueios.length ? "hx-pending-attention" : ""}`} aria-label="Pré-flight operacional TIRH">
           <header>
             <div>
-              <small>PRÉ-FLIGHT TIRH</small>
-              <strong>{preflightTirh.inicio.estado === "READY"
+              <small>{capturaRapidaPermitida ? "ACOMPANHAMENTO TIRH" : "PRÉ-FLIGHT TIRH"}</small>
+              <strong>{capturaRapidaPermitida ? "FASE EM EXECUÇÃO" : preflightTirh.inicio.estado === "READY"
                 ? "PRONTO PARA INICIAR"
                 : "INÍCIO BLOQUEADO"}</strong>
             </div>
             <span>
-              Cobertura científica atual: {preflightTirh.estado}. Referência
-              permanece preservada; resultados vivos surgem somente durante as
-              janelas e quando o Núcleo autorizar.
+              {preflightTirh.estado === "READY" ? "Evidências disponíveis para a leitura da fase." : "Leitura parcial: há indicadores sem evidência suficiente."} A referência individual permanece preservada.
             </span>
           </header>
           {preflightTirh.inicio.bloqueios.length ? (
@@ -2570,11 +2571,12 @@ export function CockpitOperacionalVivo({
           ) : null}
           {capturaRapidaPermitida && vetoresPendentesDeAcaoProfissional.length ? (
             <aside className="hx-tirh-preflight__professional" role="status">
-              <strong>Complete enquanto a fase está em execução</strong>
+              <strong>Registre as respostas que observar</strong>
               <span>
                 {vetoresPendentesDeAcaoProfissional.map((item) => (
-                  `${item.rotulo}: ${item.motivo}`
+                  item.rotulo
                 )).join(" · ")}
+                {" · As evidências por clique contribuem para estes vetores. Os requisitos de cada um estão nos detalhes abaixo."}
               </span>
               <button type="button" onClick={() => setPerfilTarefaAberto(true)}>
                 Registrar somente o que foi observado
