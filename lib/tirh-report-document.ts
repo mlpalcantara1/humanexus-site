@@ -1306,7 +1306,7 @@ function renderOperacionalFinalConsolidado(
   bloco("09", "Devolutiva ao participante", leituraPratica.devolutivaAoParticipante);
   bloco("10", "Limites da leitura", leituraPratica.limitesDaLeitura);
   bloco("11", "O que já apareceu e o que ainda precisa ser confirmado",
-    microtrajetoria.estadosDaMudanca.flatMap((etapa) => (
+    microtrajetoria.estadosDaMudanca.filter(etapa => etapa.codigo !== "RESPOSTA_AGUDA").flatMap((etapa) => (
       etapa.itens.map((item) => `${etapa.rotulo}: ${item}`)
     ))
   );

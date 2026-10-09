@@ -30,12 +30,9 @@ export function ResultadoRegulatorioDaSessao({
   const intervencao = microtrajetoria.etapas.find(
     (etapa) => etapa.codigo === "THX_INTERVENCAO"
   );
-  const proximoPasso = microtrajetoria.etapas.find(
-    (etapa) => etapa.codigo === "PROXIMO_PASSO"
-  );
   const leitura = microtrajetoria.leituraPratica;
   const estadosRegistrados = microtrajetoria.estadosDaMudanca.filter(
-    (etapa) => etapa.itens.length
+    (etapa) => etapa.itens.length && etapa.codigo !== "RESPOSTA_AGUDA"
   );
 
   return (
@@ -64,9 +61,7 @@ export function ResultadoRegulatorioDaSessao({
             <span>A plataforma não conclui automaticamente a partir da variação dos indicadores.</span>
           ) : null}
         </article>
-        {proximoPasso?.itens.length ? (
-          <article><small>Próximo passo profissional</small><p>{proximoPasso.itens.join(" · ")}</p></article>
-        ) : null}
+
       </div>
 
       <div className="hx-session-result-summary__three-moments">

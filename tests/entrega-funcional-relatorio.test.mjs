@@ -431,3 +431,10 @@ test("camada visível traduz termos estrangeiros sem alterar contratos internos"
   assert.match(navegacao, /Laboratório HUMANEXUS/);
   assert.doesNotMatch(navegacao, /HUMANEXUS LAB/);
 });
+
+test("resposta e recomendações têm uma única apresentação na leitura prática", async () => {
+  const componente = await readFile(new URL("../components/resultado-regulatorio-da-sessao.tsx", import.meta.url), "utf8");
+  assert.match(componente, /etapa\.codigo !== "RESPOSTA_AGUDA"/);
+  assert.doesNotMatch(componente, /Próximo passo profissional/);
+  assert.match(componente, /titulo="Recomendações" itens=\{leitura\.recomendacoes\}/);
+});
