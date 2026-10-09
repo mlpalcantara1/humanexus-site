@@ -2441,3 +2441,10 @@
   .hx-app .hx-report-canonical :where(p,dd,li) { font-size:10pt; }
   .hx-app .hx-report-canonical :where(h2,h3,h4) { break-after:avoid; }
 }
+
+/* Fontes físicas sempre em quadros próprios antes dos resultados. */
+.hx-app .hx-live-cockpit > .hx-live-primary-physiology { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.hx-app .hx-live-cockpit > .hx-live-primary-physiology > * { min-width:0; }
+.hx-app .hx-live-baseline-reference { display:flex; flex-wrap:wrap; gap:6px 16px; margin:8px 0; font:12px/1.5 Arial,Helvetica,sans-serif; }
+.hx-app .hx-live-baseline-reference b { color:var(--gold-hi); font-weight:500; }
+@media(max-width:1100px) { .hx-app .hx-live-cockpit > .hx-live-primary-physiology { grid-template-columns:minmax(0,1fr); } }

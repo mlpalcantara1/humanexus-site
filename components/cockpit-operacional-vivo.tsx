@@ -2371,6 +2371,159 @@ export function CockpitOperacionalVivo({
         </div>
       </section>
 
+      <section id="hx-command-level" className="hx-live-operation-focus" aria-label="Comando e progressão da sessão">
+        <div className="hx-live-operation-flow">
+          <small>CONDUÇÃO DA SESSÃO</small>
+          {!sessaoBaseline ? <p className="hx-live-baseline-reference"><b>BASELINE · REFERÊNCIA INICIAL</b><span>{estadoDoBaseline} · aquisição independente das etapas PRÉ, TREINO e PÓS.</span></p> : null}
+          <div>
+            {passosDoFluxo.map((passo) => (
+              <span
+                className={[
+                  passo.atual ? "is-current" : "",
+                  passo.concluido ? "is-complete" : ""
+                ].filter(Boolean).join(" ")}
+                key={passo.codigo}
+              >
+                <b>{passo.rotulo}</b>
+                <em>{passo.estado}</em>
+              </span>
+            ))}
+          </div>
+          {mostrarLeaseDaEstacao ? (
+            <details><summary>Conexão da estação</summary><dl className="hx-live-station-lease" aria-label="Vínculo da estação física">
+              <div>
+                <dt>ESTAÇÃO VINCULADA</dt>
+                <dd>{texto(leaseDaEstacao.identificador_da_estacao, "Aguardando estação")}</dd>
+              </div>
+              <div>
+                <dt>SESSÃO</dt>
+                <dd>{texto(contextoSessao.nome, texto(contextoSessao.identificador, "Sessão atual"))}</dd>
+              </div>
+              <div>
+                <dt>FASE</dt>
+                <dd>{texto(leaseDaEstacao.fase_ativa, "Sem fase ativa")}</dd>
+              </div>
+              <div>
+                <dt>ÚLTIMA ATIVIDADE</dt>
+                <dd>{texto(leaseDaEstacao.heartbeat, texto(leaseDaEstacao.renovado_em, "Não confirmada"))}</dd>
+              </div>
+              <div>
+                <dt>AQUISIÇÃO ATIVA</dt>
+                <dd>{leaseDaEstacao.aquisicao_ativa === true ? "SIM" : "NÃO"}</dd>
+              </div>
+              <div>
+                <dt>VÍNCULO EXCLUSIVO</dt>
+                <dd>{leaseDaEstacao.lease_stale === true ? "DESATUALIZADO" : texto(leaseDaEstacao.estado, "NÃO ATIVO")}</dd>
+              </div>
+            </dl></details>
+          ) : null}
+          {inicioDeFaseBloqueado ? (
+            <div className="hx-live-start-gate" role="alert">
+              <strong>FASE NÃO INICIADA</strong>
+              <span>
+                {preflightTirh.inicio.bloqueios
+                  .map((item) => `${item.rotulo}: ${item.motivo}`)
+                  .join(" · ")}
+              </span>
+              {preflightTirh.inicio.bloqueios.some(
+                (item) => item.codigo === "PERFIL_TAREFA"
+              ) ? <button type="button" onClick={() => setPerfilTarefaAberto(true)}>
+                Informar somente o perfil mínimo
+              </button> : null}
+            </div>
+          ) : null}
+        </div>
+        <div className="hx-live-operation-action">
+          <small>{controlesDaFase.length ? "CONTROLES DA FASE" : "COMANDO PRINCIPAL"}</small>
+          {controlesDaFase.length ? (
+            <div
+              className="hx-live-operation-action__phase-controls"
+              aria-label={`Controles operacionais de ${texto(grupoDeControlesAtual.fase, "fase atual")}`}
+            >
+              {controlesDaFase.map((controle) => {
+                const comando = String(controle.comando ?? "");
+                const habilitado = controle.habilitado === true;
+                return (
+                  <button
+                    className={comando.startsWith("ENCERRAR_") ? "is-critical" : ""}
+                    key={comando}
+                    type="button"
+                    onClick={() => executarSecundaria(comando)}
+                    disabled={ocupado || !permitirOperacao || !habilitado}
+                    aria-disabled={ocupado || !permitirOperacao || !habilitado}
+                    title={habilitado ? rotuloDaSecundaria(comando) : texto(controle.motivo, "Indisponível no estado atual")}
+                  >
+                    {rotuloDaSecundaria(comando)}
+                  </button>
+                );
+              })}
+            </div>
+          ) : acaoPrincipalVisivel === "PREPARAR_SESSAO" ? (
+            <button
+              className="hx-live-command__route"
+              type="button"
+              onClick={executarPrincipal}
+            >
+              IR PARA SESSÕES E PREPARAR
+            </button>
+          ) : acaoPrincipalVisivel ? (
+            <button
+              className={`hx-live-command__primary ${
+                acaoPrincipalVisivel.startsWith("ENCERRAR_") || acaoPrincipalVisivel === "CONCLUIR_SESSAO"
+                  ? "is-critical"
+                  : ""
+              }`}
+              type="button"
+              onClick={executarPrincipal}
+              disabled={ocupado || !permitirOperacao || inicioDeFaseBloqueado}
+              aria-disabled={ocupado || !permitirOperacao || inicioDeFaseBloqueado}
+              title={inicioDeFaseBloqueado
+                ? "Complete os pré-requisitos estáticos indicados antes de iniciar."
+                : rotuloDaAcao}
+            >
+              {rotuloDaAcao}
+            </button>
+          ) : operacaoFinalizada ? (
+            <strong className="hx-live-command__done">
+              Sessão encerrada
+            </strong>
+          ) : (
+            <strong className="hx-live-command__blocked" role="alert">
+              Estado operacional sem saída — abra a recuperação
+            </strong>
+          )}
+          {acoesSecundariasVisiveis.length ? (
+            <div className="hx-live-operation-action__secondary" aria-label="Ações operacionais complementares">
+              {acoesSecundariasVisiveis.map((comando) => (
+                <button
+                  className={comando.startsWith("ENCERRAR_") || comando === "CONCLUIR_SESSAO" ? "is-critical" : ""}
+                  key={comando}
+                  type="button"
+                  onClick={() => executarSecundaria(comando)}
+                  disabled={ocupado || (!permitirOperacao && comando !== "ABRIR_REPLAY")}
+                >
+                  {rotuloDaSecundaria(comando)}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+
+      <section className="hx-live-primary-physiology" aria-label="Superfícies fisiológicas principais">
+            <AtividadeDasBandasEeg
+              fonte={eeg}
+              marcadores={marcadores}
+              faixas={faixas}
+            />
+            <DinamicaAutonomicaPolar
+              fonte={polar}
+              marcadores={marcadores}
+              faixas={faixas}
+            />
+          </section>
+
       {modoHistorico && medidasPreservadasDaFase.length > 0 ? (
         <section className="hx-preserved-condition" aria-label="Medidas fisiológicas preservadas da fase">
           <header><small>CONDIÇÃO REGISTRADA · {fasePreservada === "POS" ? "PÓS" : fasePreservada}</small><strong>Mobilização autonômica e neurocognitiva</strong></header>
@@ -2798,143 +2951,6 @@ export function CockpitOperacionalVivo({
         </details>
       ) : null}
 
-      <section id="hx-command-level" className="hx-live-operation-focus" aria-label="Comando e progressão da sessão">
-        <div className="hx-live-operation-flow">
-          <small>FLUXO OPERACIONAL</small>
-          <div>
-            {passosDoFluxo.map((passo) => (
-              <span
-                className={[
-                  passo.atual ? "is-current" : "",
-                  passo.concluido ? "is-complete" : ""
-                ].filter(Boolean).join(" ")}
-                key={passo.codigo}
-              >
-                <b>{passo.rotulo}</b>
-                <em>{passo.estado}</em>
-              </span>
-            ))}
-          </div>
-          {mostrarLeaseDaEstacao ? (
-            <details><summary>Conexão da estação</summary><dl className="hx-live-station-lease" aria-label="Vínculo da estação física">
-              <div>
-                <dt>ESTAÇÃO VINCULADA</dt>
-                <dd>{texto(leaseDaEstacao.identificador_da_estacao, "Aguardando estação")}</dd>
-              </div>
-              <div>
-                <dt>SESSÃO</dt>
-                <dd>{texto(contextoSessao.nome, texto(contextoSessao.identificador, "Sessão atual"))}</dd>
-              </div>
-              <div>
-                <dt>FASE</dt>
-                <dd>{texto(leaseDaEstacao.fase_ativa, "Sem fase ativa")}</dd>
-              </div>
-              <div>
-                <dt>ÚLTIMA ATIVIDADE</dt>
-                <dd>{texto(leaseDaEstacao.heartbeat, texto(leaseDaEstacao.renovado_em, "Não confirmada"))}</dd>
-              </div>
-              <div>
-                <dt>AQUISIÇÃO ATIVA</dt>
-                <dd>{leaseDaEstacao.aquisicao_ativa === true ? "SIM" : "NÃO"}</dd>
-              </div>
-              <div>
-                <dt>VÍNCULO EXCLUSIVO</dt>
-                <dd>{leaseDaEstacao.lease_stale === true ? "DESATUALIZADO" : texto(leaseDaEstacao.estado, "NÃO ATIVO")}</dd>
-              </div>
-            </dl></details>
-          ) : null}
-          {inicioDeFaseBloqueado ? (
-            <div className="hx-live-start-gate" role="alert">
-              <strong>FASE NÃO INICIADA</strong>
-              <span>
-                {preflightTirh.inicio.bloqueios
-                  .map((item) => `${item.rotulo}: ${item.motivo}`)
-                  .join(" · ")}
-              </span>
-              {preflightTirh.inicio.bloqueios.some(
-                (item) => item.codigo === "PERFIL_TAREFA"
-              ) ? <button type="button" onClick={() => setPerfilTarefaAberto(true)}>
-                Informar somente o perfil mínimo
-              </button> : null}
-            </div>
-          ) : null}
-        </div>
-        <div className="hx-live-operation-action">
-          <small>{controlesDaFase.length ? "CONTROLES DA FASE" : "COMANDO PRINCIPAL"}</small>
-          {controlesDaFase.length ? (
-            <div
-              className="hx-live-operation-action__phase-controls"
-              aria-label={`Controles operacionais de ${texto(grupoDeControlesAtual.fase, "fase atual")}`}
-            >
-              {controlesDaFase.map((controle) => {
-                const comando = String(controle.comando ?? "");
-                const habilitado = controle.habilitado === true;
-                return (
-                  <button
-                    className={comando.startsWith("ENCERRAR_") ? "is-critical" : ""}
-                    key={comando}
-                    type="button"
-                    onClick={() => executarSecundaria(comando)}
-                    disabled={ocupado || !permitirOperacao || !habilitado}
-                    aria-disabled={ocupado || !permitirOperacao || !habilitado}
-                    title={habilitado ? rotuloDaSecundaria(comando) : texto(controle.motivo, "Indisponível no estado atual")}
-                  >
-                    {rotuloDaSecundaria(comando)}
-                  </button>
-                );
-              })}
-            </div>
-          ) : acaoPrincipalVisivel === "PREPARAR_SESSAO" ? (
-            <button
-              className="hx-live-command__route"
-              type="button"
-              onClick={executarPrincipal}
-            >
-              IR PARA SESSÕES E PREPARAR
-            </button>
-          ) : acaoPrincipalVisivel ? (
-            <button
-              className={`hx-live-command__primary ${
-                acaoPrincipalVisivel.startsWith("ENCERRAR_") || acaoPrincipalVisivel === "CONCLUIR_SESSAO"
-                  ? "is-critical"
-                  : ""
-              }`}
-              type="button"
-              onClick={executarPrincipal}
-              disabled={ocupado || !permitirOperacao || inicioDeFaseBloqueado}
-              aria-disabled={ocupado || !permitirOperacao || inicioDeFaseBloqueado}
-              title={inicioDeFaseBloqueado
-                ? "Complete os pré-requisitos estáticos indicados antes de iniciar."
-                : rotuloDaAcao}
-            >
-              {rotuloDaAcao}
-            </button>
-          ) : operacaoFinalizada ? (
-            <strong className="hx-live-command__done">
-              Sessão encerrada
-            </strong>
-          ) : (
-            <strong className="hx-live-command__blocked" role="alert">
-              Estado operacional sem saída — abra a recuperação
-            </strong>
-          )}
-          {acoesSecundariasVisiveis.length ? (
-            <div className="hx-live-operation-action__secondary" aria-label="Ações operacionais complementares">
-              {acoesSecundariasVisiveis.map((comando) => (
-                <button
-                  className={comando.startsWith("ENCERRAR_") || comando === "CONCLUIR_SESSAO" ? "is-critical" : ""}
-                  key={comando}
-                  type="button"
-                  onClick={() => executarSecundaria(comando)}
-                  disabled={ocupado || (!permitirOperacao && comando !== "ABRIR_REPLAY")}
-                >
-                  {rotuloDaSecundaria(comando)}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </section>
 
       <div id="hx-regulation-level" className="hx-live-command-center hx-live-command-center--premium">
         {radarVetorial.length ? (
@@ -2999,20 +3015,6 @@ export function CockpitOperacionalVivo({
         ) : <HxSurface as="section" className="hx-live-vector-stage"><h3>Vetores</h3><p>Definições canônicas indisponíveis. Nenhum vetor substituto foi criado.</p></HxSurface>}
 
         <section className="hx-live-intelligence-instruments" aria-label="Instrumentos de Inteligência Regulatória Humana">
-          {!(modoHistorico && medidasPreservadasDaFase.length > 0) ? <section className="hx-live-primary-physiology" aria-label="Superfícies fisiológicas principais">
-            <AtividadeDasBandasEeg
-              fonte={eeg}
-              marcadores={marcadores}
-              faixas={faixas}
-            />
-            <DinamicaAutonomicaPolar
-              fonte={polar}
-              marcadores={marcadores}
-              faixas={faixas}
-            />
-          </section>
-
-          : null}
 
           <HxSurface as="section" className="hx-live-intelligence-instrument">
             <HxSectionHeader
