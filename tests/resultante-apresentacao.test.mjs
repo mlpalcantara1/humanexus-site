@@ -8,7 +8,7 @@ test('apresenta a magnitude e a direção no formato entregue pelo motor Tipo B'
   const resultado = apresentarResultante(recebido);
   assert.equal(resultado.magnitude,72.31);
   assert.equal(resultado.direcaoTexto,'VH 0.600 · VT 0.800');
-  assert.equal(resultado.sentidoTexto,'COMPENSATORIO');
+  assert.equal(resultado.sentidoTexto,'Compensatório');
   assert.equal(resultado.graus,null);
   assert.equal(JSON.stringify(recebido),antes);
 });

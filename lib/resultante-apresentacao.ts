@@ -24,6 +24,8 @@ export function apresentarResultante(registro: Registro) {
     graus,
     eixos,
     direcaoTexto,
-    sentidoTexto: typeof sentido === "string" && sentido.trim() ? sentido : "NÃO DETERMINÁVEL"
+    sentidoTexto: typeof sentido === "string" && sentido.trim()
+      ? ({ NAO_DETERMINAVEL: "Não determinável", COMPENSATORIO: "Compensatório", AMBIVALENTE: "Ambivalente" } as Record<string, string>)[sentido] ?? sentido.replaceAll("_", " ")
+      : "Não determinável"
   };
 }
