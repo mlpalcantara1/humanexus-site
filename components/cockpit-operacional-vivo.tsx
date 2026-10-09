@@ -1,5 +1,6 @@
 "use client";
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
+import { apresentarResultante } from "@/lib/resultante-apresentacao";
 import { textoDoCriterioEeg } from "@/lib/eeg-quality-policy-presentation";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -1053,12 +1054,14 @@ function DinamicaDaInteligenciaRegulatoria({
   vetores,
   resultante,
   resultanteCalculada,
+  mensuracaoTipoB,
   trajetoria,
   trajetoriaCalculada
 }: {
   vetores: HxVectorAxis[];
   resultante: Registro;
   resultanteCalculada: boolean;
+  mensuracaoTipoB: Registro;
   trajetoria: Registro;
   trajetoriaCalculada: boolean;
 }) {
@@ -1067,8 +1070,10 @@ function DinamicaDaInteligenciaRegulatoria({
   const resultanteDisponivel = ["CALCULAVEL", "PLENA", "CONFLITANTE", "PARCIAL"].includes(
     estadoDaResultante.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
   );
+  const propriedades = apresentarResultante(resultante);
+  const medidaTipoB = apresentarResultante(mensuracaoTipoB);
   const magnitude = resultanteCalculada
-    ? valorNormalizado(resultante.valor)
+    ? valorNormalizado(propriedades.magnitude)
     : null;
   const vetoresCalculaveis = vetores.filter((vetor) => vetor.value != null).length;
   const configuracaoParcial = magnitude == null
@@ -1113,9 +1118,9 @@ function DinamicaDaInteligenciaRegulatoria({
       </div>
       <dl>
         <div><dt>Resultante</dt><dd>{texto(resultante.estado, "NÃO CALCULÁVEL")}</dd></div>
-        <div><dt>Magnitude</dt><dd>{magnitude == null ? "Ainda sem magnitude global estabelecida" : `${numero(resultante.valor, 2)} ${texto(resultante.unidade, "")}`}</dd></div>
-        <div><dt>Direção funcional</dt><dd>{texto(resultante.direcao_funcional ?? resultante.vetor_dominante, "NÃO DETERMINÁVEL")}</dd></div>
-        <div><dt>Sentido regulatório</dt><dd>{texto(resultante.sentido_contextual, "NÃO DETERMINÁVEL")}</dd></div>
+        <div><dt>Magnitude</dt><dd>{magnitude == null ? "Ainda sem magnitude global estabelecida" : `${numero(propriedades.magnitude, 2)} ${texto(resultante.unidade, "")}`}</dd></div>
+        <div><dt>Direção funcional</dt><dd>{propriedades.direcaoTexto}</dd></div>
+        <div><dt>Sentido regulatório</dt><dd>{propriedades.sentidoTexto}</dd></div>
         <div><dt>Tendência</dt><dd>{trajetoriaCalculada
           ? [
               texto(vetorEvolucao.nivel_longitudinal, ""),
@@ -1129,6 +1134,18 @@ function DinamicaDaInteligenciaRegulatoria({
           </>
         ) : null}
       </dl>
+      {Object.keys(mensuracaoTipoB).length > 0 ? (
+        <details className="hx-live-vector-trace">
+          <summary>Magnitude e direção vetoriais · Tipo B em validação</summary>
+          <dl>
+            <div><dt>Magnitude</dt><dd>{medidaTipoB.magnitude == null ? "Ainda não calculável com as evidências desta fase" : numero(medidaTipoB.magnitude, 2)}</dd></div>
+            <div><dt>Direção vetorial</dt><dd>{medidaTipoB.direcaoTexto}</dd></div>
+            <div><dt>Sentido regulatório</dt><dd>{medidaTipoB.sentidoTexto}</dd></div>
+            {medidaTipoB.magnitude == null ? <div><dt>O que falta</dt><dd>{portuguesVisivel(fontesDoIndicador(mensuracaoTipoB.incertezas))}</dd></div> : null}
+          </dl>
+          <p>Medida Tipo B aprovada para validação empírica. Preserva a configuração autoral V1 e não determina o IIRH ou a Zona Operacional.</p>
+        </details>
+      ) : null}
       <p>{configuracaoParcial
         ? "A intensidade de cada Vetor ganha significado pela direção funcional, pelo sentido adaptativo e pela interação com as demais forças. A Resultante expressa essa organização; sua magnitude global só aparece quando estiver estabelecida."
         : "A Resultante reúne as forças que organizam a resposta à exigência. Observe a intensidade, a direção funcional e o sentido regulatório; propriedades ainda não sustentadas pela evidência permanecem explicitamente indisponíveis."}</p>
@@ -1643,7 +1660,7 @@ export function CockpitOperacionalVivo({
       ["CALCULAVEL", "CONFLITANTE", "PARCIAL"].includes(
         estadoDaResultanteAutoritativa
       )
-      && typeof resultanteAutoritativa.valor === "number"
+      && apresentarResultante(resultanteAutoritativa).magnitude != null
     )
   );
   const zonaCanonicaCalculada = cienciaAtualAdmissivel
@@ -3027,6 +3044,7 @@ export function CockpitOperacionalVivo({
             <DinamicaDaInteligenciaRegulatoria
               vetores={radarVetorial}
               resultante={resultanteAutoritativa}
+              mensuracaoTipoB={objeto(objeto(tirhV1.legacy).resultante)}
               resultanteCalculada={resultanteCalculada}
               trajetoria={trajetoriaAutoritativa}
               trajetoriaCalculada={trajetoriaCalculada}
@@ -3221,7 +3239,7 @@ export function CockpitOperacionalVivo({
           <details className="hx-live-vector-trace">
             <summary>Resultante · rastreabilidade científica</summary>
             <dl>
-              <div><dt>Direção funcional</dt><dd>{texto(resultanteAutoritativa.direcao_funcional ?? resultanteAutoritativa.vetor_dominante, "NÃO DETERMINÁVEL")}</dd></div>
+              <div><dt>Direção funcional</dt><dd>{apresentarResultante(resultanteAutoritativa).direcaoTexto}</dd></div>
               <div><dt>Sentido contextual</dt><dd>{texto(resultanteAutoritativa.sentido_contextual, "NÃO DETERMINÁVEL")}</dd></div>
               <div><dt>Vetores contribuintes</dt><dd>{fontesDoIndicador(resultanteAutoritativa.vetores_contribuintes ?? resultanteAutoritativa.vetores_utilizados)}</dd></div>
               <div><dt>Vetores ausentes</dt><dd>{fontesDoIndicador(resultanteAutoritativa.vetores_ausentes)}</dd></div>

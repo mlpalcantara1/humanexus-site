@@ -1,4 +1,5 @@
 import PDFDocument from "pdfkit";
+import { apresentarResultante } from "./resultante-apresentacao.ts";
 import { textoDaReavaliacaoEeg } from "./eeg-quality-policy-presentation.ts";
 import { resumoOperacionalDoRelatorio } from "./resumo-operacional-relatorio.ts";
 
@@ -598,11 +599,21 @@ function tabelaVetores(doc: PDFKit.PDFDocument, vetores: Vetor[], x: number, y: 
 }
 
 function desenharResultante(doc: PDFKit.PDFDocument, resultante: Registro, x: number, y: number, width: number, height: number) {
-  const magnitude = numero(resultante.magnitude);
-  const direcao = numero(resultante.direcao_graus ?? resultante.direcao);
+  const propriedades = apresentarResultante(resultante);
+  const magnitude = propriedades.magnitude;
+  const direcao = propriedades.graus;
   const cx = x + width * .42;
   const cy = y + height * .52;
   const raio = Math.min(width * .28, height * .36);
+  if (propriedades.eixos.length) {
+    propriedades.eixos.forEach(([codigo, coordenada], indice) => {
+      const yy = y + 24 + indice * 21;
+      doc.font("Helvetica").fontSize(8).fillColor(CORES.petroleo).text(codigo, x + 15, yy, { width: 35 });
+      doc.rect(x + 55, yy + 2, width * .43, 6).fill(CORES.linha);
+      doc.rect(x + 55, yy + 2, width * .43 * Math.min(1, Math.max(0, coordenada)), 6).fill(CORES.ouro);
+      doc.fillColor(CORES.petroleo).text(coordenada.toFixed(3), x + width * .57, yy, { width: 45 });
+    });
+  } else {
   doc.circle(cx, cy, raio).lineWidth(.6).strokeColor(CORES.linha).stroke();
   doc.circle(cx, cy, raio * .55).lineWidth(.35).strokeColor(CORES.linha).stroke();
   doc.moveTo(cx - raio, cy).lineTo(cx + raio, cy).moveTo(cx, cy - raio).lineTo(cx, cy + raio).lineWidth(.35).strokeColor(CORES.linha).stroke();
@@ -616,10 +627,11 @@ function desenharResultante(doc: PDFKit.PDFDocument, resultante: Registro, x: nu
   } else {
     doc.circle(cx, cy, 4).fill(CORES.cinza);
   }
+  }
   const tx = x + width * .73;
   etiqueta(doc, "MAGNITUDE", magnitude == null ? "Ausente" : magnitude.toFixed(1), tx, y + 28, width * .24);
-  etiqueta(doc, "DIREÇÃO", direcao == null ? "Não determinada" : `${direcao.toFixed(0)}°`, tx, y + 78, width * .24);
-  etiqueta(doc, "SENTIDO", texto(resultante.sentido, "Não determinado"), tx, y + 128, width * .24);
+  etiqueta(doc, "DIREÇÃO", propriedades.eixos.length ? "Composição vetorial ao lado" : propriedades.direcaoTexto, tx, y + 78, width * .24);
+  etiqueta(doc, "SENTIDO", propriedades.sentidoTexto, tx, y + 128, width * .24);
   etiqueta(doc, "CONFIANÇA", proporcao(resultante.confianca) == null ? "Não registrada" : `${Math.round((proporcao(resultante.confianca) ?? 0) * 100)}%`, tx, y + 178, width * .24);
 }
 
@@ -952,7 +964,7 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
     etiqueta(doc, "ESTADO ESTRUTURAL", texto(resultante.estado, "Não materializada"), 83, y, 205);
     etiqueta(doc, "MAGNITUDE ESCALAR", "Não aplicável na TIRH V1", 308, y, 230);
     y = paragrafo(doc, "A Resultante V1 é uma configuração emergente multivetorial estruturada. Sua admissibilidade não depende da fabricação de um escalar global.", y + 68, { x: 83, width: 455, cor: CORES.suave });
-  } else if (numero(resultante.magnitude) == null) {
+  } else if (apresentarResultante(resultante).magnitude == null) {
     ausencia(doc, "Resultante ausente", texto(resultante.motivo, "Configuração multivetorial integral não disponível."), 83, y, 455, 95);
     y += 115;
   } else {
@@ -1067,11 +1079,11 @@ function renderCientifico(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHuma
   tabelaVetores(doc, vetores, 315, y + 4, 238);
   y = 515;
   y = tituloSecao(doc, "Resultante Regulatória", y, "01");
-  if (numero(resultante.magnitude) == null) {
+  if (apresentarResultante(resultante).magnitude == null) {
     ausencia(doc, "Não calculável", texto(resultante.motivo, "Admissibilidade integral não satisfeita."), 83, y, 455, 90);
   } else {
-    etiqueta(doc, "MAGNITUDE", numero(resultante.magnitude)!.toFixed(1), 83, y, 120);
-    etiqueta(doc, "DIREÇÃO", texto(resultante.direcao_graus ?? resultante.direcao, "Não determinada"), 223, y, 120);
+    etiqueta(doc, "MAGNITUDE", apresentarResultante(resultante).magnitude!.toFixed(1), 83, y, 120);
+    etiqueta(doc, "DIREÇÃO", apresentarResultante(resultante).direcaoTexto, 223, y, 120);
     etiqueta(doc, "CONFIANÇA", proporcao(resultante.confianca) == null ? "—" : `${Math.round((proporcao(resultante.confianca) ?? 0) * 100)}%`, 363, y, 120);
   }
   y += 72;
@@ -1352,6 +1364,14 @@ function renderOperacionalFinalConsolidado(
 
   bloco("12", "Indicadores oficiais integrados à leitura", [
     `Resultante Regulatória: ${texto(resultante.estado, "evidências insuficientes")}. ${EXPLICACAO_DA_RESULTANTE}`,
+    ...(() => {
+      const medida = objeto(objeto(projecao.legacy).resultante);
+      if (!Object.keys(medida).length) return [];
+      const propriedades = apresentarResultante(medida);
+      return [`Magnitude e direção vetoriais — Tipo B em validação empírica: ${propriedades.magnitude == null
+        ? "magnitude ainda não calculável com as evidências desta fase"
+        : `magnitude ${propriedades.magnitude.toFixed(2)}`}. Direção: ${propriedades.direcaoTexto}. Sentido: ${propriedades.sentidoTexto}. Medida distinta da configuração autoral V1; não determina IIRH ou Zona Operacional.`];
+    })(),
     `IIRH: ${iirhAutoritativo.calculado ? `${iirhAutoritativo.valor} / 100 · ${rotuloIirh}` : texto(iirhAutoritativo.motivo, rotuloIirh).replace(/\.+$/, "")}. Zona: ${zona.classificada ? `${texto(zona.codigo ?? zona.nome)} · ${rotuloZona}` : texto(zona.motivo, rotuloZona).replace(/\.+$/, "")}.`,
     trajetoria.length
       ? `Trajetória: ${trajetoria.map((item) => `${item.rotulo} — ${item.valor == null ? "ausente" : item.valor} — ${item.zona}`).join(" · ")}.`

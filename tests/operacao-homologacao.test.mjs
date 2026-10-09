@@ -1484,7 +1484,8 @@ test("Cockpit projeta a cadeia científica única sem decisão ou preenchimento 
   assert.match(cockpit, /nenhuma decisão automática/);
   assert.doesNotMatch(cockpit, /hx-live-regulatory-readout__seal/);
   assert.match(cockpit, /resultanteAutoritativa/);
-  assert.match(cockpit, /resultante\.direcao_funcional \?\? resultante\.vetor_dominante/);
+  assert.match(cockpit, /propriedades\.direcaoTexto/);
+  assert.doesNotMatch(cockpit, /resultante\.direcao_funcional \?\? resultante\.vetor_dominante/);
   assert.match(cockpit, /"PLENA", "PARCIAL", "CONFLITANTE"/);
   assert.match(cockpit, /"CALCULAVEL", "CONFLITANTE", "PARCIAL"/);
   assert.match(cockpit, /Cobertura[\s\S]*Qualidade[\s\S]*Confiança/);
