@@ -977,7 +977,7 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   etiqueta(doc, "ZONA OPERACIONAL", zona.classificada
     ? normalizarZona(zona.codigo ?? zona.nome, entrada.contratoDocumental !== "LEGACY_HISTORICO")
     : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.zona.modo), 83, y, 200);
-  etiqueta(doc, "IIRH OPERACIONAL V1", iirhV1Autoritativo.calculado
+  etiqueta(doc, "IIRH OPERACIONAL", iirhV1Autoritativo.calculado
     ? `${iirhV1Autoritativo.valor!.toFixed(1)} · ${rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo)}`
     : rotuloDaDisponibilidadeAutoritativa(disponibilidadeContinua.iirh.modo), 303, y, 120);
   etiqueta(doc, "CONFIANÇA", proporcao(zona.registro.confianca) == null ? "Não registrada" : `${Math.round((proporcao(zona.registro.confianca) ?? 0) * 100)}%`, 443, y, 95);

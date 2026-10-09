@@ -1931,26 +1931,22 @@ export function CockpitOperacionalVivo({
     {
       codigo: "06",
       nome: "Resultante Regulatória",
-      estado: texto(contratoTirhV1Ativo ? resultanteTirhV1.estado : resultante.estado, "NAO DEFINIDA"),
-      motivo: contratoTirhV1Ativo
-        ? "Configuração emergente multivetorial estruturada; nenhum escore único foi fabricado."
+      estado: texto(resultanteAutoritativa.estado, "NAO DEFINIDA"),
+      motivo: "resultante_operacional" in tirhV1
+        ? "Magnitude e direção da Resultante operacional TIRH; evidências insuficientes permanecem ausentes. Medida em validação empírica."
         : texto(resultante.justificativa ?? resultante.motivo, "Composição histórica reproduzível.")
     },
     {
       codigo: "07",
       nome: "IIRH",
-      estado: texto(contratoTirhV1Ativo ? iirhTirhV1.estado : iirhCadeia.estado, "NAO CALCULAVEL"),
-      motivo: contratoTirhV1Ativo
-        ? "Média com pesos iguais somente dos macrocampos funcionalmente admissíveis; magnitude vetorial não é reinterpretada."
-        : texto(objeto(iirhCadeia.por_que_este_resultado).resumo, "Exige amplitude e cobertura humana suficientes.")
+      estado: texto(iirhContinuo.estado, "NAO CALCULAVEL"),
+      motivo: texto(iirhContinuo.motivo, "Integração dos componentes reais elegíveis pela biblioteca vigente, com cobertura explícita. A adequação dos macrocampos V1 é uma síntese distinta.")
     },
     {
       codigo: "08",
       nome: "Zona Operacional",
-      estado: texto(contratoTirhV1Ativo ? zonaTirhV1.estado : zonaCadeia.estado, "NAO CALCULAVEL"),
-      motivo: contratoTirhV1Ativo
-        ? "Classificação semântica multifonte; o IIRH isoladamente não determina Zona."
-        : texto(objeto(zonaCadeia.por_que_este_resultado).resumo ?? zonaCadeia.motivo, "Precondições históricas do contrato de origem.")
+      estado: texto(zonaContinua.estado, "NAO CLASSIFICAVEL"),
+      motivo: texto(zonaContinua.motivo, "Zona emitida pelo Núcleo sob a política vigente, com as faixas autorais preservadas e cobertura explícita.")
     },
     {
       codigo: "09",
@@ -2069,9 +2065,9 @@ export function CockpitOperacionalVivo({
     "05": contratoTirhV1Ativo
       ? { contrato: "TIRH V1", vetores: vetoresTirhV1 }
       : { resumo: vetoresCadeia, vetores: estadosVetoriais },
-    "06": contratoTirhV1Ativo ? resultanteTirhV1 : resultante,
-    "07": contratoTirhV1Ativo ? iirhTirhV1 : iirhCadeia,
-    "08": contratoTirhV1Ativo ? zonaTirhV1 : zonaCadeia,
+    "06": resultanteAutoritativa,
+    "07": iirhContinuo.registro,
+    "08": zonaContinua.registro,
     "09": gatilhosCadeia,
     "10": rotasCadeia,
     "11": rotaDominanteCadeia,

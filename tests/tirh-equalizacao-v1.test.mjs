@@ -14,9 +14,9 @@ test("Cockpit consome a síntese TIRH V1 do núcleo sem calcular ciência local"
   assert.match(sinteseValidacao, /tirhV1Persistida\.sintese/);
   assert.match(sinteseValidacao, /registroDoCampo\.valor/);
   assert.match(sinteseValidacao, /registroDoCampo\.fontes/);
-  assert.match(cockpit, /Configuração emergente multivetorial estruturada/);
+  assert.match(cockpit, /Magnitude e direção da Resultante operacional TIRH/);
   assert.doesNotMatch(cockpit, /IIRH_OP_V1\s*=/);
-  assert.match(cockpit, /o IIRH isoladamente não determina Zona/);
+  assert.match(cockpit, /A adequação dos macrocampos V1 é uma síntese distinta/);
 });
 
 test("validação profissional usa um quadro pós-sessão versionado e auditável", () => {
@@ -95,4 +95,15 @@ test("quadro científico permanece responsivo nas larguras autorais", () => {
   assert.match(estilos, /@media \(max-width: 820px\)/);
   assert.match(estilos, /grid-template-columns: 1fr/);
   assert.doesNotMatch(estilos, /overflow-x:\s*scroll/);
+});
+
+// A inspeção não pode contradizer a barra operacional com outro contrato.
+test("inspeção usa os mesmos registros autoritativos de IIRH, Zona e Resultante", () => {
+  assert.match(cockpit, /"06": resultanteAutoritativa/);
+  assert.match(cockpit, /"07": iirhContinuo\.registro/);
+  assert.match(cockpit, /"08": zonaContinua\.registro/);
+  assert.doesNotMatch(cockpit, /estado: texto\(contratoTirhV1Ativo \? iirhTirhV1\.estado/);
+  assert.doesNotMatch(cockpit, /estado: texto\(contratoTirhV1Ativo \? zonaTirhV1\.estado/);
+  const relatorio = fs.readFileSync("lib/tirh-report-document.ts", "utf8");
+  assert.doesNotMatch(relatorio, /etiqueta\(doc, "IIRH OPERACIONAL V1"/);
 });
