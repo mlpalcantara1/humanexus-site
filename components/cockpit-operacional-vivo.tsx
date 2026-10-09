@@ -2318,7 +2318,7 @@ export function CockpitOperacionalVivo({
 
       <section id="hx-decision-level" className="hx-live-hud" aria-label="Barra operacional decisória">
         <div className="is-decision" data-regulatory-state={fasePausadaNaApresentacao ? "PAUSADA_SEM_RESULTADO_ATUAL" : zonaDoCockpitDesatualizada ? "DESATUALIZADA" : disponibilidadeContinua.zona.modo}>
-          <small>{fasePausadaNaApresentacao ? "ZONA · FASE PAUSADA" : zonaSemJanelaAtual ? "ZONA · SEM JANELA ATUAL" : zonaDoCockpitDesatualizada ? "ZONA · ÚLTIMO REGISTRO, NÃO ATUAL" : "ZONA · ESTADO ATUAL"}</small>
+          <small>{fasePausadaNaApresentacao ? "ZONA · FASE PAUSADA" : zonaSemJanelaAtual ? "ZONA · SEM JANELA ATUAL" : zonaDoCockpitDesatualizada ? "ZONA · ÚLTIMO REGISTRO, NÃO ATUAL" : modoHistorico ? "ZONA · REGISTRO PRESERVADO" : "ZONA · ESTADO ATUAL"}</small>
           {zonaCalculada && !fasePausadaNaApresentacao && ["PROVISORIA", "SUGERIDA"].includes(String(zonaContinua.registro.estado)) && <span>Leitura provisória · cobertura {formatarPercentualCanonico(iirhContinuo.registro.cobertura)} · confiança {formatarPercentualCanonico(iirhContinuo.registro.confianca)}</span>}
           <strong>{fasePausadaNaApresentacao || zonaSemJanelaAtual ? "SEM RESULTADO ATUAL" : zonaCalculada
             ? rotuloDaZona(zonaApresentada)
@@ -2338,7 +2338,7 @@ export function CockpitOperacionalVivo({
               </>}
         </div>
         <div className="is-decision" data-regulatory-state={fasePausadaNaApresentacao ? "PAUSADA_SEM_RESULTADO_ATUAL" : iirhDoCockpitDesatualizado ? "DESATUALIZADA" : disponibilidadeContinua.iirh.modo}>
-          <small>{fasePausadaNaApresentacao ? "IIRH · FASE PAUSADA" : iirhSemJanelaAtual ? "IIRH · SEM JANELA ATUAL" : iirhDoCockpitDesatualizado ? "IIRH · ÚLTIMO REGISTRO, NÃO ATUAL" : "IIRH · ESTADO ATUAL"}</small>
+          <small>{fasePausadaNaApresentacao ? "IIRH · FASE PAUSADA" : iirhSemJanelaAtual ? "IIRH · SEM JANELA ATUAL" : iirhDoCockpitDesatualizado ? "IIRH · ÚLTIMO REGISTRO, NÃO ATUAL" : modoHistorico ? "IIRH · REGISTRO PRESERVADO" : "IIRH · ESTADO ATUAL"}</small>
           <strong data-iirh-authoritative-state={fasePausadaNaApresentacao ? "PAUSADA_SEM_RESULTADO_ATUAL" : iirhSemJanelaAtual ? "SEM_JANELA_ATUAL_ADMISSIVEL" : iirhContinuo.estadoNormalizado || "AUSENTE"}>{fasePausadaNaApresentacao || iirhSemJanelaAtual ? "SEM RESULTADO ATUAL" : iirhCalculado
             ? `${numero(iirhApresentado, 1)} ${texto(iirhContinuo.unidade, "")}`
             : estadoAtualDoIirh}</strong>
@@ -2378,23 +2378,7 @@ export function CockpitOperacionalVivo({
           {medidasPreservadasDaFase.map((item) => <p key={item}>{item}</p>)}
         </section>
       ) : null}
-      <section className="hx-preserved-condition hx-regulatory-routes" aria-label="ARR · Análise das Rotas Regulatórias">
-        <header><small>ARR · ANÁLISE DAS ROTAS REGULATÓRIAS</small><strong>O que a rota resolve, quanto custa e o que precisa mudar</strong></header>
-        <p>A anamnese apresenta a experiência do participante. A resposta à tarefa e a recuperação durante a sessão permitem examinar como essa rota se manifesta.</p>
-        <dl className="hx-regulatory-routes__grid">
-          {camposArrVisiveis.map((campo) => (
-            <div key={texto(campo.codigo)} className={campo.disponivel === true ? "" : "hx-regulatory-routes__missing"}>
-              <dt>{texto(campo.rotulo)}</dt>
-              <dd>{campo.disponivel === true ? texto(campo.valor) : "Ainda sem resposta registrada"}</dd>
-              {campo.codigo === "ARR-01" ? <small>Rota declarada; confirmação pela resposta observada.</small> : null}
-              {campo.codigo === "ARR-03" ? <small>Custo percebido ao manter a rota ao longo do tempo; examine também a mobilização do Polar H10 e do EPOC X.</small> : null}
-              {campo.codigo === "ARR-06" ? <small>NRA · direção adaptativa que o participante pretende desenvolver.</small> : null}
-            </div>
-          ))}
-        </dl>
-        {!camposArrVisiveis.length ? <p>As rotas serão apresentadas a partir da anamnese e das evidências da sessão.</p> : null}
-        {candidatasDeRota.length ? <details><summary>Rotas candidatas a confirmar ({candidatasDeRota.length})</summary>{candidatasDeRota.map((item, index) => <p key={`${texto(item.codigo_candidato)}-${index}`}>{texto(item.nome_candidato)} · confirmação profissional pendente</p>)}</details> : null}
-      </section>
+
 
       {!sessaoFinalizada ? (
         <section className={`hx-tirh-preflight ${preflightTirh.inicio.bloqueios.length ? "hx-pending-attention" : ""}`} aria-label="Pré-flight operacional TIRH">
@@ -3139,6 +3123,24 @@ export function CockpitOperacionalVivo({
           </HxSurface>
         </details>
       </div>
+
+      <section className="hx-preserved-condition hx-regulatory-routes" aria-label="ARR · Análise das Rotas Regulatórias">
+        <header><small>ARR · ANÁLISE DAS ROTAS REGULATÓRIAS</small><strong>O que a rota resolve, quanto custa e o que precisa mudar</strong></header>
+        <p>A anamnese apresenta a experiência do participante. A resposta à tarefa e a recuperação durante a sessão permitem examinar como essa rota se manifesta.</p>
+        <dl className="hx-regulatory-routes__grid">
+          {camposArrVisiveis.map((campo) => (
+            <div key={texto(campo.codigo)} className={campo.disponivel === true ? "" : "hx-regulatory-routes__missing"}>
+              <dt>{texto(campo.rotulo)}</dt>
+              <dd>{campo.disponivel === true ? texto(campo.valor) : "Ainda sem resposta registrada"}</dd>
+              {campo.codigo === "ARR-01" ? <small>Rota declarada; confirmação pela resposta observada.</small> : null}
+              {campo.codigo === "ARR-03" ? <small>Custo percebido ao manter a rota ao longo do tempo; examine também a mobilização do Polar H10 e do EPOC X.</small> : null}
+              {campo.codigo === "ARR-06" ? <small>NRA · direção adaptativa que o participante pretende desenvolver.</small> : null}
+            </div>
+          ))}
+        </dl>
+        {!camposArrVisiveis.length ? <p>As rotas serão apresentadas a partir da anamnese e das evidências da sessão.</p> : null}
+        {candidatasDeRota.length ? <details><summary>Rotas candidatas a confirmar ({candidatasDeRota.length})</summary>{candidatasDeRota.map((item, index) => <p key={`${texto(item.codigo_candidato)}-${index}`}>{texto(item.nome_candidato)} · confirmação profissional pendente</p>)}</details> : null}
+      </section>
 
       <details className={`hx-live-authorial-details ${confirmacoesProfissionaisPendentes ? "hx-pending-attention" : ""}`}><summary>Macrocampos e confirmação profissional{confirmacoesProfissionaisPendentes ? ` · ${confirmacoesProfissionaisPendentes} decisão(ões) pendente(s)` : ""}</summary>
       <SinteseValidacaoTirhV1
