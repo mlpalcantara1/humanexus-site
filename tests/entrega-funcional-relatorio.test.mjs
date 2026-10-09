@@ -438,3 +438,11 @@ test("resposta e recomendações têm uma única apresentação na leitura prát
   assert.doesNotMatch(componente, /Próximo passo profissional/);
   assert.match(componente, /titulo="Recomendações" itens=\{leitura\.recomendacoes\}/);
 });
+
+test("painel moderno mantém o gráfico vetorial visível e o radar no PDF", async () => {
+  const cockpit = await readFile(new URL("../components/cockpit-operacional-vivo.tsx", import.meta.url), "utf8");
+  const pdf = await readFile(new URL("../lib/tirh-report-document.ts", import.meta.url), "utf8");
+  assert.match(cockpit, /className="hx-live-vector-display"/);
+  assert.doesNotMatch(cockpit, /<summary>Explorar a configuração dos Vetores no gráfico/);
+  assert.match(pdf, /if \(vetoresCalculados.length > 0\)[\s\S]*desenharRadarVetorial\(doc, vetores, 180/);
+});

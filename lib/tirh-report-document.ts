@@ -1319,6 +1319,13 @@ function renderOperacionalFinalConsolidado(
       : "Trajetória não inferível: ainda não há pontos válidos e comparáveis suficientes."
   ]);
 
+  if (vetoresCalculados.length > 0) {
+    if (y + 340 > 690) novaContinuacao();
+    y = tituloSecao(doc, "Configuração dos Vetores Regulatórios", y, "13");
+    desenharRadarVetorial(doc, vetores, 180, y + 25, 112);
+    y += 295;
+  }
+
   if (possuiTrajetoriaLegivel) {
     if (y + 240 > 690) novaContinuacao();
     y = tituloSecao(doc, "Evolução oficialmente preservada", y, "14");

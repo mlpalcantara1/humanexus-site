@@ -2962,7 +2962,7 @@ export function CockpitOperacionalVivo({
               title="Forças que organizam a resposta à exigência"
               aside={<span>Nove Vetores Regulatórios momentâneos</span>}
             />
-            <details className="hx-live-authorial-details"><summary>Explorar a configuração dos Vetores no gráfico</summary>
+            <div className="hx-live-vector-display">
             <div className="hx-live-vector-tabs" role="tablist" aria-label="Visões do gráfico vetorial">
               {(["HUMANO", "TAREFA", "SINTESE"] as const).map((visao) => (
                 <button
@@ -2984,7 +2984,7 @@ export function CockpitOperacionalVivo({
                 vectors={vetoresDaVisaoAtual}
               />
             </div>
-            </details>
+            </div>
             <div className="hx-live-vector-list" aria-label="Estado individual dos nove vetores momentâneos oficiais">
               {radarVetorial.map((vetor) => {
                 return (
