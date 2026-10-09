@@ -47,7 +47,8 @@ function fontePronta(
 ): ItemDePreflight {
   const fonte = fontePorCodigo(fontes, codigo);
   const estado = String(fonte?.estado ?? "").toUpperCase();
-  const pronta = fonte?.ao_vivo === true || ["CONECTADO", "CAPTURANDO"].includes(estado);
+  const pronta = fonte?.ao_vivo === true
+    || (fonte?.ao_vivo == null && ["CONECTADO", "CAPTURANDO"].includes(estado));
   return {
     codigo,
     rotulo,
@@ -140,11 +141,12 @@ export function resolverPreflightTirh({
   const estadoDaTendencia = String(
     tendencia.estado ?? tendencia.status ?? ""
   ).toUpperCase();
-  const tendenciaPronta = Boolean(
-    tendencia.tendencia
-    ?? tendencia.sentido
-    ?? tendencia.direcao
-    ?? (estadoDaTendencia && !/AUSENTE|NAO_CALCUL|NÃO_CALCUL/.test(estadoDaTendencia))
+  const tendenciaDeclarada = tendencia.tendencia ?? tendencia.sentido ?? tendencia.direcao;
+  const estadoIndisponivel = /AUSENTE|NAO[_ ]|NÃO[_ ]|PENDENTE|INSUFICIENTE|INELEGIVEL|INELEGÍVEL|AGUARDANDO/.test(estadoDaTendencia);
+  const tendenciaPronta = !estadoIndisponivel && (
+    (typeof tendenciaDeclarada === "string" && tendenciaDeclarada.trim().length > 0
+      && !/^(NAO|NÃO|AUSENTE|PENDENTE|INDETERMIN)/i.test(tendenciaDeclarada.trim()))
+    || ["CALCULADA", "CALCULADO", "PLENA", "PARCIAL"].includes(estadoDaTendencia)
   );
   const itemResultante: ItemDePreflight = {
     codigo: "RESULTANTE",

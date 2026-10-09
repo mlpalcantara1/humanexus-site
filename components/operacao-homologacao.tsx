@@ -3984,7 +3984,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
             || indisponibilidadeDoDocumentoFinal ? (
               <section
                 id="relatorio-final-indisponivel"
-                className="hx-report-unavailable"
+                className="hx-report-unavailable hx-pending-attention"
                 role="status"
                 aria-live="polite"
               >

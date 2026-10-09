@@ -128,12 +128,26 @@ test("captura profissional permanece local, contextual e fora do cálculo cient�
 
   assert.doesNotMatch(prontidao, /IIRH\s*[+*/-]|zona\s*=/i);
   assert.doesNotMatch(componente, /objeto\(estado\.thx_individual\)\.codigo/);
-  assert.match(componente, /Nenhum clique cria nota/i);
-  assert.match(componente, /nenhuma captura cria vetor ou interpretação/i);
+  const captura = componente.slice(componente.indexOf("const capturarEvidenciaRapida ="), componente.indexOf("const capturarEventoObjetivo ="));
+  assert.match(captura, /acao: "CAPTURAR", codigo_evidencia: codigoEvidencia/);
+  assert.doesNotMatch(captura, /nota:|magnitude:|interpretacao:|valor_normalizado:/);
   assert.match(componente, /não produz cálculo científico/i);
   assert.doesNotMatch(componente, /SpeechRecognition|webkitSpeechRecognition/);
   const integrado = await readFile(new URL("../components/registro-integrado-sessao.tsx", import.meta.url), "utf8");
   assert.match(integrado, /iniciarTranscricaoLocal/);
   assert.match(integrado, /Confirmação final profissional/);
   assert.match(componente, /CONTEÚDO BRUTO PRESERVADO/i);
+});
+
+
+test("ausência explícita ao vivo prevalece sobre estado de conexão preservado", () => {
+  const resultado = resolverPreflightTirh({autoHidratacao:hidratacaoPronta(),fontes:[{codigo:"POLAR_H10",estado:"CAPTURANDO",ao_vivo:false}],vetores:[],resultante:{},tendencia:{}});
+  assert.equal(resultado.fontes.find((item) => item.codigo === "POLAR_H10").estado,"UNAVAILABLE");
+});
+
+test("tendência não inferível nunca anuncia prontidão mesmo com direção preservada", () => {
+  for (const estado of ["NAO_INFERIVEL","NÃO INFERÍVEL","NAO_ELEGIVEL","INSUFICIENTE","PENDENTE"]) {
+    const resultado = resolverPreflightTirh({autoHidratacao:hidratacaoPronta(),fontes:[],vetores:[],resultante:{},tendencia:{estado,direcao:"ESTÁVEL"}});
+    assert.equal(resultado.tendencia.estado,"PENDING",estado);
+  }
 });

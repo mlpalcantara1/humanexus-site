@@ -297,7 +297,7 @@ export function SinteseValidacaoTirhV1({
           </div>
         ) : <p>Nenhuma nova adjudicação está disponível neste recorte.</p>}
         {claimsPendentesTirhV1.length ? (
-          <div className="hx-tirh-v1-validation-form">
+          <div className="hx-pending-attention"><div className="hx-tirh-v1-validation-form">
             <label>
               Item para decisão
               <select value={claimSelecionado} onChange={(evento) => setClaimSelecionado(evento.target.value)}>
@@ -335,7 +335,7 @@ export function SinteseValidacaoTirhV1({
               {validacaoEmEnvio ? "PRESERVANDO…" : "PRESERVAR DECISÃO PROFISSIONAL"}
             </button>
             {estadoDaValidacaoTirh ? <p role="status">{estadoDaValidacaoTirh}</p> : null}
-          </div>
+          </div></div>
         ) : null}
         <details>
           <summary>Proveniência e contrato das afirmações científicas</summary>

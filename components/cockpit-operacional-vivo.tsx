@@ -16,6 +16,7 @@ import {
 import { HxSectionHeader, HxSurface } from "@/components/hx-design-system";
 import {
   resolverAutoridadeSinteseTirhV1,
+  claimElegivelParaValidacaoTirhV1,
   SinteseValidacaoTirhV1
 } from "@/components/sintese-validacao-tirh-v1";
 import { fonteDuranteSincronizacao } from "@/lib/cockpit-live-coordination";
@@ -1474,8 +1475,10 @@ export function CockpitOperacionalVivo({
   const {
     tirhV1,
     tirhV1AoVivo,
+    tirhV1Persistida,
     sinteseTirhV1Persistida
   } = resolverAutoridadeSinteseTirhV1(estado);
+  const confirmacoesProfissionaisPendentes = lista(Array.isArray(tirhV1Persistida.claims) ? tirhV1Persistida.claims : tirhV1.claims).filter(claimElegivelParaValidacaoTirhV1).length;
   const vetoresTirhV1 = objeto(tirhV1.vetores);
   const resultanteTirhV1 = objeto(tirhV1.resultante);
   const iirhTirhV1 = objeto(tirhV1.iirh);
@@ -1844,6 +1847,9 @@ export function CockpitOperacionalVivo({
   const rotaDominanteCadeia = objeto(cadeiaCientifica.rota_dominante);
   const secoesPreservadas = lista(objeto(estado.leitura_documental).secoes);
   const custoPreservado = secoesPreservadas.find((item) => item.codigo === "MEDIDAS_DE_CUSTO_POR_FASE");
+  const arrPreservada = secoesPreservadas.find((item) => item.codigo === "ARR_DECLARATIVA_DA_ANAMNESE");
+  const camposArrDeclarativos = lista(objeto(arrPreservada).campos_declarativos);
+  const camposArrVisiveis = camposArrDeclarativos.length ? camposArrDeclarativos : lista(arrCadeia.campos);
   const fasePreservada = String(estadoDaJanelaCientifica.fase ?? faseCientificaAtual);
   const medidasPreservadasDaFase = (Array.isArray(objeto(custoPreservado).itens) ? (objeto(custoPreservado).itens as unknown[]).filter((item): item is string => typeof item === "string") : []).filter((item) => item.startsWith(`${fasePreservada} —`));
   const candidatasDeRota = lista(rotaDominanteCadeia.candidatas);
@@ -2450,7 +2456,7 @@ export function CockpitOperacionalVivo({
         <header><small>ARR · ANÁLISE DAS ROTAS REGULATÓRIAS</small><strong>O que a rota resolve, quanto custa e o que precisa mudar</strong></header>
         <p>A anamnese apresenta a experiência do participante. A resposta à tarefa e a recuperação durante a sessão permitem examinar como essa rota se manifesta.</p>
         <dl className="hx-regulatory-routes__grid">
-          {lista(arrCadeia.campos).map((campo) => (
+          {camposArrVisiveis.map((campo) => (
             <div key={texto(campo.codigo)} className={campo.disponivel === true ? "" : "hx-regulatory-routes__missing"}>
               <dt>{texto(campo.rotulo)}</dt>
               <dd>{campo.disponivel === true ? texto(campo.valor) : "Ainda sem resposta registrada"}</dd>
@@ -2460,7 +2466,7 @@ export function CockpitOperacionalVivo({
             </div>
           ))}
         </dl>
-        {!lista(arrCadeia.campos).length ? <p>As rotas serão apresentadas a partir da anamnese e das evidências da sessão.</p> : null}
+        {!camposArrVisiveis.length ? <p>As rotas serão apresentadas a partir da anamnese e das evidências da sessão.</p> : null}
         {candidatasDeRota.length ? <details><summary>Rotas candidatas a confirmar ({candidatasDeRota.length})</summary>{candidatasDeRota.map((item, index) => <p key={`${texto(item.codigo_candidato)}-${index}`}>{texto(item.nome_candidato)} · confirmação profissional pendente</p>)}</details> : null}
       </section>
 
@@ -3208,7 +3214,7 @@ export function CockpitOperacionalVivo({
         </details>
       </div>
 
-      <details className="hx-live-authorial-details"><summary>Macrocampos e confirmação profissional</summary>
+      <details className={`hx-live-authorial-details ${confirmacoesProfissionaisPendentes ? "hx-pending-attention" : ""}`}><summary>Macrocampos e confirmação profissional{confirmacoesProfissionaisPendentes ? ` · ${confirmacoesProfissionaisPendentes} decisão(ões) pendente(s)` : ""}</summary>
       <SinteseValidacaoTirhV1
         estado={estado}
         indicadoresDesatualizados={{
