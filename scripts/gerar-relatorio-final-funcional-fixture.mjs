@@ -89,6 +89,9 @@ const tirhV1 = {
 };
 
 const sinaisDeTeste = process.env.HXP_TEST_SIGNAL_FILE ? JSON.parse(await readFile(process.env.HXP_TEST_SIGNAL_FILE, "utf8")) : {};
+if (process.env.HXP_TEST_RESULTANTE_FILE) {
+  tirhV1.sintese.resultante_operacional = JSON.parse(await readFile(process.env.HXP_TEST_RESULTANTE_FILE, "utf8"));
+}
 const pdf = await gerarPdfVisualHumanexus({
   contratoDocumental,
   tipoDocumento: "OPERACIONAL_TIRH",

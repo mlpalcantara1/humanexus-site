@@ -468,7 +468,9 @@ function extrairItens(entrada: EntradaRelatorioHumanexus, chave: string): Regist
 }
 
 function valorResultante(entrada: EntradaRelatorioHumanexus) {
-  const canonica = objeto(projecaoTirhV1(entrada).resultante);
+  const contrato = projecaoTirhV1(entrada);
+  if ("resultante_operacional" in contrato) return objeto(contrato.resultante_operacional);
+  const canonica = objeto(contrato.resultante);
   if (Object.keys(canonica).length) return canonica;
   const origem = documentoTirh(entrada);
   return objeto(origem.resultante ?? entrada.relatorio.resultante_json);
@@ -954,13 +956,13 @@ function renderOperacional(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHum
   y = novaPagina(doc, "03 · Configuração", "Resultante, Zona e Trajetória", "Produtos distintos, liberados somente sob seus próprios critérios de admissibilidade.");
   y = tituloSecao(doc, "Resultante Regulatória", y, "01");
   doc.fillColor(CORES.ouro).font("Helvetica-Bold").fontSize(6.4).text(
-    texto(projecaoV1.versao_cientifica ?? resultante.versao, "HIPÓTESE OPERACIONAL v0.1 — EM VALIDAÇÃO EMPÍRICA"),
+    texto("resultante_operacional" in projecaoV1 ? resultante.selo : projecaoV1.versao_cientifica ?? resultante.versao, "HIPÓTESE OPERACIONAL v0.1 — EM VALIDAÇÃO EMPÍRICA"),
     83,
     y,
     { width: 455, characterSpacing: .75 }
   );
   y += 18;
-  if (Object.keys(projecaoV1).length) {
+  if (Object.keys(projecaoV1).length && !("resultante_operacional" in projecaoV1)) {
     etiqueta(doc, "ESTADO ESTRUTURAL", texto(resultante.estado, "Não materializada"), 83, y, 205);
     etiqueta(doc, "MAGNITUDE ESCALAR", "Não aplicável na TIRH V1", 308, y, 230);
     y = paragrafo(doc, "A Resultante V1 é uma configuração emergente multivetorial estruturada. Sua admissibilidade não depende da fabricação de um escalar global.", y + 68, { x: 83, width: 455, cor: CORES.suave });
@@ -1200,7 +1202,7 @@ function renderOperacionalFinalConsolidado(
 ) {
   const identidade = identificacaoDocumental(entrada);
   const projecao = projecaoTirhV1(entrada);
-  const resultante = objeto(projecao.resultante);
+  const resultante = "resultante_operacional" in projecao ? objeto(projecao.resultante_operacional) : objeto(projecao.resultante);
   const disponibilidadeContinua = disponibilidadeContinuaDoRelatorio(entrada);
   const iirhDoDocumento = resolverIirhAutoritativo(projecao.iirh);
   const zonaDoDocumento = resolverZonaAutoritativa(projecao.zona);
@@ -1363,10 +1365,12 @@ function renderOperacionalFinalConsolidado(
   );
 
   bloco("12", "Indicadores oficiais integrados à leitura", [
-    `Resultante Regulatória: ${texto(resultante.estado, "evidências insuficientes")}. ${EXPLICACAO_DA_RESULTANTE}`,
+    `Resultante Regulatória: ${texto(resultante.estado, "evidências insuficientes")}. ${"resultante_operacional" in projecao
+      ? `Tipo B em validação empírica. Magnitude: ${apresentarResultante(resultante).magnitude == null ? "não calculável" : apresentarResultante(resultante).magnitude!.toFixed(2)}. Direção: ${apresentarResultante(resultante).direcaoTexto}. Sentido: ${apresentarResultante(resultante).sentidoTexto}. Não determina IIRH ou Zona Operacional.`
+      : EXPLICACAO_DA_RESULTANTE}`,
     ...(() => {
       const medida = objeto(objeto(projecao.legacy).resultante);
-      if (!Object.keys(medida).length) return [];
+      if ("resultante_operacional" in projecao || !Object.keys(medida).length) return [];
       const propriedades = apresentarResultante(medida);
       return [`Magnitude e direção vetoriais — Tipo B em validação empírica: ${propriedades.magnitude == null
         ? "magnitude ainda não calculável com as evidências desta fase"

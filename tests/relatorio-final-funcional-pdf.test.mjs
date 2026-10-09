@@ -81,3 +81,27 @@ test("PDF preserva trajetórias recebidas durante ausência atual sem fabricar m
   for (const termo of ["Gráficos regulatórios da sessão", "EEG · Theta", "Polar H10 · Frequência cardíaca", "mínimo 11.34", "máximo 13.56", "mínimo 65.12", "máximo 67.45", "2 registros", "2026-10-09T18:00:30.000Z"]) assert.ok(extracao.stdout.includes(termo), termo);
   assert.match(extracao.stdout, /Lacunas não interpoladas/);
 });
+
+
+test("PDF usa Resultante operacional explícita sem recorrer à configuração V1", async () => {
+  const pasta = await mkdtemp(join(tmpdir(), "hxp-resultante-principal-"));
+  const arquivo = join(pasta, "resultante-controlada.json");
+  const pdf = join(pasta, "resultante.pdf");
+  await writeFile(arquivo, JSON.stringify({ estado: "CALCULAVEL", magnitude_global: 71.5594,
+    direcao_funcional: { coordenadas_unitarias: { VT: .296442, VAR: .405137 } }, sentido_contextual: "NAO_DETERMINAVEL" }));
+  const gerar = () => spawnSync(process.execPath, ["--experimental-strip-types", "scripts/gerar-relatorio-final-funcional-fixture.mjs"], {
+    cwd: new URL("../", import.meta.url), encoding: "utf8",
+    env: { ...process.env, HXP_FINAL_PDF_OUTPUT: pdf, HXP_TEST_RESULTANTE_FILE: arquivo }
+  });
+  assert.equal(gerar().status, 0);
+  let extracao = spawnSync("pdftotext", ["-layout", pdf, "-"], { encoding: "utf8" });
+  assert.match(extracao.stdout, /Magnitude: 71\.56/);
+  assert.match(extracao.stdout, /VT 0\.296/);
+  assert.match(extracao.stdout, /VAR 0\.405/);
+  assert.match(extracao.stdout, /Tipo B em validação empírica/);
+  await writeFile(arquivo, JSON.stringify({ estado: "NAO_CALCULAVEL", magnitude_global: null }));
+  assert.equal(gerar().status, 0);
+  extracao = spawnSync("pdftotext", ["-layout", pdf, "-"], { encoding: "utf8" });
+  assert.match(extracao.stdout, /Magnitude: não calculável/);
+  assert.doesNotMatch(extracao.stdout, /Magnitude: 71\.56/);
+});

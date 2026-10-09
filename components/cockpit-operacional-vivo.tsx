@@ -1116,6 +1116,7 @@ function DinamicaDaInteligenciaRegulatoria({
           </span>
         ) : null}
       </div>
+      {resultante.papel_operacional === "DINAMICA_DA_RESULTANTE_PRINCIPAL" ? <p>Resultante Tipo B · magnitude e direção vetoriais · em validação empírica</p> : null}
       <dl>
         <div><dt>Resultante</dt><dd>{texto(resultante.estado, "NÃO CALCULÁVEL")}</dd></div>
         <div><dt>Magnitude</dt><dd>{magnitude == null ? "Ainda sem magnitude global estabelecida" : `${numero(propriedades.magnitude, 2)} ${texto(resultante.unidade, "")}`}</dd></div>
@@ -1569,7 +1570,10 @@ export function CockpitOperacionalVivo({
     && !modoHistorico
     && texto(configuracaoBasal.identificador_da_sessao, "") === identificadorDaSessao;
   const coberturaVetorial = objeto(leituraCientifica.cobertura_vetorial);
-  const resultanteAutoritativa = Object.keys(activeTirhSnapshot.resultant).length
+  const resultanteOperacional = objeto(tirhV1.resultante_operacional);
+  const resultanteAutoritativa = "resultante_operacional" in tirhV1
+    ? resultanteOperacional
+    : Object.keys(activeTirhSnapshot.resultant).length
     ? activeTirhSnapshot.resultant
     : Object.keys(resultanteTirhV1).length
       ? resultanteTirhV1
@@ -3044,7 +3048,7 @@ export function CockpitOperacionalVivo({
             <DinamicaDaInteligenciaRegulatoria
               vetores={radarVetorial}
               resultante={resultanteAutoritativa}
-              mensuracaoTipoB={objeto(objeto(tirhV1.legacy).resultante)}
+              mensuracaoTipoB={"resultante_operacional" in tirhV1 ? {} : objeto(objeto(tirhV1.legacy).resultante)}
               resultanteCalculada={resultanteCalculada}
               trajetoria={trajetoriaAutoritativa}
               trajetoriaCalculada={trajetoriaCalculada}
