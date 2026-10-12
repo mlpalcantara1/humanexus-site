@@ -2454,6 +2454,7 @@ export function CockpitOperacionalVivo({
           ) : null}
         </div>
         <div className="hx-live-operation-action">
+          {erro ? <p className="hx-module__error" role="alert">{portuguesVisivel(erro)}</p> : null}
           <small>{controlesDaFase.length ? "CONTROLES DA FASE" : "COMANDO PRINCIPAL"}</small>
           {controlesDaFase.length ? (
             <div
@@ -2581,7 +2582,7 @@ export function CockpitOperacionalVivo({
           ) : null}
           {preflightTirh.inicio.avisos.length ? (
             <p className="hx-tirh-preflight__warning">
-              Fontes físicas indisponíveis: {preflightTirh.inicio.avisos
+              Evidências ainda indisponíveis: {preflightTirh.inicio.avisos
                 .map((item) => item.rotulo).join(" · ")}. A sessão pode operar
               com ausência explícita, mas os resultados dependentes permanecerão bloqueados.
             </p>
@@ -3573,7 +3574,6 @@ export function CockpitOperacionalVivo({
 
       </details>
 
-      {erro ? <p className="hx-module__error">{portuguesVisivel(erro)}</p> : null}
     </section>
   );
 }

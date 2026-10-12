@@ -35,3 +35,16 @@ test('transporte, autenticação, conflito e demais comandos preservam a fila id
   assert.equal(preservarValidacaoRecusada(r,400,'erro','horário'),false);assert.equal(r.fila.length,1);
  }
 });
+
+test('primeiro rascunho atualiza gate operacional no próprio contexto sem iniciar fase', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const registro = await readFile('components/registro-integrado-sessao.tsx','utf8');
+  const painel = await readFile('components/operacao-homologacao.tsx','utf8');
+  assert.match(registro, /primeiraPersistencia && r\.revisao > 0/);
+  assert.match(registro, /humanexus:registro-persistido/);
+  assert.match(painel, /detalhe\?\.sessao !== contexto\.sessao/);
+  assert.match(painel, /detalhe\?\.participante !== contexto\.participante/);
+  assert.match(painel, /removeEventListener\("humanexus:registro-persistido"/);
+  const cockpit = await readFile('components/cockpit-operacional-vivo.tsx','utf8');
+  assert.match(cockpit, /hx-live-operation-action[\s\S]{0,150}role="alert"/);
+});

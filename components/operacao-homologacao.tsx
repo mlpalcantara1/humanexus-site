@@ -2651,8 +2651,18 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
       "humanexus:baseline-atualizado",
       atualizarBaseline
     );
+    // O primeiro rascunho ativa o gate autoral de contexto. Reconsultar a
+    // projeção completa, pois o polling vivo não transporta essa hidratação.
+    const atualizarPrimeiroRegistro = (evento: Event) => {
+      const detalhe = (evento as CustomEvent).detail;
+      const contexto = contextoDoPolling.current;
+      if (detalhe?.sessao !== contexto.sessao || detalhe?.participante !== contexto.participante || detalhe?.org !== contexto.organizacao) return;
+      atualizarBaseline();
+    };
+    window.addEventListener("humanexus:registro-persistido", atualizarPrimeiroRegistro);
     window.addEventListener("humanexus:registro-validado", atualizarBaseline);
     return () => {
+      window.removeEventListener("humanexus:registro-persistido", atualizarPrimeiroRegistro);
       window.removeEventListener("humanexus:registro-validado", atualizarBaseline);
       window.removeEventListener(
         "humanexus:baseline-atualizado",

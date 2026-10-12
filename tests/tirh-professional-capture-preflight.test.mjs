@@ -93,7 +93,7 @@ test("início de fase é bloqueado por contexto estrutural ausente, não por sen
   );
   assert.deepEqual(
     resultado.inicio.avisos.map((item) => item.codigo),
-    ["POLAR_H10", "EMOTIV_EPOC_X"]
+    ["POLAR_H10", "EMOTIV_EPOC_X", "PERFIL_TAREFA"]
   );
 });
 

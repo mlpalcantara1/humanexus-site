@@ -194,7 +194,7 @@ export function resolverPreflightTirh({
       bloqueios: gateDisponivel ? bloqueiosCanonicos : fontesEstruturais.filter((item) => item.estado !== "READY"),
       // Fonte física ausente limita a ciência, mas não é convertida em valor
       // nem bloqueia universalmente uma sessão autorizada sem aquela fonte.
-      avisos: fontesFisicas.filter((item) => item.estado !== "READY")
+      avisos: [...fontesFisicas.filter((item) => item.estado !== "READY"), ...fontesEstruturais.filter((item) => item.codigo === "PERFIL_TAREFA" && item.estado !== "READY")]
     },
     fontes: fontesDeContexto,
     vetores: itensVetoriais,

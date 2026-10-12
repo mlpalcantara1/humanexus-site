@@ -118,6 +118,7 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
         }
         const cmd = local.current.fila[0];
         if (!cmd) break;
+        const primeiraPersistencia = (resumoRef.current?.revisao ?? 0) === 0;
         await aguardarPersistencia();
         const r = await requisitar(cmd);
         if (!ativo.current) return;
@@ -127,6 +128,7 @@ function RegistroNoEscopo({ escopo: [org, participante, sessao, usuario], estado
           local.current.revisaoBase = r.revisao;
         } else if (!Object.keys(local.current.campos).length || r.revisao === local.current.revisaoBase + 1) local.current.revisaoBase = r.revisao;
         aplicar(r); persistir();
+        if (primeiraPersistencia && r.revisao > 0) window.dispatchEvent(new CustomEvent("humanexus:registro-persistido", { detail: { sessao, participante, org } }));
         if (cmd.acao === "VALIDAR") window.dispatchEvent(new CustomEvent("humanexus:registro-validado", { detail: { sessao, participante, org } }));
         setMensagem(cmd.acao === "VALIDAR" ? "Versão validada, relatório e longitudinal preservados." : cmd.acao === "REVISAR_SUGESTOES" ? "Decisão sobre o rascunho salva. A aprovação final e o relatório ainda dependem da sua confirmação." : "Salvo no servidor. Rascunho recuperável.");
       }
