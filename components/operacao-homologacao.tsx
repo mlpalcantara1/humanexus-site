@@ -559,7 +559,7 @@ function RelatorioCanonicoV1({
           <div><dt>Sessão</dt><dd>{texto(estado.sessao.nome_operacional, "Sessão registrada")}</dd></div>
           <div><dt>Data e hora</dt><dd>{dataLegivel(estado.sessao.finalizado_em ?? estado.sessao.criado_em)}</dd></div>
           <div><dt>Profissional responsável</dt><dd>{texto(estado.contextos.profissionais[0]?.nome, "Profissional registrado")}</dd></div>
-          <div><dt>Versão documental</dt><dd>{texto(relatorio?.numero_da_versao, "Rascunho técnico")}</dd></div>
+          <div><dt>Versão documental</dt><dd>{texto(relatorio?.numero_da_versao, "Em revisão profissional")}</dd></div>
           <div><dt>Estado</dt><dd>{cicloDocumental.estado.replaceAll("_", " ")}</dd></div>
         </dl>
         <p>Referência operacional: {identidade.referenciaOperacional}.</p>
@@ -3918,7 +3918,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
 
   const visaoRelatorio = (
     <section className="hx-cockpit-panel hx-report-view">
-      <TituloDaVisao kicker="RELATÓRIO" titulo="Documento gerado a partir do contexto já carregado." descricao="Sessão, evidências, vetores, Resultante, Trajetória, fases, decisões e limitações permanecem vinculados." />
+      <TituloDaVisao kicker="RELATÓRIO" titulo="Resposta à exigência, custo regulatório e recuperação." descricao="Compreenda como o participante chegou, como respondeu ao treinamento e o que as evidências permitem concluir sobre seu funcionamento." />
       {carregandoFontesAutorizadas ? (
         <section
           className="hx-authoritative-loading"
@@ -3934,7 +3934,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           <RelatorioCanonicoV1 estado={estado} relatorio={relatorioAtual} />
           <RegistroIntegradoDaSessao estado={estado as unknown as Registro} revisar />
           <section className="hx-report-operation">
-            <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{tituloDoRelatorioAtual}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(relatorioAtual?.criado_em)} · ${cicloDoRelatorioAtual.estado.replaceAll("_", " ")}` : "A geração materializa apenas o rascunho técnico; a autoria profissional vem depois."}</span></div>
+            <div><p>RELATÓRIO E PDF GOVERNADOS</p><h2>{tituloDoRelatorioAtual}</h2><span>{estado.relatorios.length ? `${estado.relatorios.length} versão(ões) preservada(s) · ${dataLegivel(relatorioAtual?.criado_em)} · ${cicloDoRelatorioAtual.estado.replaceAll("_", " ")}` : "Revise a resposta à tarefa, o custo regulatório e a recuperação antes de concluir a devolutiva profissional."}</span></div>
             <div>
               <p>Revise e confirme no registro integrado acima. A confirmação cria a versão profissional, o PDF e a atualização longitudinal.</p>
               {cicloDoRelatorioAtual.finalDisponivel

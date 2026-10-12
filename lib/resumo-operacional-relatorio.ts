@@ -1,3 +1,4 @@
+import { registroDaReferenciaIndividual } from "./baseline-reference-presentation.ts";
 import { formatarDuracaoCanonica } from "./duracao-canonica.ts";
 import { nomeDaZona, NOMES_DAS_ZONAS } from "./tirh-zone-nomenclature.ts";
 import { projetarMacrotrajetoriaRegulatoria } from "./projecao-narrativa-relatorio.ts";
@@ -64,8 +65,14 @@ export function resumoOperacionalDoRelatorio(entrada: {
   const revisao = obj(leitura.reprocessamento_eeg);
   const fases = ["PRE", "TREINO", "POS"];
   const faseNome = (f: string) => f === "PRE" ? "PRÉ" : f === "POS" ? "PÓS" : f;
-  const tempos = (bruto: unknown) => Object.entries(NOMES_DAS_ZONAS).map(([codigo, nome]) =>
-    `${nome}: ${formatarDuracaoCanonica(obj(bruto)[codigo]) ?? "sem duração válida registrada"}`).join("; ");
+  const tempos = (bruto: unknown) => {
+    const registro = obj(bruto);
+    if (!Object.keys(NOMES_DAS_ZONAS).some(codigo => (num(registro[codigo]) ?? 0) > 0)) {
+      return "Não há períodos com classificação regulatória suficiente para medir o tempo em cada Zona";
+    }
+    return Object.entries(NOMES_DAS_ZONAS).map(([codigo, nome]) =>
+      `${nome}: ${formatarDuracaoCanonica(registro[codigo]) ?? "sem duração válida registrada"}`).join("; ");
+  };
   const emissoes = rows(temporal.emissoes);
   const momentos = rows(obj(entrada.ciclo).momentos);
   const antesDuranteDepois = fases.map((fase) => {
@@ -86,14 +93,15 @@ export function resumoOperacionalDoRelatorio(entrada: {
   const fonteHorario = fontesHistoricas.length ? revisao.hora_da_ultima_janela_recalculada : ultimoPolar.timestamp;
   const bandas = rows(atividade.bandas);
   const protocolo = obj(entrada.protocolo), ctr = obj(entrada.ctr);
-  const baseline = obj(obj(entrada.gravacao).baseline), referencia = obj(baseline.referencia), registro = obj(baseline.registro);
+  const baseline = obj(obj(entrada.gravacao).baseline), referencia = obj(baseline.referencia);
+  const registro = registroDaReferenciaIndividual(referencia, baseline);
   const longitudinal = projetarMacrotrajetoriaRegulatoria(entrada.longitudinal);
   const secoes = [
     { titulo: "Antes, durante e depois — IIRH e Zonas", itens: antesDuranteDepois },
     { titulo: "Zona Regulatória dominante e tempos", itens: [
       `Zona predominante da sessão: ${nomeDaZona(temporal.zona_predominante) ?? "indisponível"}. ${temporal.inclui_leituras_provisorias === true ? "Inclui classificações provisórias." : ""}`,
       tempos(temporal.tempo_por_zona_segundos),
-      "Somente os intervalos válidos emitidos pelo Núcleo; pausas e lacunas não são completadas. São registros históricos, não leituras atuais.",
+      "A trajetória considera somente períodos com classificação válida. Pausas e períodos sem leitura permanecem identificados. Estes registros descrevem a sessão, não o estado atual do participante.",
       ...(Object.keys(revisao).length ? ["Os tempos e as classificações originais foram preservados. A reavaliação EEG é uma revisão derivada identificada, não uma reemissão dos eventos de zona."] : [])
     ] },
     { titulo: "EEG — bandas e qualidade", itens: [
@@ -116,9 +124,9 @@ export function resumoOperacionalDoRelatorio(entrada: {
     ] },
     { titulo: "Baseline individual e comparação longitudinal", itens: [
       `Referência inicial: ${text(referencia.estado)}; registro ${text(registro.identificador)}; ${horario(registro.finalizado_em)}.`,
-      "O Baseline individual é preservado e reutilizado. Uma nova referência exige decisão justificada e nova versão; não substitui a anterior. A existência do registro não garante comparabilidade para todos os indicadores.",
+      "A referência inicial individual é preservada e reutilizada para acompanhar a evolução. Uma nova referência exige decisão justificada e preserva a anterior. Cada comparação depende de medidas válidas e condições comparáveis.",
       ...longitudinal.flatMap(e => e.itens.map(t => `${e.rotulo}: ${t}`)),
-      ...(!longitudinal.length ? ["Comparação desde a primeira sessão indisponível neste documento: não foi recebida uma evolução longitudinal admissível. Não se afirma melhora ou piora sem referência e sessões comparáveis."] : [])
+      ...(!longitudinal.length ? ["Comparação desde a primeira sessão indisponível neste documento: as evidências ainda não sustentam uma leitura da evolução. Melhora ou piora exige referência individual, medidas válidas e sessões comparáveis."] : [])
     ] }
   ];
   return entrada.incluirFisiologia === false

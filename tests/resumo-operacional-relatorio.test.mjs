@@ -51,3 +51,15 @@ test("ausência de desempenho é comunicada uma vez para as fases sem medida", (
   assert.equal(resultado.itens.length,2);
   assert.equal((resultado.itens.join(" ").match(/desempenho não medido/g) ?? []).length,1);
 });
+
+test('ausência de períodos classificáveis não vira tempo zero em todas as Zonas',()=>{
+ const texto = JSON.stringify(resumoOperacionalDoRelatorio({cockpit:{leitura_cientifica:{distribuicao_temporal_das_zonas:{tempo_por_zona_segundos:{ZO:0,ZA:0,ZI:0,ZCF:0}}}}}));
+ assert.match(texto,/Não há períodos com classificação regulatória suficiente/);
+ assert.doesNotMatch(texto,/Regulação Ótima: 0|Desregulação: 0/);
+});
+test('relatório e PDF identificam referência anterior explicitamente reutilizada',()=>{
+ const texto = JSON.stringify(resumoOperacionalDoRelatorio({gravacao:{baseline:{referencia:{estado:'BASELINE ANTERIOR UTILIZADO',decisao:{tipo:'UTILIZAR_BASELINE_ANTERIOR',identificador_do_baseline_de_referencia:'B1'},elegibilidade_individual:{valida_para_inicio:true,baseline:{identificador:'B1',estado:'FINALIZADO',finalizado_em:'2026-10-09T18:01:54Z'}}}}}}));
+ assert.match(texto,/registro B1/);
+ assert.match(texto,/09\/10\/2026/);
+ assert.doesNotMatch(texto,/registro não registrado/);
+});
