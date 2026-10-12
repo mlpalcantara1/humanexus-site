@@ -22,7 +22,7 @@ import {
 } from "@/components/sintese-validacao-tirh-v1";
 import { fonteDuranteSincronizacao } from "@/lib/cockpit-live-coordination";
 import { projecaoTemporalDesatualizada } from "@/lib/cockpit-projection-freshness";
-import { faseCientificaPausada } from "@/lib/paused-phase-presentation";
+import { faseCientificaPausada, capturaProfissionalPermitida } from "@/lib/paused-phase-presentation";
 import {
   estabilizarApresentacaoRegulatoria,
   type RevisaoRegulatoriaVisual
@@ -1205,7 +1205,7 @@ export function CockpitOperacionalVivo({
   const qualificadasEvidencia = lista(evidenciasProfissionais.qualificadas);
   const autoHidratacao = objeto(evidenciasProfissionais.auto_hidratacao);
   const faseDaPaleta = objeto(evidenciasProfissionais.fase_atual);
-  const capturaRapidaPermitida = String(faseDaPaleta.estado ?? "").toUpperCase() === "INICIADA" || String(faseDaPaleta.estado ?? "").toUpperCase() === "INICIADO";
+  const capturaRapidaPermitida = capturaProfissionalPermitida(estado, faseDaPaleta);
   const faseProfissionalExistente = ["BASELINE", "PRE", "TREINO", "POS"].includes(
     String(faseDaPaleta.codigo ?? "").toUpperCase()
   );
