@@ -27,3 +27,9 @@ export function resolverTempoCanonicoDoCockpit({
     rotulo: usarBaseline ? "Referência inicial" : String(fase.fase ?? "Sem fase ativa")
   };
 }
+
+// A aquisição pode estar ausente enquanto a fase operacional está ativa.
+// O relógio segue o estado canônico da fase, nunca o polling de sensores.
+export function intervaloDoRelogioCanonico(registro: RegistroTemporal) {
+  return registro.cronometro_em_execucao === true ? 1_000 : 10_000;
+}

@@ -26,8 +26,8 @@ test("telemetria histórica identifica a fonte real sem chamá-la de simulação
 test("cockpit em repouso evita recomposição integral por segundo sem perder atualização ao vivo", async () => {
   const cockpit = await source("components/cockpit-operacional-vivo.tsx");
   const operation = await source("components/operacao-homologacao.tsx");
-  assert.match(cockpit, /const relogioEmRepouso = !algumaFonteCanonicaAtual/);
-  assert.match(cockpit, /relogioEmRepouso \? 10_000 : 1_000/);
+  assert.match(cockpit, /const intervaloDoRelogio = intervaloDoRelogioCanonico\(registroTemporalCanonico\)/);
+  assert.match(cockpit, /}, intervaloDoRelogio\)/);
   assert.match(cockpit, /document\.visibilityState === "visible"/);
   assert.match(cockpit, /formatadorDataHoraManaus\.format\(data\)/);
   assert.match(operation, /telemetriaPreparada = useMemo/);

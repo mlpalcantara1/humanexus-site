@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolverTempoCanonicoDoCockpit } from "../lib/cockpit-canonical-time.ts";
+import { resolverTempoCanonicoDoCockpit, intervaloDoRelogioCanonico } from "../lib/cockpit-canonical-time.ts";
 
 const baseline = {
   estado: "INICIADO",
@@ -51,4 +51,17 @@ test("sessão independente de Baseline sempre usa seu registro canônico", () =>
   });
   assert.equal(resultado.registro, registro);
   assert.equal(resultado.rotulo, "Referência inicial");
+});
+
+
+test("cronômetro ativo atualiza a cada segundo sem depender de fontes físicas", () => {
+  for (const fase of ["BASELINE", "PRE", "TREINO", "POS"]) {
+    assert.equal(intervaloDoRelogioCanonico({ fase, cronometro_em_execucao: true }), 1000);
+  }
+});
+
+test("pausa, encerramento e ausência de fase não recebem progressão temporal presumida", () => {
+  for (const registro of [{}, { estado: "PAUSADA", cronometro_em_execucao: false }, { estado: "FINALIZADA", cronometro_em_execucao: false }]) {
+    assert.equal(intervaloDoRelogioCanonico(registro), 10000);
+  }
 });

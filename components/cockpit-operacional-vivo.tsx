@@ -27,7 +27,7 @@ import {
   estabilizarApresentacaoRegulatoria,
   type RevisaoRegulatoriaVisual
 } from "@/lib/cockpit-regulatory-visual-stability";
-import { resolverTempoCanonicoDoCockpit } from "@/lib/cockpit-canonical-time";
+import { resolverTempoCanonicoDoCockpit, intervaloDoRelogioCanonico } from "@/lib/cockpit-canonical-time";
 import {
   tendenciaVetorialCanonica,
   vetoresDaVisao,
@@ -2084,22 +2084,14 @@ export function CockpitOperacionalVivo({
     "22": relatoriosCadeia
   };
 
-  const faseCientificaDoRelogio = String(sessao.fase_atual ?? "").toUpperCase();
-  const estadoDaFaseDoRelogio = String(
-    objeto(estadoOperacional.estados_das_fases)[faseCientificaDoRelogio] ?? ""
-  ).toUpperCase();
-  const relogioEmRepouso = !algumaFonteCanonicaAtual && (
-    modoAguardando
-    || ["PAUSADA", "PAUSADO"].includes(estadoDaFaseDoRelogio)
-    || ["PAUSADA", "PAUSADO"].includes(String(estadoOperacional.estado_da_sessao ?? "").toUpperCase())
-  );
+  const intervaloDoRelogio = intervaloDoRelogioCanonico(registroTemporalCanonico);
 
   useEffect(() => {
     const atualizarRelogio = () => setAgora(Date.now());
     atualizarRelogio();
     const id = window.setInterval(() => {
       if (document.visibilityState === "visible") atualizarRelogio();
-    }, relogioEmRepouso ? 10_000 : 1_000);
+    }, intervaloDoRelogio);
     window.addEventListener("focus", atualizarRelogio);
     window.addEventListener("pageshow", atualizarRelogio);
     document.addEventListener("visibilitychange", atualizarRelogio);
@@ -2109,7 +2101,7 @@ export function CockpitOperacionalVivo({
       window.removeEventListener("pageshow", atualizarRelogio);
       document.removeEventListener("visibilitychange", atualizarRelogio);
     };
-  }, [relogioEmRepouso]);
+  }, [intervaloDoRelogio]);
 
   useEffect(() => {
     // Uma resposta de polling pode chegar entre dois ticks do relógio local.

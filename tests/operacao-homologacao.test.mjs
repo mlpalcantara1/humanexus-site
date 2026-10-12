@@ -1281,7 +1281,7 @@ test("retorno ao cockpit atualiza o relógio de frescor sem esperar o próximo i
   )?.[0] ?? "";
 
   assert.match(relogio, /if \(document\.visibilityState === "visible"\) atualizarRelogio\(\)/);
-  assert.match(relogio, /relogioEmRepouso \? 10_000 : 1_000/);
+  assert.match(relogio, /}, intervaloDoRelogio\)/);
   for (const evento of ["focus", "pageshow"]) {
     assert.match(relogio, new RegExp(`window\\.addEventListener\\("${evento}", atualizarRelogio\\)`));
     assert.match(relogio, new RegExp(`window\\.removeEventListener\\("${evento}", atualizarRelogio\\)`));
