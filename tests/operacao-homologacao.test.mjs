@@ -1615,11 +1615,11 @@ test("cronômetro do Baseline começa somente no início canônico do Baseline",
   );
   assert.match(
     cockpit,
-    /const registroBaselineCanonico = objeto\([\s\S]*?referenciaBaselineCanonica\.baseline/
+    /const registroBaseline = registroDaReferenciaIndividual\([\s\S]*?referenciaBaselineCanonica, baselineBruto/
   );
   assert.match(
     cockpit,
-    /Object\.keys\(registroBaselineCanonico\)\.length > 0[\s\S]*?registroBaselineCanonico[\s\S]*?: registroBaselineDaGravacao/
+    /registroDaReferenciaIndividual/
   );
   assert.match(cockpit, /estadoOperacional\.tempo_ativo_da_fase/);
   assert.match(

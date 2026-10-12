@@ -22,6 +22,7 @@ import {
 } from "@/components/sintese-validacao-tirh-v1";
 import { fonteDuranteSincronizacao } from "@/lib/cockpit-live-coordination";
 import { projecaoTemporalDesatualizada } from "@/lib/cockpit-projection-freshness";
+import { registroDaReferenciaIndividual } from "@/lib/baseline-reference-presentation";
 import { faseCientificaPausada, capturaProfissionalPermitida } from "@/lib/paused-phase-presentation";
 import {
   estabilizarApresentacaoRegulatoria,
@@ -1434,13 +1435,9 @@ export function CockpitOperacionalVivo({
   const referenciaBaselineCanonica = objeto(
     estadoOperacional.referencia_de_baseline
   );
-  const registroBaselineCanonico = objeto(
-    referenciaBaselineCanonica.baseline
+  const registroBaseline = registroDaReferenciaIndividual(
+    referenciaBaselineCanonica, baselineBruto
   );
-  const registroBaselineDaGravacao = objeto(baselineBruto.registro);
-  const registroBaseline = Object.keys(registroBaselineCanonico).length > 0
-    ? registroBaselineCanonico
-    : registroBaselineDaGravacao;
   const registroTemporalDaFase = objeto(
     estadoOperacional.tempo_ativo_da_fase
   );
@@ -1455,7 +1452,7 @@ export function CockpitOperacionalVivo({
   const fimDoCronometro = registroTemporalCanonico.finalizado_em;
   const estadoDoBaseline = registroBaseline.estado === "INICIADO"
     ? "EM EXECUÇÃO"
-    : texto(registroBaseline.estado, texto(contextoSessao.estado));
+    : texto(registroBaseline.estado, "REFERÊNCIA NÃO DISPONÍVEL");
   // A matriz operacional do núcleo é a autoridade exclusiva. O portal não
   // pode inferir terminalidade por uma execução científica auxiliar e ocultar
   // controles que o backend declarou válidos para a sessão.
