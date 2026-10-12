@@ -1224,9 +1224,12 @@ export function CockpitOperacionalVivo({
   const perfilTarefaAtual = objeto(
     evidenciasProfissionais.perfil_tarefa_atual
   );
-  const perfilHidratado = objeto(perfilTarefaAtual.task);
+  const perfilProgramadoTHX = objeto(evidenciasProfissionais.perfil_tarefa_pre_alimentado);
+  const perfilBaseTarefa = Object.keys(objeto(perfilTarefaAtual.task)).length
+    ? perfilTarefaAtual : perfilProgramadoTHX;
+  const perfilHidratado = objeto(perfilBaseTarefa.task);
   const identificadorDaTarefaHidratado = texto(
-    perfilTarefaAtual.identificador_da_tarefa
+    perfilBaseTarefa.identificador_da_tarefa
     ?? objeto(sessao.contexto_operacional).tarefa,
     ""
   );
@@ -2711,19 +2714,35 @@ export function CockpitOperacionalVivo({
           >
             <header>
               <div>
-                <small>PERFIL MÍNIMO DA TAREFA</small>
-                <strong>Prepare antes dos sensores; observe o desempenho durante a fase</strong>
+                <small>EXIGÊNCIAS PROGRAMADAS · THX</small>
+                <strong>Configuração da tarefa · ajuste somente o que mudar</strong>
               </div>
               <button type="button" onClick={() => setPerfilTarefaAberto(false)}>
                 Voltar ao painel operacional
               </button>
             </header>
+            {Object.keys(perfilProgramadoTHX).length ? (
+              <p>O {texto(perfilProgramadoTHX.identificador_da_tarefa)} preenche as exigências
+                da tarefa. Ao preparar a sessão ou iniciar PRÉ, a configuração fica registrada.
+                Seus ajustes têm prioridade. Estes valores descrevem a tarefa proposta;
+                acertos, erros, omissões e tempo de reação dependem da resposta observada.</p>
+            ) : null}
             <p>
               O identificador e as propriedades estáveis podem ser reutilizados
               automaticamente nas fases seguintes. Desempenho, precisão e decisão
               somente devem ser informados depois de realmente observados. Campo vazio
               permanece ausente.
             </p>
+            {Object.keys(perfilProgramadoTHX).length ? (
+              <details>
+                <summary>Planejamento do protocolo · tempo e estímulos</summary>
+                <p>{texto(perfilProgramadoTHX.tarefa)}</p>
+                <p>Duração planejada: {Number(objeto(objeto(perfilProgramadoTHX.configuracao_quantitativa).duracao_tarefa_segundos).valor) / 60} min.
+                  Recuperação planejada: {Number(objeto(objeto(perfilProgramadoTHX.configuracao_quantitativa).janela_recuperacao_planejada_segundos).valor) / 60} min.
+                  Estímulos externos previstos: {texto(objeto(objeto(perfilProgramadoTHX.configuracao_quantitativa).eventos_externos_planejados).valor)}.</p>
+                <small>Planejamento inicial; a condução e o encerramento das fases permanecem sob sua decisão.</small>
+              </details>
+            ) : null}
             <label className="hx-evidence-task-profile__identifier">
               <span>Identificador da tarefa ou protocolo</span>
               <select value={identificadorDaTarefa} onChange={(evento) => setIdentificadorDaTarefa(evento.target.value)}>
@@ -2745,19 +2764,19 @@ export function CockpitOperacionalVivo({
                     }))}
                   >
                     <option value="">Ausente</option>
-                    <option value="0">0%</option>
-                    <option value="25">25%</option>
-                    <option value="50">50%</option>
-                    <option value="75">75%</option>
-                    <option value="100">100%</option>
+                    <option value="0">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "0 · exigência programada" : "0%"}</option>
+                    <option value="25">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "25 · exigência programada" : "25%"}</option>
+                    <option value="50">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "50 · exigência programada" : "50%"}</option>
+                    <option value="75">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "75 · exigência programada" : "75%"}</option>
+                    <option value="100">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "100 · exigência programada" : "100%"}</option>
                   </select>
                 </label>
               ))}
             </div>
             <p>
-              Para preparar antecipadamente, informe ao menos uma propriedade estável:
-              complexidade, ambiguidade, consequência do erro, coordenação, comunicação
-              ou contexto simbólico.
+              Confira as exigências preenchidas pelo THX e ajuste somente o cenário
+              que será executado. Se a tarefa for diferente do protocolo selecionado,
+              identifique-a e registre suas exigências antes de iniciar.
             </p>
             <button
               className="is-primary"
@@ -2765,7 +2784,7 @@ export function CockpitOperacionalVivo({
               onClick={() => void salvarPerfilDaTarefa()}
               disabled={evidenciaEmEnvio}
             >
-              Preservar perfil explícito
+              Salvar ajustes da tarefa
             </button>
           </section>
         </div>
