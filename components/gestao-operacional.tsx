@@ -310,6 +310,13 @@ export function GestaoOperacional({
     eventos: Registro[];
   } | null>(null);
   const [sessaoParaCancelar, setSessaoParaCancelar] = useState("");
+  const [sessaoParaExcluir, setSessaoParaExcluir] = useState<Registro | null>(null);
+  const [lixeiraSessoes, setLixeiraSessoes] = useState<Registro[] | null>(null);
+  useEffect(() => {
+    setLixeiraSessoes(null);
+    setSessaoParaExcluir(null);
+  }, [organizacaoSelecionada]);
+
   const [justificativaDoCancelamento, setJustificativaDoCancelamento] =
     useState("");
   const [participanteDoCatalogo, setParticipanteDoCatalogo] = useState("");
@@ -1095,6 +1102,28 @@ export function GestaoOperacional({
     });
   }
 
+  async function abrirLixeiraSessoes() {
+    const resultado = await executar("listar-lixeira-sessoes", {}, undefined, false);
+    if (resultado) setLixeiraSessoes(lista(resultado.sessoes));
+  }
+
+  async function excluirSessaoParaLixeira() {
+    if (!sessaoParaExcluir) return;
+    const resultado = await executar("excluir-sessao", { confirmacao: "EXCLUIR" }, sessaoParaExcluir.identificador);
+    if (!resultado) return;
+    setSessaoParaExcluir(null);
+    setSessaoParaPreparar("");
+    setSessaoCriada(null);
+    setHistoricoDaSessao(null);
+    atualizarContextoNaUrl({ sessao: "" });
+    if (lixeiraSessoes !== null) await abrirLixeiraSessoes();
+  }
+
+  async function restaurarSessaoDaLixeira(identificador: string) {
+    const resultado = await executar("restaurar-sessao", {}, identificador);
+    if (resultado) await abrirLixeiraSessoes();
+  }
+
   async function cancelarSessaoCriada(identificador: string) {
     const justificativa = justificativaDoCancelamento.trim();
     if (!justificativa) {
@@ -1372,6 +1401,24 @@ export function GestaoOperacional({
   const tabelaSessoes = (
     <section className="hx-management-table hx-management-table--sessions">
       <header><div><small>SESSÕES</small><h2>Ciclo operacional auditável</h2></div><span>{dados?.sessoes.length ?? 0} registro(s)</span></header>
+      {podeAdministrar ? <button type="button" disabled={ocupado} onClick={() => lixeiraSessoes === null ? void abrirLixeiraSessoes() : setLixeiraSessoes(null)}>{lixeiraSessoes === null ? "Abrir lixeira de sessões" : "Fechar lixeira"}</button> : null}
+      {podeAdministrar && lixeiraSessoes !== null ? <section aria-label="Lixeira de sessões">
+        <h3>Lixeira de sessões</h3>
+        <p>As sessões excluídas saem da lista de uso. Referências, sinais e relatórios permanecem preservados. Restaurar não reinicia a aquisição.</p>
+        {lixeiraSessoes.length === 0 ? <p>A lixeira desta organização está vazia.</p> : lixeiraSessoes.map(item => <article key={String(item.identificador)}>
+          <strong>{texto(item.nome_operacional, "Sessão sem nome")}</strong>
+          <span>Excluída em {dataLegivel(item.excluido_em)}</span>
+          <button type="button" disabled={ocupado} onClick={() => void restaurarSessaoDaLixeira(String(item.identificador))}>Restaurar sessão</button>
+        </article>)}
+      </section> : null}
+      {podeAdministrar && sessaoParaExcluir ? <section role="dialog" aria-labelledby="confirmar-exclusao-sessao" className="hx-module__notice">
+        <h3 id="confirmar-exclusao-sessao">Excluir sessão da lista de uso?</h3>
+        <strong>{texto(sessaoParaExcluir.nome_operacional, "Sessão selecionada")}</strong>
+        <p>A sessão irá para a lixeira e poderá ser restaurada. A referência inicial e os dados já registrados serão preservados. Uma sessão em andamento ou com vínculo de aquisição pendente não pode ser excluída.</p>
+        <button type="button" disabled={ocupado} onClick={() => void excluirSessaoParaLixeira()}>Confirmar exclusão para a lixeira</button>
+        <button type="button" disabled={ocupado} onClick={() => setSessaoParaExcluir(null)}>Manter sessão</button>
+      </section> : null}
+
       <div>
         {dados?.sessoes.map((item) => {
           const operacional = item.detalhes_operacionais as Registro | undefined;
@@ -1499,6 +1546,7 @@ export function GestaoOperacional({
                   Cancelar sessão
                 </button>
               ) : null}
+              {podeAdministrar ? <button type="button" disabled={ocupado || ["INICIADA", "PAUSADA", "INTERROMPIDA", "REABERTA"].includes(estado)} onClick={() => setSessaoParaExcluir(item)}>Excluir sessão</button> : null}
             </article>
           );
         })}
