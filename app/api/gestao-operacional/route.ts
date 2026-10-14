@@ -115,6 +115,8 @@ export async function POST(request: Request) {
     } else if (acao === "listar-lixeira-sessoes") {
       caminho = "/api/v1/sessoes/lixeira";
       metodo = "GET";
+    } else if (acao === "esvaziar-lixeira-sessoes") {
+      caminho = "/api/v1/sessoes/lixeira/esvaziar";
     } else if (acao === "excluir-sessao" || acao === "restaurar-sessao") {
       caminho = `/api/v1/sessoes/${encodeURIComponent(String(corpo.identificador))}/${acao === "excluir-sessao" ? "excluir" : "restaurar"}`;
     } else if (acao === "operar-sessao") {

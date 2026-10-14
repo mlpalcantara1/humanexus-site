@@ -312,8 +312,12 @@ export function GestaoOperacional({
   const [sessaoParaCancelar, setSessaoParaCancelar] = useState("");
   const [sessaoParaExcluir, setSessaoParaExcluir] = useState<Registro | null>(null);
   const [lixeiraSessoes, setLixeiraSessoes] = useState<Registro[] | null>(null);
+  const [sessoesParaEliminar, setSessoesParaEliminar] = useState<Registro[]>([]);
+  const [confirmacaoDefinitiva, setConfirmacaoDefinitiva] = useState("");
   useEffect(() => {
     setLixeiraSessoes(null);
+    setSessoesParaEliminar([]);
+    setConfirmacaoDefinitiva("");
     setSessaoParaExcluir(null);
   }, [organizacaoSelecionada]);
 
@@ -1119,6 +1123,22 @@ export function GestaoOperacional({
     if (lixeiraSessoes !== null) await abrirLixeiraSessoes();
   }
 
+  async function eliminarSessoesDaLixeira() {
+    if (confirmacaoDefinitiva !== "EXCLUIR DEFINITIVAMENTE" || sessoesParaEliminar.length === 0) return;
+    const resultado = await executar("esvaziar-lixeira-sessoes", {
+      confirmacao: confirmacaoDefinitiva,
+      identificadores: sessoesParaEliminar.map(item => String(item.identificador))
+    });
+    if (!resultado) return;
+    setSessoesParaEliminar([]);
+    setConfirmacaoDefinitiva("");
+    setHistoricoDaSessao(null);
+    setSessaoCriada(null);
+    setSessaoParaPreparar("");
+    atualizarContextoNaUrl({ sessao: "" });
+    await abrirLixeiraSessoes();
+  }
+
   async function restaurarSessaoDaLixeira(identificador: string) {
     const resultado = await executar("restaurar-sessao", {}, identificador);
     if (resultado) await abrirLixeiraSessoes();
@@ -1404,12 +1424,25 @@ export function GestaoOperacional({
       {podeAdministrar ? <button type="button" disabled={ocupado} onClick={() => lixeiraSessoes === null ? void abrirLixeiraSessoes() : setLixeiraSessoes(null)}>{lixeiraSessoes === null ? "Abrir lixeira de sessões" : "Fechar lixeira"}</button> : null}
       {podeAdministrar && lixeiraSessoes !== null ? <section aria-label="Lixeira de sessões">
         <h3>Lixeira de sessões</h3>
-        <p>As sessões excluídas saem da lista de uso. Referências, sinais e relatórios permanecem preservados. Restaurar não reinicia a aquisição.</p>
+        <p>Enquanto estiverem na lixeira, as sessões podem ser restauradas. A exclusão definitiva elimina a sessão e seus dados da plataforma e não pode ser desfeita.</p>
+        {lixeiraSessoes.length > 0 ? <button type="button" disabled={ocupado} onClick={() => { setSessoesParaEliminar(lixeiraSessoes); setConfirmacaoDefinitiva(""); }}>Esvaziar lixeira</button> : null}
         {lixeiraSessoes.length === 0 ? <p>A lixeira desta organização está vazia.</p> : lixeiraSessoes.map(item => <article key={String(item.identificador)}>
           <strong>{texto(item.nome_operacional, "Sessão sem nome")}</strong>
           <span>Excluída em {dataLegivel(item.excluido_em)}</span>
           <button type="button" disabled={ocupado} onClick={() => void restaurarSessaoDaLixeira(String(item.identificador))}>Restaurar sessão</button>
+          <button type="button" disabled={ocupado} onClick={() => { setSessoesParaEliminar([item]); setConfirmacaoDefinitiva(""); }}>Excluir definitivamente</button>
         </article>)}
+      </section> : null}
+      {podeAdministrar && sessoesParaEliminar.length > 0 ? <section role="dialog" aria-labelledby="exclusao-definitiva-titulo" className="hx-module__notice">
+        <h3 id="exclusao-definitiva-titulo">Excluir definitivamente {sessoesParaEliminar.length} sessão(ões)?</h3>
+        <ul>{sessoesParaEliminar.map(item => <li key={String(item.identificador)}>{texto(item.nome_operacional, "Sessão sem nome")}</li>)}</ul>
+        <p>Serão eliminados os sinais, fases, referência inicial desta sessão, cálculos, observações, mídias armazenadas e relatórios derivados. O cadastro e a anamnese do participante permanecem. Não será possível restaurar estas sessões.</p>
+        <p>Uma referência utilizada por outra sessão precisa ter seu vínculo resolvido antes da exclusão. Arquivos já baixados ou cópias externas não são apagados por este comando.</p>
+        <label>Digite EXCLUIR DEFINITIVAMENTE
+          <input value={confirmacaoDefinitiva} onChange={event => setConfirmacaoDefinitiva(event.target.value)} autoComplete="off" disabled={ocupado} />
+        </label>
+        <button type="button" disabled={ocupado || confirmacaoDefinitiva !== "EXCLUIR DEFINITIVAMENTE"} onClick={() => void eliminarSessoesDaLixeira()}>Confirmar exclusão definitiva</button>
+        <button type="button" disabled={ocupado} onClick={() => { setSessoesParaEliminar([]); setConfirmacaoDefinitiva(""); }}>Manter na lixeira</button>
       </section> : null}
       {podeAdministrar && sessaoParaExcluir ? <section role="dialog" aria-labelledby="confirmar-exclusao-sessao" className="hx-module__notice">
         <h3 id="confirmar-exclusao-sessao">Excluir sessão da lista de uso?</h3>
