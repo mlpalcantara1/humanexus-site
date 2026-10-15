@@ -1,4 +1,5 @@
 "use client";
+import { hidratarPerfilDaTarefa } from "@/lib/perfil-tarefa-hidratacao";
 import { formatarPercentualCanonico } from "@/lib/percentual-canonico";
 import { apresentarResultante } from "@/lib/resultante-apresentacao";
 import { textoDoCriterioEeg } from "@/lib/eeg-quality-policy-presentation";
@@ -1226,17 +1227,20 @@ export function CockpitOperacionalVivo({
     evidenciasProfissionais.perfil_tarefa_atual
   );
   const perfilProgramadoTHX = objeto(evidenciasProfissionais.perfil_tarefa_pre_alimentado);
-  const perfilBaseTarefa = Object.keys(objeto(perfilTarefaAtual.task)).length
-    ? perfilTarefaAtual : perfilProgramadoTHX;
-  const perfilHidratado = objeto(perfilBaseTarefa.task);
-  const identificadorDaTarefaHidratado = texto(
-    perfilBaseTarefa.identificador_da_tarefa
-    ?? objeto(sessao.contexto_operacional).tarefa,
-    ""
-  );
+  const perfilResolvido = hidratarPerfilDaTarefa(perfilTarefaAtual, perfilProgramadoTHX);
+  const perfilHidratado = perfilResolvido.metricas;
+  const identificadorDaTarefaHidratado = perfilResolvido.identificador
+    || texto(objeto(sessao.contexto_operacional).tarefa, "");
   const assinaturaDoPerfilHidratado = JSON.stringify(perfilHidratado);
+  const contextoDoPerfil = `${String(sessao.identificador ?? "")}:${String(faseDaPaleta.codigo ?? "")}`;
+  const contextoDoFormulario = useRef(contextoDoPerfil);
 
   useEffect(() => {
+    // Atualizações ao vivo não podem apagar ajustes em edição.
+    const mudouContexto = contextoDoFormulario.current !== contextoDoPerfil;
+    contextoDoFormulario.current = contextoDoPerfil;
+    if (perfilTarefaAberto && !mudouContexto) return;
+    if (mudouContexto) setPerfilTarefaAberto(false);
     setPerfilTarefa(Object.fromEntries(
       Object.entries(perfilHidratado).map(([codigo, valor]) => [
         codigo,
@@ -1246,7 +1250,7 @@ export function CockpitOperacionalVivo({
     setIdentificadorDaTarefa(identificadorDaTarefaHidratado);
     // A assinatura muda apenas quando o Núcleo muda o perfil elegível.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assinaturaDoPerfilHidratado, identificadorDaTarefaHidratado]);
+  }, [assinaturaDoPerfilHidratado, identificadorDaTarefaHidratado, perfilTarefaAberto, contextoDoPerfil]);
 
   const capturarEvidenciaRapida = async (codigoEvidencia: string) => {
     if (evidenciaEmEnvio || !capturaRapidaPermitida) return;
@@ -1361,13 +1365,14 @@ export function CockpitOperacionalVivo({
     }
     setEvidenciaEmEnvio(true);
     try {
-      await registrarEvidenciaProfissional({
+      const confirmado = await registrarEvidenciaProfissional({
         acao: "PERFIL_TAREFA",
         identificador_da_tarefa: identificadorDaTarefa.trim(),
         metricas
       });
-      setEstadoDaEvidencia("PERFIL DA TAREFA PRESERVADO · SEM DEFAULT");
-      setPerfilTarefa({}); setPerfilTarefaAberto(false);
+      if (!confirmado) { setEstadoDaEvidencia("Configuração não confirmada. Seus ajustes continuam disponíveis para revisão."); return; }
+      setEstadoDaEvidencia("CONFIGURAÇÃO DA TAREFA SALVA");
+      setPerfilTarefaAberto(false);
     } catch (causa) { setEstadoDaEvidencia(causa instanceof Error ? causa.message : "Registro não confirmado."); } finally { setEvidenciaEmEnvio(false); }
   };
   const tipoDaSessao = String(
@@ -2711,7 +2716,7 @@ export function CockpitOperacionalVivo({
           >
             <header>
               <div>
-                <small>EXIGÊNCIAS PROGRAMADAS · THX</small>
+                <small>EXIGÊNCIAS PROGRAMADAS · THX / THX-AER</small>
                 <strong>Configuração da tarefa · ajuste somente o que mudar</strong>
               </div>
               <button type="button" onClick={() => setPerfilTarefaAberto(false)}>
@@ -2749,8 +2754,15 @@ export function CockpitOperacionalVivo({
               </select>
               <details><summary>Outra tarefa — configuração opcional</summary><input value={identificadorDaTarefa} onChange={(evento) => setIdentificadorDaTarefa(evento.target.value)} maxLength={160} aria-label="Outro identificador de tarefa" /></details>
             </label>
+            <h3>Exigências sugeridas pelo protocolo</h3>
+            <p>Os valores abaixo descrevem a tarefa proposta na escala de 0 a 100. Mantenha a sugestão ou ajuste o cenário que será aplicado.</p>
+            {Object.keys(perfilProgramadoTHX).length ? <button type="button" onClick={() => {
+              const sugestao = hidratarPerfilDaTarefa({}, perfilProgramadoTHX);
+              setIdentificadorDaTarefa(sugestao.identificador);
+              setPerfilTarefa((atual) => ({ ...atual, ...sugestao.metricas }));
+            }}>Usar exigências sugeridas pelo {texto(perfilProgramadoTHX.identificador_da_tarefa)}</button> : <p>Este protocolo não possui sugestão disponível. Informe apenas as exigências conhecidas da tarefa.</p>}
             <div className="hx-evidence-task-profile__grid">
-              {metricasDisponiveisNoPerfil.map(([codigo, rotulo]) => (
+              {metricasDisponiveisNoPerfil.filter(([codigo]) => METRICAS_ESTAVEIS_DA_TAREFA.has(codigo)).map(([codigo, rotulo]) => (
                 <label key={codigo}>
                   <span>{rotulo}</span>
                   <select
@@ -2760,7 +2772,8 @@ export function CockpitOperacionalVivo({
                       [codigo]: evento.target.value
                     }))}
                   >
-                    <option value="">Ausente</option>
+                    <option value="">Não informado</option>
+                    {perfilTarefa[codigo] && !["0", "25", "50", "75", "100"].includes(perfilTarefa[codigo]) ? <option value={perfilTarefa[codigo]}>{perfilTarefa[codigo]} · valor registrado</option> : null}
                     <option value="0">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "0 · exigência programada" : "0%"}</option>
                     <option value="25">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "25 · exigência programada" : "25%"}</option>
                     <option value="50">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "50 · exigência programada" : "50%"}</option>
@@ -2770,6 +2783,32 @@ export function CockpitOperacionalVivo({
                 </label>
               ))}
             </div>
+            {faseProfissionalExistente ? <details>
+              <summary>Resposta observada durante a fase — registro opcional</summary>
+              <p>Estes campos descrevem como a pessoa respondeu. Não precisam ser preenchidos para aceitar as exigências do protocolo. Registre somente o que foi observado; o THX não antecipa acertos, erros, precisão ou recuperação.</p>
+            <div className="hx-evidence-task-profile__grid">
+              {metricasDisponiveisNoPerfil.filter(([codigo]) => !METRICAS_ESTAVEIS_DA_TAREFA.has(codigo)).map(([codigo, rotulo]) => (
+                <label key={codigo}>
+                  <span>{rotulo}</span>
+                  <select
+                    value={perfilTarefa[codigo] ?? ""}
+                    onChange={(evento) => setPerfilTarefa((atual) => ({
+                      ...atual,
+                      [codigo]: evento.target.value
+                    }))}
+                  >
+                    <option value="">Não informado</option>
+                    {perfilTarefa[codigo] && !["0", "25", "50", "75", "100"].includes(perfilTarefa[codigo]) ? <option value={perfilTarefa[codigo]}>{perfilTarefa[codigo]} · valor registrado</option> : null}
+                    <option value="0">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "0 · exigência programada" : "0%"}</option>
+                    <option value="25">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "25 · exigência programada" : "25%"}</option>
+                    <option value="50">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "50 · exigência programada" : "50%"}</option>
+                    <option value="75">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "75 · exigência programada" : "75%"}</option>
+                    <option value="100">{METRICAS_ESTAVEIS_DA_TAREFA.has(codigo) ? "100 · exigência programada" : "100%"}</option>
+                  </select>
+                </label>
+              ))}
+            </div>
+            </details> : null}
             <p>
               Confira as exigências preenchidas pelo THX e ajuste somente o cenário
               que será executado. Se a tarefa for diferente do protocolo selecionado,
@@ -2781,7 +2820,7 @@ export function CockpitOperacionalVivo({
               onClick={() => void salvarPerfilDaTarefa()}
               disabled={evidenciaEmEnvio}
             >
-              Salvar ajustes da tarefa
+              Confirmar configuração da tarefa
             </button>
           </section>
         </div>
