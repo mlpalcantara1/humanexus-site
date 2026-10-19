@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { requisitarNucleoAutenticado } from "@/lib/humanexus-core";
+import { cabecalhosDaSessaoDeGravacao } from "@/lib/gravacao-session-scope";
 import { COOKIE_CSRF, COOKIE_SESSAO } from "@/lib/portal-session";
 import { exigirCsrf } from "@/lib/request-security";
 
@@ -56,11 +57,17 @@ export async function POST(request: Request) {
     };
     const caminho = caminhos[acao];
     if (!caminho) throw new Error("Ação de gravação inválida.");
+    const contexto = await requisitarNucleoAutenticado(
+      `/api/v1/sessoes/${sessao}/gravacao`,
+      valor
+    );
+    const headers = cabecalhosDaSessaoDeGravacao(contexto, String(corpo.sessao ?? ""));
     const dados = await requisitarNucleoAutenticado(
       caminho,
       valor,
       {
         method: "POST",
+        headers,
         body: JSON.stringify(corpo.dados ?? {})
       }
     );

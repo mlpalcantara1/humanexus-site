@@ -180,6 +180,7 @@ export async function POST(request: Request) {
       return responderErroDaApi(erro, {
         modulo: "GESTAO_OPERACIONAL",
         rota: "COMANDO_DE_GESTAO",
+        preservarMensagemSeguraDoNucleo: true,
         mensagemDeAcessoNegado: "A ação exige um perfil profissional autorizado."
       });
     }
