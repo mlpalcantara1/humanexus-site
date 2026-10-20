@@ -172,7 +172,7 @@ test("PDF atual e LEGACY_HISTORICO mantêm conteúdo preventivo equivalente e PD
   for (const textoBruto of textos) {
     const texto = textoBruto.replace(/\s+/g, " ");
     for (const termo of [
-      "Prevenção adaptativa e confiabilidade operacional humana",
+      "Funcionamento, esforço e recuperação",
       "O que os resultados mostram",
       "Como chegou",
       "Pontos fortes e capacidades observadas",

@@ -1,3 +1,4 @@
+import { leituraHumanaDoRelatorio } from "./leitura-humana-relatorio.ts";
 import PDFDocument from "pdfkit";
 import { apresentarResultante } from "./resultante-apresentacao.ts";
 import { textoDaReavaliacaoEeg } from "./eeg-quality-policy-presentation.ts";
@@ -25,7 +26,7 @@ import {
 import { compatibilizarVetoresDoSnapshotHistorico } from "./historical-vector-compatibility.ts";
 import { nomeDaZona, NOMES_HISTORICOS_DAS_ZONAS, VERSAO_NOMENCLATURA_DAS_ZONAS } from "./tirh-zone-nomenclature.ts";
 
-export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.0";
+export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.1";
 
 export type TipoDocumentoTirh =
   | "OPERACIONAL_TIRH"
@@ -245,7 +246,7 @@ function capa(
       relatorioColetivo ? "ESCOPO" : "PARTICIPANTE",
       relatorioColetivo
         ? identificacao.organizacao
-        : `${identificacao.nomeCompleto} · CPF ${identificacao.cpf}`
+        : `${identificacao.nomeCompleto}${/NÃO INFORMADO/.test(identificacao.cpf) ? "" : ` · CPF ${identificacao.cpf}`}`
     ],
     ["SESSÃO", sessao.nome_operacional ?? sessao.nome ?? "Sessão registrada"],
     ["ORGANIZAÇÃO", identificacao.organizacao],
@@ -789,32 +790,36 @@ function desenharSinaisRegistrados(doc: PDFKit.PDFDocument, entrada: EntradaRela
   const trilhas = [
     ...bandas.map(banda => ({ nome: `EEG · ${texto(banda.nome ?? banda.codigo)} · µV²/Hz`, pontos: lista(banda.serie_global).map(objeto), cor: CORES.azul })),
     ...[["hr", "Polar H10 · Frequência cardíaca · bpm"], ["rr", "Polar H10 · Intervalo RR · ms"], ["rmssd", "Polar H10 · RMSSD · ms"]].map(([codigo, nome]) => ({ nome, pontos: lista(seriesPolar[codigo]).map(objeto), cor: CORES.verde }))
-  ].map(trilha => ({ ...trilha, pontos: trilha.pontos.filter(ponto => numero(ponto.valor) != null && Number.isFinite(Date.parse(String(ponto.timestamp)))).sort((a, b) => Date.parse(String(a.timestamp)) - Date.parse(String(b.timestamp))) }));
+  ].map(trilha => ({ ...trilha, pontos: trilha.pontos.filter(ponto => Number.isFinite(Date.parse(String(ponto.timestamp)))).sort((a, b) => Date.parse(String(a.timestamp)) - Date.parse(String(b.timestamp))) }));
   if (!trilhas.some(item => item.pontos.length)) return;
   let y = novaPagina(doc, "SINAIS DA SESSÃO", "Gráficos regulatórios da sessão", "Trajetória registrada de EEG e Polar. Potência EEG recebida, sem reconstrução de EEG bruto. Lacunas não interpoladas; gráficos não certificam admissibilidade de cada amostra.");
   for (const trilha of trilhas.filter(item => item.pontos.length)) {
-    if (y + 185 > 720) y = novaPagina(doc, "SINAIS DA SESSÃO", "Trajetória registrada — continuação");
+    if (y + 160 > 735) y = novaPagina(doc, "SINAIS DA SESSÃO", "Trajetória registrada — continuação");
     y = tituloSecao(doc, trilha.nome, y + 10, "");
     const pontos = trilha.pontos;
     const tempos = pontos.map(ponto => Date.parse(String(ponto.timestamp)));
-    const valores = pontos.map(ponto => Number(ponto.valor));
+    const valores = pontos.map(ponto => numero(ponto.valor));
+    const validos = valores.filter((valor): valor is number => valor !== null);
+    if (!validos.length) continue;
     const inicio = tempos[0], fim = tempos.at(-1)!;
-    const minimo = Math.min(...valores), maximo = Math.max(...valores);
-    const x = 83, largura = 455, altura = 100;
+    const minimo = Math.min(...validos), maximo = Math.max(...validos);
+    const x = 83, largura = 455, altura = 82;
     doc.rect(x, y + 8, largura, altura).lineWidth(.4).strokeColor(CORES.linha).stroke();
     pontos.forEach((ponto, indice) => {
+      const valor = valores[indice];
+      if (valor === null) return;
       const px = x + (tempos[indice] - inicio) / Math.max(1, fim - inicio) * largura;
-      const py = y + 8 + altura - (valores[indice] - minimo) / Math.max(1, maximo - minimo) * altura;
+      const py = y + 8 + altura - (valor - minimo) / Math.max(1, maximo - minimo) * altura;
       // Linha apenas entre amostras contíguas; pausas e lacunas permanecem abertas.
-      if (indice && tempos[indice] - tempos[indice - 1] <= 5_000 && ponto.momento === pontos[indice - 1].momento) {
+      if (indice && valores[indice - 1] !== null && tempos[indice] - tempos[indice - 1] <= 5_000 && ponto.momento === pontos[indice - 1].momento) {
         const anteriorX = x + (tempos[indice - 1] - inicio) / Math.max(1, fim - inicio) * largura;
-        const anteriorY = y + 8 + altura - (valores[indice - 1] - minimo) / Math.max(1, maximo - minimo) * altura;
+        const anteriorY = y + 8 + altura - (valores[indice - 1]! - minimo) / Math.max(1, maximo - minimo) * altura;
         doc.moveTo(anteriorX, anteriorY).lineTo(px, py).lineWidth(.8).strokeColor(trilha.cor).stroke();
       }
       doc.circle(px, py, 1).fillColor(trilha.cor).fill();
     });
-    y = paragrafo(doc, `${new Date(inicio).toISOString()} a ${new Date(fim).toISOString()} · ${pontos.length} registros · mínimo ${minimo.toFixed(2)} · máximo ${maximo.toFixed(2)}`, y + 118, { x: 83, width: 455, tamanho: 7 });
-    y += 20;
+    y = paragrafo(doc, `${new Intl.DateTimeFormat("pt-BR", {dateStyle:"short",timeStyle:"medium",timeZone:"America/Manaus"}).format(inicio)} a ${new Intl.DateTimeFormat("pt-BR", {timeStyle:"medium",timeZone:"America/Manaus"}).format(fim)} (Manaus) · ${validos.length} medidas · mínimo ${minimo.toFixed(2)} · máximo ${maximo.toFixed(2)}`, y + 96, { x: 83, width: 455, tamanho: 7 });
+    y += 10;
   }
   if (!trilhas.some(item => item.pontos.length)) paragrafo(doc, "Séries fisiológicas não recebidas neste documento. Nenhum gráfico foi fabricado.", y + 20, { x: 83, width: 455 });
 }
@@ -1115,13 +1120,13 @@ function renderExecutivo(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHuman
   const riscos = extrairItens(entrada, "riscos");
   const recomendacoes = extrairItens(entrada, "recomendacoes");
 
-  let y = novaPagina(doc, "01 · Visão Executiva", "Estado, evolução e tendência", "Leitura agregada para decisão organizacional sem exposição de dados sensíveis.");
+  let y = novaPagina(doc, "01 · Visão Executiva", "Estado, evolução e tendência", "Como o funcionamento do grupo se apresenta e evolui nos períodos acompanhados. Somente resultados coletivos autorizados.");
   etiqueta(doc, "EVOLUÇÃO", texto(origem.evolucao_executiva, "Não determinada"), 42, y + 7, 150);
   etiqueta(doc, "ESTABILIDADE", texto(origem.estabilidade_executiva, "Não determinada"), 213, y + 7, 150);
   etiqueta(doc, "TENDÊNCIA", texto(origem.tendencia_executiva, "Não determinada"), 384, y + 7, 150);
   y += 75;
   y = tituloSecao(doc, "Síntese para decisão", y, "01");
-  y = paragrafo(doc, texto(origem.sintese_executiva ?? entrada.relatorio.interpretacao_profissional, "Síntese executiva não registrada."), y, { x: 83, width: 455 });
+  y = paragrafo(doc, texto(origem.sintese_executiva, "Síntese executiva não registrada."), y, { x: 83, width: 455 });
   y = tituloSecao(doc, "Indicadores e tendências", y + 7, "02");
   barrasHorizontais(doc, tendencias, 83, y + 5, 430, 200);
   y += 220;
@@ -1134,8 +1139,9 @@ function renderExecutivo(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHuman
   y = tituloSecao(doc, "Recomendações", y + 8, "02");
   y = listaEditorial(doc, recomendacoes.map((item) => `${texto(item.nome ?? item.rotulo, "Recomendação")} — ${texto(item.descricao ?? item.justificativa, "sem descrição")}`), 83, y, 455, 7);
   y = tituloSecao(doc, "Limites de leitura", y + 8, "03");
-  paragrafo(doc, "Este documento apresenta tendências autorizadas e agregadas segundo a TIRH, sem inferência permanente ou decisão profissional automática.", y, { x: 83, width: 455, cor: CORES.suave });
-  renderNarrativaTirh(doc, entrada);
+  paragrafo(doc, "A evolução organizacional exige períodos, composição do grupo, funções e tarefas comparáveis. Quantidade de sessões não mede melhora. Este documento utiliza resultados coletivos autorizados; não transforma IIRH, Zonas ou custos individuais em médias organizacionais. Sem comparação suficiente, a evolução permanece sem conclusão.", y, { x: 83, width: 455, cor: CORES.suave });
+  // Documento organizacional utiliza somente conteúdo coletivo explícito.
+  // Narrativas individuais da sessão não são anexadas à devolutiva do grupo.
 }
 
 function renderTecnico(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHumanexus) {
@@ -1424,6 +1430,42 @@ function renderOperacionalFinalConsolidado(
   ]);
 }
 
+function renderLeituraHumana(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioHumanexus) {
+  const original = projecaoTirhV1(entrada);
+  const disponibilidade = disponibilidadeContinuaDoRelatorio(entrada);
+  const projecao = {...original,
+    iirh: resolverIirhAutoritativo(original.iirh).estado ? original.iirh : disponibilidade.iirh.projecao.registro,
+    zona: resolverZonaAutoritativa(original.zona).estado ? original.zona : disponibilidade.zona.projecao.registro};
+  const consolidacao = projetarEstadoFuncionalDoRelatorio(entrada.relatorio).consolidacao;
+  let y = novaPagina(doc, "LEITURA DO PARTICIPANTE", "Funcionamento, esforço e recuperação",
+    "Resultados da sessão e significado para o acompanhamento individual.");
+  for (const secao of leituraHumanaDoRelatorio({ projecao,
+    sessao: entrada.sessao, gravacao: entrada.gravacao, cockpit: entrada.cockpitOperacional, execucao: entrada.execucao,
+    ciclo: entrada.ciclo, protocolo: entrada.protocoloThx, ctr: entrada.ctr,
+    longitudinal: entrada.longitudinal, relatorio: entrada.relatorio, consolidacao })) {
+    if (y > 590) y = novaPagina(doc, "LEITURA DO PARTICIPANTE", "Continuação da leitura individual");
+    y = tituloSecao(doc, secao.titulo, y + 12, "");
+    for (const item of secao.itens) {
+      doc.font("Helvetica").fontSize(10);
+      if (y + doc.heightOfString(item, {width:455}) + 20 > 700)
+        y = novaPagina(doc, "LEITURA DO PARTICIPANTE", secao.titulo);
+      y = paragrafo(doc,item,y+5,{x:83,width:455,tamanho:9.5});
+    }
+  }
+  const trajetoria=extrairTrajetoria(entrada);
+  if(trajetoria.filter(p=>p.valor!==null).length>=2){
+    y=novaPagina(doc,"EVOLUÇÃO NA SESSÃO","Resposta ao longo das etapas");
+    desenharTrajetoria(doc,trajetoria,70,y+20,455,180);
+  }
+  const vetores=extrairVetores(entrada);
+  if (vetores.some(v=>v.magnitude!==null)) {
+    y=novaPagina(doc,"CONFIGURAÇÃO VETORIAL","Forças presentes nesta sessão",
+      "Valores parciais não equivalem a uma Resultante completa. Consulte a origem de cada vetor na leitura individual.");
+    desenharRadarVetorial(doc,vetores,46,y+8,122);
+    tabelaVetores(doc,vetores,315,y+4,238);
+  }
+}
+
 export async function gerarPdfVisualHumanexus(entrada: EntradaRelatorioHumanexus) {
   const tipo = entrada.tipoDocumento ?? tipoPeloRegistro(entrada.relatorio);
   if (
@@ -1452,17 +1494,12 @@ export async function gerarPdfVisualHumanexus(entrada: EntradaRelatorioHumanexus
     doc.on("error", reject);
   });
   capa(doc, tipo, entrada);
-  if (
-    tipo === "OPERACIONAL_TIRH"
-    && projetarEstadoFuncionalDoRelatorio(entrada.relatorio).finalDisponivel
-  ) {
-    renderOperacionalFinalConsolidado(doc, entrada);
-  } else if (tipo === "OPERACIONAL_TIRH") renderOperacional(doc, entrada);
+  if (tipo === "OPERACIONAL_TIRH") renderLeituraHumana(doc, entrada);
   else if (tipo === "CIENTIFICO_TIRH") renderCientifico(doc, entrada);
   else if (tipo === "EXECUTIVO") renderExecutivo(doc, entrada);
   else if (tipo === "TECNICO") renderTecnico(doc, entrada);
   else renderFormulacao(doc, entrada);
-  if (tipo === "OPERACIONAL_TIRH" || tipo === "CIENTIFICO_TIRH") {
+  if (tipo === "CIENTIFICO_TIRH") {
     let y = novaPagina(doc, "LEITURA OPERACIONAL", "Fases, sinais e referência individual", "Resultados registrados e limites da comparação. Ausências não são completadas.");
     for (const secao of resumoOperacionalDoRelatorio({ cockpit: entrada.cockpitOperacional, ciclo: entrada.ciclo, gravacao: entrada.gravacao, protocolo: entrada.protocoloThx, ctr: entrada.ctr, longitudinal: entrada.longitudinal, incluirFisiologia: itensDeSecoesAutorizadas(entrada.relatorio, "MEDIDAS_DE_CUSTO_POR_FASE", "CUSTO_REGULATORIO").length === 0 })) {
       if (y > 590) y = novaPagina(doc, "LEITURA OPERACIONAL", "Continuação dos resultados registrados");

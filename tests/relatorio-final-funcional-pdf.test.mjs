@@ -39,12 +39,12 @@ test("PDF final funcional tem conteúdo real, paginação variável e paridade d
     "O que isso significa na prática",
     "O que precisa ser desenvolvido",
     "Recomendações",
-    "Nove Vetores momentâneos",
+    "Vetores: recursos e forças presentes",
     "VEV longitudinal",
-    "Indicadores oficiais integrados à leitura",
+    "Resultante: como essas forças se organizaram",
     "Devolutiva ao participante",
     "Limites da leitura",
-    "Rastreabilidade técnica"
+    "Conclusão e próximo passo"
   ]) assert.match(texto.stdout, new RegExp(termo, "i"));
   assert.doesNotMatch(texto.stdout, /Nenhum registro autorizado/i);
   assert.doesNotMatch(texto.stdout, /Nome completo não informado|CPF não informado/i);
@@ -78,7 +78,7 @@ test("PDF preserva trajetórias recebidas durante ausência atual sem fabricar m
   assert.equal(geracao.status, 0, geracao.stderr);
   const extracao = spawnSync("pdftotext", ["-layout", pdf, "-"], { encoding: "utf8" });
   assert.equal(extracao.status, 0, extracao.stderr);
-  for (const termo of ["Gráficos regulatórios da sessão", "EEG · Theta", "Polar H10 · Frequência cardíaca", "mínimo 11.34", "máximo 13.56", "mínimo 65.12", "máximo 67.45", "2 registros", "2026-10-09T18:00:30.000Z"]) assert.ok(extracao.stdout.includes(termo), termo);
+  for (const termo of ["Gráficos regulatórios da sessão", "EEG · Theta", "Polar H10 · Frequência cardíaca", "mínimo 11.34", "máximo 13.56", "mínimo 65.12", "máximo 67.45", "2 medidas", "14:00:30 (Manaus)"]) assert.ok(extracao.stdout.includes(termo), termo);
   assert.match(extracao.stdout, /Lacunas não interpoladas/);
 });
 
@@ -95,13 +95,13 @@ test("PDF usa Resultante operacional explícita sem recorrer à configuração V
   });
   assert.equal(gerar().status, 0);
   let extracao = spawnSync("pdftotext", ["-layout", pdf, "-"], { encoding: "utf8" });
-  assert.match(extracao.stdout, /Magnitude: 71\.56/);
+  assert.match(extracao.stdout, /Magnitude registrada: 71,56/);
   assert.match(extracao.stdout, /VT 0\.296/);
   assert.match(extracao.stdout, /VAR 0\.405/);
   assert.match(extracao.stdout, /Tipo B em validação empírica/);
   await writeFile(arquivo, JSON.stringify({ estado: "NAO_CALCULAVEL", magnitude_global: null }));
   assert.equal(gerar().status, 0);
   extracao = spawnSync("pdftotext", ["-layout", pdf, "-"], { encoding: "utf8" });
-  assert.match(extracao.stdout, /Magnitude: não calculável/);
-  assert.doesNotMatch(extracao.stdout, /Magnitude: 71\.56/);
+  assert.match(extracao.stdout, /magnitude global ainda não está disponível/);
+  assert.doesNotMatch(extracao.stdout, /Magnitude registrada: 71,56/);
 });

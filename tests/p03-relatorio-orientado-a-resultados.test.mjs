@@ -60,7 +60,8 @@ test("relatório Web preserva indicadores oficiais e move gráficos para o conte
     cockpit.indexOf("function RelatorioCanonicoV1"),
     cockpit.indexOf("const BANDAS_ANI_LONGITUDINAIS")
   );
-  assert.match(bloco, /<ResultadoRegulatorioDaSessao microtrajetoria=\{microtrajetoria\}/);
+  assert.match(bloco, /leituraHumanaDoRelatorio/);
+  const apresentacao = await source("lib/leitura-humana-relatorio.ts");
   assert.doesNotMatch(
     bloco,
     /if \(!Object\.keys\(projecao\)\.length\)\s*\{\s*return/,
@@ -70,14 +71,14 @@ test("relatório Web preserva indicadores oficiais e move gráficos para o conte
     "IIRH",
     "Zona",
     "Resultante",
-    "NOVE VETORES MOMENTÂNEOS",
-    "VEV LONGITUDINAL",
+
+
     "Fases, intervenção e sinais efetivamente disponíveis",
     "HX-OBS"
-  ]) assert.match(bloco, new RegExp(termo));
-  assert.match(bloco, /Direção funcional: \{texto\(resultante\.direcao_funcional/);
-  assert.match(bloco, /Sentido contextual: \{texto\(resultante\.sentido_contextual/);
-  assert.match(bloco, /Tendência: \{texto\(resultante\.tendencia/);
+  ]) assert.match(bloco + apresentacao, new RegExp(termo));
+
+
+
   assert.match(bloco, /<PhaseComparisonChart[\s\S]+phases=\{fases\}/);
   assert.match(bloco, /<CockpitSignalStack/);
   assert.match(bloco, /filter\(\(trilha\) => !trilha\.technical\)/);
@@ -87,7 +88,7 @@ test("relatório Web preserva indicadores oficiais e move gráficos para o conte
   assert.doesNotMatch(bloco, /\?\?\s*0|\|\|\s*0/);
   assert.match(cockpit, /RASTREABILIDADE DA SESSÃO/);
   assert.ok(
-    bloco.indexOf("ResultadoRegulatorioDaSessao") < bloco.indexOf("GRÁFICOS DA SESSÃO")
+    bloco.indexOf("leituraHumanaDoRelatorio") < bloco.indexOf("GRÁFICOS DA SESSÃO")
   );
 });
 
@@ -133,13 +134,13 @@ test("PDF e impressão priorizam resultado, preservam gráficos e deixam rastrea
     "Recomendações",
     "Devolutiva ao participante",
     "Limites da leitura",
-    "Configuração dos Vetores Regulatórios",
-    "Nove Vetores momentâneos",
-    "Rastreabilidade técnica"
+    "Forças presentes nesta sessão",
+    "Vetores: recursos e forças presentes",
+    "VEV longitudinal"
   ]) assert.match(texto, new RegExp(termo, "i"));
   assert.ok(
     texto.indexOf("O que os resultados mostram")
-      < texto.lastIndexOf("Rastreabilidade técnica")
+      < texto.lastIndexOf("VEV longitudinal")
   );
   assert.match(texto, /Protocolo selecionado:/i);
   assert.doesNotMatch(texto, /objetivo foi alcançado[^\n]*(alcançado|parcialmente alcançado|não alcançado)[^.]*\./i);

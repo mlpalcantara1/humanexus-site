@@ -83,10 +83,10 @@ test("Resultante V1 estruturada não exige magnitude escalar", () => {
 });
 
 test("relatório V1 usa somente a projeção canônica e não reativa IIRH legacy", () => {
-  assert.match(operacao, /PROJEÇÃO CANÔNICA TIRH V1/);
+  assert.match(operacao, /leituraHumanaDoRelatorio/);
   assert.match(operacao, /IIRH:/);
   assert.match(operacao, /NÃO CALCULÁVEL/);
-  assert.match(operacao, /Magnitude escalar: <strong>NÃO APLICÁVEL NA TIRH V1/);
+  assert.match(operacao, /iirh: iirhAutoritativo.registro, zona: zonaAutoritativa.registro/);
   assert.doesNotMatch(operacao, /IIRH LEGACY:|valorIirhDoRelatorioLegacy/);
 });
 

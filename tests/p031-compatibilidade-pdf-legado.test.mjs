@@ -149,13 +149,14 @@ test("PDF atual e legado são PDFs reais, preservam microtrajetória e ausência
     "O que isso significa na prática",
     "Recomendações",
     "Limites da leitura",
-    "Rastreabilidade técnica"
+    "Resultante: como essas forças se organizaram"
   ]) {
     assert.match(textoAtual.stdout, new RegExp(termo, "i"));
     assert.match(textoLegado.stdout, new RegExp(termo, "i"));
   }
-  assert.match(textoLegado.stdout, /1\/9 Vetores momentâneos possuem valor oficial/i);
-  assert.match(textoLegado.stdout, /INDISPONÍVEL|AUSENTE|não materializada/i);
+  assert.match(textoLegado.stdout, /Vetores: recursos e forças presentes/i);
+  assert.match(textoLegado.stdout, /Ainda sem medida:/i);
+  assert.match(textoLegado.stdout, /INDISPONÍVEL|AUSENTE|ainda não está disponível/i);
   assert.doesNotMatch(textoLegado.stdout, /IIRH:\s*0\s*\/\s*100/i);
 });
 

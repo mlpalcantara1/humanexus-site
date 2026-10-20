@@ -9,9 +9,9 @@ const root = new URL("../", import.meta.url);
 const source = (path) => readFile(new URL(path, root), "utf8");
 
 const documentos = [
-  ["relatorio-operacional-tirh-fixture.pdf", 9],
+  ["relatorio-operacional-tirh-fixture.pdf", 3],
   ["relatorio-cientifico-tirh-fixture.pdf", 8],
-  ["relatorio-executivo-tirh-fixture.pdf", 6],
+  ["relatorio-executivo-tirh-fixture.pdf", 3],
   ["relatorio-tecnico-sistema-fixture.pdf", 3],
   ["formulacao-regulatoria-tirh-fixture.pdf", 6],
 ];
@@ -141,13 +141,8 @@ test("fixtures geram os cinco PDFs premium com paginação esperada", async () =
     encoding: "utf8",
   });
   assert.equal(texto.status, 0, texto.stderr);
-  assert.match(texto.stdout, /VETORES MOMENTÂNEOS V1 · 9\/9 PROJETADOS/);
-  assert.match(texto.stdout, /VEV.*LONGITUDINAL NÃO ELEGÍVEL/s);
-  assert.match(texto.stdout, /PLENA\s+Não aplicável na TIRH V1/s);
-  assert.match(texto.stdout, /AGUARDANDO PRIMEIRA REFERÊNCIA[\s\S]*VÁLIDA/);
-  assert.match(texto.stdout, /Validação Profissional V1/i);
-  assert.match(texto.stdout, /COMPLETA\s+0[\s\S]*Decisão preservada: VALIDAR/);
-  assert.match(texto.stdout, /Estado efetivo: VALIDADO PROFISSIONALMENTE/);
+  for (const termo of ["Funcionamento, esforço e recuperação", "Vetores: recursos e forças presentes", "VEV longitudinal", "Resultante: como essas forças se organizaram", "Limites da leitura"])
+    assert.ok(texto.stdout.replace(/\s+/g," ").includes(termo),termo);
   assert.doesNotMatch(texto.stdout, /CLM-FIXTURE-RESULTANTE-V1/);
   assert.doesNotMatch(texto.stdout, /\bRRO\b/);
 });

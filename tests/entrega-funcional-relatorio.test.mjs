@@ -246,11 +246,11 @@ test("fluxo humano mantém registro integrado único e bloqueia PDF final incomp
 test("relatório humano comunica resultados práticos, indicadores, registro e devolutiva", async () => {
   const cockpit = await source("components/operacao-homologacao.tsx");
   const componenteNarrativo = await source("components/resultado-regulatorio-da-sessao.tsx");
-  const relatorioHumano = `${cockpit}\n${componenteNarrativo}`;
+  const relatorioHumano = `${cockpit}\n${componenteNarrativo}\n${await source("lib/leitura-humana-relatorio.ts")}`;
   for (const termo of [
-    "NOVE VETORES MOMENTÂNEOS",
-    "VEV LONGITUDINAL",
-    "RESULTANTE, IIRH, ZONA E TRAJETÓRIA",
+    "Vetores: recursos e forças presentes",
+    "VEV longitudinal",
+    "Resultante: como essas forças se organizaram",
     "RESULTADOS E DEVOLUTIVA DA SESSÃO",
     "HX-OBS, TCR e ICR",
     "DEVOLUTIVA AO PARTICIPANTE",

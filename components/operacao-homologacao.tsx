@@ -1,4 +1,6 @@
 "use client";
+import { leituraLongitudinalIndividual, leituraLongitudinalOrganizacional } from "@/lib/leitura-longitudinal-humana";
+import { leituraHumanaDoRelatorio } from "@/lib/leitura-humana-relatorio";
 import { textoDaReavaliacaoEeg } from "@/lib/eeg-quality-policy-presentation";
 import { LEITURA_DOS_MACROCAMPOS, SIGNIFICADOS_FUNCIONAIS_DOS_VETORES, EXPLICACAO_DA_RESULTANTE } from "@/lib/tirh-linguagem-funcional";
 import { resumoOperacionalDoRelatorio, respostaAosEstimulosNoRelatorio } from "@/lib/resumo-operacional-relatorio";
@@ -565,84 +567,20 @@ function RelatorioCanonicoV1({
         <p>Referência operacional: {identidade.referenciaOperacional}.</p>
       </header>
 
-      <ResultadoRegulatorioDaSessao microtrajetoria={microtrajetoria} />
-      <section className="hx-report-canonical__section">
-        <h3>Resposta aos estímulos e desempenho</h3>
-        {respostaAosEstimulosNoRelatorio({ evidencias: estado.leitura_regulatoria.evidencias, sessao: estado.sessao.identificador, participante: estado.participante.identificador, organizacao: estado.organizacao.identificador }).itens.map(item => <p key={item}>{item}</p>)}
-      </section>
-      <section className="hx-report-canonical__section">
-        <h3>Rota dominante e custo para sustentar o funcionamento</h3>
-        {(itensDeSecoesAutorizadas(fontesDocumentais, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS", "ARR_DECLARATIVA_DA_ANAMNESE").length
-          ? itensDeSecoesAutorizadas(fontesDocumentais, "ROTA_DOMINANTE", "ROTAS_REGULATORIAS", "ARR_DECLARATIVA_DA_ANAMNESE")
-          : ["Rota dominante: não recebida como análise admissível desta sessão. A zona predominante não identifica, por si só, uma rota regulatória."]).map(item => <p key={item}>{item}</p>)}
-        {!medidasDeCusto.some(item => item.startsWith("Custo autonômico — fonte:")) ? <><p>Custo autonômico — Polar H10: mobilização e recuperação autonômicas, observadas na frequência cardíaca, nos intervalos RR e na variabilidade cardíaca.</p><p>Custo cognitivo — ondas EEG do EPOC X: mobilização neurocognitiva e variação de Theta, Alpha, Beta baixa, Beta alta e Gamma em relação à referência individual.</p></> : null}
-        {medidasDeCusto.map(item => <p key={item}>{item}</p>)}
-      </section>
-      {textoDaReavaliacaoEeg(leituraCientificaDaInspecao(estado)).map((linha) => <p key={linha}>{linha}</p>)}
-      {resumoOperacionalDoRelatorio({ cockpit: estado.cockpit_operacional, ciclo: estado.ciclo, gravacao: estado.gravacao, protocolo: estado.thx_individual, ctr: estado.ctr_individual, longitudinal: estado.longitudinal, incluirProtocolo: false, incluirFisiologia: medidasDeCusto.length === 0 }).map(secao => (
-        <section className="hx-report-canonical__section" key={secao.titulo}>
-          <h3>{secao.titulo}</h3>
-          {secao.itens.map(item => <p key={item}>{item}</p>)}
-        </section>
-      ))}
-
-      {!Object.keys(projecao).length ? (
-        <p className="hx-module__notice">
-          <strong>PROJEÇÃO CANÔNICA TIRH V1</strong><br />
-          Os indicadores científicos estruturados desta sessão não foram recebidos. A narrativa documental existente permanece visível sem cálculo ou preenchimento pelo Portal.
-        </p>
-      ) : null}
-
-      <section className="hx-report-canonical__section">
-        <h3>Organização Regulatória nos quatro Macrocampos</h3>
-        <div className="hx-report-vector-grid">
-          {estado.ciencia.macrocampos.map(campo => {
-            const codigo = codigoDoMacrocampo(campo);
-            const definicoes = estado.ciencia.vetores.filter(vetor => texto(valorDoRegistro(vetor, "macrofield_code", "codigo_do_macrocampo"), "") === codigo);
-            const medidas = definicoes.map(definicao => vetores.find(vetor => vetor.codigo === codigoDoVetor(definicao))).filter(vetor => vetor && typeof (vetor.registro?.magnitude ?? vetor.registro?.valor ?? vetor.registro?.value) === "number");
-            return <article key={codigo}><strong>{nomeDoMacrocampo(campo)}</strong><p>{LEITURA_DOS_MACROCAMPOS[codigo]}</p>{!medidas.length ? <p>As evidências desta sessão ainda não permitem descrever este Campo com medidas vetoriais.</p> : null}</article>;
-          })}
-        </div>
-      </section>
-
-      <section className="hx-report-canonical__section">
-        <small>04 · NOVE VETORES MOMENTÂNEOS</small>
-        <h3>{vetoresCalculaveis.length}/9 calculáveis</h3>
-        <p>{vetoresCalculaveis.length === 9
-          ? "Os nove valores oficiais estão disponíveis neste recorte."
-          : `${9 - vetoresCalculaveis.length} vetor(es) permanecem sem valor oficial neste recorte. A ausência não foi convertida em zero.`}</p>
-        <div className="hx-report-vector-grid">
-          {vetores.map(({ codigo, nome, significado, registro }) => {
-            const valor = registro?.magnitude ?? registro?.valor ?? registro?.value;
-            const confianca = registro?.confianca ?? registro?.confiabilidade;
-            const fontes = lista(registro?.fontes).map(String);
-            return <article key={codigo} className={registro ? "" : "is-missing"}>
-              <small>{codigo}</small><strong>{nome}</strong>
-              <p>{significado}</p>
-              <span>Magnitude: {typeof valor === "number" ? valor : "Sem medida nesta sessão"}</span>
-              {typeof confianca === "number" ? <span>Confiança: {formatarPercentualCanonico(confianca)}</span> : null}
-              {fontes.length ? <span>Fonte: {fontes.join(" · ")}</span> : null}
-              {texto(registro?.leitura_profissional, "") ? <em>{texto(registro?.leitura_profissional, "")}</em> : null}
-            </article>;
-          })}
-        </div>
-      </section>
-
-      <section className="hx-report-canonical__section">
-        <small>05 · VEV LONGITUDINAL</small>
-        <h3>{texto(vev.estado_epistemico ?? vev.estado, "NÃO ELEGÍVEL")}</h3>
-        <p>O VEV é longitudinal e permanece separado dos nove Vetores momentâneos e da Resultante. O critério exige uma referência inicial e quatro sessões válidas e comparáveis.</p>
-      </section>
-
-      <section className="hx-report-canonical__section">
-        <small>06 · RESULTANTE, IIRH, ZONA E TRAJETÓRIA</small>
-        <h3>Resultante Regulatória: {texto(resultante.estado, "EVIDÊNCIAS INSUFICIENTES")}</h3>
-        <p>{EXPLICACAO_DA_RESULTANTE}</p>
-        <details><summary>Definição científica da Resultante</summary><p>Magnitude escalar: <strong>NÃO APLICÁVEL NA TIRH V1</strong>. {texto(resultante.motivo, "A Resultante descreve a organização vetorial sustentada neste recorte.")}</p></details>
-        <p>IIRH: {iirhCalculavel ? `${iirhAutoritativo.valor} / 100 · ${rotuloIirh}` : texto(iirhAutoritativo.motivo, rotuloIirh)}. Zona: {zonaAutoritativa.classificada ? `${nomeDaZona(zonaAutoritativa.codigo ?? zonaAutoritativa.nome) ?? texto(zonaAutoritativa.codigo ?? zonaAutoritativa.nome)} · ${rotuloZona}` : texto(zonaAutoritativa.motivo, rotuloZona)}. Trajetória: {estado.leitura_regulatoria.trajetorias.length ? "registro longitudinal localizado" : "não inferível a partir de um único ponto"}.</p>
-        <p>Direção funcional: {texto(resultante.direcao_funcional ?? resultante.direcao, "não determinada pelas evidências disponíveis")} · Sentido contextual: {texto(resultante.sentido_contextual ?? resultante.sentido, "não determinado pelas evidências disponíveis")} · Tendência: {texto(resultante.tendencia, "sem sequência comparável suficiente")}.</p>
-        <p>O próximo registro válido e comparável pode ampliar a leitura temporal sem reclassificar retroativamente esta sessão.</p>
-      </section>
+      {leituraHumanaDoRelatorio({
+        projecao: { ...projecao, vetores: vetoresProjetados,
+          iirh: iirhAutoritativo.registro, zona: zonaAutoritativa.registro },
+        sessao: estado.sessao, gravacao: estado.gravacao, execucao: estado.execucao,
+        cockpit: estado.cockpit_operacional, ciclo: estado.ciclo,
+        protocolo: estado.thx_individual, ctr: estado.ctr_individual,
+        longitudinal: estado.longitudinal, relatorio: fontesDocumentais, consolidacao,
+        desempenho: respostaAosEstimulosNoRelatorio({ evidencias: estado.leitura_regulatoria.evidencias,
+          sessao: estado.sessao.identificador, participante: estado.participante.identificador,
+          organizacao: estado.organizacao.identificador })
+      }).map(secao => <section className="hx-report-canonical__section" key={secao.titulo}>
+        <h3>{secao.titulo}</h3>
+        {secao.itens.map(item => <p key={item}>{item}</p>)}
+      </section>)}
 
       {fasesComComparacao.length >= 2 || trilhasDoRelatorio.length > 0 ? (
       <section className="hx-report-canonical__section hx-report-regulatory-charts" data-humanexus-report>
@@ -687,7 +625,7 @@ const BANDAS_ANI_LONGITUDINAIS = [
 ] as const;
 
 function MacrotrajetoriaRegulatoria({ longitudinal }: { longitudinal: Registro }) {
-  const etapas = projetarMacrotrajetoriaRegulatoria(longitudinal);
+  const etapas = leituraLongitudinalIndividual(longitudinal).map((s,i)=>({codigo:String(i),rotulo:s.titulo,itens:s.itens}));
   return (
     <section className="hx-cockpit-panel hx-longitudinal-narrative" aria-label="Macrotrajetória regulatória longitudinal">
       <HxSectionHeader
@@ -4006,6 +3944,7 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
   const visaoColetiva = (
     <section className="hx-cockpit-panel">
       <TituloDaVisao kicker="MODO COLETIVO DO PAINEL OPERACIONAL" titulo="População organizacional automática, agregação protegida." descricao="O vínculo organizacional define o pertencimento. Equipe, período, função e finalidade são filtros; elegibilidade científica e permissão de exposição permanecem critérios separados." />
+      {!carregandoFontesAutorizadas && leituraLongitudinalOrganizacional(populacaoColetiva).map(secao=><section key={secao.titulo}><h3>{secao.titulo}</h3>{secao.itens.map(item=><p key={item}>{item}</p>)}</section>)}
       <div className="hx-mode-switch">
         <button type="button" onClick={() => selecionarVisao("visao-geral")}>Painel individual</button>
         <button type="button" className="is-active" aria-current="page">Painel coletivo</button>
@@ -4383,7 +4322,8 @@ export function OperacaoHomologacao({ modulo }: { modulo: ModuloDaPlataforma }) 
           title="Comparabilidade metodológica protegida."
           description="Filtros por período, contexto, tarefa e versão científica são aplicados sem ligar sessões incompatíveis."
         />
-        <LongitudinalEvolutionChart points={pontos} />
+        <MacrotrajetoriaRegulatoria longitudinal={estado.longitudinal} />
+      <LongitudinalEvolutionChart points={pontos} />
         <EvolucaoDaAssinaturaNeuroregulatoria longitudinal={estado.longitudinal} />
         <Rastreabilidade estado={estado} />
       </div>
