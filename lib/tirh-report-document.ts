@@ -26,7 +26,7 @@ import {
 import { compatibilizarVetoresDoSnapshotHistorico } from "./historical-vector-compatibility.ts";
 import { nomeDaZona, NOMES_HISTORICOS_DAS_ZONAS, VERSAO_NOMENCLATURA_DAS_ZONAS } from "./tirh-zone-nomenclature.ts";
 
-export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.1";
+export const VERSAO_DOCUMENTAL_TIRH = "TIRH-DOCUMENTOS-3.2";
 
 export type TipoDocumentoTirh =
   | "OPERACIONAL_TIRH"
@@ -58,6 +58,7 @@ export type EntradaRelatorioHumanexus = {
   sessao: Registro;
   execucao: Registro | null;
   protocoloThx?: Registro | null;
+  evidenciasTarefa?: Registro[];
   ctr?: Registro | null;
   longitudinal?: Registro;
   ciclo: Registro | null;
@@ -1441,7 +1442,10 @@ function renderLeituraHumana(doc: PDFKit.PDFDocument, entrada: EntradaRelatorioH
     "Resultados da sessão e significado para o acompanhamento individual.");
   for (const secao of leituraHumanaDoRelatorio({ projecao,
     sessao: entrada.sessao, gravacao: entrada.gravacao, cockpit: entrada.cockpitOperacional, execucao: entrada.execucao,
+    participanteNome: entrada.participante.nome_completo ?? entrada.participante.nome,
     ciclo: entrada.ciclo, protocolo: entrada.protocoloThx, ctr: entrada.ctr,
+    evidenciasTarefa: entrada.evidenciasTarefa,
+    contextoTarefa: {sessao:entrada.sessao.identificador,participante:entrada.participante.identificador,organizacao:entrada.organizacao?.identificador},
     longitudinal: entrada.longitudinal, relatorio: entrada.relatorio, consolidacao })) {
     if (y > 590) y = novaPagina(doc, "LEITURA DO PARTICIPANTE", "Continuação da leitura individual");
     y = tituloSecao(doc, secao.titulo, y + 12, "");
@@ -1495,23 +1499,10 @@ export async function gerarPdfVisualHumanexus(entrada: EntradaRelatorioHumanexus
   });
   capa(doc, tipo, entrada);
   if (tipo === "OPERACIONAL_TIRH") renderLeituraHumana(doc, entrada);
-  else if (tipo === "CIENTIFICO_TIRH") renderCientifico(doc, entrada);
+  else if (tipo === "CIENTIFICO_TIRH") { renderCientifico(doc, entrada); renderLeituraHumana(doc, entrada); }
   else if (tipo === "EXECUTIVO") renderExecutivo(doc, entrada);
   else if (tipo === "TECNICO") renderTecnico(doc, entrada);
-  else renderFormulacao(doc, entrada);
-  if (tipo === "CIENTIFICO_TIRH") {
-    let y = novaPagina(doc, "LEITURA OPERACIONAL", "Fases, sinais e referência individual", "Resultados registrados e limites da comparação. Ausências não são completadas.");
-    for (const secao of resumoOperacionalDoRelatorio({ cockpit: entrada.cockpitOperacional, ciclo: entrada.ciclo, gravacao: entrada.gravacao, protocolo: entrada.protocoloThx, ctr: entrada.ctr, longitudinal: entrada.longitudinal, incluirFisiologia: itensDeSecoesAutorizadas(entrada.relatorio, "MEDIDAS_DE_CUSTO_POR_FASE", "CUSTO_REGULATORIO").length === 0 })) {
-      if (y > 590) y = novaPagina(doc, "LEITURA OPERACIONAL", "Continuação dos resultados registrados");
-      y = tituloSecao(doc, secao.titulo, y + 12, "");
-      for (const item of valoresNarrativos(secao.itens)) {
-        doc.font("Helvetica").fontSize(8.2);
-        const altura = doc.heightOfString(item, { width: 455, lineGap: 2 }) + 18;
-        if (y + altura > 700) y = novaPagina(doc, "LEITURA OPERACIONAL", secao.titulo);
-        y = paragrafo(doc, item, y + 8, { x: 83, width: 455, tamanho: 8.2 });
-      }
-    }
-  }
+  else { renderFormulacao(doc, entrada); renderLeituraHumana(doc, entrada); }
   if (tipo === "OPERACIONAL_TIRH" || tipo === "CIENTIFICO_TIRH") desenharSinaisRegistrados(doc, entrada);
   const revisaoEeg = textoDaReavaliacaoEeg(objeto(entrada.cockpitOperacional).leitura_cientifica);
   if (revisaoEeg.length) {

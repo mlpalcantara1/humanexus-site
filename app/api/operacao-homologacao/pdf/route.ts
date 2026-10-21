@@ -140,7 +140,8 @@ export async function GET(request: Request) {
       consultaTirhV1,
       cockpitOperacional,
       protocoloThx,
-      longitudinal
+      longitudinal,
+      evidenciasTarefa
     ] = await Promise.all([
       requisitarNucleoAutenticado<Registro[]>(`/api/v1/telemetria/sessoes/${encodeURIComponent(sessaoId)}`, token)
         .catch(() => []),
@@ -193,7 +194,8 @@ export async function GET(request: Request) {
           ).catch(() => null)
         : Promise.resolve(null),
       requisitarNucleoAutenticado<Registro>(`/api/v1/participantes/${encodeURIComponent(participanteId)}/longitudinal`, token)
-        .catch(() => ({ estado_da_evidencia: "Comparação longitudinal não recebida nesta consulta; não é possível concluir evolução." }))
+        .catch(() => ({ estado_da_evidencia: "Comparação longitudinal não recebida nesta consulta; não é possível concluir evolução." })),
+      requisitarNucleoAutenticado<Registro[]>(`/api/v1/sessoes/${encodeURIComponent(sessaoId)}/evidencias`, token).catch(() => [])
     ]);
     const contratoDocumental = resolverContratoDocumentalSomenteLeitura({
       relatorio,
@@ -209,6 +211,7 @@ export async function GET(request: Request) {
       execucao,
       protocoloThx,
       longitudinal,
+      evidenciasTarefa,
       ctr: { identificador: sessao.identificador_do_ctr },
       ciclo,
       telemetria,

@@ -1,3 +1,4 @@
+import { leituraEegContextual } from './leitura-eeg-contextual.ts';
 import { leituraLongitudinalIndividual } from './leitura-longitudinal-humana.ts';
 import { apresentarResultante } from './resultante-apresentacao.ts';
 import { resolverIirhAutoritativo, resolverZonaAutoritativa } from './authoritative-iirh-projection.ts';
@@ -18,8 +19,9 @@ export function ehReferenciaInicial(sessao: unknown, gravacao: unknown): boolean
 }
 export type EntradaLeituraHumana = {
  projecao?: unknown; sessao?: unknown; gravacao?: unknown; cockpit?: unknown; ciclo?: unknown;
- protocolo?: unknown; ctr?: unknown; longitudinal?: unknown; relatorio?: unknown; consolidacao?: unknown;
- desempenho?: SecaoOperacional; execucao?: unknown;
+ participanteNome?: unknown; protocolo?: unknown; ctr?: unknown; longitudinal?: unknown; relatorio?: unknown; consolidacao?: unknown;
+ desempenho?: SecaoOperacional; execucao?: unknown; evidenciasTarefa?: unknown;
+ contextoTarefa?: { sessao?: unknown; participante?: unknown; organizacao?: unknown };
 };
 /** Camada de apresentação comum a tela e PDF. Não recalcula nem aprova resultados. */
 export function leituraHumanaDoRelatorio(e: EntradaLeituraHumana): SecaoOperacional[] {
@@ -35,12 +37,14 @@ export function leituraHumanaDoRelatorio(e: EntradaLeituraHumana): SecaoOperacio
   i.calculado ? `IIRH ${fmt(i.valor)}/100${z.classificada ? ` · ${nomeDaZona(z.codigo ?? z.nome) ?? z.nome ?? 'Zona registrada'}` : ' · Zona ainda não definida'}${parcial?' · leitura provisória.':'.'}` : 'As evidências disponíveis ainda não permitem apresentar um IIRH conclusivo ou caracterizar a organização regulatória global.',
   'O IIRH expressa a leitura integrada disponível neste registro. Um valor isolado não descreve toda a Inteligência Regulatória Humana nem demonstra melhora.',
   ...(num(ir.cobertura)!==null ? [`O cálculo reúne ${fmt(Number(ir.cobertura)*100)}% dos componentes previstos${num(ir.confianca)!==null?`; confiança interna ${fmt(Number(ir.confianca)*100)}%`:''}. Confiança interna não é probabilidade de acerto clínico.`]:[]),
-  basal ? 'Esta referência descreve o momento inicial. A condição de repouso, a postura e os acontecimentos durante a captura devem ser confirmados pelo profissional. Não há comparação antes e depois de treinamento nesta etapa.' : 'A resposta à exigência deve ser lida junto da tarefa, da mobilização autonômica e cognitiva e da recuperação observada.',
+  basal ? 'Esta referência inicial é realizada em repouso, sem tarefa. Postura e acontecimentos durante a captura devem ser documentados. Não há exposição THX/THX-AER nem comparação antes e depois de treinamento nesta etapa.' : 'A resposta à exigência deve ser lida junto da tarefa, da mobilização autonômica e cognitiva e da recuperação observada.',
  ]);
- add('O que os resultados mostram',narrativa.resultados);
- add('Como chegou',narrativa.comoChegou);
+ if(!basal){add('O que os resultados mostram',narrativa.resultados);add('Como chegou',narrativa.comoChegou);}
  const custos=itensDeSecoesAutorizadas(e.relatorio,'CUSTO_REGULATORIO','MEDIDAS_DE_CUSTO_POR_FASE');
- add('A que custo o funcionamento foi sustentado',custos.length?custos:[
+ add(basal?'Mobilização observada em repouso':'A que custo o funcionamento foi sustentado',basal?[
+  'Os sinais Polar H10 e as bandas EEG caracterizam a referência sem tarefa. Não há custo de execução, acertos, erros, omissões ou tempo de reação a atribuir a esta coleta.',
+  'Sem exigência aplicada, não se conclui esforço adicional para sustentar desempenho nem recuperação pós-tarefa. A referência será comparador para as etapas posteriores admissíveis.'
+ ]:custos.length?custos:[
   'O Polar H10 informa a mobilização autonômica; as bandas EEG do EPOC X informam a atividade neuroelétrica observada. O custo regulatório depende da relação desses sinais com a exigência, a resposta e a referência individual.',
   basal ? 'Nesta referência inicial, os sinais caracterizam o ponto de partida. Não permitem, sozinhos, concluir quanto esforço adicional seria necessário diante de uma tarefa.' : 'Sem medidas comparáveis, não é possível afirmar que o participante precisou de mais ou menos esforço para manter o funcionamento.'
  ]);
@@ -63,20 +67,18 @@ export function leituraHumanaDoRelatorio(e: EntradaLeituraHumana): SecaoOperacio
  const atividade=obj(eeg.atividade_de_bandas_eeg_preservada??eeg.atividade_de_bandas_eeg);
  const bandas=(Array.isArray(atividade.bandas)?atividade.bandas:[]).map(obj);
  const medidasEeg=bandas.map(b=>resumoSerie(b.serie_global,String(b.nome??b.codigo??'Banda EEG'),'µV²/Hz')).filter(Boolean);
- if(medidasEeg.length)add('Atividade das bandas EEG · EPOC X',[...medidasEeg,
-  'As bandas mostram a potência registrada, não um traçado EEG bruto. As estatísticas descrevem somente os pontos presentes nas séries; não certificam, sozinhas, a qualidade de cada amostra.',
-  'Potência elevada ou reduzida, isoladamente, não determina emoção, esforço cognitivo ou recuperação. Contato, qualidade EEG e amostragem são medidas diferentes.'
- ]);
+ const secoesEeg=leituraEegContextual({basal,atividade,polar,participanteNome:e.participanteNome,protocolo:e.protocolo,evidencias:e.evidenciasTarefa,contexto:e.contextoTarefa});
+ for(const secao of secoesEeg)add(secao.titulo,secao.itens);
  const resumo=resumoOperacionalDoRelatorio({cockpit:e.cockpit,ciclo:e.ciclo,gravacao:e.gravacao,protocolo:e.protocolo,ctr:e.ctr,longitudinal:e.longitudinal,incluirFisiologia:!custos.length});
  for(const s of resumo){
   if(/Baseline individual/.test(s.titulo))continue;
   if(basal && /Antes, durante|Zona Regulatória dominante|CTR, THX/.test(s.titulo))continue;
   if(medidasPolar.length&&s.titulo==='Polar e HRV — registro fisiológico')continue;
-  if(medidasEeg.length&&s.titulo==='EEG — bandas e qualidade')continue;
+  if(secoesEeg.some(s=>s.titulo==='Interpretação integrada das bandas no caso individual')&&s.titulo==='EEG — bandas e qualidade')continue;
   add(s.titulo,s.itens);
  }
  if(!basal){
-  add('O que cada etapa permite compreender',['PRÉ: condição de entrada e resposta à tarefa antes da intervenção. TREINO: resposta durante a intervenção e esforço para sustentar a tarefa. PÓS: condição após o treino, recuperação e possível mudança imediata. Uma mudança no PÓS não comprova consolidação ao longo do tempo.']);
+  add('O que cada etapa permite compreender',['PRÉ: condição de entrada e resposta à atividade registrada antes da intervenção. TREINO: resposta à tarefa THX/THX-AER definida e validada pelo profissional. PÓS: condição após o treino; interpretar tarefa ou repouso conforme o registro da etapa. Não transportar desempenho entre fases. Uma mudança imediata não comprova consolidação longitudinal.']);
   const desempenho=itensDeSecoesAutorizadas(e.relatorio,'RESPOSTA_AOS_ESTIMULOS');
   add('Como respondeu à tarefa',desempenho.length?desempenho:e.desempenho?.itens??['Tempo de reação, acertos, erros e omissões não foram disponibilizados neste relatório. Os sensores não substituem a observação do desempenho.']);
  }
@@ -111,15 +113,15 @@ export function leituraHumanaDoRelatorio(e: EntradaLeituraHumana): SecaoOperacio
  ['Pontos de atenção',narrativa.pontosDeAtencao],
  ['Resposta ao treinamento',basal?[]:narrativa.respostaAoTreinamento],
  ['O que precisa ser desenvolvido',narrativa.desenvolvimento],
- ] as [string,string[]][]) add(titulo,itens);
- add('O que isso significa na prática',narrativa.significadoPratico);
- add('Devolutiva ao participante',narrativa.devolutivaAoParticipante);
+ ] as [string,string[]][]) if(!basal)add(titulo,itens);
+ if(!basal){add('O que isso significa na prática',narrativa.significadoPratico);add('Devolutiva ao participante',narrativa.devolutivaAoParticipante);}
+ else add('Devolutiva ao participante',['Esta coleta observou seu funcionamento em repouso, sem tarefa. Ela é o ponto de partida para compreender sua resposta nas atividades futuras, sem concluir desempenho ou recuperação que não foram observados aqui.']);
  const conclusao=valoresNarrativos([c.conclusao]);
  add('Conclusão e próximo passo',conclusao.length?[...conclusao,...valoresNarrativos([c.recomendacao,c.proximo_passo_regulatorio])]:[
   basal?'Esta sessão pode compor a referência individual nos aspectos que tenham medidas válidas. A comparação futura deverá considerar condições semelhantes de aquisição e contexto.':'A conclusão sobre mudança depende de medidas comparáveis e da revisão profissional da resposta à tarefa.',
   'A interpretação profissional permanece pendente; nenhum benefício ou prejuízo foi presumido.'
  ]);
- add('Recomendações',narrativa.recomendacoes);
+ if(!basal)add('Recomendações',narrativa.recomendacoes);
  add('Limites da leitura',valoresNarrativos([c.limitacoes]).length?valoresNarrativos([c.limitacoes]):['Somente medidas e observações efetivamente registradas sustentam esta leitura. Ausência de medida não significa ausência do fenômeno.']);
  if(!basal)for(const secao of leituraLongitudinalIndividual(e.longitudinal))add(secao.titulo,secao.itens);
  return secoes;
